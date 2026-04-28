@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.476
+
+### Fix
+
+- Dashboard/Raw: Das Loeschen markierter Raw-Werte liefert keinen HTML-500 mehr. Auf InfluxDB-Servern ohne feldgenaue Delete-Unterstuetzung wird der Delete-Pfad jetzt serverseitig kontrolliert abgefangen und als funktionsfaehiger API-Flow ausgefuehrt. ([#424](https://github.com/thomas682/HA-Addons/issues/424))
+- Verdichtung: Die Rollup-Preview faellt bei fehlendem Source-Bucket nicht mehr als HTML-500 aus, sondern liefert einen strukturierten API-Fehler zurueck. ([#428](https://github.com/thomas682/HA-Addons/issues/428))
+- Datenpflege: Der DQ-/Datenpflege-Lauf bricht bei problematischen Serien-Inventar-Abfragen nicht mehr mit einem Influx-Panic ab; es gibt jetzt einen robusteren Fallback-Inventarpfad, sodass der Lauf bis `done` durchlaufen kann. ([#429](https://github.com/thomas682/HA-Addons/issues/429))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.475
 
 ### Fix

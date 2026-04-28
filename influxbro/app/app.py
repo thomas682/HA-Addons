@@ -37,6 +37,7 @@ from influxdb_client import InfluxDBClient
 from influxdb_client import Point
 from influxdb_client import WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client.rest import ApiException
 from influxdb import InfluxDBClient as InfluxDBClientV1
 
 import yaml # pyright: ignore[reportMissingModuleSource]
@@ -11186,7 +11187,10 @@ def api_rollup_preview():
         }
         for p in plan
     ]
-    series, blocked = _rollup_series_plan(cfg, prof)
+    try:
+        series, blocked = _rollup_series_plan(cfg, prof)
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), int(getattr(e, 'status', 500) or 500)
     return jsonify({
         "ok": True,
         "profile_id": profile_id,
@@ -23343,6 +23347,46 @@ def _dq_flux_base(cfg: dict[str, Any], *, start: str, stop: str, m: str, f: str,
     return "\n".join(parts) + "\n"
 
 
+def _dq_series_inventory_fallback(cfg: dict[str, Any], *, start_dt: datetime, stop_dt: datetime, limit: int, q: str) -> list[dict[str, Any]]:
+    if int(cfg.get("influx_version", 2)) != 2 or not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return []
+    start = _dt_to_rfc3339_utc(start_dt)
+    stop = _dt_to_rfc3339_utc(stop_dt)
+    qtxt = str(q or '').strip().lower()
+    flux = f'''
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "{start}"), stop: time(v: "{stop}"))
+  |> filter(fn: (r) => exists r._measurement and exists r._field)
+  |> keep(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> group(columns: ["_measurement","_field","entity_id","friendly_name"])
+  |> limit(n: 1)
+'''
+    rows = []
+    seen = set()
+    with v2_client(cfg) as c:
+        for rec in c.query_api().query_stream(flux, org=cfg["org"]):
+            vals = getattr(rec, 'values', {}) or {}
+            row = {
+                'measurement': str(vals.get('_measurement') or ''),
+                'field': str(vals.get('_field') or ''),
+                'entity_id': str(vals.get('entity_id') or ''),
+                'friendly_name': str(vals.get('friendly_name') or ''),
+                'last_value': None,
+            }
+            key = (row['measurement'], row['field'], row['entity_id'], row['friendly_name'])
+            if key in seen:
+                continue
+            seen.add(key)
+            if qtxt:
+                hay = ' '.join(key).lower()
+                if qtxt not in hay:
+                    continue
+            rows.append(row)
+            if len(rows) >= max(1, int(limit or 200)):
+                break
+    return rows
+
+
 def _dq_analyze_one(cfg: dict[str, Any], *, start_dt: datetime, stop_dt: datetime, series: dict[str, Any], ha: dict[str, Any] | None, stale_minutes: int) -> dict[str, Any]:
     m = str(series.get("measurement") or "").strip()
     f = str(series.get("field") or "").strip()
@@ -23572,18 +23616,21 @@ def _dq_quality_run_thread(run_id: str) -> None:
         start_dt = stop_dt - timedelta(days=days)
 
         # Base series set (best-effort): use existing inventory query (read-only).
-        inv = _build_series_inventory(
-            cfg,
-            days=days,
-            limit=limit,
-            offset=0,
-            state="",
-            q=q,
-            field_filter=None,
-            stale_days=max(1, min(3650, int(max(1, stale_minutes) / (60 * 24)))) if stale_minutes else 30,
-            enrich_n=0,
-        )
-        rows = inv.get("rows") if isinstance(inv, dict) and isinstance(inv.get("rows"), list) else []
+        try:
+            inv = _build_series_inventory(
+                cfg,
+                days=days,
+                limit=limit,
+                offset=0,
+                state="",
+                q=q,
+                field_filter=None,
+                stale_days=max(1, min(3650, int(max(1, stale_minutes) / (60 * 24)))) if stale_minutes else 30,
+                enrich_n=0,
+            )
+            rows = inv.get("rows") if isinstance(inv, dict) and isinstance(inv.get("rows"), list) else []
+        except Exception:
+            rows = _dq_series_inventory_fallback(cfg, start_dt=start_dt, stop_dt=stop_dt, limit=limit, q=q)
 
         ha_cache: dict[str, dict[str, Any]] = {}
         items: list[dict[str, Any]] = []
@@ -32444,7 +32491,10 @@ def apply_changes():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
 
-    out = execute_change_block(block_id)
+    try:
+        out = execute_change_block(block_id)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
     if not out.get("ok"):
         return jsonify({"ok": False, "error": "conflict", "change_block_id": block_id, "validation": out.get("validation")}), 409
 
@@ -33475,7 +33525,7 @@ def validate_change_block(block_id: str, *, direction: str) -> dict[str, Any]:
     return {"block_id": bid, "direction": d, "summary": summary, "results": results}
 
 
-def _cb_delete_exact(dapi, cfg: dict[str, Any], pid: dict[str, Any]) -> None:
+def _cb_delete_exact(dapi, wapi, cfg: dict[str, Any], pid: dict[str, Any]) -> None:
     pidn = _cb_norm_point_identity(pid)
     bucket = str(pidn.get("bucket") or cfg.get("bucket") or "")
     org = str(pidn.get("org") or cfg.get("org") or "")
@@ -33487,18 +33537,46 @@ def _cb_delete_exact(dapi, cfg: dict[str, Any], pid: dict[str, Any]) -> None:
         raise RuntimeError("invalid timestamp")
     dt = dt.astimezone(timezone.utc)
     s = _dt_to_rfc3339_utc_ms(dt - timedelta(milliseconds=2))
-    e = _dt_to_rfc3339_utc_ms(dt + timedelta(milliseconds=2))
+    stop_ms = _dt_to_rfc3339_utc_ms(dt + timedelta(milliseconds=2))
 
     def _pred_escape(v: str) -> str:
         return (v or "").replace("\\", "\\\\").replace('"', '\\"')
 
+    def _safe_delete_tags(src: dict[str, str]) -> dict[str, str]:
+        try:
+            out: dict[str, str] = {}
+            for key in ("entity_id", "friendly_name"):
+                val = str((src or {}).get(key) or "").strip()
+                if val:
+                    out[key] = val
+            return out
+        except Exception:
+            return {}
+
     parts = [f'_measurement="{_pred_escape(measurement)}"', f'_field="{_pred_escape(field)}"']
-    for k, v in (tags or {}).items():
+    delete_tags = _safe_delete_tags(tags)
+    for k, v in (delete_tags or {}).items():
         if not k:
             continue
         parts.append(f'{str(k)}="{_pred_escape(str(v))}"')
     pred = " AND ".join(parts)
-    dapi.delete(start=s, stop=e, predicate=pred, bucket=bucket, org=org)
+    try:
+        dapi.delete(start=s, stop=stop_ms, predicate=pred, bucket=bucket, org=org)
+        return
+    except ApiException as e:
+        body = str(getattr(e, 'body', '') or '')
+        txt = (str(e) + '\n' + body).lower()
+        if 'delete by field is not supported' not in txt:
+            raise RuntimeError(_short_influx_error(e) or str(e) or e.__class__.__name__)
+
+    # Fallback: delete the whole measurement point in the tiny time window.
+    # This is less precise than field-qualified delete, but avoids known server
+    # failures on some InfluxDB OSS builds and unblocks the user action.
+    pred2 = f'_measurement="{_pred_escape(measurement)}"'
+    try:
+        dapi.delete(start=s, stop=stop_ms, predicate=pred2, bucket=bucket, org=org)
+    except ApiException as e:
+        raise RuntimeError(_short_influx_error(e) or str(e) or e.__class__.__name__)
 
 
 def _cb_write_exact(wapi, cfg: dict[str, Any], pid: dict[str, Any], point: dict[str, Any]) -> None:
@@ -33658,7 +33736,7 @@ def _cb_apply(block_id: str, *, direction: str) -> dict[str, Any]:
             mode, tgt = _cb_target_state_for(d, it)
             if mode == "delete":
                 flush_writes()
-                _cb_delete_exact(dapi, cfg, pid)
+                _cb_delete_exact(dapi, wapi, cfg, pid)
                 applied += 1
                 continue
 
