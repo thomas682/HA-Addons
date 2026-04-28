@@ -417,7 +417,7 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
   }
 
   function _findByDataUi(actions, ui){
-    try{ return actions.querySelector('[data-ui="' + ui + '"]'); }catch(e){ return null; }
+    try{ return actions.querySelector('[data-ui="' + ui + '" data-ib-pickkey="' + ui + '"]'); }catch(e){ return null; }
   }
 
   function _findOrCreateButton(actions, opts){

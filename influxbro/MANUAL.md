@@ -911,6 +911,7 @@ UI:
 - Iconbilder: In `Einstellungen -> UI -> Iconbilder` gibt es eine Tabelle aller bekannten UI-Elemente (data-ui Keys, project-wide Inventar).
 - Iconbilder: Dazu gehoeren jetzt auch Dialog-/Overlay-Buttons wie `Schliessen` und dialoginterne `S-Picker`, auch wenn die UIs erst zur Laufzeit erzeugt werden.
 - Picker/S-Picker: Fehlende Pickkeys werden weiterhin best-effort ergaenzt, aber vorhandene `data-ui`- und `id`-Werte werden nun repo-weit lesbar als Picker-Key genutzt. Dynamische Builder setzen fuer neue sichtbare Elemente moeglichst direkt explizite `data-ib-pickkey`-Werte.
+- Dashboard/Altbestand: Die vorhandenen statischen Dashboard-Templates fuehren `data-ui` und `data-ib-pickkey` jetzt direkt gemeinsam im Markup, damit auch aeltere Bereiche ohne Rueckgriff auf die automatische Picker-Normalisierung eindeutig referenzierbar bleiben.
 - Iconbilder: Pro Key kann eine Override-SVG hinterlegt werden (Zeile markieren, `Edit` klicken oder Doppelklick auf die SVG-Zelle). Speichern erfolgt per Blur oder Ctrl+Enter.
 - Iconbilder: Toolbar:
   - `Edit`: editieren der selektierten Zeile direkt in der Tabelle

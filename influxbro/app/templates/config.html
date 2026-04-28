@@ -187,7 +187,7 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="config_page.main" title="settings.page">
+    <main class="content" data-ui="config_page.main" data-ib-pickkey="config_page.main" title="settings.page">
 
   <div class="card" id="loadyaml_card" style="display:none;">
     <div class="muted" id="loadyaml_txt"></div>
@@ -200,7 +200,7 @@
     </div>
   </div>
 
-  <details class="card" open data-ui="config_settings.section_root" title="settings.section.yaml">
+  <details class="card" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.section.yaml">
     <summary><span class="ib_summary_row"><span>Parametrierung aus Home Assistant YAML</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: YAML" data-info-body="Dieser Bereich steuert das Einlesen/Overlay einer Influx-Konfiguration aus Home Assistant (z.B. /config/influx.yaml).\n\nTypisch:\n- YAML einlesen, Werte in der Maske pruefen, dann Speichern.\n- Optional kann ein YAML-Overlay aktiviert werden, damit Werte bei jedem Start/Request ueberlagert werden.\n\nWichtig:\n- Secrets werden beim Einlesen aufgeloest (best-effort), aber Tokens/Passwoerter nie im Klartext geloggt." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
@@ -214,9 +214,9 @@
           <div class="param_label">Aktionen</div>
           <div class="param_control">
             <div class="btn_stack">
-              <button id="find_yaml" data-ui="config_settings.btn_find_yaml" title="settings.find_yaml">influx.yaml suchen</button>
-              <button id="read_yaml" data-ui="config_settings.btn_read_yaml" title="settings.read_yaml">yaml Daten einlesen</button>
-              <button id="test" data-ui="config_settings.btn_test" title="settings.test">Influx Verbindung testen</button>
+              <button id="find_yaml" data-ui="config_settings.btn_find_yaml" data-ib-pickkey="config_settings.btn_find_yaml" title="settings.find_yaml">influx.yaml suchen</button>
+              <button id="read_yaml" data-ui="config_settings.btn_read_yaml" data-ib-pickkey="config_settings.btn_read_yaml" title="settings.read_yaml">yaml Daten einlesen</button>
+              <button id="test" data-ui="config_settings.btn_test" data-ib-pickkey="config_settings.btn_test" title="settings.test">Influx Verbindung testen</button>
               <div id="test_status" class="ok" style="margin-top:8px; font-weight:700; display:block;"></div>
             </div>
           </div>
@@ -233,20 +233,20 @@
     }catch(e){}
   </script>
 
-  <details class="card" open data-ui="config_settings.section_root" title="settings.section.conn">
+  <details class="card" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.section.conn">
     <summary><span class="ib_summary_row"><span>Verbindung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Verbindung" data-info-body="Grundlegende Verbindungseinstellungen fuer InfluxDB.\n\nEnthaelt u.a.:\n- influx_version (v2 Flux oder v1 InfluxQL)\n- scheme/host/port\n- verify_ssl und timeout\n\nHinweis:\n- Nach Aenderungen: 'Test' prueft die Verbindung, 'Speichern' persistiert nach /data." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
         <div class="param_row">
           <div class="param_label">Influx Version</div>
           <div class="param_control">
-            <select id="influx_version" data-ui="config_settings.select_influx_version" title="settings.influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select>
+            <select id="influx_version" data-ui="config_settings.select_influx_version" data-ib-pickkey="config_settings.select_influx_version" title="settings.influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select>
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Scheme</div>
           <div class="param_control">
-            <select id="scheme" data-ui="config_settings.select_scheme" title="settings.scheme"><option value="http">http</option><option value="https">https</option></select>
+            <select id="scheme" data-ui="config_settings.select_scheme" data-ib-pickkey="config_settings.select_scheme" title="settings.scheme"><option value="http">http</option><option value="https">https</option></select>
           </div>
         </div>
         <div class="param_row">
@@ -264,7 +264,7 @@
         <div class="param_row">
           <div class="param_label">verify_ssl</div>
           <div class="param_control">
-            <select id="verify_ssl" data-ui="config_settings.select_verify_ssl" title="settings.verify_ssl"><option value="true">true</option><option value="false">false</option></select>
+            <select id="verify_ssl" data-ui="config_settings.select_verify_ssl" data-ib-pickkey="config_settings.select_verify_ssl" title="settings.verify_ssl"><option value="true">true</option><option value="false">false</option></select>
           </div>
         </div>
         <div class="param_row">
@@ -278,7 +278,7 @@
     </div>
   </details>
 
-  <details class="card" open data-ui="config_settings.section_root" title="settings.section.v2">
+  <details class="card" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.section.v2">
     <summary><span class="ib_summary_row"><span>InfluxDB v2</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v2" data-info-body="Zugangsdaten fuer InfluxDB v2 (Flux).\n\nPflichtfelder fuer v2 Funktionen:\n- org, bucket, token\n\nOptional:\n- admin_token: nur fuer Native v2 FullBackup/FullRestore (Influx CLI). Muss ein All-Access Token sein (sonst 401 Unauthorized: read:authorizations).\n\nSicherheit:\n- Token-Felder sind maskiert (********). Lass ******** stehen, wenn du den Wert nicht aendern willst." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
@@ -312,7 +312,7 @@
     </div>
   </details>
 
-  <details class="card" data-ui="config_settings.section_root" title="settings.section.v1">
+  <details class="card" data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.section.v1">
     <summary><span class="ib_summary_row"><span>InfluxDB v1</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v1" data-info-body="Zugangsdaten fuer InfluxDB v1 (InfluxQL).\n\nTypisch:\n- database, username, password\n- SSL/Timeout ueber Verbindung\n\nHinweis:\n- Einige Features sind v2-only (z.B. Kombinieren/History Rollback)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
@@ -339,11 +339,11 @@
     </div>
   </details>
 
-  <details class="card" open data-ui="config_settings.section_root" title="settings.section.ui">
+  <details class="card" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.section.ui">
     <summary><span class="ib_summary_row"><span>UI</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: UI" data-info-body="UI-Defaults fuer alle Seiten (Dashboard, Tabellen, Cache, Darstellung).\n\nHinweise:\n- Viele Werte beeinflussen Hoehen/Spaltenbreiten/Umbruch/Bedienbarkeit.\n- Einige Werte sind pro Seite uebersteuert (z.B. Backup-Zeilenhoehe).\n\nTipp:\n- Nach Aenderungen: Seite neu laden, um Effekte zu sehen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
 
-    <details class="card" id="ui_page_dashboard" open data-ui="config_settings.section_root" title="settings.ui.page_dashboard">
+    <details class="card" id="ui_page_dashboard" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.page_dashboard">
       <summary><span class="ib_summary_row"><span>Dashboard</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Dashboard" data-info-body="Einstellungen fuer die Dashboard-Seite (Auswahl/Graph/Raw/Tabellen).\n\nTypisch:\n- Default-UI Verhalten\n- Query Limits / Raw max points\n- Cache Verhalten" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
 
@@ -351,14 +351,14 @@
           <div class="param_row">
             <div class="param_label">Tooltips global aktiviert</div>
             <div class="param_control">
-              <label class="ib_chk_row"><input type="checkbox" id="ui_tooltips_enabled" data-ui="config_settings.chk_ui_tooltips_enabled" title="settings.ui_tooltips_enabled" /><span></span></label>
+              <label class="ib_chk_row"><input type="checkbox" id="ui_tooltips_enabled" data-ui="config_settings.chk_ui_tooltips_enabled" data-ib-pickkey="config_settings.chk_ui_tooltips_enabled" title="settings.ui_tooltips_enabled" /><span></span></label>
             </div>
           </div>
 
           <div class="param_row">
             <div class="param_label">Tooltip Doku oeffnen<span class="param_hint">Wie der Dokumentations-Button im Tooltip oeffnet. Default: neuer Tab.</span></div>
             <div class="param_control">
-              <select id="ui_tooltip_doc_open_mode" data-ui="config_settings.sel_ui_tooltip_doc_open_mode" title="ui.tooltip_doc_open_mode">
+              <select id="ui_tooltip_doc_open_mode" data-ui="config_settings.sel_ui_tooltip_doc_open_mode" data-ib-pickkey="config_settings.sel_ui_tooltip_doc_open_mode" title="ui.tooltip_doc_open_mode">
                 <option value="new_tab">Neuer Tab (Default)</option>
                 <option value="same_tab">Gleicher Tab</option>
                 <option value="modal">Modal</option>
@@ -367,7 +367,7 @@
           </div>
         </div>
 
-        <details class="card" id="ui_iconbilder" open data-ui="config_settings.section_root" title="settings.ui.icons">
+        <details class="card" id="ui_iconbilder" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.icons">
           <summary><span class="ib_summary_row"><span>Iconbilder</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Iconbilder" data-info-body="In diesem Kapitel kannst du pro UI-Element (data-ui Key) ein Icon (SVG) hinterlegen.\n\nFeatures:\n- Project-wide Inventar aller data-ui Keys (aus den Templates gescannt, best-effort)\n- SVG Editiermodus per Doppelklick\n- Serverseitige Sanitization (XSS-Schutz) + Groessenlimit\n- Speicherung im aktiven UI-Profil (PC/MOBIL)\n- Sofortige Anwendung (Icons werden live neu gerendert)\n\nHinweis:\n- Nur komplette SVGs im Format &lt;svg ...&gt;...&lt;/svg&gt; einfuegen.\n- Preview zeigt den gespeicherten (sanitisierten) Stand." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
@@ -375,7 +375,7 @@
                 <div class="param_label">Filter<span class="param_hint">Suche in Key/Label/Area.</span></div>
                 <div class="param_control">
                   <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <input id="icons_search" placeholder="z.B. dashboard_raw.btn_kopieren" class="mono" data-ui="config_settings.input_icons_search" title="settings.icons.search" />
+                    <input id="icons_search" placeholder="z.B. dashboard_raw.btn_kopieren" class="mono" data-ui="config_settings.input_icons_search" data-ib-pickkey="config_settings.input_icons_search" title="settings.icons.search" />
                     <button id="icons_search_prev" class="btn_sm" type="button" data-ui="config_settings.btn_icons_search_prev" data-ib-pickkey="config_settings.btn_icons_search_prev" title="config_settings.btn_icons_search_prev">Zurueck</button>
                     <button id="icons_search_next" class="btn_sm" type="button" data-ui="config_settings.btn_icons_search_next" data-ib-pickkey="config_settings.btn_icons_search_next" title="config_settings.btn_icons_search_next">Weiter</button>
                   </div>
@@ -384,7 +384,7 @@
               <div class="param_row">
                 <div class="param_label">Area</div>
                 <div class="param_control">
-                  <select id="icons_area" data-ui="config_settings.sel_icons_area" title="settings.icons.area">
+                  <select id="icons_area" data-ui="config_settings.sel_icons_area" data-ib-pickkey="config_settings.sel_icons_area" title="settings.icons.area">
                     <option value="">Alle</option>
                   </select>
                 </div>
@@ -392,21 +392,21 @@
               <div class="param_row">
                 <div class="param_label">Nur ueberschrieben</div>
                 <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="icons_only_overrides" data-ui="config_settings.chk_icons_only_overrides" title="settings.icons.only_overrides" /><span></span></label>
+                  <label class="ib_chk_row"><input type="checkbox" id="icons_only_overrides" data-ui="config_settings.chk_icons_only_overrides" data-ib-pickkey="config_settings.chk_icons_only_overrides" title="settings.icons.only_overrides" /><span></span></label>
                 </div>
               </div>
               <div class="param_row">
                 <div class="param_label">Neu laden</div>
                 <div class="param_control">
-                  <button id="icons_reload" class="btn_sm" type="button" data-ui="config_settings.btn_icons_reload" title="settings.icons.reload">Reload</button>
+                  <button id="icons_reload" class="btn_sm" type="button" data-ui="config_settings.btn_icons_reload" data-ib-pickkey="config_settings.btn_icons_reload" title="settings.icons.reload">Reload</button>
                 </div>
               </div>
             </div>
 
-            <div class="table_wrap" data-ui="config_settings.panel_icons_table_wrap" title="settings.icons.table.wrap">
+            <div class="table_wrap" data-ui="config_settings.panel_icons_table_wrap" data-ib-pickkey="config_settings.panel_icons_table_wrap" title="settings.icons.table.wrap">
               <div class="table_title">Icon-Mapping (UI-Profil)</div>
               <div class="table_head">
-                <div class="tbl_actions" data-ui="config_settings.row_icons_actions" title="config_settings.row_icons_actions">
+                <div class="tbl_actions" data-ui="config_settings.row_icons_actions" data-ib-pickkey="config_settings.row_icons_actions" title="config_settings.row_icons_actions">
                   <button class="btn_sm" id="icons_autowidth" type="button" data-ui="config_settings.btn_icons_autobreite" data-ib-pickkey="config_settings.btn_icons_autobreite" title="config_settings.btn_icons_autobreite" aria-label="Spaltenbreite automatisch" style="width:auto; flex:0 0 auto;">
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -428,14 +428,14 @@
                   <label><input type="checkbox" id="icons_wrap" class="row_sel" data-ui="config_settings.chk_icons_umbruch" data-ib-pickkey="config_settings.chk_icons_umbruch" title="config_settings.chk_icons_umbruch"/>Umbruch</label>
                   <label><input type="checkbox" id="icons_colfilter" class="row_sel" data-ui="config_settings.chk_icons_spaltenfilter" data-ib-pickkey="config_settings.chk_icons_spaltenfilter" title="config_settings.chk_icons_spaltenfilter"/>Spaltenfilter</label>
 
-                  <button id="icons_edit" class="btn_sm" type="button" data-ui="config_settings.btn_icons_edit" title="settings.icons.edit">Edit</button>
-                  <button id="icons_undo" class="btn_sm" type="button" data-ui="config_settings.btn_icons_undo" title="settings.icons.undo" disabled>Undo</button>
-                  <button id="icons_jump" class="btn_sm" type="button" data-ui="config_settings.btn_icons_jump" title="settings.icons.jump" disabled>Jump</button>
+                  <button id="icons_edit" class="btn_sm" type="button" data-ui="config_settings.btn_icons_edit" data-ib-pickkey="config_settings.btn_icons_edit" title="settings.icons.edit">Edit</button>
+                  <button id="icons_undo" class="btn_sm" type="button" data-ui="config_settings.btn_icons_undo" data-ib-pickkey="config_settings.btn_icons_undo" title="settings.icons.undo" disabled>Undo</button>
+                  <button id="icons_jump" class="btn_sm" type="button" data-ui="config_settings.btn_icons_jump" data-ib-pickkey="config_settings.btn_icons_jump" title="settings.icons.jump" disabled>Jump</button>
                   <span class="muted" id="icons_status">...</span>
                 </div>
               </div>
               <div id="icons_tbl_box" style="border:1px solid #eee; border-radius:12px; overflow:auto; max-height:520px; margin-top:10px;">
-                <table id="icons_tbl" class="cfg_tbl ib_tbl" data-ui="config_settings.tbl_icons" title="settings.icons.table">
+                <table id="icons_tbl" class="cfg_tbl ib_tbl" data-ui="config_settings.tbl_icons" data-ib-pickkey="config_settings.tbl_icons" title="settings.icons.table">
                   <thead>
                     <tr>
                       <th style="width:14ch;">Area</th>
@@ -453,7 +453,7 @@
           </div>
         </details>
 
-        <details class="card" id="ui_table" open data-ui="config_settings.section_root" title="settings.ui.table">
+        <details class="card" id="ui_table" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.table">
           <summary><span class="ib_summary_row"><span>Tabellen</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Tabellen" data-info-body="Globale Tabellen-Defaults (Master-Template).\n\nBeispiele:\n- sichtbare Zeilen (Hoehe)\n- Spalten/Umbruch/Filter\n- Checkbox-Skalierung\n\nDiese Werte betreffen u.a. Backup/Restore/Jobs/History Tabellen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
@@ -586,28 +586,28 @@
           </div>
         </details>
 
-        <details class="card" id="ui_cache" open data-ui="config_settings.section_root" title="settings.ui.cache">
+        <details class="card" id="ui_cache" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.cache">
           <summary><span class="ib_summary_row"><span>Dashboard Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Dashboard Cache" data-info-body="Serverseitiger Cache fuer Dashboard-Abfragen (unter /data).\n\nKonfigurierbar:\n- enabled/auto_update\n- refresh_mode (hours/daily/weekly/manual) + Parameter\n- Limits (max items/MB)\n\nHinweis:\n- Auto-Update Jobs laufen im Hintergrund (Timer Jobs)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
                 <div class="param_label">Cache aktiv</div>
                 <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="dash_cache_enabled" data-ui="config_settings.chk_dash_cache_enabled" title="settings.dash_cache_enabled" /><span></span></label>
+                  <label class="ib_chk_row"><input type="checkbox" id="dash_cache_enabled" data-ui="config_settings.chk_dash_cache_enabled" data-ib-pickkey="config_settings.chk_dash_cache_enabled" title="settings.dash_cache_enabled" /><span></span></label>
                 </div>
               </div>
               <div class="section_note"><span class="muted">Speichert Dashboard Query-Ergebnisse unter <code>/data/dash_cache</code> und nutzt sie beim naechsten Aufruf.</span></div>
               <div class="param_row">
                 <div class="param_label">Automatisch aktualisieren</div>
                 <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="dash_cache_auto_update" data-ui="config_settings.chk_dash_cache_auto_update" title="settings.dash_cache_auto_update" /><span></span></label>
+                  <label class="ib_chk_row"><input type="checkbox" id="dash_cache_auto_update" data-ui="config_settings.chk_dash_cache_auto_update" data-ib-pickkey="config_settings.chk_dash_cache_auto_update" title="settings.dash_cache_auto_update" /><span></span></label>
                 </div>
               </div>
               <div class="section_note"><span class="muted">Background-Job haelt Caches aktuell (siehe Jobs-Seite).</span></div>
               <div class="param_row">
                 <div class="param_label">Intervall-Modus<span class="param_hint">Steuert, wann ein Cache als "stale" gilt.</span></div>
                 <div class="param_control">
-                  <select id="dash_cache_refresh_mode" data-ui="config_settings.select_dash_cache_refresh_mode" title="settings.dash_cache_refresh_mode">
+                  <select id="dash_cache_refresh_mode" data-ui="config_settings.select_dash_cache_refresh_mode" data-ib-pickkey="config_settings.select_dash_cache_refresh_mode" title="settings.dash_cache_refresh_mode">
                     <option value="hours">alle X Stunden</option>
                     <option value="daily">taeglich</option>
                   </select>
@@ -616,31 +616,31 @@
               <div class="param_row">
                 <div class="param_label">X Stunden<span class="param_hint">Gilt nur fuer Modus "alle X Stunden".</span></div>
                 <div class="param_control">
-                  <input id="dash_cache_refresh_hours" type="number" min="1" max="168" data-ui="config_settings.input_dash_cache_refresh_hours" title="settings.dash_cache_refresh_hours" />
+                  <input id="dash_cache_refresh_hours" type="number" min="1" max="168" data-ui="config_settings.input_dash_cache_refresh_hours" data-ib-pickkey="config_settings.input_dash_cache_refresh_hours" title="settings.dash_cache_refresh_hours" />
                 </div>
               </div>
               <div class="param_row">
                 <div class="param_label">Taeglich um (HH:MM:SS)<span class="param_hint">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</span></div>
                 <div class="param_control">
-                  <input id="dash_cache_refresh_daily_at" placeholder="00:00:00" data-ui="config_settings.input_dash_cache_refresh_daily_at" title="settings.dash_cache_refresh_daily_at" />
+                  <input id="dash_cache_refresh_daily_at" placeholder="00:00:00" data-ui="config_settings.input_dash_cache_refresh_daily_at" data-ib-pickkey="config_settings.input_dash_cache_refresh_daily_at" title="settings.dash_cache_refresh_daily_at" />
                 </div>
               </div>
               <div class="param_row">
                 <div class="param_label">Max Cache Eintraege<span class="param_hint">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</span></div>
                 <div class="param_control">
-                  <input id="dash_cache_max_items" type="number" min="0" max="500" data-ui="config_settings.input_dash_cache_max_items" title="settings.dash_cache_max_items" />
+                  <input id="dash_cache_max_items" type="number" min="0" max="500" data-ui="config_settings.input_dash_cache_max_items" data-ib-pickkey="config_settings.input_dash_cache_max_items" title="settings.dash_cache_max_items" />
                 </div>
               </div>
               <div class="param_row">
                 <div class="param_label">Max Cache Groesse (MB)<span class="param_hint">Best-effort Eviction nach LRU.</span></div>
                 <div class="param_control">
-                  <input id="dash_cache_max_mb" type="number" min="0" max="2048" data-ui="config_settings.input_dash_cache_max_mb" title="settings.dash_cache_max_mb" />
+                  <input id="dash_cache_max_mb" type="number" min="0" max="2048" data-ui="config_settings.input_dash_cache_max_mb" data-ib-pickkey="config_settings.input_dash_cache_max_mb" title="settings.dash_cache_max_mb" />
                 </div>
               </div>
               <div class="param_row">
                 <div class="param_label">Bei Nutzung stale markieren</div>
                 <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="dash_cache_update_on_use_if_stale" data-ui="config_settings.chk_dash_cache_update_on_use_if_stale" title="settings.dash_cache_update_on_use_if_stale" /><span></span></label>
+                  <label class="ib_chk_row"><input type="checkbox" id="dash_cache_update_on_use_if_stale" data-ui="config_settings.chk_dash_cache_update_on_use_if_stale" data-ib-pickkey="config_settings.chk_dash_cache_update_on_use_if_stale" title="settings.dash_cache_update_on_use_if_stale" /><span></span></label>
                 </div>
               </div>
               <div class="section_note"><span class="muted">Wenn ein alter Cache genutzt wird, wird er als dirty markiert und vom Background-Job bevorzugt aktualisiert.</span></div>
@@ -648,28 +648,28 @@
           </div>
         </details>
 
-        <details class="card" id="ui_stats_cache" open data-ui="config_settings.section_root" title="settings.ui.stats_cache">
+        <details class="card" id="ui_stats_cache" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.stats_cache">
           <summary><span class="ib_summary_row"><span>Statistik Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Statistik Cache" data-info-body="Serverseitiger Cache fuer Statistik-Berechnungen (unter /data).\n\nKonfigurierbar:\n- enabled/auto_update\n- refresh_mode (hours/daily/weekly/manual) + Parameter\n- Limits (max items/MB)\n\nHinweis:\n- Reduziert Last und beschleunigt wiederholte Statistik-Abfragen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
               <div class="param_row">
                 <div class="param_label">Cache aktiv</div>
                 <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="stats_cache_enabled" data-ui="config_settings.chk_stats_cache_enabled" title="settings.stats_cache_enabled" /><span></span></label>
+                  <label class="ib_chk_row"><input type="checkbox" id="stats_cache_enabled" data-ui="config_settings.chk_stats_cache_enabled" data-ib-pickkey="config_settings.chk_stats_cache_enabled" title="settings.stats_cache_enabled" /><span></span></label>
                 </div>
               </div>
               <div class="section_note"><span class="muted">Speichert Statistik-Ergebnisse unter <code>/data/stats_cache</code> und kann diese nach Seitenwechsel/Restart wiederverwenden.</span></div>
               <div class="param_row">
                 <div class="param_label">Automatisch aktualisieren</div>
                 <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="stats_cache_auto_update" data-ui="config_settings.chk_stats_cache_auto_update" title="settings.stats_cache_auto_update" /><span></span></label>
+                  <label class="ib_chk_row"><input type="checkbox" id="stats_cache_auto_update" data-ui="config_settings.chk_stats_cache_auto_update" data-ib-pickkey="config_settings.chk_stats_cache_auto_update" title="settings.stats_cache_auto_update" /><span></span></label>
                 </div>
               </div>
               <div class="section_note"><span class="muted">Nightly/inkrementell ueber Background-Jobs (siehe Jobs-Seite).</span></div>
               <div class="param_row">
                 <div class="param_label">Intervall-Modus<span class="param_hint">Steuert, wann ein Cache als "stale" gilt.</span></div>
                 <div class="param_control">
-                  <select id="stats_cache_refresh_mode" data-ui="config_settings.select_stats_cache_refresh_mode" title="settings.stats_cache_refresh_mode">
+                  <select id="stats_cache_refresh_mode" data-ui="config_settings.select_stats_cache_refresh_mode" data-ib-pickkey="config_settings.select_stats_cache_refresh_mode" title="settings.stats_cache_refresh_mode">
                     <option value="hours">alle X Stunden</option>
                     <option value="daily">taeglich (nightly)</option>
                   </select>
@@ -678,32 +678,32 @@
               <div class="param_row">
                 <div class="param_label">X Stunden<span class="param_hint">Gilt nur fuer Modus "alle X Stunden".</span></div>
                 <div class="param_control">
-                  <input id="stats_cache_refresh_hours" type="number" min="1" max="720" data-ui="config_settings.input_stats_cache_refresh_hours" title="settings.stats_cache_refresh_hours" />
+                  <input id="stats_cache_refresh_hours" type="number" min="1" max="720" data-ui="config_settings.input_stats_cache_refresh_hours" data-ib-pickkey="config_settings.input_stats_cache_refresh_hours" title="settings.stats_cache_refresh_hours" />
                 </div>
               </div>
               <div class="param_row">
                 <div class="param_label">Taeglich um (HH:MM:SS)<span class="param_hint">Gilt nur fuer Modus "taeglich" (lokale Zeit im Add-on).</span></div>
                 <div class="param_control">
-                  <input id="stats_cache_refresh_daily_at" placeholder="03:00:00" data-ui="config_settings.input_stats_cache_refresh_daily_at" title="settings.stats_cache_refresh_daily_at" />
+                  <input id="stats_cache_refresh_daily_at" placeholder="03:00:00" data-ui="config_settings.input_stats_cache_refresh_daily_at" data-ib-pickkey="config_settings.input_stats_cache_refresh_daily_at" title="settings.stats_cache_refresh_daily_at" />
                 </div>
               </div>
               <div class="param_row">
                 <div class="param_label">Max Cache Eintraege<span class="param_hint">0 = Cache ist effektiv aus (Eintraege werden sofort evicted).</span></div>
                 <div class="param_control">
-                  <input id="stats_cache_max_items" type="number" min="0" max="200" data-ui="config_settings.input_stats_cache_max_items" title="settings.stats_cache_max_items" />
+                  <input id="stats_cache_max_items" type="number" min="0" max="200" data-ui="config_settings.input_stats_cache_max_items" data-ib-pickkey="config_settings.input_stats_cache_max_items" title="settings.stats_cache_max_items" />
                 </div>
               </div>
               <div class="param_row">
                 <div class="param_label">Max Cache Groesse (MB)<span class="param_hint">Best-effort Eviction nach LRU.</span></div>
                 <div class="param_control">
-                  <input id="stats_cache_max_mb" type="number" min="0" max="2048" data-ui="config_settings.input_stats_cache_max_mb" title="settings.stats_cache_max_mb" />
+                  <input id="stats_cache_max_mb" type="number" min="0" max="2048" data-ui="config_settings.input_stats_cache_max_mb" data-ib-pickkey="config_settings.input_stats_cache_max_mb" title="settings.stats_cache_max_mb" />
                 </div>
               </div>
             </div>
           </div>
         </details>
 
-        <details class="card" id="ui_edit" open data-ui="config_settings.section_root" title="settings.ui.edit">
+        <details class="card" id="ui_edit" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.edit">
           <summary><span class="ib_summary_row"><span>Bearbeitungsliste</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Bearbeitungsliste" data-info-body="Einstellungen fuer die Bearbeitungsliste (Editlist) im Dashboard.\n\nBeispiele:\n- Vorschauzeilen\n- Detailpanel Verhalten\n- Limits/Performance" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
@@ -747,7 +747,7 @@
           </div>
         </details>
 
-        <details class="card" id="ui_layout" open data-ui="config_settings.section_root" title="settings.ui.layout">
+        <details class="card" id="ui_layout" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.layout">
           <summary><span class="ib_summary_row"><span>Darstellung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Darstellung" data-info-body="Optische/UX Einstellungen (z.B. Zoom, Tooltips, Auto-Breite der Auswahlfelder).\n\nHinweis:\n- Einige Werte werden im Browser gespeichert (UI-State), andere in /data (Addon-Config)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
            <div class="card_body">
              <div class="grid">
@@ -864,7 +864,7 @@
               <div class="param_row">
                 <div class="param_label">Picker Outline Auto<span class="param_hint">Wenn aktiv, wird die Outline-Farbe automatisch aus dem Hintergrund abgeleitet (live beim Hover). Wenn aus, wird zwischen den beiden festen Farben (heller/dunkler Hintergrund) umgeschaltet.</span></div>
                 <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="ui_picker_outline_auto" data-ui="config_settings.chk_ui_picker_outline_auto" title="settings.ui_picker_outline_auto" /><span></span></label>
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_picker_outline_auto" data-ui="config_settings.chk_ui_picker_outline_auto" data-ib-pickkey="config_settings.chk_ui_picker_outline_auto" title="settings.ui_picker_outline_auto" /><span></span></label>
                 </div>
               </div>
               <div class="param_row">
@@ -930,7 +930,7 @@
               <div class="param_row">
                 <div class="param_label">Info in Titelzeile einblenden</div>
                 <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="ui_status_show_sysinfo" data-ui="config_settings.chk_ui_status_sysinfo" title="settings.ui.status_sysinfo" /><span></span></label>
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_status_show_sysinfo" data-ui="config_settings.chk_ui_status_sysinfo" data-ib-pickkey="config_settings.chk_ui_status_sysinfo" title="settings.ui.status_sysinfo" /><span></span></label>
                 </div>
               </div>
               <div class="section_note"><span class="muted">Zeigt zusaetzlich Memory/CPU/Disk im Statusbereich (unter dem Menue).</span></div>
@@ -1035,7 +1035,7 @@
               <div class="param_row">
                 <div class="param_label">Breite automatisch</div>
                 <div class="param_control">
-                  <label class="ib_chk_row"><input type="checkbox" id="ui_sel_auto_width" data-ui="config_settings.chk_ui_sel_auto_width" title="settings.ui_sel_auto_width" /><span></span></label>
+                  <label class="ib_chk_row"><input type="checkbox" id="ui_sel_auto_width" data-ui="config_settings.chk_ui_sel_auto_width" data-ib-pickkey="config_settings.chk_ui_sel_auto_width" title="settings.ui_sel_auto_width" /><span></span></label>
                 </div>
               </div>
               <div class="section_note"><span class="muted">Wenn aktiv, wird die Breite aus der durchschnittlichen Textbreite der Vorschlaege berechnet.</span></div>
@@ -1049,7 +1049,7 @@
           </div>
         </details>
 
-        <details class="card" id="ui_jobs" open data-ui="config_settings.section_root" title="settings.ui.jobs">
+        <details class="card" id="ui_jobs" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.jobs">
           <summary><span class="ib_summary_row"><span>Jobs &amp; Cache</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Jobs & Cache" data-info-body="Steuert Limits/Verhalten von Background-Jobs und Cache-Mechanismen.\n\nBeispiele:\n- Jobs Laufzeitlimits\n- Auto-Cancel\n- Cache-Usage-Logging" ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
@@ -1102,7 +1102,7 @@
       </div>
     </details>
 
-    <details class="card" id="ui_page_stats" data-ui="config_settings.section_root" title="settings.ui.page_stats">
+    <details class="card" id="ui_page_stats" data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.page_stats">
       <summary><span class="ib_summary_row"><span>Statistik</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Statistik" data-info-body="Einstellungen fuer die Statistik-Seite (Job-Verhalten, Defaults, Performance)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
         <div class="grid">
@@ -1154,11 +1154,11 @@
       </div>
     </details>
 
-    <details class="card" id="ui_page_backup" open data-ui="config_settings.section_root" title="settings.ui.page_backup">
+    <details class="card" id="ui_page_backup" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.page_backup">
       <summary><span class="ib_summary_row"><span>Backup</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Backup" data-info-body="Einstellungen fuer Backup-Seite (sichtbare Zeilen, Speicher/Warnschwelle, Limits)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
 
-        <details class="card" id="ui_backups" open data-ui="config_settings.section_root" title="settings.ui.backups">
+        <details class="card" id="ui_backups" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.backups">
           <summary><span class="ib_summary_row"><span>Backups</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Backups" data-info-body="Details zur Backup-Erstellung/Anzeige (z.B. Mindestfreier Speicher, Preview/Query Anzeige)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
@@ -1169,7 +1169,7 @@
                 </div>
               </div>
 
-              <details class="card" id="ui_backups_external_storage" open data-ui="config_settings.section_backups_external_storage" title="settings.backups.external_storage">
+              <details class="card" id="ui_backups_external_storage" open data-ui="config_settings.section_backups_external_storage" data-ib-pickkey="config_settings.section_backups_external_storage" title="settings.backups.external_storage">
                 <summary><span class="ib_summary_row"><span>Externe Backup und Restore Speicher</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Externe Backup/Restore Speicher" data-info-body="Hier kannst du vorhandene HA Share-Mounts unter /share erkennen und InfluxBro so konfigurieren, dass Backup/Restore zwischen Lokal und Share umschaltbar ist." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
                 <div class="card_body">
                   <div class="grid">
@@ -1196,7 +1196,7 @@
                       <div class="param_label">Konfiguration anwenden<span class="param_hint">Setzt intern <code>backup_targets</code> auf "Lokal" (<code>/data/backups</code>) plus den ersten gefundenen Share (<code>/share/.../influxbro</code>). Danach kannst du auf den Backup/Restore Seiten den Speicherort umschalten.</span></div>
                       <div class="param_control">
                         <div class="btn_stack">
-                          <button id="use_share_for_backups" type="button" data-ui="config_settings.btn_use_share_for_backups" title="settings.backups.use_share">Share Speicher fuer Backup und Restore verwenden</button>
+                          <button id="use_share_for_backups" type="button" data-ui="config_settings.btn_use_share_for_backups" data-ib-pickkey="config_settings.btn_use_share_for_backups" title="settings.backups.use_share">Share Speicher fuer Backup und Restore verwenden</button>
                         </div>
                         <div id="share_apply_result" class="muted" style="margin-top:6px;"></div>
                       </div>
@@ -1213,19 +1213,19 @@
               <div class="param_row">
                 <div class="param_label">Sichtbare Zeilen (Backup-Liste)<span class="param_hint">Hoehe der Backup-Tabelle in Zeilen (scrollt bei mehr Eintraegen).</span></div>
                 <div class="param_control">
-                  <input id="ui_backup_visible_rows" type="number" min="5" max="200" data-ui="config_settings.input_ui_backup_visible_rows" title="settings.ui_backup_visible_rows" />
+                  <input id="ui_backup_visible_rows" type="number" min="5" max="200" data-ui="config_settings.input_ui_backup_visible_rows" data-ib-pickkey="config_settings.input_ui_backup_visible_rows" title="settings.ui_backup_visible_rows" />
                 </div>
               </div>
                 <div class="param_row">
                 <div class="param_label">Min. freier Speicher (MB)<span class="param_hint">Wenn kleiner als diese Schwelle, wird das Erstellen eines Backups abgelehnt (0 = deaktiviert). Muss groesser sein als <code>min freier Cachespeicher</code>.</span></div>
                 <div class="param_control">
-                  <input id="backup_min_free_mb" type="number" min="0" max="500000" data-ui="config_settings.input_backup_min_free_mb" title="settings.backup_min_free_mb" />
+                  <input id="backup_min_free_mb" type="number" min="0" max="500000" data-ui="config_settings.input_backup_min_free_mb" data-ib-pickkey="config_settings.input_backup_min_free_mb" title="settings.backup_min_free_mb" />
                 </div>
               </div>
               <div class="param_row">
                 <div class="param_label">Min freier Cachespeicher (MB)<span class="param_hint">Sicherheitsbudget: so viel Platz soll auf dem Add-on Datentraeger (typ. <code>/data</code>) frei bleiben. Wird in Diagnose als Limit-Linie genutzt.</span></div>
                 <div class="param_control">
-                  <input id="storage_budget_mb" type="number" min="0" max="500000" data-ui="config_settings.input_storage_budget_mb" title="settings.storage_budget_mb" />
+                  <input id="storage_budget_mb" type="number" min="0" max="500000" data-ui="config_settings.input_storage_budget_mb" data-ib-pickkey="config_settings.input_storage_budget_mb" title="settings.storage_budget_mb" />
                 </div>
               </div>
             </div>
@@ -1235,11 +1235,11 @@
       </div>
     </details>
 
-    <details class="card" id="ui_page_restore" open data-ui="config_settings.section_root" title="settings.ui.page_restore">
+    <details class="card" id="ui_page_restore" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.page_restore">
       <summary><span class="ib_summary_row"><span>Restore</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Restore" data-info-body="Einstellungen fuer Restore-Seite (sichtbare Zeilen, Vorschau, Defaults)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
 
-        <details class="card" id="ui_restore" open data-ui="config_settings.section_root" title="settings.ui.restore">
+        <details class="card" id="ui_restore" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.restore">
           <summary><span class="ib_summary_row"><span>Restore</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Restore Details" data-info-body="Feinparameter fuer Restore (z.B. Preview-Lines, UI-Defaults)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
             <div class="grid">
@@ -1252,7 +1252,7 @@
               <div class="param_row">
                 <div class="param_label">Sichtbare Zeilen (Restore-Liste)<span class="param_hint">Hoehe der Restore-Backup-Liste in Zeilen (scrollt bei mehr Eintraegen).</span></div>
                 <div class="param_control">
-                  <input id="ui_restore_visible_rows" type="number" min="5" max="200" data-ui="config_settings.input_ui_restore_visible_rows" title="settings.ui_restore_visible_rows" />
+                  <input id="ui_restore_visible_rows" type="number" min="5" max="200" data-ui="config_settings.input_ui_restore_visible_rows" data-ib-pickkey="config_settings.input_ui_restore_visible_rows" title="settings.ui_restore_visible_rows" />
                 </div>
               </div>
             </div>
@@ -1262,36 +1262,36 @@
       </div>
     </details>
 
-    <details class="card" id="ui_page_jobs" data-ui="config_settings.section_root" title="settings.ui.page_jobs">
+    <details class="card" id="ui_page_jobs" data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.page_jobs">
       <summary><span class="ib_summary_row"><span>Jobs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Jobs" data-info-body="Einstellungen fuer Background-Jobs (Limits/Timeouts/Auto-Cancel)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body"><div class="section_note"><span class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</span></div></div>
     </details>
 
-    <details class="card" id="ui_page_logs" data-ui="config_settings.section_root" title="settings.ui.page_logs">
+    <details class="card" id="ui_page_logs" data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.page_logs">
       <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Logs" data-info-body="Logging/Rotation/Profil und UI-Optionen fuer Logs-Seite." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body"><div class="section_note"><span class="muted">Hinweis: Logging-Settings findest du weiter unten im Bereich "Logs".</span></div></div>
     </details>
 
-    <details class="card" id="ui_page_history" data-ui="config_settings.section_root" title="settings.ui.page_history">
+    <details class="card" id="ui_page_history" data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.page_history">
       <summary><span class="ib_summary_row"><span>History</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: History" data-info-body="Einstellungen fuer History-Seite (Anzeige/Limit/Logging)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
         <div class="grid">
           <div class="param_row">
             <div class="param_label">Undo-History Limit<span class="param_hint">Max. Anzahl Undo-Schritte (default 100).</span></div>
             <div class="param_control">
-              <input id="undo_history_max" type="number" min="1" max="1000" data-ui="config_settings.input_undo_history_max" title="settings.undo_history_max" />
+              <input id="undo_history_max" type="number" min="1" max="1000" data-ui="config_settings.input_undo_history_max" data-ib-pickkey="config_settings.input_undo_history_max" title="settings.undo_history_max" />
             </div>
           </div>
         </div>
       </div>
     </details>
 
-    <details class="card" id="ui_page_export" data-ui="config_settings.section_root" title="settings.ui.page_export">
+    <details class="card" id="ui_page_export" data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.page_export">
       <summary><span class="ib_summary_row"><span>Export</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Export" data-info-body="Defaults/Limits fuer Export (Format, Delimiter, Download-Verhalten)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body"><div class="section_note"><span class="muted">Derzeit keine zusaetzlichen UI-Settings fuer diese Seite.</span></div></div>
     </details>
 
-    <details class="card" id="ui_page_import" data-ui="config_settings.section_root" title="settings.ui.page_import">
+    <details class="card" id="ui_page_import" data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.ui.page_import">
       <summary><span class="ib_summary_row"><span>Import</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Import" data-info-body="Defaults/Limits fuer Import (Backup vorher, Delete first, Vorschau)." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
       <div class="card_body">
         <div class="grid">
@@ -1309,21 +1309,21 @@
     </div>
   </details>
 
-  <details class="card" open data-ui="config_settings.section_root" title="settings.section.logs">
+  <details class="card" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.section.logs">
     <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Logs (Profil)" data-info-body="Erweitertes Logging: Profil, Rotation, Debug/Trace Optionen. Vorsicht: kann sehr viele Logzeilen erzeugen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
         <div class="param_row">
           <div class="param_label">Logfile aktiv</div>
           <div class="param_control">
-            <label class="ib_chk_row"><input type="checkbox" id="log_to_file" data-ui="config_settings.chk_log_to_file" title="settings.log_to_file" /><span></span></label>
+            <label class="ib_chk_row"><input type="checkbox" id="log_to_file" data-ui="config_settings.chk_log_to_file" data-ib-pickkey="config_settings.chk_log_to_file" title="settings.log_to_file" /><span></span></label>
           </div>
         </div>
         <div class="section_note"><span class="muted">Schreibt zusaetzlich nach <code>/data/influxbro.log</code> (Rotation).</span></div>
         <div class="param_row">
           <div class="param_label">Log Stufe<span class="param_hint">TRACE loggt zusaetzlich interne Abfragen/Details.</span></div>
           <div class="param_control">
-            <select id="log_profile" data-ui="config_settings.select_log_profile" title="settings.log_profile">
+            <select id="log_profile" data-ui="config_settings.select_log_profile" data-ib-pickkey="config_settings.select_log_profile" title="settings.log_profile">
               <option value="error">ERROR (nur Fehler)</option>
               <option value="debug" selected>DEBUG</option>
               <option value="trace">TRACE (Details)</option>
@@ -1357,21 +1357,21 @@
         <div class="param_row">
           <div class="param_label">HTTP Request Logs</div>
           <div class="param_control">
-            <label class="ib_chk_row"><input type="checkbox" id="log_http_requests" data-ui="config_settings.chk_log_http_requests" title="settings.log_http_requests" /><span></span></label>
+            <label class="ib_chk_row"><input type="checkbox" id="log_http_requests" data-ui="config_settings.chk_log_http_requests" data-ib-pickkey="config_settings.chk_log_http_requests" title="settings.log_http_requests" /><span></span></label>
           </div>
         </div>
         <div class="section_note"><span class="muted">Default: aus (sehr viele Zeilen).</span></div>
         <div class="param_row">
           <div class="param_label">Influx Query protokollieren</div>
           <div class="param_control">
-            <label class="ib_chk_row"><input type="checkbox" id="log_influx_queries" data-ui="config_settings.chk_log_influx_queries" title="settings.log_influx_queries" /><span></span></label>
+            <label class="ib_chk_row"><input type="checkbox" id="log_influx_queries" data-ui="config_settings.chk_log_influx_queries" data-ib-pickkey="config_settings.chk_log_influx_queries" title="settings.log_influx_queries" /><span></span></label>
           </div>
         </div>
         <div class="section_note"><span class="muted">Schreibt Query-Strings ins Log (nur wenn Log Stufe TRACE aktiv ist).</span></div>
         <div class="param_row">
           <div class="param_label">logge Caching</div>
           <div class="param_control">
-            <label class="ib_chk_row"><input type="checkbox" id="log_cache_usage" data-ui="config_settings.chk_log_cache_usage" title="settings.log_cache_usage" /><span></span></label>
+            <label class="ib_chk_row"><input type="checkbox" id="log_cache_usage" data-ui="config_settings.chk_log_cache_usage" data-ib-pickkey="config_settings.chk_log_cache_usage" title="settings.log_cache_usage" /><span></span></label>
           </div>
         </div>
         <div class="section_note"><span class="muted">Schreibt Cache-Nutzung (Jobs&Cache) ins Logfile (zusaetzlich zur Usage-Tabelle).</span></div>
@@ -1379,38 +1379,38 @@
         <div class="param_row">
           <div class="param_label">Tracing aktiv<span class="param_hint">Erzeugt Action-IDs (Trace) fuer Button-Aktionen und korreliert API/Queries. Grundlage fuer Performanceanalyse.</span></div>
           <div class="param_control">
-            <label class="ib_chk_row"><input type="checkbox" id="trace_enabled" data-ui="config_settings.chk_trace_enabled" title="settings.trace_enabled" /><span></span></label>
+            <label class="ib_chk_row"><input type="checkbox" id="trace_enabled" data-ui="config_settings.chk_trace_enabled" data-ib-pickkey="config_settings.chk_trace_enabled" title="settings.trace_enabled" /><span></span></label>
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Tracing persistent</div>
           <div class="param_control">
-            <label class="ib_chk_row"><input type="checkbox" id="trace_persist" data-ui="config_settings.chk_trace_persist" title="settings.trace_persist" /><span></span></label>
+            <label class="ib_chk_row"><input type="checkbox" id="trace_persist" data-ui="config_settings.chk_trace_persist" data-ib-pickkey="config_settings.chk_trace_persist" title="settings.trace_persist" /><span></span></label>
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Tracing: Max Actions<span class="param_hint">Anzahl gespeicherter Actions/Traces (Default 1000).</span></div>
           <div class="param_control">
-            <input id="trace_max_entries" type="number" min="100" max="20000" data-ui="config_settings.input_trace_max_entries" title="settings.trace_max_entries" />
+            <input id="trace_max_entries" type="number" min="100" max="20000" data-ui="config_settings.input_trace_max_entries" data-ib-pickkey="config_settings.input_trace_max_entries" title="settings.trace_max_entries" />
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Tracing: Max Alter (Tage)<span class="param_hint">Traces werden abgeschnitten, sobald entweder max. Eintraege oder max. Tage erreicht sind.</span></div>
           <div class="param_control">
-            <input id="trace_max_days" type="number" min="1" max="3650" data-ui="config_settings.input_trace_max_days" title="settings.trace_max_days" />
+            <input id="trace_max_days" type="number" min="1" max="3650" data-ui="config_settings.input_trace_max_days" data-ib-pickkey="config_settings.input_trace_max_days" title="settings.trace_max_days" />
           </div>
         </div>
 
         <div class="param_row">
           <div class="param_label">Worklog: Max Eintraege<span class="param_hint">Worklog protokolliert Analyse/Statistik/Raw Operationen inkl. Zeitfenster, Grund und Dauer.</span></div>
           <div class="param_control">
-            <input id="worklog_max_entries" type="number" min="200" max="50000" data-ui="config_settings.input_worklog_max_entries" title="settings.worklog_max_entries" />
+            <input id="worklog_max_entries" type="number" min="200" max="50000" data-ui="config_settings.input_worklog_max_entries" data-ib-pickkey="config_settings.input_worklog_max_entries" title="settings.worklog_max_entries" />
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Worklog: Max Alter (Tage)<span class="param_hint">Worklog wird abgeschnitten, sobald entweder max. Eintraege oder max. Tage erreicht sind.</span></div>
           <div class="param_control">
-            <input id="worklog_max_days" type="number" min="1" max="3650" data-ui="config_settings.input_worklog_max_days" title="settings.worklog_max_days" />
+            <input id="worklog_max_days" type="number" min="1" max="3650" data-ui="config_settings.input_worklog_max_days" data-ib-pickkey="config_settings.input_worklog_max_days" title="settings.worklog_max_days" />
           </div>
         </div>
         <div class="param_row">
@@ -1453,7 +1453,7 @@
     </div>
   </details>
 
-  <details class="card" open data-ui="config_settings.section_root" title="settings.section.outliers">
+  <details class="card" open data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root" title="settings.section.outliers">
     <summary><span class="ib_summary_row"><span>Ausreisser</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Ausreisser" data-info-body="Grenzwerte fuer Ausreisser-Erkennung (maximaler Sprung pro Punkt).\n\nZiel:\n- Unplausible Messspruenge automatisch finden und in der Filtertabelle markieren.\n\nKonzept:\n- Default-Grenzen (W, kW, Wh, kWh) gelten global.\n- Zusatzgrenzen pro Unit koennen gepflegt werden.\n- Pro _measurement kann ein max_step ueberschrieben werden (Tabelle).\n\nHinweis:\n- Zu niedrige Grenzen erzeugen viele False-Positives; zu hohe Grenzen finden wenig." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
     <div class="card_body">
       <div class="grid">
@@ -1479,30 +1479,30 @@
         <div class="param_row">
           <div class="param_label">Grenzen Default: Min<span class="param_hint">Optional: Standard-Untergrenze fuer Ausreisser-Suche (leer = deaktiviert).</span></div>
           <div class="param_control">
-            <input id="outlier_bounds_min_default" type="number" step="any" placeholder="leer = deaktiviert" data-ui="config_settings.input_outlier_bounds_min_default" title="settings.outliers.bounds_min_default" />
+            <input id="outlier_bounds_min_default" type="number" step="any" placeholder="leer = deaktiviert" data-ui="config_settings.input_outlier_bounds_min_default" data-ib-pickkey="config_settings.input_outlier_bounds_min_default" title="settings.outliers.bounds_min_default" />
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Grenzen Default: Max<span class="param_hint">Optional: Standard-Obergrenze fuer Ausreisser-Suche (leer = deaktiviert).</span></div>
           <div class="param_control">
-            <input id="outlier_bounds_max_default" type="number" step="any" placeholder="leer = deaktiviert" data-ui="config_settings.input_outlier_bounds_max_default" title="settings.outliers.bounds_max_default" />
+            <input id="outlier_bounds_max_default" type="number" step="any" placeholder="leer = deaktiviert" data-ui="config_settings.input_outlier_bounds_max_default" data-ib-pickkey="config_settings.input_outlier_bounds_max_default" title="settings.outliers.bounds_max_default" />
           </div>
         </div>
         <div class="param_row">
           <div class="param_label">Stoerphase: Recovery-Streak Default<span class="param_hint">Anzahl gueltiger Werte in Folge, bis eine Stoerphase als beendet gilt.</span></div>
           <div class="param_control">
-            <input id="outlier_recovery_valid_streak_default" type="number" min="1" max="50" step="1" data-ui="config_settings.input_outlier_recovery_valid_streak_default" title="settings.outliers.recovery_valid_streak_default" />
+            <input id="outlier_recovery_valid_streak_default" type="number" min="1" max="50" step="1" data-ui="config_settings.input_outlier_recovery_valid_streak_default" data-ib-pickkey="config_settings.input_outlier_recovery_valid_streak_default" title="settings.outliers.recovery_valid_streak_default" />
           </div>
         </div>
         <div class="param_row param_full">
           <div class="param_label">Ausreisser Tabelle (_measurement / max_step)</div>
           <div class="param_control">
-            <div class="table_wrap" data-ui="config_settings.panel_outliers_table_wrap" title="settings.outliers.table.wrap">
-              <div class="table_head" data-ui="config_settings.panel_outliers_table_head" title="settings.outliers.table.head">
-                <div class="tbl_actions" data-ui="config_settings.panel_outliers_table_actions" title="settings.outliers.table.actions">
-                  <button id="outliers_add_row" type="button" data-ui="config_settings.btn_outliers_add_row" title="settings.outliers.add_row" aria-label="Zeile hinzufuegen" style="width:auto;">+ Zeile</button>
-                  <button id="outliers_delete_row" type="button" data-ui="config_settings.btn_outliers_delete_row" title="settings.outliers.delete_row" aria-label="Zeile loeschen" style="width:auto;" disabled>- Zeile</button>
-                  <button id="outliers_autowidth" type="button" data-ui="config_settings.btn_outliers_autofit" title="settings.outliers.autofit" aria-label="Auto-Fit" style="width:auto;">
+            <div class="table_wrap" data-ui="config_settings.panel_outliers_table_wrap" data-ib-pickkey="config_settings.panel_outliers_table_wrap" title="settings.outliers.table.wrap">
+              <div class="table_head" data-ui="config_settings.panel_outliers_table_head" data-ib-pickkey="config_settings.panel_outliers_table_head" title="settings.outliers.table.head">
+                <div class="tbl_actions" data-ui="config_settings.panel_outliers_table_actions" data-ib-pickkey="config_settings.panel_outliers_table_actions" title="settings.outliers.table.actions">
+                  <button id="outliers_add_row" type="button" data-ui="config_settings.btn_outliers_add_row" data-ib-pickkey="config_settings.btn_outliers_add_row" title="settings.outliers.add_row" aria-label="Zeile hinzufuegen" style="width:auto;">+ Zeile</button>
+                  <button id="outliers_delete_row" type="button" data-ui="config_settings.btn_outliers_delete_row" data-ib-pickkey="config_settings.btn_outliers_delete_row" title="settings.outliers.delete_row" aria-label="Zeile loeschen" style="width:auto;" disabled>- Zeile</button>
+                  <button id="outliers_autowidth" type="button" data-ui="config_settings.btn_outliers_autofit" data-ib-pickkey="config_settings.btn_outliers_autofit" title="settings.outliers.autofit" aria-label="Auto-Fit" style="width:auto;">
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                       <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -1510,7 +1510,7 @@
                       <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </button>
-                  <button id="outliers_windowwidth" type="button" data-ui="config_settings.btn_outliers_windowfit" title="settings.outliers.windowfit" aria-label="Fensterbreite" style="width:auto;">
+                  <button id="outliers_windowwidth" type="button" data-ui="config_settings.btn_outliers_windowfit" data-ib-pickkey="config_settings.btn_outliers_windowfit" title="settings.outliers.windowfit" aria-label="Fensterbreite" style="width:auto;">
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                       <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                       <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -1519,14 +1519,14 @@
                       <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </button>
-                  <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_wrap" data-ui="config_settings.chk_outliers_wrap" title="settings.outliers.wrap"/>Umbruch</label>
-                  <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_colfilter" data-ui="config_settings.chk_outliers_colfilter" title="settings.outliers.colfilter"/>Spaltenfilter</label>
+                  <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_wrap" data-ui="config_settings.chk_outliers_wrap" data-ib-pickkey="config_settings.chk_outliers_wrap" title="settings.outliers.wrap"/>Umbruch</label>
+                  <label style="display:flex; align-items:center; gap: 6px; padding: 0 4px;"><input type="checkbox" id="outliers_colfilter" data-ui="config_settings.chk_outliers_colfilter" data-ib-pickkey="config_settings.chk_outliers_colfilter" title="settings.outliers.colfilter"/>Spaltenfilter</label>
                 </div>
-                <div class="muted" data-ui="config_settings.panel_outliers_table_hint" title="settings.outliers.table.hint">_measurement ist fuer bestehende Zeilen nicht editierbar. Neue Zeilen erlauben manuelle Eingabe. Speichern uebernimmt die Tabelle in die Konfiguration. Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
+                <div class="muted" data-ui="config_settings.panel_outliers_table_hint" data-ib-pickkey="config_settings.panel_outliers_table_hint" title="settings.outliers.table.hint">_measurement ist fuer bestehende Zeilen nicht editierbar. Neue Zeilen erlauben manuelle Eingabe. Speichern uebernimmt die Tabelle in die Konfiguration. Wird fuer Counter-Ausreisser und dynamisches Graph-Sampling genutzt.</div>
               </div>
 
               <div class="table_box" id="outliers_box" style="max-height: 45vh; overflow:auto; border: 1px solid #eee; border-radius: 12px; margin-top: 8px;">
-                <table id="outliers_tbl" class="cfg_tbl ib_tbl" data-ui="config_settings.tbl_outliers_table" title="settings.outliers.table">
+                <table id="outliers_tbl" class="cfg_tbl ib_tbl" data-ui="config_settings.tbl_outliers_table" data-ib-pickkey="config_settings.tbl_outliers_table" title="settings.outliers.table">
                   <thead>
                     <tr>
                       <th data-key="measurement">_measurement</th>
@@ -1543,7 +1543,7 @@
     </div>
   </details>
 
-  <details class="card" open data-ui="config_settings.section_config_io" title="settings.section.config_io">
+  <details class="card" open data-ui="config_settings.section_config_io" data-ib-pickkey="config_settings.section_config_io" title="settings.section.config_io">
     <summary><span class="ib_summary_row"><span>Default / Import / Export</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: Default / Import / Export" data-info-body="Export/Import der Add-on Einstellungen als JSON-Datei.\n\nHinweise:\n- Export enthaelt alle gespeicherten Werte (inkl. Token).\n- Import prueft JSON-Struktur und uebernimmt nur bekannte Keys; Werte werden serverseitig validiert.\n- Default setzt alle Einstellungen auf die aktuellen Defaultwerte zurueck." >
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
     </button></span></summary>
@@ -1552,10 +1552,10 @@
         <div class="param_row param_full">
           <div class="param_label">Einstellungen Datei</div>
           <div class="param_control" style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button id="cfg_export" type="button" class="btn_sm" data-ui="config_settings.btn_export" title="settings.config.export" style="width:auto;">Export</button>
-            <button id="cfg_import" type="button" class="btn_sm" data-ui="config_settings.btn_import" title="settings.config.import" style="width:auto;">Import</button>
+            <button id="cfg_export" type="button" class="btn_sm" data-ui="config_settings.btn_export" data-ib-pickkey="config_settings.btn_export" title="settings.config.export" style="width:auto;">Export</button>
+            <button id="cfg_import" type="button" class="btn_sm" data-ui="config_settings.btn_import" data-ib-pickkey="config_settings.btn_import" title="settings.config.import" style="width:auto;">Import</button>
             <input id="cfg_import_file" type="file" accept="application/json" style="display:none;" />
-            <button id="cfg_defaults" type="button" class="btn_sm" data-ui="config_settings.btn_defaults" title="settings.config.defaults" style="width:auto;">Default</button>
+            <button id="cfg_defaults" type="button" class="btn_sm" data-ui="config_settings.btn_defaults" data-ib-pickkey="config_settings.btn_defaults" title="settings.config.defaults" style="width:auto;">Default</button>
           </div>
         </div>
         <div class="section_note"><span class="muted">Import uebernimmt Einstellungen sofort und speichert sie global.</span></div>
@@ -1565,7 +1565,7 @@
 
   <!-- Diagnose (Storage/Worklog) moved to /dbinfo -->
 
-  <div id="autosave_card" class="card" data-ui="config_settings.panel_autosave" title="settings.autosave">
+  <div id="autosave_card" class="card" data-ui="config_settings.panel_autosave" data-ib-pickkey="config_settings.panel_autosave" title="settings.autosave">
     <div class="muted">Aenderungen werden automatisch gespeichert.</div>
     <div id="err" class="err"></div>
     <div id="ok" class="ok"></div>

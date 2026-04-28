@@ -32,7 +32,7 @@
     h2 { margin: 0; }
     .muted { opacity: 0.7; font-size: 12px; }
     .row { display:flex; gap: 10px; flex-wrap:wrap; align-items:end; margin-top: 10px; justify-content:flex-start; }
-    [data-ui="stats_main.panel_controls"] { align-items: flex-start; }
+    [data-ui="stats_main.panel_controls" data-ib-pickkey="stats_main.panel_controls"] { align-items: flex-start; }
     .label_row { display:flex; justify-content:space-between; gap: 10px; align-items:baseline; }
     label { display:block; font-size: 12px; opacity: 0.8; }
     .help { min-height: 16px; margin-top: 4px; }
@@ -106,20 +106,20 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="stats_page.main" title="stats.page">
+    <main class="content" data-ui="stats_page.main" data-ib-pickkey="stats_page.main" title="stats.page">
       <h2>Statistik</h2>
       <div class="muted">Gesamtstatistik fuer alle Messwerte (eine Zeile pro Serie).</div>
 
       <div class="card">
-        <details id="selection_details" open data-ui="stats_selection.section_root" title="section.selection">
+        <details id="selection_details" open data-ui="stats_selection.section_root" data-ib-pickkey="stats_selection.section_root" title="section.selection">
           <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Statistik: Auswahl" data-info-body="Filtert, welche Serien in der Gesamtstatistik auftauchen (measurement/field/entity_id/friendly_name).\n\nPerformance:\n- Initial werden nur schnelle Basis-Spalten geladen (last/oldest/newest).\n- Details (count/min/max/mean) werden per Nachladen-Job berechnet und inkrementell gemerged." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
 
-          <div class="row" data-ui="stats_main.panel_controls" title="stats.controls">
+          <div class="row" data-ui="stats_main.panel_controls" data-ib-pickkey="stats_main.panel_controls" title="stats.controls">
             <div class="ib_sel ib_sel_time" style="min-width: 220px;">
               <label class="label_row ib_sel_label"><span>Zeitraum</span><span id="stats_range_bounds" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <div class="ib_clear_row">
-                  <select id="range" data-ui="stats_main.select_range" title="stats.range">
+                  <select id="range" data-ui="stats_main.select_range" data-ib-pickkey="stats_main.select_range" title="stats.range">
                   <option value="1h">Letzte 1h</option>
                   <option value="6h">Letzte 6h</option>
                   <option value="12h">Letzte 12h</option>
@@ -150,7 +150,7 @@
                   <label class="ib_sel_label">_measurement</label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="stats_combine.input_src_measurement" title="combine.src.measurement"/>
+                      <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="stats_combine.input_src_measurement" data-ib-pickkey="stats_combine.input_src_measurement" title="combine.src.measurement"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="src_measurement" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="measurement_list">
@@ -168,7 +168,7 @@
                   <label class="ib_sel_label">_field</label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="src_field" list="src_field_list" placeholder="value" data-ui="stats_combine.input_src_field" title="combine.src.field"/>
+                      <input id="src_field" list="src_field_list" placeholder="value" data-ui="stats_combine.input_src_field" data-ib-pickkey="stats_combine.input_src_field" title="combine.src.field"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="src_field" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="src_field_list"></datalist>
@@ -184,7 +184,7 @@
                   <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_src_entity" class="muted"></span></label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="stats_combine.input_src_entity_id" title="combine.src.entity_id"/>
+                      <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="stats_combine.input_src_entity_id" data-ib-pickkey="stats_combine.input_src_entity_id" title="combine.src.entity_id"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="src_entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="src_entity_list"></datalist>
@@ -198,7 +198,7 @@
                   <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_src_friendly" class="muted"></span></label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="stats_combine.input_src_friendly" title="combine.src.friendly"/>
+                      <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="stats_combine.input_src_friendly" data-ib-pickkey="stats_combine.input_src_friendly" title="combine.src.friendly"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="src_friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="src_friendly_list"></datalist>
@@ -214,46 +214,46 @@
             <div id="custom" style="min-width: 320px; display:none;">
               <label>Von/Bis (lokal)</label>
               <div class="row" style="margin-top:0;">
-                <input id="start" type="datetime-local" data-ui="stats_main.input_start" title="stats.start" />
-                <input id="stop" type="datetime-local" data-ui="stats_main.input_stop" title="stats.stop" />
+                <input id="start" type="datetime-local" data-ui="stats_main.input_start" data-ib-pickkey="stats_main.input_start" title="stats.start" />
+                <input id="stop" type="datetime-local" data-ui="stats_main.input_stop" data-ib-pickkey="stats_main.input_stop" title="stats.stop" />
               </div>
             </div>
 
             <div style="flex:1; min-width: 260px;">
               <label>Suche</label>
               <div class="ib_clear_row">
-                <input id="q" placeholder="Volltext..." data-ui="stats_main.input_search" title="stats.search" />
+                <input id="q" placeholder="Volltext..." data-ui="stats_main.input_search" data-ib-pickkey="stats_main.input_search" title="stats.search" />
                 <button type="button" class="ib_clear_btn" data-clear-for="q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
               </div>
-              <div class="muted help" data-ui="stats_main.panel_search_help" title="stats.search_help"></div>
+              <div class="muted help" data-ui="stats_main.panel_search_help" data-ib-pickkey="stats_main.panel_search_help" title="stats.search_help"></div>
             </div>
           </div>
 
           <div class="muted" style="margin-top: 10px;">Influx Datenbank Info: siehe Menuepunkt <code>Info</code>.</div>
 
         </details>
-        <div class="status" id="info" data-ui="stats_main.panel_info" title="stats.info"></div>
+        <div class="status" id="info" data-ui="stats_main.panel_info" data-ib-pickkey="stats_main.panel_info" title="stats.info"></div>
         <div class="progress" aria-hidden="true" style="display:none;"><div id="bar"></div></div>
 
-        <div id="query_details" style="display:none;" data-ui="stats_main.panel_query_details" title="stats.query_details">
+        <div id="query_details" style="display:none;" data-ui="stats_main.panel_query_details" data-ib-pickkey="stats_main.panel_query_details" title="stats.query_details">
           <div id="query_label"></div>
-          <button id="query_history" type="button" data-ui="stats_main.btn_query_history" title="stats.query_history"></button>
+          <button id="query_history" type="button" data-ui="stats_main.btn_query_history" data-ib-pickkey="stats_main.btn_query_history" title="stats.query_history"></button>
           <pre id="query_pre"></pre>
         </div>
         <div id="err" class="err"></div>
 
-        <details class="card" open data-ui="stats_table.section_root" title="stats.table.section">
+        <details class="card" open data-ui="stats_table.section_root" data-ib-pickkey="stats_table.section_root" title="stats.table.section">
           <summary><span class="ib_summary_row"><span>Messwertuebersicht</span></span></summary>
           <div class="card_body" style="padding:10px;">
-          <div class="table_wrap" data-ui="stats_table.panel_wrap" title="stats.table.wrap">
+          <div class="table_wrap" data-ui="stats_table.panel_wrap" data-ib-pickkey="stats_table.panel_wrap" title="stats.table.wrap">
           <div class="table_title">Statistik Tabelle</div>
-          <div class="table_head" data-ui="stats_table.panel_head" title="stats.table.head">
-            <div class="tbl_actions" data-ui="stats_main.panel_actions" title="stats.actions">
-              <button id="load" data-ui="stats_main.btn_load" title="stats.load">Statistik laden</button>
-              <button id="cancel" data-ui="stats_main.btn_cancel" title="stats.cancel">Abbrechen</button>
-              <button id="delete_rows" data-ui="stats_main.btn_delete_rows" title="stats.delete_rows">Loeschen</button>
-              <button id="query_open" type="button" class="btn_sm" data-ui="stats_main.panel_query_details" title="stats.query_details" aria-label="Statistik Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
-              <button id="auto_cols" data-ui="stats_main.btn_auto_cols" title="stats.auto_cols" aria-label="Spaltenbreite automatisch">
+          <div class="table_head" data-ui="stats_table.panel_head" data-ib-pickkey="stats_table.panel_head" title="stats.table.head">
+            <div class="tbl_actions" data-ui="stats_main.panel_actions" data-ib-pickkey="stats_main.panel_actions" title="stats.actions">
+              <button id="load" data-ui="stats_main.btn_load" data-ib-pickkey="stats_main.btn_load" title="stats.load">Statistik laden</button>
+              <button id="cancel" data-ui="stats_main.btn_cancel" data-ib-pickkey="stats_main.btn_cancel" title="stats.cancel">Abbrechen</button>
+              <button id="delete_rows" data-ui="stats_main.btn_delete_rows" data-ib-pickkey="stats_main.btn_delete_rows" title="stats.delete_rows">Loeschen</button>
+              <button id="query_open" type="button" class="btn_sm" data-ui="stats_main.panel_query_details" data-ib-pickkey="stats_main.panel_query_details" title="stats.query_details" aria-label="Statistik Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button>
+              <button id="auto_cols" data-ui="stats_main.btn_auto_cols" data-ib-pickkey="stats_main.btn_auto_cols" title="stats.auto_cols" aria-label="Spaltenbreite automatisch">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -261,7 +261,7 @@
                   <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <button id="win_cols" data-ui="stats_main.btn_win_cols" title="stats.win_cols" aria-label="Fensterbreite">
+              <button id="win_cols" data-ui="stats_main.btn_win_cols" data-ib-pickkey="stats_main.btn_win_cols" title="stats.win_cols" aria-label="Fensterbreite">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                   <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -270,18 +270,18 @@
                   <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <label><input type="checkbox" id="tbl_wrap" data-ui="stats_main.chk_tbl_wrap" title="stats.tbl_wrap"/>Umbruch</label>
-              <label><input type="checkbox" id="tbl_colfilter" data-ui="stats_main.chk_tbl_colfilter" title="stats.tbl_colfilter"/>Spaltenfilter</label>
-              <button id="mark_all" data-ui="stats_main.btn_mark_all" title="stats.mark_all">Alle im Filter markieren</button>
-              <button id="clear_mark" data-ui="stats_main.btn_clear_mark" title="stats.clear_mark">Markierung loeschen</button>
-              <button id="reload_marked" data-ui="stats_main.btn_reload_marked" title="stats.reload_marked">Nachladen (markiert)</button>
-              <button id="reload_filtered" data-ui="stats_main.btn_reload_filtered" title="stats.reload_filtered">Nachladen (alle im Filter)</button>
+              <label><input type="checkbox" id="tbl_wrap" data-ui="stats_main.chk_tbl_wrap" data-ib-pickkey="stats_main.chk_tbl_wrap" title="stats.tbl_wrap"/>Umbruch</label>
+              <label><input type="checkbox" id="tbl_colfilter" data-ui="stats_main.chk_tbl_colfilter" data-ib-pickkey="stats_main.chk_tbl_colfilter" title="stats.tbl_colfilter"/>Spaltenfilter</label>
+              <button id="mark_all" data-ui="stats_main.btn_mark_all" data-ib-pickkey="stats_main.btn_mark_all" title="stats.mark_all">Alle im Filter markieren</button>
+              <button id="clear_mark" data-ui="stats_main.btn_clear_mark" data-ib-pickkey="stats_main.btn_clear_mark" title="stats.clear_mark">Markierung loeschen</button>
+              <button id="reload_marked" data-ui="stats_main.btn_reload_marked" data-ib-pickkey="stats_main.btn_reload_marked" title="stats.reload_marked">Nachladen (markiert)</button>
+              <button id="reload_filtered" data-ui="stats_main.btn_reload_filtered" data-ib-pickkey="stats_main.btn_reload_filtered" title="stats.reload_filtered">Nachladen (alle im Filter)</button>
             </div>
-            <div class="muted" id="count" data-ui="stats_main.panel_count" title="stats.count"></div>
+            <div class="muted" id="count" data-ui="stats_main.panel_count" data-ib-pickkey="stats_main.panel_count" title="stats.count"></div>
           </div>
 
-          <div class="table_box" id="tbl_box" data-ui="stats_table.panel_box" title="stats.table.box">
-            <table id="tbl" class="list_tbl ib_tbl" data-sort-custom="1" data-ui="stats_main.tbl_table" title="stats.table">
+          <div class="table_box" id="tbl_box" data-ui="stats_table.panel_box" data-ib-pickkey="stats_table.panel_box" title="stats.table.box">
+            <table id="tbl" class="list_tbl ib_tbl" data-sort-custom="1" data-ui="stats_main.tbl_table" data-ib-pickkey="stats_main.tbl_table" title="stats.table">
               <thead>
                 <tr>
                   <th data-key="_sel" style="width: 46px;">sel</th>
@@ -301,7 +301,7 @@
               <tbody></tbody>
             </table>
           </div>
-          <div id="tbl_resize" data-ui="stats_table.panel_resize" title="stats.table.resize"></div>
+          <div id="tbl_resize" data-ui="stats_table.panel_resize" data-ib-pickkey="stats_table.panel_resize" title="stats.table.resize"></div>
           </div>
           </div>
         </details>

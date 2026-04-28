@@ -640,7 +640,7 @@
 
       // Performanceanalyse: Diagramm/Korrelation section should not use browser title-tooltips.
       // The diagram itself uses a custom dark tooltip.
-      const perfDiag = root.querySelector('details[data-ui="perf_page.diagram.section_root"]');
+      const perfDiag = root.querySelector('details[data-ui="perf_page.diagram.section_root" data-ib-pickkey="perf_page.diagram.section_root"]');
       if(perfDiag){
         try{ if(perfDiag.hasAttribute('title')) perfDiag.removeAttribute('title'); }catch(e){}
         try{ perfDiag.querySelectorAll('[title]').forEach(x=>{ try{ x.removeAttribute('title'); }catch(e){}; }); }catch(e){}

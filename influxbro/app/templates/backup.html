@@ -104,35 +104,35 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="backup_page.main" title="backup.page">
+    <main class="content" data-ui="backup_page.main" data-ib-pickkey="backup_page.main" title="backup.page">
       <h2>Backup</h2>
       <div class="muted">Backups fuer einen einzelnen Messwert (immer alle Werte dieses Messwertes).</div>
-      <div class="space_box" id="space" data-ui="backup_main.panel_space" title="backup.space" style="display:none; margin-top:8px;"></div>
+      <div class="space_box" id="space" data-ui="backup_main.panel_space" data-ib-pickkey="backup_main.panel_space" title="backup.space" style="display:none; margin-top:8px;"></div>
 
-      <div class="row" style="margin-top: 10px; align-items:flex-end;" data-ui="backup_main.panel_storage_target" title="backup.storage_target">
+      <div class="row" style="margin-top: 10px; align-items:flex-end;" data-ui="backup_main.panel_storage_target" data-ib-pickkey="backup_main.panel_storage_target" title="backup.storage_target">
         <div style="min-width: 260px;">
           <label>Speicherort</label>
-          <select id="backup_target" data-ui="backup_main.select_storage_target" title="backup.storage_target.select" style="min-width: 260px;"></select>
+          <select id="backup_target" data-ui="backup_main.select_storage_target" data-ib-pickkey="backup_main.select_storage_target" title="backup.storage_target.select" style="min-width: 260px;"></select>
         </div>
         <div class="muted" id="backup_target_info" style="padding-bottom: 6px;"></div>
       </div>
 
       <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};">
-        <details id="selection_details" open data-ui="backup_selection.section_root" title="section.selection">
+        <details id="selection_details" open data-ui="backup_selection.section_root" data-ib-pickkey="backup_selection.section_root" title="section.selection">
           <summary><span class="ib_summary_row"><span>Einzelbackup</span><button type="button" class="ib_info_icon" data-info-title="Backup: Einzelbackup" data-info-body="In diesem Bereich erstellst du Backups fuer genau einen Messwert (eine Serie) und verwaltest die Backupliste.\n\nAblauf:\n1) Auswahl setzen (measurement optional, entity_id/friendly_name fuer eindeutige Serie).\n2) Backup starten (Messwert-Backup oder Zeitbereich-Backup).\n3) Job-Status beobachten (Laufzeit/Groesse/Query).\n4) In der Backupliste selektieren, Download (nur bei genau 1 Auswahl) oder Loeschen (mehrfach).\n\nHinweise:\n- Backups werden als ZIP gespeichert (Meta JSON + Line Protocol).\n- Die Tabelle unterstuetzt Umbruch, Spaltenfilter, Auto-Fit/Window-Fit und Zeilenhoehe." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
 
           <div class="muted">Auswahl wird initial aus dem Dashboard uebernommen (Browser-Speicher) und kann hier angepasst werden.</div>
-          <div class="row" style="margin-top: 8px;" data-ui="backup_main.panel_take_from_dashboard" title="backup.take_from_dashboard">
-            <button id="take_dashboard" data-ui="backup_main.btn_take_dashboard" title="backup.take_dashboard">Messwert aus Dashboard uebernehmen</button>
+          <div class="row" style="margin-top: 8px;" data-ui="backup_main.panel_take_from_dashboard" data-ib-pickkey="backup_main.panel_take_from_dashboard" title="backup.take_from_dashboard">
+            <button id="take_dashboard" data-ui="backup_main.btn_take_dashboard" data-ib-pickkey="backup_main.btn_take_dashboard" title="backup.take_dashboard">Messwert aus Dashboard uebernehmen</button>
           </div>
-           <div class="muted" id="zoom_txt" data-ui="backup_main.panel_zoom_txt" title="backup.zoom_txt"></div>
+           <div class="muted" id="zoom_txt" data-ui="backup_main.panel_zoom_txt" data-ib-pickkey="backup_main.panel_zoom_txt" title="backup.zoom_txt"></div>
 
-          <div class="grid4" style="margin-top: 10px;" data-ui="backup_main.panel_target" title="backup.target">
+          <div class="grid4" style="margin-top: 10px;" data-ui="backup_main.panel_target" data-ib-pickkey="backup_main.panel_target" title="backup.target">
             <div>
               <label class="label_row ib_sel_label"><span>Einheit (_measurement)</span><span id="cnt_measurement_filter" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <div class="ib_clear_row">
-                  <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="backup_main.input_measurement_filter" title="backup.measurement_filter" />
+                  <input id="measurement_filter" list="measurement_list" placeholder="optional" data-ui="backup_main.input_measurement_filter" data-ib-pickkey="backup_main.input_measurement_filter" title="backup.measurement_filter" />
                   <button type="button" class="ib_clear_btn" data-clear-for="measurement_filter" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                 </div>
                 <datalist id="measurement_list"></datalist>
@@ -146,7 +146,7 @@
               <label class="label_row ib_sel_label"><span>Messwert (Klartext / friendly_name)</span><span id="cnt_friendly_name" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <div class="ib_clear_row">
-                  <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="backup_main.input_friendly_name" title="backup.friendly_name" />
+                  <input id="friendly_name" list="friendly_list" placeholder="optional" data-ui="backup_main.input_friendly_name" data-ib-pickkey="backup_main.input_friendly_name" title="backup.friendly_name" />
                   <button type="button" class="ib_clear_btn" data-clear-for="friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                 </div>
                 <datalist id="friendly_list"></datalist>
@@ -160,7 +160,7 @@
               <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_entity_id" class="muted"></span></label>
               <div class="ib_sel_stack">
                 <div class="ib_clear_row">
-                  <input id="entity_id" list="entity_list" placeholder="optional" data-ui="backup_main.input_entity_id" title="backup.entity_id" />
+                  <input id="entity_id" list="entity_list" placeholder="optional" data-ui="backup_main.input_entity_id" data-ib-pickkey="backup_main.input_entity_id" title="backup.entity_id" />
                   <button type="button" class="ib_clear_btn" data-clear-for="entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                 </div>
                 <datalist id="entity_list"></datalist>
@@ -175,7 +175,7 @@
               <label class="label_row ib_sel_label"><span>Zeitraum</span><span><span id="cnt_range" class="muted"></span> <span id="range_bounds" class="muted"></span></span></label>
               <div class="ib_sel_stack">
                 <div class="ib_clear_row">
-                  <select id="range" data-ui="backup_main.select_range" title="backup.range">
+                  <select id="range" data-ui="backup_main.select_range" data-ib-pickkey="backup_main.select_range" title="backup.range">
                   <option value="1h">Letzte 1h</option>
                   <option value="6h">Letzte 6h</option>
                   <option value="12h">Letzte 12h</option>
@@ -200,77 +200,77 @@
             </div>
           </div>
 
-          <div id="custom" class="row" style="margin-top: 8px; display:none;" data-ui="backup_main.panel_custom_range" title="backup.custom_range">
+          <div id="custom" class="row" style="margin-top: 8px; display:none;" data-ui="backup_main.panel_custom_range" data-ib-pickkey="backup_main.panel_custom_range" title="backup.custom_range">
             <div style="min-width: 320px; flex:1;">
               <label>Von/Bis (lokal)</label>
               <div class="row" style="margin-top:0;">
-                <input id="start" type="datetime-local" data-ui="backup_main.input_start" title="backup.start" />
-                <input id="stop" type="datetime-local" data-ui="backup_main.input_stop" title="backup.stop" />
+                <input id="start" type="datetime-local" data-ui="backup_main.input_start" data-ib-pickkey="backup_main.input_start" title="backup.start" />
+                <input id="stop" type="datetime-local" data-ui="backup_main.input_stop" data-ib-pickkey="backup_main.input_stop" title="backup.stop" />
               </div>
             </div>
           </div>
 
-          <div class="row" data-ui="backup_main.panel_selection_row" title="backup.selection_row">
+          <div class="row" data-ui="backup_main.panel_selection_row" data-ib-pickkey="backup_main.panel_selection_row" title="backup.selection_row">
             <div style="min-width: 320px; flex:1;">
               <label>Auswahl (aufgeloest)</label>
-              <textarea id="sel" readonly data-ui="backup_main.txt_selection" title="backup.selection"></textarea>
+              <textarea id="sel" readonly data-ui="backup_main.txt_selection" data-ib-pickkey="backup_main.txt_selection" title="backup.selection"></textarea>
             </div>
           </div>
-        <div class="row" data-ui="backup_main.panel_actions" title="backup.actions" style="align-items:flex-start;">
+        <div class="row" data-ui="backup_main.panel_actions" data-ib-pickkey="backup_main.panel_actions" title="backup.actions" style="align-items:flex-start;">
           <div>
             <label>&nbsp;</label>
-            <button id="create_full" data-ui="backup_main.btn_create_full" title="backup.create_full">Messwert-Backup</button>
-            <div class="muted" id="hint_full" data-ui="backup_main.panel_hint_full" title="backup.hint_full" style="margin-top:4px; max-width: 260px;"></div>
+            <button id="create_full" data-ui="backup_main.btn_create_full" data-ib-pickkey="backup_main.btn_create_full" title="backup.create_full">Messwert-Backup</button>
+            <div class="muted" id="hint_full" data-ui="backup_main.panel_hint_full" data-ib-pickkey="backup_main.panel_hint_full" title="backup.hint_full" style="margin-top:4px; max-width: 260px;"></div>
           </div>
           <div>
             <label>&nbsp;</label>
-            <button id="create_range_sel" data-ui="backup_main.btn_create_range_sel" title="backup.create_range_sel">Zeitbereich Backup (Auswahl)</button>
-            <div class="muted" id="hint_sel" data-ui="backup_main.panel_hint_sel" title="backup.hint_sel" style="margin-top:4px; max-width: 260px;"></div>
+            <button id="create_range_sel" data-ui="backup_main.btn_create_range_sel" data-ib-pickkey="backup_main.btn_create_range_sel" title="backup.create_range_sel">Zeitbereich Backup (Auswahl)</button>
+            <div class="muted" id="hint_sel" data-ui="backup_main.panel_hint_sel" data-ib-pickkey="backup_main.panel_hint_sel" title="backup.hint_sel" style="margin-top:4px; max-width: 260px;"></div>
           </div>
-            <div><label>&nbsp;</label><button id="reload" data-ui="backup_main.btn_reload" title="backup.reload" aria-label="Liste aktualisieren"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-            <div><label>&nbsp;</label><button id="backup_query_open" class="btn_sm" type="button" data-ui="backup_main.btn_query_details" title="backup.query_details" aria-label="Backup Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button></div>
-          <div><label>&nbsp;</label><button id="cancel" class="btn_sm" data-ui="backup_main.btn_cancel" title="backup.cancel" disabled>Abbruch</button></div>
+            <div><label>&nbsp;</label><button id="reload" data-ui="backup_main.btn_reload" data-ib-pickkey="backup_main.btn_reload" title="backup.reload" aria-label="Liste aktualisieren"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+            <div><label>&nbsp;</label><button id="backup_query_open" class="btn_sm" type="button" data-ui="backup_main.btn_query_details" data-ib-pickkey="backup_main.btn_query_details" title="backup.query_details" aria-label="Backup Query anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button></div>
+          <div><label>&nbsp;</label><button id="cancel" class="btn_sm" data-ui="backup_main.btn_cancel" data-ib-pickkey="backup_main.btn_cancel" title="backup.cancel" disabled>Abbruch</button></div>
           <!-- table controls are placed in the table header frame -->
-          <div><label>&nbsp;</label><button id="del" data-ui="backup_main.btn_delete" title="backup.delete">Backup loeschen</button></div>
-          <div><label>&nbsp;</label><button id="download" class="btn_sm" data-ui="backup_main.btn_download" title="backup.download" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Download</button></div>
+          <div><label>&nbsp;</label><button id="del" data-ui="backup_main.btn_delete" data-ib-pickkey="backup_main.btn_delete" title="backup.delete">Backup loeschen</button></div>
+          <div><label>&nbsp;</label><button id="download" class="btn_sm" data-ui="backup_main.btn_download" data-ib-pickkey="backup_main.btn_download" title="backup.download" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Download</button></div>
         </div>
         <div id="err" class="err"></div>
         <div id="ok" class="ok"></div>
 
-        <div id="create_status" data-ui="backup_main.panel_create_status" title="backup.create_status">
+        <div id="create_status" data-ui="backup_main.panel_create_status" data-ib-pickkey="backup_main.panel_create_status" title="backup.create_status">
           <span id="create_spinner" aria-hidden="true"></span>
           <span id="create_status_txt">Backup laeuft...</span>
           <span id="create_status_time"></span>
         </div>
 
-        <div id="backup_query_details" style="display:none;" data-ui="backup_main.btn_query_details" title="backup.query_details">
+        <div id="backup_query_details" style="display:none;" data-ui="backup_main.btn_query_details" data-ib-pickkey="backup_main.btn_query_details" title="backup.query_details">
           <div id="backup_query_meta"></div>
           <button id="backup_query_history" type="button"></button>
           <pre id="backup_query_pre"></pre>
         </div>
 
-        <div class="muted" id="loc" data-ui="backup_main.panel_location" title="backup.location" style="margin-top:10px;"></div>
+        <div class="muted" id="loc" data-ui="backup_main.panel_location" data-ib-pickkey="backup_main.panel_location" title="backup.location" style="margin-top:10px;"></div>
 
-        <details class="card" open data-ui="backup_table.section_root" title="backup.table.section">
+        <details class="card" open data-ui="backup_table.section_root" data-ib-pickkey="backup_table.section_root" title="backup.table.section">
           <summary><span class="ib_summary_row"><span>Backupliste</span></span></summary>
           <div class="card_body" style="padding:10px;">
-          <div class="table_wrap" data-ui="backup_table.panel_wrap" title="backup.table.wrap">
+          <div class="table_wrap" data-ui="backup_table.panel_wrap" data-ib-pickkey="backup_table.panel_wrap" title="backup.table.wrap">
           <div class="table_title">Backupliste</div>
-          <div class="table_head" data-ui="backup_table.panel_head" title="backup.table.head">
-            <div class="tbl_actions" data-ui="backup_table.panel_actions" title="backup.table.actions">
+          <div class="table_head" data-ui="backup_table.panel_head" data-ib-pickkey="backup_table.panel_head" title="backup.table.head">
+            <div class="tbl_actions" data-ui="backup_table.panel_actions" data-ib-pickkey="backup_table.panel_actions" title="backup.table.actions">
               <div style="min-width: 320px; flex:1;">
                 <label>Volltextsuche (Backupliste)</label>
                 <div class="row" style="margin-top:0; align-items:center; gap: 8px;">
                   <div class="ib_clear_row" style="flex:1; min-width:220px;">
-                    <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup_main.input_search" title="backup.search" style="flex:1; min-width: 220px;" />
+                    <input id="q_backup" placeholder="created_at, name, measurement, field, entity_id..." data-ui="backup_main.input_search" data-ib-pickkey="backup_main.input_search" title="backup.search" style="flex:1; min-width: 220px;" />
                     <button type="button" class="ib_clear_btn" data-clear-for="q_backup" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                   </div>
-                  <button id="q_backup_all" class="btn_sm" data-ui="backup_main.btn_search_all" title="backup.search_all" style="height:34px; padding:8px 10px;">Alle</button>
-                  <button id="q_backup_from_dash" class="btn_sm" data-ui="backup_main.btn_search_from_dash" title="backup.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
+                  <button id="q_backup_all" class="btn_sm" data-ui="backup_main.btn_search_all" data-ib-pickkey="backup_main.btn_search_all" title="backup.search_all" style="height:34px; padding:8px 10px;">Alle</button>
+                  <button id="q_backup_from_dash" class="btn_sm" data-ui="backup_main.btn_search_from_dash" data-ib-pickkey="backup_main.btn_search_from_dash" title="backup.search_from_dash" style="height:34px; padding:8px 10px;">aus Dashboardauswahl</button>
                 </div>
               </div>
 
-              <button id="backup_autowidth" class="btn_sm" data-ui="backup_main.btn_autowidth" title="backup.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
+              <button id="backup_autowidth" class="btn_sm" data-ui="backup_main.btn_autowidth" data-ib-pickkey="backup_main.btn_autowidth" title="backup.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -278,7 +278,7 @@
                   <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <button id="backup_windowwidth" class="btn_sm" data-ui="backup_main.btn_windowwidth" title="backup.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
+              <button id="backup_windowwidth" class="btn_sm" data-ui="backup_main.btn_windowwidth" data-ib-pickkey="backup_main.btn_windowwidth" title="backup.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                   <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -287,21 +287,21 @@
                   <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <div style="display:flex; flex-direction:column; gap: 6px; padding-top: 2px;" data-ui="backup_main.panel_row_height" title="backup.row_height">
+              <div style="display:flex; flex-direction:column; gap: 6px; padding-top: 2px;" data-ui="backup_main.panel_row_height" data-ib-pickkey="backup_main.panel_row_height" title="backup.row_height">
                 <label>Zeilenhoehe (px)</label>
                 <input id="backup_row_h" type="number" min="9" max="60" step="1" value="{{ (cfg.get('ui_backup_table_row_height_px') or cfg.get('ui_table_row_height_px') or 13) | int }}" style="height:34px; padding:8px 10px; width: 120px; border: 1px solid #bfc7d5; border-radius: 4px; font-size: 14px;" />
               </div>
-              <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_wrap" data-ui="backup_main.chk_wrap" title="backup.wrap"/>Umbruch</label>
-              <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_colfilter" data-ui="backup_main.chk_colfilter" title="backup.colfilter"/>Spaltenfilter</label>
+              <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_wrap" data-ui="backup_main.chk_wrap" data-ib-pickkey="backup_main.chk_wrap" title="backup.wrap"/>Umbruch</label>
+              <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="backup_colfilter" data-ui="backup_main.chk_colfilter" data-ib-pickkey="backup_main.chk_colfilter" title="backup.colfilter"/>Spaltenfilter</label>
             </div>
-            <div class="muted" id="list_info" data-ui="backup_main.panel_list_info" title="backup.list_info"></div>
+            <div class="muted" id="list_info" data-ui="backup_main.panel_list_info" data-ib-pickkey="backup_main.panel_list_info" title="backup.list_info"></div>
           </div>
 
-          <div class="table_box" id="backup_box" data-ui="backup_main.panel_table_box" title="backup.table_box">
-            <table data-ui="backup_main.tbl_table" title="backup.table" id="backup_tbl" class="ib_tbl">
+          <div class="table_box" id="backup_box" data-ui="backup_main.panel_table_box" data-ib-pickkey="backup_main.panel_table_box" title="backup.table_box">
+            <table data-ui="backup_main.tbl_table" data-ib-pickkey="backup_main.tbl_table" title="backup.table" id="backup_tbl" class="ib_tbl">
               <thead>
                 <tr>
-                  <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup_main.chk_select_all" title="backup.select_all"/></th>
+                  <th style="width:20px;"><input type="checkbox" id="sel_all" data-ui="backup_main.chk_select_all" data-ib-pickkey="backup_main.chk_select_all" title="backup.select_all"/></th>
                   <th>Backup Datum</th>
                   <th>Zeitraum</th>
                   <th>Name</th>
@@ -325,51 +325,51 @@
         </details>
       </div>
 
-      <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};" data-ui="backup_fullbackup.panel_card" title="backup.fullbackup.card">
-        <details id="fullbackup_details" data-ui="backup_fullbackup.section_root" title="backup.fullbackup.details">
+      <div class="card" style="--backup_visible_rows: {{ (cfg.get('ui_backup_visible_rows') or 24) | int }};" data-ui="backup_fullbackup.panel_card" data-ib-pickkey="backup_fullbackup.panel_card" title="backup.fullbackup.card">
+        <details id="fullbackup_details" data-ui="backup_fullbackup.section_root" data-ib-pickkey="backup_fullbackup.section_root" title="backup.fullbackup.details">
           <summary><span class="ib_summary_row"><span>FullBackup (InfluxDB komplett)</span><button type="button" class="ib_info_icon" data-info-title="Backup: FullBackup" data-info-body="FullBackup sichert die komplette InfluxDB (v1: database, v2: bucket) in einem separaten Job und einer separaten Liste.\n\nModi:\n- Line Protocol: kompatibel, best-effort Export als LP.\n- Native v2: nutzt influx CLI und speichert natives Backup in ZIP (payload unter native/).\n\nAktionen:\n- Start/Abbruch/Reload/Download/Loeschen (Mehrfachauswahl moeglich).\n- Download erscheint nur bei genau 1 selektiertem Eintrag." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="muted" style="margin-top: 6px;">Sichert die komplette InfluxDB Datenbank (v1: database, v2: bucket). Separater Bereich mit eigener Liste.</div>
 
-           <div class="row" style="align-items:flex-start;" data-ui="backup_fullbackup.panel_actions" title="backup.fullbackup.actions">
+           <div class="row" style="align-items:flex-start;" data-ui="backup_fullbackup.panel_actions" data-ib-pickkey="backup_fullbackup.panel_actions" title="backup.fullbackup.actions">
              <div style="min-width: 320px;">
                <label>Backupmodus</label>
-               <select id="fullbackup_mode" data-ui="backup_fullbackup.select_mode" title="backup.fullbackup.mode">
+               <select id="fullbackup_mode" data-ui="backup_fullbackup.select_mode" data-ib-pickkey="backup_fullbackup.select_mode" title="backup.fullbackup.mode">
                  <option value="lp">Line Protocol (kompatibel)</option>
                  <option value="native_v2">Native v2 (influx backup)</option>
                </select>
               <div class="muted" style="margin-top:4px;">Native v2 erfordert <code>admin_token</code> (Einstellungen) und kann beim Restore Zielbucket waehlen/ueberschreiben.</div>
-              <div class="muted" id="fullbackup_native_support" data-ui="backup_fullbackup.panel_native_support" title="backup.fullbackup.native_support" style="margin-top:4px;"></div>
+              <div class="muted" id="fullbackup_native_support" data-ui="backup_fullbackup.panel_native_support" data-ib-pickkey="backup_fullbackup.panel_native_support" title="backup.fullbackup.native_support" style="margin-top:4px;"></div>
              </div>
-             <div><label>&nbsp;</label><button id="fullbackup_start" data-ui="backup_fullbackup.btn_start" title="backup.fullbackup.start">FullBackup starten</button></div>
-             <div><label>&nbsp;</label><button id="fullbackup_query_open" class="btn_sm" type="button" data-ui="backup_fullbackup.btn_query_details" title="backup.fullbackup.query_details" aria-label="FullBackup Aktion anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button></div>
-             <div><label>&nbsp;</label><button id="fullbackup_cancel" class="btn_sm" data-ui="backup_fullbackup.btn_cancel" title="backup.fullbackup.cancel" disabled>Abbruch</button></div>
-             <div><label>&nbsp;</label><button id="fullbackup_delete" data-ui="backup_fullbackup.btn_delete" title="backup.fullbackup.delete">FullBackup loeschen</button></div>
-             <div><label>&nbsp;</label><button id="fullbackup_download" class="btn_sm" data-ui="backup_fullbackup.btn_download" title="backup.fullbackup.download" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Download</button></div>
+             <div><label>&nbsp;</label><button id="fullbackup_start" data-ui="backup_fullbackup.btn_start" data-ib-pickkey="backup_fullbackup.btn_start" title="backup.fullbackup.start">FullBackup starten</button></div>
+             <div><label>&nbsp;</label><button id="fullbackup_query_open" class="btn_sm" type="button" data-ui="backup_fullbackup.btn_query_details" data-ib-pickkey="backup_fullbackup.btn_query_details" title="backup.fullbackup.query_details" aria-label="FullBackup Aktion anzeigen"><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="11" cy="15.5" r="1.5"></circle><path d="M12,12H10V8h2a2,2,0,0,0,0-4H10A2.0023,2.0023,0,0,0,8,6v.5H6V6a4.0045,4.0045,0,0,1,4-4h2a4,4,0,0,1,0,8Z"></path><path d="M22.4479,21.0337A10.971,10.971,0,0,0,19.9211,4.7446l-.999,1.73A8.9967,8.9967,0,1,1,5,14H3a10.9916,10.9916,0,0,0,18.0338,8.4478L28.5859,30,30,28.5859Z"></path></svg></button></div>
+             <div><label>&nbsp;</label><button id="fullbackup_cancel" class="btn_sm" data-ui="backup_fullbackup.btn_cancel" data-ib-pickkey="backup_fullbackup.btn_cancel" title="backup.fullbackup.cancel" disabled>Abbruch</button></div>
+             <div><label>&nbsp;</label><button id="fullbackup_delete" data-ui="backup_fullbackup.btn_delete" data-ib-pickkey="backup_fullbackup.btn_delete" title="backup.fullbackup.delete">FullBackup loeschen</button></div>
+             <div><label>&nbsp;</label><button id="fullbackup_download" class="btn_sm" data-ui="backup_fullbackup.btn_download" data-ib-pickkey="backup_fullbackup.btn_download" title="backup.fullbackup.download" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M12 3v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 10.5 12 14l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18.5h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6.5 15.5v3M17.5 15.5v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Download</button></div>
            </div>
 
-          <div id="fullbackup_status" data-ui="backup_fullbackup.panel_status" title="backup.fullbackup.status">
+          <div id="fullbackup_status" data-ui="backup_fullbackup.panel_status" data-ib-pickkey="backup_fullbackup.panel_status" title="backup.fullbackup.status">
             <span id="fullbackup_spinner" aria-hidden="true"></span>
             <span id="fullbackup_status_txt">FullBackup laeuft...</span>
             <span id="fullbackup_status_time"></span>
           </div>
 
-          <div id="fullbackup_query_details" style="display:none;" data-ui="backup_fullbackup.btn_query_details" title="backup.fullbackup.query_details">
+          <div id="fullbackup_query_details" style="display:none;" data-ui="backup_fullbackup.btn_query_details" data-ib-pickkey="backup_fullbackup.btn_query_details" title="backup.fullbackup.query_details">
             <div id="fullbackup_query_meta"></div>
             <button id="fullbackup_query_history" type="button"></button>
             <pre id="fullbackup_query_pre"></pre>
           </div>
 
-          <div class="muted" id="fullbackup_loc" data-ui="backup_fullbackup.panel_location" title="backup.fullbackup.location" style="margin-top:10px;"></div>
+          <div class="muted" id="fullbackup_loc" data-ui="backup_fullbackup.panel_location" data-ib-pickkey="backup_fullbackup.panel_location" title="backup.fullbackup.location" style="margin-top:10px;"></div>
 
-           <details class="card" open data-ui="backup_fullbackup.table_section_root" title="backup.fullbackup.table.section">
+           <details class="card" open data-ui="backup_fullbackup.table_section_root" data-ib-pickkey="backup_fullbackup.table_section_root" title="backup.fullbackup.table.section">
              <summary><span class="ib_summary_row"><span>FullBackupliste</span></span></summary>
              <div class="card_body" style="padding:10px;">
-             <div class="table_wrap" data-ui="backup_fullbackup.panel_table_wrap" title="backup.fullbackup.table.wrap">
+             <div class="table_wrap" data-ui="backup_fullbackup.panel_table_wrap" data-ib-pickkey="backup_fullbackup.panel_table_wrap" title="backup.fullbackup.table.wrap">
               <div class="table_title">FullBackupliste</div>
-              <div class="table_head" data-ui="backup_fullbackup.panel_table_head" title="backup.fullbackup.table.head">
-               <div class="tbl_actions" data-ui="backup_fullbackup.panel_table_actions" title="backup.fullbackup.table.actions">
-                 <button id="fullbackup_reload" data-ui="backup_fullbackup.btn_reload" title="backup.fullbackup.reload" aria-label="Liste aktualisieren" class="btn_sm" style="height:34px; padding:8px 10px;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-                 <button id="fullbackup_autowidth" class="btn_sm" data-ui="backup_fullbackup.btn_autowidth" title="backup.fullbackup.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
+              <div class="table_head" data-ui="backup_fullbackup.panel_table_head" data-ib-pickkey="backup_fullbackup.panel_table_head" title="backup.fullbackup.table.head">
+               <div class="tbl_actions" data-ui="backup_fullbackup.panel_table_actions" data-ib-pickkey="backup_fullbackup.panel_table_actions" title="backup.fullbackup.table.actions">
+                 <button id="fullbackup_reload" data-ui="backup_fullbackup.btn_reload" data-ib-pickkey="backup_fullbackup.btn_reload" title="backup.fullbackup.reload" aria-label="Liste aktualisieren" class="btn_sm" style="height:34px; padding:8px 10px;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.34-5.66" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 4v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                 <button id="fullbackup_autowidth" class="btn_sm" data-ui="backup_fullbackup.btn_autowidth" data-ib-pickkey="backup_fullbackup.btn_autowidth" title="backup.fullbackup.autowidth" aria-label="Spaltenbreite automatisch" style="height:34px; padding:8px 10px;">
                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                      <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                      <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -377,7 +377,7 @@
                      <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                    </svg>
                  </button>
-                 <button id="fullbackup_windowwidth" class="btn_sm" data-ui="backup_fullbackup.btn_windowwidth" title="backup.fullbackup.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
+                 <button id="fullbackup_windowwidth" class="btn_sm" data-ui="backup_fullbackup.btn_windowwidth" data-ib-pickkey="backup_fullbackup.btn_windowwidth" title="backup.fullbackup.windowwidth" aria-label="Fensterbreite" style="height:34px; padding:8px 10px;">
                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                      <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                      <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -386,17 +386,17 @@
                      <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                    </svg>
                  </button>
-                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullbackup_wrap" data-ui="backup_fullbackup.chk_wrap" title="backup.fullbackup.wrap"/>Umbruch</label>
-                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullbackup_colfilter" data-ui="backup_fullbackup.chk_colfilter" title="backup.fullbackup.colfilter"/>Spaltenfilter</label>
+                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullbackup_wrap" data-ui="backup_fullbackup.chk_wrap" data-ib-pickkey="backup_fullbackup.chk_wrap" title="backup.fullbackup.wrap"/>Umbruch</label>
+                 <label style="display:flex; align-items:center; gap: 6px; padding-top: 6px;"><input type="checkbox" id="fullbackup_colfilter" data-ui="backup_fullbackup.chk_colfilter" data-ib-pickkey="backup_fullbackup.chk_colfilter" title="backup.fullbackup.colfilter"/>Spaltenfilter</label>
                </div>
-              <div class="muted" id="fullbackup_list_info" data-ui="backup_fullbackup.panel_list_info" title="backup.fullbackup.list_info"></div>
+              <div class="muted" id="fullbackup_list_info" data-ui="backup_fullbackup.panel_list_info" data-ib-pickkey="backup_fullbackup.panel_list_info" title="backup.fullbackup.list_info"></div>
             </div>
 
-             <div class="table_box" id="fullbackup_box" data-ui="backup_fullbackup.panel_table_box" title="backup.fullbackup.table_box">
-              <table id="fullbackup_tbl" class="ib_tbl" data-ui="backup_fullbackup.tbl_table" title="backup.fullbackup.table">
+             <div class="table_box" id="fullbackup_box" data-ui="backup_fullbackup.panel_table_box" data-ib-pickkey="backup_fullbackup.panel_table_box" title="backup.fullbackup.table_box">
+              <table id="fullbackup_tbl" class="ib_tbl" data-ui="backup_fullbackup.tbl_table" data-ib-pickkey="backup_fullbackup.tbl_table" title="backup.fullbackup.table">
                 <thead>
                   <tr>
-                    <th style="width:20px;"><input type="checkbox" id="fullbackup_sel_all" data-ui="backup_fullbackup.chk_select_all" title="backup.fullbackup.select_all"/></th>
+                    <th style="width:20px;"><input type="checkbox" id="fullbackup_sel_all" data-ui="backup_fullbackup.chk_select_all" data-ib-pickkey="backup_fullbackup.chk_select_all" title="backup.fullbackup.select_all"/></th>
                     <th>Backup Datum</th>
                     <th>kind</th>
                     <th>format</th>

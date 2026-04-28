@@ -845,6 +845,33 @@ def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     assert '<PICK:' in tmpl
 
 
+def test_dashboard_static_sections_pair_data_ui_with_explicit_pickkeys():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'data-ui="dashboard_page.main" data-ib-pickkey="dashboard_page.main"' in body
+    assert 'data-ui="dashboard_selection.section_root" data-ib-pickkey="dashboard_selection.section_root"' in body
+    assert 'data-ui="dashboard_selection.input_measurement_filter_value" data-ib-pickkey="dashboard_selection.input_measurement_filter_value"' in body
+    assert 'data-ui="dashboard_caching.btn_cache_pruefen" data-ib-pickkey="dashboard_caching.btn_cache_pruefen"' in body
+    assert 'data-ui="dashboard_caching.panel_query_details" data-ib-pickkey="dashboard_caching.panel_query_details"' in body
+    assert 'data-ui="dashboard_analysis.btn_analyse_mit_cache" data-ib-pickkey="dashboard_analysis.btn_analyse_mit_cache"' in body
+    assert 'data-ui="dashboard_analysis.panel_checklist" data-ib-pickkey="dashboard_analysis.panel_checklist"' in body
+    assert 'data-ui="dashboard_outliers.tbl_ausreisser" data-ib-pickkey="dashboard_outliers.tbl_ausreisser"' in body
+    assert 'data-ui="dashboard_raw.btn_kopieren" data-ib-pickkey="dashboard_raw.btn_kopieren"' in body
+    assert 'data-ui="dashboard_raw.tbl_rohdaten" data-ib-pickkey="dashboard_raw.tbl_rohdaten"' in body
+    assert 'data-ui="dashboard_graph.btn_aktualisieren" data-ib-pickkey="dashboard_graph.btn_aktualisieren"' in body
+    assert 'data-ui="dashboard_graph.panel_query" data-ib-pickkey="dashboard_graph.panel_query"' in body
+    assert 'data-ui="dashboard_graph.handle_resize" data-ib-pickkey="dashboard_graph.handle_resize"' in body
+
+
+def test_all_template_data_ui_literals_have_explicit_pickkeys():
+    templates_dir = Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates"
+    missing = []
+    for template_path in sorted(templates_dir.glob("*.html")):
+        for line_no, line in enumerate(template_path.read_text().splitlines(), 1):
+            if 'data-ui="' in line and 'data-ib-pickkey="' not in line:
+                missing.append(f"{template_path.name}:{line_no}")
+    assert missing == []
+
+
 def test_dashboard_issue223_removed_tip_selection_and_moved_start_info():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'data-ui="tip.selection"' not in body

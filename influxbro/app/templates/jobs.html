@@ -66,24 +66,24 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="jobs_page.main" title="jobs.page">
+    <main class="content" data-ui="jobs_page.main" data-ib-pickkey="jobs_page.main" title="jobs.page">
       <h2>Jobs &amp; Cache</h2>
       <div class="muted">Background-Jobs (Statistik, Restore/Copy). Hier siehst du laufende Jobs und die letzten abgeschlossenen Jobs aus der Historie.</div>
 
-        <details class="card" open data-ui="jobs_main.section_root" title="jobs.section.root">
+        <details class="card" open data-ui="jobs_main.section_root" data-ib-pickkey="jobs_main.section_root" title="jobs.section.root">
           <summary><span class="ib_summary_row"><span>Jobs</span></span></summary>
           <div class="card_body" style="padding:12px;">
-          <div class="row" data-ui="jobs_main.panel_controls" title="jobs.controls">
+          <div class="row" data-ui="jobs_main.panel_controls" data-ib-pickkey="jobs_main.panel_controls" title="jobs.controls">
             <div>
               <label class="muted" style="display:block; font-size: 12px;">Auto-Refresh</label>
-              <select id="auto" data-ui="jobs_main.select_auto" title="jobs.auto">
+              <select id="auto" data-ui="jobs_main.select_auto" data-ib-pickkey="jobs_main.select_auto" title="jobs.auto">
               <option value="on" selected>an (2s)</option>
               <option value="off">aus</option>
             </select>
           </div>
             <div>
               <label class="muted" style="display:block; font-size: 12px;">Typ</label>
-              <select id="type" data-ui="jobs_main.select_type" title="jobs.type">
+              <select id="type" data-ui="jobs_main.select_type" data-ib-pickkey="jobs_main.select_type" title="jobs.type">
               <option value="">alle</option>
               <option value="global_stats">global_stats</option>
               <option value="restore_copy">restore_copy</option>
@@ -98,25 +98,25 @@
             </div>
             <div>
               <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-              <button id="refresh" data-ui="jobs_main.btn_refresh" title="jobs.refresh">Aktualisieren</button>
+              <button id="refresh" data-ui="jobs_main.btn_refresh" data-ib-pickkey="jobs_main.btn_refresh" title="jobs.refresh">Aktualisieren</button>
             </div>
             <div style="flex:1; min-width: 260px;">
               <label class="muted" style="display:block; font-size: 12px;">Suche</label>
               <div class="ib_clear_row">
-                <input id="q" placeholder="job_id/state/message..." data-ui="jobs_main.input_search" title="jobs.search" />
+                <input id="q" placeholder="job_id/state/message..." data-ui="jobs_main.input_search" data-ib-pickkey="jobs_main.input_search" title="jobs.search" />
                 <button type="button" class="ib_clear_btn" data-clear-for="q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
               </div>
             </div>
           </div>
 
-        <div class="status" id="info" data-ui="jobs_main.panel_info" title="jobs.info"></div>
+        <div class="status" id="info" data-ui="jobs_main.panel_info" data-ib-pickkey="jobs_main.panel_info" title="jobs.info"></div>
         <div id="err" class="err"></div>
 
-        <div class="table_wrap" data-ui="jobs_table.panel_wrap" title="jobs.table.wrap">
+        <div class="table_wrap" data-ui="jobs_table.panel_wrap" data-ib-pickkey="jobs_table.panel_wrap" title="jobs.table.wrap">
           <div class="table_title">Jobs</div>
-          <div class="table_head" data-ui="jobs_table.panel_head" title="jobs.table.head">
-            <div class="tbl_actions" data-ui="jobs_table.panel_actions" title="jobs.table.actions">
-              <button class="btn_xs" id="jobs_autowidth" data-ui="jobs_table.btn_autowidth" title="jobs.table.autowidth" aria-label="Spaltenbreite automatisch">
+          <div class="table_head" data-ui="jobs_table.panel_head" data-ib-pickkey="jobs_table.panel_head" title="jobs.table.head">
+            <div class="tbl_actions" data-ui="jobs_table.panel_actions" data-ib-pickkey="jobs_table.panel_actions" title="jobs.table.actions">
+              <button class="btn_xs" id="jobs_autowidth" data-ui="jobs_table.btn_autowidth" data-ib-pickkey="jobs_table.btn_autowidth" title="jobs.table.autowidth" aria-label="Spaltenbreite automatisch">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -124,7 +124,7 @@
                   <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <button class="btn_xs" id="jobs_windowwidth" data-ui="jobs_table.btn_windowwidth" title="jobs.table.windowwidth" aria-label="Fensterbreite">
+              <button class="btn_xs" id="jobs_windowwidth" data-ui="jobs_table.btn_windowwidth" data-ib-pickkey="jobs_table.btn_windowwidth" title="jobs.table.windowwidth" aria-label="Fensterbreite">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                   <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -133,20 +133,20 @@
                   <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <label><input type="checkbox" id="jobs_wrap" data-ui="jobs_table.chk_wrap_toggle" title="jobs.table.wrap_toggle"/>Umbruch</label>
-              <label><input type="checkbox" id="jobs_colfilter" data-ui="jobs_table.chk_colfilter" title="jobs.table.colfilter"/>Spaltenfilter</label>
-              <button class="btn_xs" id="jobs_select_all_btn" data-ui="jobs_table.btn_select_all" title="jobs.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
-              <button class="btn_xs" id="jobs_select_none_btn" data-ui="jobs_table.btn_select_none" title="jobs.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
-              <button class="btn_xs" id="jobs_details_btn" data-ui="jobs_table.btn_details" title="jobs.table.details" disabled>Details</button>
-              <button class="btn_xs" id="jobs_copy_btn" data-ui="jobs_table.btn_copy_id" title="jobs.table.copy_id" disabled>Copy ID</button>
-              <button class="btn_xs" id="jobs_open_btn" data-ui="jobs_table.btn_open_stats" title="jobs.table.open_stats" disabled>Open Statistik</button>
-              <button class="btn_xs" id="jobs_cancel_btn" data-ui="jobs_table.btn_cancel" title="jobs.table.cancel" disabled>Abbruch</button>
+              <label><input type="checkbox" id="jobs_wrap" data-ui="jobs_table.chk_wrap_toggle" data-ib-pickkey="jobs_table.chk_wrap_toggle" title="jobs.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="jobs_colfilter" data-ui="jobs_table.chk_colfilter" data-ib-pickkey="jobs_table.chk_colfilter" title="jobs.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="jobs_select_all_btn" data-ui="jobs_table.btn_select_all" data-ib-pickkey="jobs_table.btn_select_all" title="jobs.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="jobs_select_none_btn" data-ui="jobs_table.btn_select_none" data-ib-pickkey="jobs_table.btn_select_none" title="jobs.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="jobs_details_btn" data-ui="jobs_table.btn_details" data-ib-pickkey="jobs_table.btn_details" title="jobs.table.details" disabled>Details</button>
+              <button class="btn_xs" id="jobs_copy_btn" data-ui="jobs_table.btn_copy_id" data-ib-pickkey="jobs_table.btn_copy_id" title="jobs.table.copy_id" disabled>Copy ID</button>
+              <button class="btn_xs" id="jobs_open_btn" data-ui="jobs_table.btn_open_stats" data-ib-pickkey="jobs_table.btn_open_stats" title="jobs.table.open_stats" disabled>Open Statistik</button>
+              <button class="btn_xs" id="jobs_cancel_btn" data-ui="jobs_table.btn_cancel" data-ib-pickkey="jobs_table.btn_cancel" title="jobs.table.cancel" disabled>Abbruch</button>
             </div>
             <div class="muted">Tipp: Spaltenbreite per Ziehen am Header.</div>
           </div>
 
           <div class="table_box" id="jobs_box">
-            <table id="tbl" class="ib_tbl" data-ui="jobs_main.tbl_table" title="jobs.table">
+            <table id="tbl" class="ib_tbl" data-ui="jobs_main.tbl_table" data-ib-pickkey="jobs_main.tbl_table" title="jobs.table">
               <thead>
                 <tr>
                   <th style="width: 180px;">job_id</th>
@@ -167,37 +167,37 @@
           </div>
         </details>
 
-      <details class="card" open data-ui="jobs_cache.section_root" title="cache.section.root">
+      <details class="card" open data-ui="jobs_cache.section_root" data-ib-pickkey="jobs_cache.section_root" title="cache.section.root">
         <summary><span class="ib_summary_row"><span>Cache</span></span></summary>
         <div class="card_body" style="padding:12px;">
           <div class="muted">Server-Caches unter <code>/data/dash_cache</code> (Dashboard) und <code>/data/stats_cache</code> (Statistik).</div>
 
-        <div class="row" style="margin-top: 10px;" data-ui="jobs_cache.panel_controls" title="cache.controls">
+        <div class="row" style="margin-top: 10px;" data-ui="jobs_cache.panel_controls" data-ib-pickkey="jobs_cache.panel_controls" title="cache.controls">
           <div>
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="cache_refresh" data-ui="jobs_cache.btn_refresh" title="cache.refresh">Aktualisieren</button>
+            <button id="cache_refresh" data-ui="jobs_cache.btn_refresh" data-ib-pickkey="jobs_cache.btn_refresh" title="cache.refresh">Aktualisieren</button>
           </div>
           <div>
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-             <button id="cache_delete_all" data-ui="jobs_cache.btn_delete_all" title="cache.delete_all">Cache loeschen (alles)</button>
+             <button id="cache_delete_all" data-ui="jobs_cache.btn_delete_all" data-ib-pickkey="jobs_cache.btn_delete_all" title="cache.delete_all">Cache loeschen (alles)</button>
            </div>
           <div style="flex:1; min-width: 260px;">
             <label class="muted" style="display:block; font-size: 12px;">Suche</label>
              <div class="ib_clear_row">
-               <input id="cache_q" placeholder="dashboard/stats/measurement/field/..." data-ui="jobs_cache.input_search" title="cache.search" />
+               <input id="cache_q" placeholder="dashboard/stats/measurement/field/..." data-ui="jobs_cache.input_search" data-ib-pickkey="jobs_cache.input_search" title="cache.search" />
                <button type="button" class="ib_clear_btn" data-clear-for="cache_q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
              </div>
            </div>
           </div>
 
-        <div class="status" id="cache_info" data-ui="jobs_cache.panel_info" title="cache.info"></div>
+        <div class="status" id="cache_info" data-ui="jobs_cache.panel_info" data-ib-pickkey="jobs_cache.panel_info" title="cache.info"></div>
         <div id="cache_err" class="err"></div>
 
-        <div class="table_wrap" data-ui="jobs_cache.panel_table_wrap" title="cache.table.wrap">
+        <div class="table_wrap" data-ui="jobs_cache.panel_table_wrap" data-ib-pickkey="jobs_cache.panel_table_wrap" title="cache.table.wrap">
           <div class="table_title">Cache</div>
-          <div class="table_head" data-ui="jobs_cache.panel_table_head" title="cache.table.head">
-            <div class="tbl_actions" data-ui="jobs_cache.panel_table_actions" title="cache.table.actions">
-              <button class="btn_xs" id="cache_autowidth" data-ui="jobs_cache.btn_table_autowidth" title="cache.table.autowidth" aria-label="Spaltenbreite automatisch">
+          <div class="table_head" data-ui="jobs_cache.panel_table_head" data-ib-pickkey="jobs_cache.panel_table_head" title="cache.table.head">
+            <div class="tbl_actions" data-ui="jobs_cache.panel_table_actions" data-ib-pickkey="jobs_cache.panel_table_actions" title="cache.table.actions">
+              <button class="btn_xs" id="cache_autowidth" data-ui="jobs_cache.btn_table_autowidth" data-ib-pickkey="jobs_cache.btn_table_autowidth" title="cache.table.autowidth" aria-label="Spaltenbreite automatisch">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -205,7 +205,7 @@
                   <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <button class="btn_xs" id="cache_windowwidth" data-ui="jobs_cache.btn_table_windowwidth" title="cache.table.windowwidth" aria-label="Fensterbreite">
+              <button class="btn_xs" id="cache_windowwidth" data-ui="jobs_cache.btn_table_windowwidth" data-ib-pickkey="jobs_cache.btn_table_windowwidth" title="cache.table.windowwidth" aria-label="Fensterbreite">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                   <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -214,20 +214,20 @@
                   <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <label><input type="checkbox" id="cache_wrap" data-ui="jobs_cache.chk_table_wrap_toggle" title="cache.table.wrap_toggle"/>Umbruch</label>
-              <label><input type="checkbox" id="cache_colfilter" data-ui="jobs_cache.chk_table_colfilter" title="cache.table.colfilter"/>Spaltenfilter</label>
-              <button class="btn_xs" id="cache_select_all_btn" data-ui="jobs_cache.btn_select_all" title="cache.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
-              <button class="btn_xs" id="cache_select_none_btn" data-ui="jobs_cache.btn_select_none" title="cache.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
-              <button class="btn_xs" id="cache_info_btn" data-ui="jobs_cache.btn_table_info" title="cache.table.info" disabled>Info</button>
-              <button class="btn_xs" id="cache_check_btn" data-ui="jobs_cache.btn_table_check" title="cache.table.check" disabled>Pruefen</button>
-              <button class="btn_xs" id="cache_update_btn" data-ui="jobs_cache.btn_table_update" title="cache.table.update" disabled>Aktualisieren</button>
-              <button class="btn_xs" id="cache_delete_btn" data-ui="jobs_cache.btn_table_delete" title="cache.table.delete" disabled>Loeschen</button>
+              <label><input type="checkbox" id="cache_wrap" data-ui="jobs_cache.chk_table_wrap_toggle" data-ib-pickkey="jobs_cache.chk_table_wrap_toggle" title="cache.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="cache_colfilter" data-ui="jobs_cache.chk_table_colfilter" data-ib-pickkey="jobs_cache.chk_table_colfilter" title="cache.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="cache_select_all_btn" data-ui="jobs_cache.btn_select_all" data-ib-pickkey="jobs_cache.btn_select_all" title="cache.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="cache_select_none_btn" data-ui="jobs_cache.btn_select_none" data-ib-pickkey="jobs_cache.btn_select_none" title="cache.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="cache_info_btn" data-ui="jobs_cache.btn_table_info" data-ib-pickkey="jobs_cache.btn_table_info" title="cache.table.info" disabled>Info</button>
+              <button class="btn_xs" id="cache_check_btn" data-ui="jobs_cache.btn_table_check" data-ib-pickkey="jobs_cache.btn_table_check" title="cache.table.check" disabled>Pruefen</button>
+              <button class="btn_xs" id="cache_update_btn" data-ui="jobs_cache.btn_table_update" data-ib-pickkey="jobs_cache.btn_table_update" title="cache.table.update" disabled>Aktualisieren</button>
+              <button class="btn_xs" id="cache_delete_btn" data-ui="jobs_cache.btn_table_delete" data-ib-pickkey="jobs_cache.btn_table_delete" title="cache.table.delete" disabled>Loeschen</button>
             </div>
             <div class="muted">Cache-Tabelle ist clientseitig filterbar (Suche + Spaltenfilter).</div>
           </div>
 
           <div class="table_box" id="cache_box">
-            <table id="cache_tbl" class="ib_tbl" data-ui="jobs_cache.tbl_table" title="cache.table">
+            <table id="cache_tbl" class="ib_tbl" data-ui="jobs_cache.tbl_table" data-ib-pickkey="jobs_cache.tbl_table" title="cache.table">
             <thead>
                 <tr>
                   <th style="width: 46px;">ok</th>
@@ -255,7 +255,7 @@
         </div>
       </details>
 
-      <details class="card" open data-ui="jobs_analysis_cache.section_root" title="analysis_cache.section.root">
+      <details class="card" open data-ui="jobs_analysis_cache.section_root" data-ib-pickkey="jobs_analysis_cache.section_root" title="analysis_cache.section.root">
         <summary><span class="ib_summary_row"><span>Analysecache</span></span></summary>
         <div class="card_body" style="padding:12px;">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
@@ -264,43 +264,43 @@
             <div class="muted">Persistente Analyse-Segmente fuer die Ausreissersuche mit farbiger Cache-Abdeckung.</div>
           </div>
         </div>
-        <div class="row" style="margin-top:10px;" data-ui="jobs_analysis_cache.panel_controls" title="analysis_cache.controls">
+        <div class="row" style="margin-top:10px;" data-ui="jobs_analysis_cache.panel_controls" data-ib-pickkey="jobs_analysis_cache.panel_controls" title="analysis_cache.controls">
           <div>
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="analysis_cache_refresh" data-ui="jobs_analysis_cache.btn_refresh" title="analysis_cache.refresh">Aktualisieren</button>
+            <button id="analysis_cache_refresh" data-ui="jobs_analysis_cache.btn_refresh" data-ib-pickkey="jobs_analysis_cache.btn_refresh" title="analysis_cache.refresh">Aktualisieren</button>
           </div>
           <div style="flex:1; min-width:260px;">
             <label class="muted" style="display:block; font-size:12px;">Suche</label>
             <div class="ib_clear_row">
-              <input id="analysis_cache_q" placeholder="measurement/field/entity_id/friendly_name..." data-ui="jobs_analysis_cache.input_search" title="analysis_cache.search" />
+              <input id="analysis_cache_q" placeholder="measurement/field/entity_id/friendly_name..." data-ui="jobs_analysis_cache.input_search" data-ib-pickkey="jobs_analysis_cache.input_search" title="analysis_cache.search" />
               <button type="button" class="ib_clear_btn" data-clear-for="analysis_cache_q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
             </div>
           </div>
         </div>
-        <div class="status" id="analysis_cache_info" data-ui="jobs_analysis_cache.panel_info" title="analysis_cache.info"></div>
+        <div class="status" id="analysis_cache_info" data-ui="jobs_analysis_cache.panel_info" data-ib-pickkey="jobs_analysis_cache.panel_info" title="analysis_cache.info"></div>
         <div id="analysis_cache_err" class="err"></div>
-        <div class="table_wrap" data-ui="jobs_analysis_cache.panel_table_wrap" title="analysis_cache.table.wrap">
+        <div class="table_wrap" data-ui="jobs_analysis_cache.panel_table_wrap" data-ib-pickkey="jobs_analysis_cache.panel_table_wrap" title="analysis_cache.table.wrap">
           <div class="table_title">Analysecache</div>
-          <div class="table_head" data-ui="jobs_analysis_cache.panel_table_head" title="analysis_cache.table.head">
-            <div class="tbl_actions" data-ui="jobs_analysis_cache.panel_table_actions" title="analysis_cache.table.actions">
-              <button class="btn_xs" id="analysis_cache_autowidth" data-ui="jobs_analysis_cache.btn_table_autowidth" title="analysis_cache.table.autowidth" aria-label="Spaltenbreite automatisch">
+          <div class="table_head" data-ui="jobs_analysis_cache.panel_table_head" data-ib-pickkey="jobs_analysis_cache.panel_table_head" title="analysis_cache.table.head">
+            <div class="tbl_actions" data-ui="jobs_analysis_cache.panel_table_actions" data-ib-pickkey="jobs_analysis_cache.panel_table_actions" title="analysis_cache.table.actions">
+              <button class="btn_xs" id="analysis_cache_autowidth" data-ui="jobs_analysis_cache.btn_table_autowidth" data-ib-pickkey="jobs_analysis_cache.btn_table_autowidth" title="analysis_cache.table.autowidth" aria-label="Spaltenbreite automatisch">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 10l-2 2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
-              <button class="btn_xs" id="analysis_cache_windowwidth" data-ui="jobs_analysis_cache.btn_table_windowwidth" title="analysis_cache.table.windowwidth" aria-label="Fensterbreite">
+              <button class="btn_xs" id="analysis_cache_windowwidth" data-ui="jobs_analysis_cache.btn_table_windowwidth" data-ib-pickkey="jobs_analysis_cache.btn_table_windowwidth" title="analysis_cache.table.windowwidth" aria-label="Fensterbreite">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 12l2-2M6 12l2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
-              <label><input type="checkbox" id="analysis_cache_wrap" data-ui="jobs_analysis_cache.chk_table_wrap_toggle" title="analysis_cache.table.wrap_toggle"/>Umbruch</label>
-              <label><input type="checkbox" id="analysis_cache_colfilter" data-ui="jobs_analysis_cache.chk_table_colfilter" title="analysis_cache.table.colfilter"/>Spaltenfilter</label>
-              <button class="btn_xs" id="analysis_cache_select_all_btn" data-ui="jobs_analysis_cache.btn_select_all" title="analysis_cache.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
-              <button class="btn_xs" id="analysis_cache_select_none_btn" data-ui="jobs_analysis_cache.btn_select_none" title="analysis_cache.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
-              <button class="btn_xs" id="analysis_cache_rebuild_btn" data-ui="jobs_analysis_cache.btn_table_rebuild" title="analysis_cache.table.rebuild" disabled>Neu aufbauen</button>
-              <button class="btn_xs" id="analysis_cache_delete_btn" data-ui="jobs_analysis_cache.btn_table_delete" title="analysis_cache.table.delete" disabled>Loeschen</button>
-              <button class="btn_xs" id="analysis_cache_delete_all" data-ui="jobs_analysis_cache.btn_delete_all" title="analysis_cache.delete_all">Alle loeschen</button>
+              <label><input type="checkbox" id="analysis_cache_wrap" data-ui="jobs_analysis_cache.chk_table_wrap_toggle" data-ib-pickkey="jobs_analysis_cache.chk_table_wrap_toggle" title="analysis_cache.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="analysis_cache_colfilter" data-ui="jobs_analysis_cache.chk_table_colfilter" data-ib-pickkey="jobs_analysis_cache.chk_table_colfilter" title="analysis_cache.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="analysis_cache_select_all_btn" data-ui="jobs_analysis_cache.btn_select_all" data-ib-pickkey="jobs_analysis_cache.btn_select_all" title="analysis_cache.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="analysis_cache_select_none_btn" data-ui="jobs_analysis_cache.btn_select_none" data-ib-pickkey="jobs_analysis_cache.btn_select_none" title="analysis_cache.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="analysis_cache_rebuild_btn" data-ui="jobs_analysis_cache.btn_table_rebuild" data-ib-pickkey="jobs_analysis_cache.btn_table_rebuild" title="analysis_cache.table.rebuild" disabled>Neu aufbauen</button>
+              <button class="btn_xs" id="analysis_cache_delete_btn" data-ui="jobs_analysis_cache.btn_table_delete" data-ib-pickkey="jobs_analysis_cache.btn_table_delete" title="analysis_cache.table.delete" disabled>Loeschen</button>
+              <button class="btn_xs" id="analysis_cache_delete_all" data-ui="jobs_analysis_cache.btn_delete_all" data-ib-pickkey="jobs_analysis_cache.btn_delete_all" title="analysis_cache.delete_all">Alle loeschen</button>
             </div>
             <div class="muted">Gruppiert nach Serie; Zeitstrahl zeigt Cache, Neu lesen und geaenderte Bereiche.</div>
           </div>
           <div class="table_box" id="analysis_cache_box">
-            <table id="analysis_cache_tbl" class="ib_tbl" data-ui="jobs_analysis_cache.tbl_table" title="analysis_cache.table">
+            <table id="analysis_cache_tbl" class="ib_tbl" data-ui="jobs_analysis_cache.tbl_table" data-ib-pickkey="jobs_analysis_cache.tbl_table" title="analysis_cache.table">
               <thead>
                 <tr>
                   <th style="width:170px;">updated</th>
@@ -321,7 +321,7 @@
         </div>
       </details>
 
-      <details class="card" open data-ui="jobs_timers.section_root" title="timers.section.root">
+      <details class="card" open data-ui="jobs_timers.section_root" data-ib-pickkey="jobs_timers.section_root" title="timers.section.root">
         <summary><span class="ib_summary_row"><span>Timer Jobs</span></span></summary>
         <div class="card_body" style="padding:12px;">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
@@ -331,14 +331,14 @@
           </div>
         </div>
 
-        <div class="status" id="timers_info" data-ui="jobs_timers.panel_info" title="timers.info"></div>
+        <div class="status" id="timers_info" data-ui="jobs_timers.panel_info" data-ib-pickkey="jobs_timers.panel_info" title="timers.info"></div>
         <div id="timers_err" class="err"></div>
 
-        <div class="table_wrap" data-ui="jobs_timers.panel_table_wrap" title="timers.table.wrap">
+        <div class="table_wrap" data-ui="jobs_timers.panel_table_wrap" data-ib-pickkey="jobs_timers.panel_table_wrap" title="timers.table.wrap">
           <div class="table_title">Timer Jobs</div>
-          <div class="table_head" data-ui="jobs_timers.panel_table_head" title="timers.table.head">
-            <div class="tbl_actions" data-ui="jobs_timers.panel_table_actions" title="timers.table.actions">
-              <button class="btn_xs" id="timers_autowidth" data-ui="jobs_timers.btn_table_autowidth" title="timers.table.autowidth" aria-label="Spaltenbreite automatisch">
+          <div class="table_head" data-ui="jobs_timers.panel_table_head" data-ib-pickkey="jobs_timers.panel_table_head" title="timers.table.head">
+            <div class="tbl_actions" data-ui="jobs_timers.panel_table_actions" data-ib-pickkey="jobs_timers.panel_table_actions" title="timers.table.actions">
+              <button class="btn_xs" id="timers_autowidth" data-ui="jobs_timers.btn_table_autowidth" data-ib-pickkey="jobs_timers.btn_table_autowidth" title="timers.table.autowidth" aria-label="Spaltenbreite automatisch">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -346,7 +346,7 @@
                   <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <button class="btn_xs" id="timers_windowwidth" data-ui="jobs_timers.btn_table_windowwidth" title="timers.table.windowwidth" aria-label="Fensterbreite">
+              <button class="btn_xs" id="timers_windowwidth" data-ui="jobs_timers.btn_table_windowwidth" data-ib-pickkey="jobs_timers.btn_table_windowwidth" title="timers.table.windowwidth" aria-label="Fensterbreite">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                   <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -355,22 +355,22 @@
                   <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <label><input type="checkbox" id="timers_wrap" data-ui="jobs_timers.chk_table_wrap_toggle" title="timers.table.wrap_toggle"/>Umbruch</label>
-              <label><input type="checkbox" id="timers_colfilter" data-ui="jobs_timers.chk_table_colfilter" title="timers.table.colfilter"/>Spaltenfilter</label>
-              <button class="btn_xs" id="timers_select_all_btn" data-ui="jobs_timers.btn_select_all" title="timers.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
-              <button class="btn_xs" id="timers_select_none_btn" data-ui="jobs_timers.btn_select_none" title="timers.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
-              <button class="btn_xs" id="timers_mode_btn" data-ui="jobs_timers.btn_table_mode" title="timers.table.mode" disabled>Modus</button>
-              <button class="btn_xs" id="timers_history_btn" data-ui="jobs_timers.btn_table_history" title="timers.table.history" disabled>History</button>
-              <button class="btn_xs" id="timers_start_btn" data-ui="jobs_timers.btn_table_start" title="timers.table.start" disabled>Start</button>
-              <button class="btn_xs" id="timers_abort_btn" data-ui="jobs_timers.btn_table_abort" title="timers.table.abort" disabled>Abbruch</button>
-              <button class="btn_xs" id="timers_disable_btn" data-ui="jobs_timers.btn_table_disable" title="timers.table.disable" disabled>Deaktivieren</button>
-              <button class="btn_xs" id="timers_enable_btn" data-ui="jobs_timers.btn_table_enable" title="timers.table.enable" disabled>Aktivieren</button>
+              <label><input type="checkbox" id="timers_wrap" data-ui="jobs_timers.chk_table_wrap_toggle" data-ib-pickkey="jobs_timers.chk_table_wrap_toggle" title="timers.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="timers_colfilter" data-ui="jobs_timers.chk_table_colfilter" data-ib-pickkey="jobs_timers.chk_table_colfilter" title="timers.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="timers_select_all_btn" data-ui="jobs_timers.btn_select_all" data-ib-pickkey="jobs_timers.btn_select_all" title="timers.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="timers_select_none_btn" data-ui="jobs_timers.btn_select_none" data-ib-pickkey="jobs_timers.btn_select_none" title="timers.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="timers_mode_btn" data-ui="jobs_timers.btn_table_mode" data-ib-pickkey="jobs_timers.btn_table_mode" title="timers.table.mode" disabled>Modus</button>
+              <button class="btn_xs" id="timers_history_btn" data-ui="jobs_timers.btn_table_history" data-ib-pickkey="jobs_timers.btn_table_history" title="timers.table.history" disabled>History</button>
+              <button class="btn_xs" id="timers_start_btn" data-ui="jobs_timers.btn_table_start" data-ib-pickkey="jobs_timers.btn_table_start" title="timers.table.start" disabled>Start</button>
+              <button class="btn_xs" id="timers_abort_btn" data-ui="jobs_timers.btn_table_abort" data-ib-pickkey="jobs_timers.btn_table_abort" title="timers.table.abort" disabled>Abbruch</button>
+              <button class="btn_xs" id="timers_disable_btn" data-ui="jobs_timers.btn_table_disable" data-ib-pickkey="jobs_timers.btn_table_disable" title="timers.table.disable" disabled>Deaktivieren</button>
+              <button class="btn_xs" id="timers_enable_btn" data-ui="jobs_timers.btn_table_enable" data-ib-pickkey="jobs_timers.btn_table_enable" title="timers.table.enable" disabled>Aktivieren</button>
             </div>
             <div class="muted">Timer-Jobs sind sortierbar (Headerklick) und in der Hoehe anpassbar.</div>
           </div>
 
           <div class="table_box" id="timers_box">
-           <table id="timers_tbl" class="ib_tbl" data-ui="jobs_timers.tbl_table" title="timers.table">
+           <table id="timers_tbl" class="ib_tbl" data-ui="jobs_timers.tbl_table" data-ib-pickkey="jobs_timers.tbl_table" title="timers.table">
              <thead>
                 <tr>
                   <th style="width: 140px;">id</th>
@@ -417,7 +417,7 @@
         </div>
       </dialog>
 
-      <details class="card" open data-ui="jobs_usage.section_root" title="usage.section.root">
+      <details class="card" open data-ui="jobs_usage.section_root" data-ib-pickkey="jobs_usage.section_root" title="usage.section.root">
         <summary><span class="ib_summary_row"><span>Cache Nutzung</span></span></summary>
         <div class="card_body" style="padding:12px;">
         <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 10px; flex-wrap:wrap;">
@@ -427,39 +427,39 @@
           </div>
         </div>
 
-        <div class="row" style="margin-top: 10px;" data-ui="jobs_usage.panel_controls" title="usage.controls">
+        <div class="row" style="margin-top: 10px;" data-ui="jobs_usage.panel_controls" data-ib-pickkey="jobs_usage.panel_controls" title="usage.controls">
           <div style="flex:1; min-width: 260px;">
             <label class="muted" style="display:block; font-size: 12px;">Suche</label>
             <div class="ib_clear_row">
-              <input id="usage_q" placeholder="kind/page/cache_id/run_id/note..." data-ui="jobs_usage.input_search" title="usage.search" />
+              <input id="usage_q" placeholder="kind/page/cache_id/run_id/note..." data-ui="jobs_usage.input_search" data-ib-pickkey="jobs_usage.input_search" title="usage.search" />
               <button type="button" class="ib_clear_btn" data-clear-for="usage_q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
             </div>
           </div>
           <div>
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="usage_refresh" data-ui="jobs_usage.btn_refresh" title="usage.refresh">Aktualisieren</button>
+            <button id="usage_refresh" data-ui="jobs_usage.btn_refresh" data-ib-pickkey="jobs_usage.btn_refresh" title="usage.refresh">Aktualisieren</button>
           </div>
           <div>
             <label class="muted" style="display:block; font-size: 12px;">&nbsp;</label>
-            <button id="usage_clear" data-ui="jobs_usage.btn_clear" title="usage.clear">Log leeren</button>
+            <button id="usage_clear" data-ui="jobs_usage.btn_clear" data-ib-pickkey="jobs_usage.btn_clear" title="usage.clear">Log leeren</button>
           </div>
           <div>
             <label class="muted" style="display:block; font-size: 12px;">Caching</label>
             <label style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px;">
-              <input id="usage_log_to_file" type="checkbox" data-ui="jobs_usage.chk_log_to_file" title="usage.log_to_file" />
+              <input id="usage_log_to_file" type="checkbox" data-ui="jobs_usage.chk_log_to_file" data-ib-pickkey="jobs_usage.chk_log_to_file" title="usage.log_to_file" />
               <span class="muted" style="opacity:0.85;">logge Caching</span>
             </label>
           </div>
         </div>
 
-        <div class="status" id="usage_info" data-ui="jobs_usage.panel_info" title="usage.info"></div>
+        <div class="status" id="usage_info" data-ui="jobs_usage.panel_info" data-ib-pickkey="jobs_usage.panel_info" title="usage.info"></div>
         <div id="usage_err" class="err"></div>
 
-        <div class="table_wrap" data-ui="jobs_usage.panel_table_wrap" title="usage.table.wrap">
+        <div class="table_wrap" data-ui="jobs_usage.panel_table_wrap" data-ib-pickkey="jobs_usage.panel_table_wrap" title="usage.table.wrap">
           <div class="table_title">Cache Nutzung</div>
-          <div class="table_head" data-ui="jobs_usage.panel_table_head" title="usage.table.head">
-            <div class="tbl_actions" data-ui="jobs_usage.panel_table_actions" title="usage.table.actions">
-              <button class="btn_xs" id="usage_autowidth" data-ui="jobs_usage.btn_table_autowidth" title="usage.table.autowidth" aria-label="Spaltenbreite automatisch">
+          <div class="table_head" data-ui="jobs_usage.panel_table_head" data-ib-pickkey="jobs_usage.panel_table_head" title="usage.table.head">
+            <div class="tbl_actions" data-ui="jobs_usage.panel_table_actions" data-ib-pickkey="jobs_usage.panel_table_actions" title="usage.table.actions">
+              <button class="btn_xs" id="usage_autowidth" data-ui="jobs_usage.btn_table_autowidth" data-ib-pickkey="jobs_usage.btn_table_autowidth" title="usage.table.autowidth" aria-label="Spaltenbreite automatisch">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <path d="M5 5v14M19 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -467,7 +467,7 @@
                   <path d="M14 10l2 2-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <button class="btn_xs" id="usage_windowwidth" data-ui="jobs_usage.btn_table_windowwidth" title="usage.table.windowwidth" aria-label="Fensterbreite">
+              <button class="btn_xs" id="usage_windowwidth" data-ui="jobs_usage.btn_table_windowwidth" data-ib-pickkey="jobs_usage.btn_table_windowwidth" title="usage.table.windowwidth" aria-label="Fensterbreite">
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                   <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
                   <path d="M12 12H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -476,16 +476,16 @@
                   <path d="M18 12l-2-2M18 12l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </button>
-              <label><input type="checkbox" id="usage_wrap" data-ui="jobs_usage.chk_table_wrap_toggle" title="usage.table.wrap_toggle"/>Umbruch</label>
-              <label><input type="checkbox" id="usage_colfilter" data-ui="jobs_usage.chk_table_colfilter" title="usage.table.colfilter"/>Spaltenfilter</label>
-              <button class="btn_xs" id="usage_select_all_btn" data-ui="jobs_usage.btn_select_all" title="usage.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
-              <button class="btn_xs" id="usage_select_none_btn" data-ui="jobs_usage.btn_select_none" title="usage.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
+              <label><input type="checkbox" id="usage_wrap" data-ui="jobs_usage.chk_table_wrap_toggle" data-ib-pickkey="jobs_usage.chk_table_wrap_toggle" title="usage.table.wrap_toggle"/>Umbruch</label>
+              <label><input type="checkbox" id="usage_colfilter" data-ui="jobs_usage.chk_table_colfilter" data-ib-pickkey="jobs_usage.chk_table_colfilter" title="usage.table.colfilter"/>Spaltenfilter</label>
+              <button class="btn_xs" id="usage_select_all_btn" data-ui="jobs_usage.btn_select_all" data-ib-pickkey="jobs_usage.btn_select_all" title="usage.table.select_all" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere alle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75zm-7.6657 7.8582 3.8885-3.8885a.75.75 0 1 1 1.0606 1.0606l-4.5 4.5a.75.75 0 0 1-1.1304-.0489l-1.5-2a.75.75 0 1 1 1.2-.9z" fill="currentColor"/></svg></button>
+              <button class="btn_xs" id="usage_select_none_btn" data-ui="jobs_usage.btn_select_none" data-ib-pickkey="jobs_usage.btn_select_none" title="usage.table.select_none" style="width:auto; min-width:34px; padding:6px 8px;" aria-label="Selektiere keine"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M20.5 7.75v10A2.75 2.75 0 0 1 17.75 20.5H7.75a2.75 2.75 0 0 1-2.12-1h11.62a3.25 3.25 0 0 0 3.25-3.25V7.75zM17.2468 3.5H4.25a.75.75 0 0 0-.75.75v12.9968c0 .4142.3358.75.75.75h12.9968a.75.75 0 0 0 .75-.75V4.25a.75.75 0 0 0-.75-.75z" fill="currentColor"/></svg></button>
             </div>
             <div class="muted">Tipp: Filter/Sortierung im Header + Volltextsuche.</div>
           </div>
 
           <div class="table_box" id="usage_box">
-            <table id="usage_tbl" class="ib_tbl" data-ui="jobs_usage.tbl_table" title="usage.table">
+            <table id="usage_tbl" class="ib_tbl" data-ui="jobs_usage.tbl_table" data-ib-pickkey="jobs_usage.tbl_table" title="usage.table">
               <thead>
                 <tr>
                   <th style="width: 170px;">at</th>

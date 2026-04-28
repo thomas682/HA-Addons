@@ -81,27 +81,27 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="combine_page.main" title="combine.page">
+    <main class="content" data-ui="combine_page.main" data-ib-pickkey="combine_page.main" title="combine.page">
       <h2 style="margin:0;">Kombinieren</h2>
       <div class="muted" style="margin-top: 6px;">Kopiert Datenpunkte zwischen zwei Messwerten (z.B. bei Entity-ID Umbenennung) inkl. Vorschau (Timeline/Graph) und rollback-sicherem Ziel-Backup.</div>
 
       <div class="card">
-        <details open data-ui="combine_selection.section_root" title="combine.section.selection">
+        <details open data-ui="combine_selection.section_root" data-ib-pickkey="combine_selection.section_root" title="combine.section.selection">
           <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Kombinieren: Auswahl" data-info-body="In diesem Bereich definierst du Quelle und Ziel fuer das Kopieren.\n\nWichtig: Mindestens eines der beiden Tags muss pro Seite gesetzt sein: entity_id ODER friendly_name. Das ist erforderlich, damit die Serie eindeutig ist (Rollback/Loeschen/Backup).\n\nFelder:\n- _measurement / _field: bestimmen, welche Influx-Serie gelesen/geschrieben wird.\n- entity_id / friendly_name: Tag-Filter (Quelle) bzw. Ziel-Tags (Ziel).\n- Richtung: legt fest, welche Seite als Quelle gilt (Quelle->Ziel oder Ziel->Quelle).\n\nZeitraum:\n- Von/Bis definiert das Vorschau-Fenster.\n- Der tatsaechliche Kopierbereich kommt aus der Timeline-Selektion (siehe Vorschau).\n\nSicherheit/Rollback:\n- Zielbereich vorher als Backup sichern: erstellt ein Range-Backup (ZIP unter /data/backups), damit Rollback moeglich ist.\n- Zielbereich loeschen: loescht die Zielserie im Kopierzeitraum vor dem Schreiben (destruktiv) und fragt nur noch per Browser-Dialog nach einer Bestaetigung." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
 
           <div class="row" style="margin-top: 10px;">
-            <button class="btn_sm" id="swap" data-ui="combine_main.btn_swap" title="combine.swap">Quelle/Ziel tauschen</button>
-            <button class="btn_sm" id="load_stats" data-ui="combine_main.btn_stats" title="combine.stats">Statistik laden</button>
+            <button class="btn_sm" id="swap" data-ui="combine_main.btn_swap" data-ib-pickkey="combine_main.btn_swap" title="combine.swap">Quelle/Ziel tauschen</button>
+            <button class="btn_sm" id="load_stats" data-ui="combine_main.btn_stats" data-ib-pickkey="combine_main.btn_stats" title="combine.stats">Statistik laden</button>
             <div style="min-width: 280px;">
               <label>Richtung</label>
-              <select id="direction" data-ui="combine_main.select_direction" title="combine.direction">
+              <select id="direction" data-ui="combine_main.select_direction" data-ib-pickkey="combine_main.select_direction" title="combine.direction">
                 <option value="src_to_tgt">Quelle -&gt; Ziel</option>
                 <option value="tgt_to_src">Ziel -&gt; Quelle</option>
               </select>
             </div>
           </div>
 
-          <div class="grid2" data-ui="combine_main.panel_grid" title="combine.grid">
+          <div class="grid2" data-ui="combine_main.panel_grid" data-ib-pickkey="combine_main.panel_grid" title="combine.grid">
             <div class="card" style="margin-top: 0;">
               <div style="font-weight: 800;">Quelle</div>
               <div class="row">
@@ -109,7 +109,7 @@
                   <label class="ib_sel_label">_measurement</label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="combine_src.input_measurement" title="combine.src.measurement"/>
+                      <input id="src_measurement" list="measurement_list" placeholder="required" data-ui="combine_src.input_measurement" data-ib-pickkey="combine_src.input_measurement" title="combine.src.measurement"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="src_measurement" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="measurement_list"></datalist>
@@ -123,7 +123,7 @@
                   <label class="ib_sel_label">_field</label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="src_field" list="src_field_list" placeholder="value" data-ui="combine_src.input_field" title="combine.src.field"/>
+                      <input id="src_field" list="src_field_list" placeholder="value" data-ui="combine_src.input_field" data-ib-pickkey="combine_src.input_field" title="combine.src.field"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="src_field" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="src_field_list"></datalist>
@@ -139,7 +139,7 @@
                   <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_src_entity" class="muted"></span></label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="combine_src.input_entity_id" title="combine.src.entity_id"/>
+                      <input id="src_entity_id" list="src_entity_list" placeholder="optional" data-ui="combine_src.input_entity_id" data-ib-pickkey="combine_src.input_entity_id" title="combine.src.entity_id"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="src_entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="src_entity_list"></datalist>
@@ -153,7 +153,7 @@
                   <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_src_friendly" class="muted"></span></label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="combine_src.input_friendly" title="combine.src.friendly"/>
+                      <input id="src_friendly_name" list="src_friendly_list" placeholder="optional" data-ui="combine_src.input_friendly" data-ib-pickkey="combine_src.input_friendly" title="combine.src.friendly"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="src_friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="src_friendly_list"></datalist>
@@ -173,7 +173,7 @@
                   <label class="ib_sel_label">_measurement</label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="tgt_measurement" list="measurement_list" placeholder="required" data-ui="combine_tgt.input_measurement" title="combine.tgt.measurement"/>
+                      <input id="tgt_measurement" list="measurement_list" placeholder="required" data-ui="combine_tgt.input_measurement" data-ib-pickkey="combine_tgt.input_measurement" title="combine.tgt.measurement"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="tgt_measurement" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <div class="ib_sel_desc">
@@ -186,7 +186,7 @@
                   <label class="ib_sel_label">_field</label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="tgt_field" list="tgt_field_list" placeholder="value" data-ui="combine_tgt.input_field" title="combine.tgt.field"/>
+                      <input id="tgt_field" list="tgt_field_list" placeholder="value" data-ui="combine_tgt.input_field" data-ib-pickkey="combine_tgt.input_field" title="combine.tgt.field"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="tgt_field" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="tgt_field_list"></datalist>
@@ -202,7 +202,7 @@
                   <label class="label_row ib_sel_label"><span>Entity ID (entity_id)</span><span id="cnt_tgt_entity" class="muted"></span></label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="tgt_entity_id" list="tgt_entity_list" placeholder="optional" data-ui="combine_tgt.input_entity_id" title="combine.tgt.entity_id"/>
+                      <input id="tgt_entity_id" list="tgt_entity_list" placeholder="optional" data-ui="combine_tgt.input_entity_id" data-ib-pickkey="combine_tgt.input_entity_id" title="combine.tgt.entity_id"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="tgt_entity_id" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="tgt_entity_list"></datalist>
@@ -216,7 +216,7 @@
                   <label class="label_row ib_sel_label"><span>Messwert (friendly_name)</span><span id="cnt_tgt_friendly" class="muted"></span></label>
                   <div class="ib_sel_stack">
                     <div class="ib_clear_row">
-                      <input id="tgt_friendly_name" list="tgt_friendly_list" placeholder="optional" data-ui="combine_tgt.input_friendly" title="combine.tgt.friendly"/>
+                      <input id="tgt_friendly_name" list="tgt_friendly_list" placeholder="optional" data-ui="combine_tgt.input_friendly" data-ib-pickkey="combine_tgt.input_friendly" title="combine.tgt.friendly"/>
                       <button type="button" class="ib_clear_btn" data-clear-for="tgt_friendly_name" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
                     </div>
                     <datalist id="tgt_friendly_list"></datalist>
@@ -235,15 +235,15 @@
             <div class="row" style="margin-top: 8px;">
               <div style="min-width: 260px;">
                 <label>Von (lokal)</label>
-                <input id="start" type="datetime-local" data-ui="combine_main.input_start" title="combine.start"/>
+                <input id="start" type="datetime-local" data-ui="combine_main.input_start" data-ib-pickkey="combine_main.input_start" title="combine.start"/>
               </div>
               <div style="min-width: 260px;">
                 <label>Bis (lokal)</label>
-                <input id="stop" type="datetime-local" data-ui="combine_main.input_stop" title="combine.stop"/>
+                <input id="stop" type="datetime-local" data-ui="combine_main.input_stop" data-ib-pickkey="combine_main.input_stop" title="combine.stop"/>
               </div>
               <div style="min-width: 260px;">
                 <label>&nbsp;</label>
-                <button id="use_src_range" data-ui="combine_main.btn_use_src_range" title="combine.use_src_range">Von/Bis aus Quelle</button>
+                <button id="use_src_range" data-ui="combine_main.btn_use_src_range" data-ib-pickkey="combine_main.btn_use_src_range" title="combine.use_src_range">Von/Bis aus Quelle</button>
               </div>
             </div>
             <div class="muted" style="margin-top: 6px;">Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
@@ -265,12 +265,12 @@
           </div>
         </details>
 
-        <details open class="card" style="margin-top: 12px;" data-ui="combine_preview.section_root" title="combine.section.preview">
+        <details open class="card" style="margin-top: 12px;" data-ui="combine_preview.section_root" data-ib-pickkey="combine_preview.section_root" title="combine.section.preview">
           <summary><span class="ib_summary_row"><span>Vorschau (Timeline / Mini-Graph)</span><button type="button" class="ib_info_icon" data-info-title="Kombinieren: Vorschau" data-info-body="Timeline:\n- Zeigt die Verteilung/Verfuegbarkeit der Datenpunkte im aktuellen Von/Bis Fenster.\n- Mit Maus ziehen: du markierst den exakten Kopierbereich.\n- Oben rechts siehst du Von/Bis der aktuellen Markierung.\n\nMini-Graph:\n- Zeigt eine downsampled Linie (mean) als grobe Orientierung.\n- Der Graph ist nur eine Vorschau und kann glaetten/auslassen, wenn sehr viele Punkte vorhanden sind.\n\nButtons:\n- Ganz: setzt die Markierung auf das komplette Von/Bis Fenster.\n- Aeltester/Juengster: setzt Start/Stop auf die aeltesten/juengsten Zeiten der jeweiligen Serie (aus DB).\n\nHinweis Kopieren:\n- Beim Start wird der Bereich der Seite kopiert, die durch Richtung als Quelle aktiv ist." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="muted" style="margin-top:6px;">Ziehe mit der Maus im Timeline-Balken den Bereich, der kopiert werden soll. Der Kopierbereich kommt aus der Seite, die als Quelle gewaehlt ist (Richtung).</div>
 
           <div class="viz_grid">
-            <div class="viz_card" data-ui="combine_preview.panel_source" title="combine.preview.source">
+            <div class="viz_card" data-ui="combine_preview.panel_source" data-ib-pickkey="combine_preview.panel_source" title="combine.preview.source">
               <div class="viz_title"><span>Quelle</span><span class="muted mono" id="src_sel_txt"></span></div>
               <div class="viz_sub" id="src_meta"></div>
               <div class="pill_row">
@@ -288,7 +288,7 @@
               </div>
             </div>
 
-            <div class="viz_card" data-ui="combine_preview.panel_target" title="combine.preview.target">
+            <div class="viz_card" data-ui="combine_preview.panel_target" data-ib-pickkey="combine_preview.panel_target" title="combine.preview.target">
               <div class="viz_title"><span>Ziel</span><span class="muted mono" id="tgt_sel_txt"></span></div>
               <div class="viz_sub" id="tgt_meta"></div>
               <div class="pill_row">
@@ -310,11 +310,11 @@
         </details>
 
         <div class="row" style="margin-top: 12px;">
-          <button id="start_copy" data-ui="combine_main.btn_start_copy" title="combine.start_copy">Kopieren starten</button>
-          <button id="cancel_job" data-ui="combine_main.btn_cancel" title="combine.cancel">Job abbrechen</button>
+          <button id="start_copy" data-ui="combine_main.btn_start_copy" data-ib-pickkey="combine_main.btn_start_copy" title="combine.start_copy">Kopieren starten</button>
+          <button id="cancel_job" data-ui="combine_main.btn_cancel" data-ib-pickkey="combine_main.btn_cancel" title="combine.cancel">Job abbrechen</button>
         </div>
 
-        <div class="status" id="info" data-ui="combine_main.panel_info" title="combine.info"></div>
+        <div class="status" id="info" data-ui="combine_main.panel_info" data-ib-pickkey="combine_main.panel_info" title="combine.info"></div>
         <div id="msg_ok" class="ok"></div>
         <div id="err" class="err"></div>
 

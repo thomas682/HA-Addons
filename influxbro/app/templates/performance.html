@@ -110,7 +110,7 @@
     .diag_wrap { background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:12px; padding:16px; overflow: visible; }
 
     /* Prevent the diagram section root from becoming a scroll container */
-    details[data-ui="perf_page.diagram.section_root"] { overflow: visible; }
+    details[data-ui="perf_page.diagram.section_root" data-ib-pickkey="perf_page.diagram.section_root"] { overflow: visible; }
 
     /* Tabs inside the diagram section */
     .perf_tabs { display:flex; gap:8px; flex-wrap:wrap; }
@@ -241,10 +241,10 @@
     @media(max-width:900px){ .corr_wrap .corr_view .wf-lbl{min-width:200px;max-width:200px} }
 
     /* Enable internal scrolling in list + detail boxes (not on the whole section) */
-    details[data-ui="perf_page.section_root"] .card_body { display:flex; flex-direction:column; min-height:0; }
-    details[data-ui="perf_page.section_root"] .pane_stack { flex:1 1 auto; min-height:0; align-items:stretch; }
-    details[data-ui="perf_page.section_root"] .pane_col { display:flex; flex-direction:column; min-height:0; }
-    details[data-ui="perf_page.section_root"] .pane_col .pane_box { flex:1 1 auto; min-height:0; }
+    details[data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root"] .card_body { display:flex; flex-direction:column; min-height:0; }
+    details[data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root"] .pane_stack { flex:1 1 auto; min-height:0; align-items:stretch; }
+    details[data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root"] .pane_col { display:flex; flex-direction:column; min-height:0; }
+    details[data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root"] .pane_col .pane_box { flex:1 1 auto; min-height:0; }
     .diag_wrap .tv {
       --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --bg4: #292e36;
       --border: #30363d; --border-hover: #484f58;
@@ -416,9 +416,9 @@
   {% include "_topbar.html" %}
   <div class="shell">
     {% include "_nav.html" %}
-    <main class="content" data-ui="perf_page.main" title="perf.page">
+    <main class="content" data-ui="perf_page.main" data-ib-pickkey="perf_page.main" title="perf.page">
       <div class="perf_split" id="perf_split">
-      <details class="card perf_split_top" open data-ui="perf_page.section_root" title="perf_page.section_root">
+      <details class="card perf_split_top" open data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root" title="perf_page.section_root">
         <summary>
           <span class="ib_summary_row">
             <span>Performanceanalyse</span>
@@ -426,7 +426,7 @@
               <button type="button" class="ib_info_icon" data-info-title="Performanceanalyse" data-info-body="Die Performanceanalyse zeigt pro UI-Aktion (z.B. Button-Klick) einen zusammengefassten Trace. Ein Trace korreliert:\n- UI Ausloeser (action / ui_event)\n- HTTP Calls im Browser (client_spans)\n- HTTP Requests im Add-on (spans kind=http.request)\n- ggf. Influx Queries (queries)\n\nLinks siehst du die letzten Traces (Standard: 200). Rechts siehst du die Details des selektierten Traces als JSON und darunter im Abschnitt \"Diagramm\" eine grafische Zeitleiste (Waterfall).\n\nSo liest du eine Zeile links:\n- \"200 von 200 Traces\": nach Filterung sichtbare Eintraege vs. insgesamt geladene.\n- Start / Ende / ms: Startzeit (started_at), letzte Aktivitaet (last_at) und Gesamtdauer (dur_ms).\n- Seite: aus page/frame (z.B. dashboard_page.main = Dashboard).\n- Ausloeser: technische ID (z.B. dashboard_caching.btn_cache_pruefen) plus Klartext-Name.\n- Status: ok/err/running.\n- Counts: ui= UI-Events, api= server Requests, net= browser HTTP Calls, q= Influx Queries.\n\nReales Beispiel (geklickt: dashboard_caching.btn_cache_pruefen):\n- trace_id: 2026-04-16T090127605Z|dashboard_page.main|dashboard_caching.btn_cache_pruefen|1|2608396c\n- counts.api_spans=13 und counts.client_spans=13: der Klick hat 13 API-Requests ausgeloest.\n- queries=0: keine Influx Queries in dieser Aktion.\n- ui_events=1: ein Klick (button_press) war der Ausloeser.\n- dur_ms=4886: vom Start bis zur letzten Aktivitaet ~4.9s.\n\nDetails JSON (rechts) erklaert:\n- action/page/trace_id: eindeutige Zuordnung des Klicks.\n- client_spans: Browser-Sicht (fetch), inkl. url/method/status_code/dur_ms.\n- spans: Server-Sicht (Flask), inkl. path/method/status_code/dur_ms.\n- Differenz client_dur vs server_dur ist typischer Overhead (Netzwerk/Queue/Browser).\n\nTipps:\n- Suche (Volltext) findet action, trace_id, Endpoints, Statuscodes usw.\n- \"TraceID kopieren\" hilft beim Support: du kannst damit in Logs/Worklog gezielt korrelieren." >
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
               </button>
-              <button id="refresh" type="button" style="width:auto;" data-ui="perf_page.btn_refresh">Refresh</button>
+              <button id="refresh" type="button" style="width:auto;" data-ui="perf_page.btn_refresh" data-ib-pickkey="perf_page.btn_refresh">Refresh</button>
             </div>
           </span>
         </summary>
@@ -454,10 +454,10 @@
               <div class="pane_head">
                 <div class="muted" id="meta"></div>
                 <div class="pane_actions">
-                  <button id="list_copy" type="button" class="iconbtn" data-ui="perf_list.btn_copy" title="Zwischenablage kopieren" aria-label="Zwischenablage kopieren">
+                  <button id="list_copy" type="button" class="iconbtn" data-ui="perf_list.btn_copy" data-ib-pickkey="perf_list.btn_copy" title="Zwischenablage kopieren" aria-label="Zwischenablage kopieren">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="currentColor" stroke-width="1.5"/><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="currentColor" stroke-width="1.5"/></svg>
                   </button>
-                  <button id="list_copy_trace" type="button" class="iconbtn" data-ui="perf_list.btn_copy_trace_id" title="TraceID kopieren" aria-label="TraceID kopieren">
+                  <button id="list_copy_trace" type="button" class="iconbtn" data-ui="perf_list.btn_copy_trace_id" data-ib-pickkey="perf_list.btn_copy_trace_id" title="TraceID kopieren" aria-label="TraceID kopieren">
                     <span class="mono" style="font-size:12px;">ID</span>
                   </button>
                 </div>
@@ -486,10 +486,10 @@
               <div class="pane_head">
                 <div class="muted" id="detail_meta">Details</div>
                 <div class="pane_actions">
-                  <button id="detail_copy" type="button" class="iconbtn" data-ui="perf_detail.btn_copy" title="Zwischenablage kopieren" aria-label="Zwischenablage kopieren">
+                  <button id="detail_copy" type="button" class="iconbtn" data-ui="perf_detail.btn_copy" data-ib-pickkey="perf_detail.btn_copy" title="Zwischenablage kopieren" aria-label="Zwischenablage kopieren">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="currentColor" stroke-width="1.5"/><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="currentColor" stroke-width="1.5"/></svg>
                   </button>
-                  <button id="detail_copy_trace" type="button" class="iconbtn" data-ui="perf_detail.btn_copy_trace_id" title="TraceID kopieren" aria-label="TraceID kopieren">
+                  <button id="detail_copy_trace" type="button" class="iconbtn" data-ui="perf_detail.btn_copy_trace_id" data-ib-pickkey="perf_detail.btn_copy_trace_id" title="TraceID kopieren" aria-label="TraceID kopieren">
                     <span class="mono" style="font-size:12px;">ID</span>
                   </button>
                 </div>
@@ -503,14 +503,14 @@
       </details>
 
       <div class="perf_splitter" id="perf_splitter" title="Hoehe anpassen"></div>
-      <details class="card perf_split_bottom" open data-ui="perf_page.diagram.section_root" title="perf_page.diagram.section_root">
+      <details class="card perf_split_bottom" open data-ui="perf_page.diagram.section_root" data-ib-pickkey="perf_page.diagram.section_root" title="perf_page.diagram.section_root">
         <summary><span class="ib_summary_row"><span>Diagramm</span></span></summary>
         <div class="card_body">
           <div class="muted">Grafische Zeitleiste (Waterfall) fuer den selektierten Trace.</div>
           <div class="perf_tabs" role="tablist" aria-label="Diagramm Tabs" style="margin-top:10px;">
-            <button id="perf_tab_diagram" type="button" class="perf_tab active" data-tab="diagram" data-ui="perf_page.diagram.tab_diagram" title="perf_page.diagram.tab_diagram" aria-selected="true">Diagramm</button>
-            <button id="perf_tab_corr" type="button" class="perf_tab" data-tab="corr" data-ui="perf_page.diagram.tab_correlation" title="perf_page.diagram.tab_correlation" aria-selected="false">Korrelation</button>
-            <button id="perf_tab_api" type="button" class="perf_tab" data-tab="api" data-ui="perf_page.diagram.tab_api_docs" title="perf_page.diagram.tab_api_docs" aria-selected="false">API Dokumentation</button>
+            <button id="perf_tab_diagram" type="button" class="perf_tab active" data-tab="diagram" data-ui="perf_page.diagram.tab_diagram" data-ib-pickkey="perf_page.diagram.tab_diagram" title="perf_page.diagram.tab_diagram" aria-selected="true">Diagramm</button>
+            <button id="perf_tab_corr" type="button" class="perf_tab" data-tab="corr" data-ui="perf_page.diagram.tab_correlation" data-ib-pickkey="perf_page.diagram.tab_correlation" title="perf_page.diagram.tab_correlation" aria-selected="false">Korrelation</button>
+            <button id="perf_tab_api" type="button" class="perf_tab" data-tab="api" data-ui="perf_page.diagram.tab_api_docs" data-ib-pickkey="perf_page.diagram.tab_api_docs" title="perf_page.diagram.tab_api_docs" aria-selected="false">API Dokumentation</button>
           </div>
 
           <div class="perf_tab_panel" data-tab-panel="diagram">
@@ -1346,11 +1346,11 @@
           <div class="role-grid" id="corr_role_grid"></div>
 
           <h2>🔗 Abhaengigkeitsgraph <span class="badge">Kausale Ketten</span></h2>
-          <div class="dep-controls" data-ui="perf_corr.dep_controls" title="perf_corr.dep_controls">
+          <div class="dep-controls" data-ui="perf_corr.dep_controls" data-ib-pickkey="perf_corr.dep_controls" title="perf_corr.dep_controls">
             <span class="lbl">Zoom</span>
-            <button id="corr_dep_zoom_out" type="button" data-ui="perf_corr.btn_dep_zoom_out" title="perf_corr.dep_zoom_out" aria-label="Zoom minus">-</button>
-            <input id="corr_dep_zoom_pct" type="number" min="0" max="300" step="5" data-ui="perf_corr.input_dep_zoom_pct" title="perf_corr.dep_zoom_pct" aria-label="Dep-Graph Zoom Prozent" />
-            <button id="corr_dep_zoom_in" type="button" data-ui="perf_corr.btn_dep_zoom_in" title="perf_corr.dep_zoom_in" aria-label="Zoom plus">+</button>
+            <button id="corr_dep_zoom_out" type="button" data-ui="perf_corr.btn_dep_zoom_out" data-ib-pickkey="perf_corr.btn_dep_zoom_out" title="perf_corr.dep_zoom_out" aria-label="Zoom minus">-</button>
+            <input id="corr_dep_zoom_pct" type="number" min="0" max="300" step="5" data-ui="perf_corr.input_dep_zoom_pct" data-ib-pickkey="perf_corr.input_dep_zoom_pct" title="perf_corr.dep_zoom_pct" aria-label="Dep-Graph Zoom Prozent" />
+            <button id="corr_dep_zoom_in" type="button" data-ui="perf_corr.btn_dep_zoom_in" data-ib-pickkey="perf_corr.btn_dep_zoom_in" title="perf_corr.dep_zoom_in" aria-label="Zoom plus">+</button>
             <span class="auto" id="corr_dep_zoom_hint">Auto-Fit</span>
           </div>
           <div class="dep-graph" id="corr_dep_graph"></div>

@@ -1112,7 +1112,7 @@
           if(!entry) return null;
           let el = null;
           if(entry.selector) el = document.querySelector(String(entry.selector));
-          if(!el && entry.ui) el = document.querySelector('[data-ui="' + String(entry.ui).replace(/"/g,'\\"') + '"]');
+          if(!el && entry.ui) el = document.querySelector('[data-ui="' + String(entry.ui).replace(/" data-ib-pickkey="' + String(entry.ui).replace(/"/g,'\\"') + '"]');
           return el;
         }catch(e){ return null; }
       }
@@ -1175,7 +1175,7 @@
         if(!PARAM_HELP_ACTIVE || !main) return;
         Object.keys(PARAM_LINKS).forEach((ui)=>{
           try{
-            const el = document.querySelector('[data-ui="' + ui.replace(/"/g,'\\"') + '"]');
+            const el = document.querySelector('[data-ui="' + ui.replace(/" data-ib-pickkey="' + ui.replace(/"/g,'\\"') + '"]');
             if(!el) return;
             const host = el.closest('.control, .card, .table_wrap, details, .ib_pagecard, .nav_item, [data-ui]') || el;
             if(!host || host.querySelector(':scope > .ib_param_hint_badge')) return;
@@ -2222,11 +2222,11 @@
       const count = multiItems.length;
       multiBar.innerHTML =
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-        + '<strong data-ui="picker_multi.lbl_title">Multi-Pick (' + count + ')</strong>'
+        + '<strong data-ui="picker_multi.lbl_title" data-ib-pickkey="picker_multi.lbl_title">Multi-Pick (' + count + ')</strong>'
         + '<div id="ib_mp_chips" style="flex:1 1 auto;min-width:0;">' + (chips || '<em style="opacity:0.6;">Noch kein Element ausgewaehlt</em>') + '</div>'
-        + '<button type="button" id="ib_mp_end" class="btn_sm" data-ui="picker_multi.btn_ende" style="width:auto;">Ende</button>'
-        + '<button type="button" id="ib_mp_pop" class="btn_sm" data-ui="picker_multi.btn_letztes_loeschen" style="width:auto;">Letztes loeschen</button>'
-        + '<button type="button" id="ib_mp_cancel" class="btn_sm" data-ui="picker_multi.btn_abbruch" style="width:auto;">Abbruch</button>'
+        + '<button type="button" id="ib_mp_end" class="btn_sm" data-ui="picker_multi.btn_ende" data-ib-pickkey="picker_multi.btn_ende" style="width:auto;">Ende</button>'
+        + '<button type="button" id="ib_mp_pop" class="btn_sm" data-ui="picker_multi.btn_letztes_loeschen" data-ib-pickkey="picker_multi.btn_letztes_loeschen" style="width:auto;">Letztes loeschen</button>'
+        + '<button type="button" id="ib_mp_cancel" class="btn_sm" data-ui="picker_multi.btn_abbruch" data-ib-pickkey="picker_multi.btn_abbruch" style="width:auto;">Abbruch</button>'
         + '</div>';
       multiBar.style.display = 'block';
 
@@ -2674,14 +2674,14 @@
   </script>
 </header>
 
-<div class="ib_pagecard" id="ib_pagecard" data-ui="page_title.panel_card" title="page.title.card">
+<div class="ib_pagecard" id="ib_pagecard" data-ui="page_title.panel_card" data-ib-pickkey="page_title.panel_card" title="page.title.card">
   <div class="brandwrap">
     <div class="brandbox">
       <div class="brand">InfluxBro</div>
       <div class="byline">by Thomas Schatz</div>
       <span class="meta hintline" id="ui_profile_hint">Version: {{ addon_version }}</span>
     </div>
-    <div class="branddonate" data-ui="nav_main.panel_donate" title="nav.donate">
+    <div class="branddonate" data-ui="nav_main.panel_donate" data-ib-pickkey="nav_main.panel_donate" title="nav.donate">
       <a href="https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6" target="_blank" rel="noreferrer" style="display:inline-block; vertical-align:middle;">
         <img alt="Donate with PayPal" src="https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png" style="height: 30px;" />
       </a>
@@ -2691,35 +2691,35 @@
     </div>
   </div>
   <div class="actions">
-    <button id="ib_nav_mobile_toggle" type="button" class="iconbtn ib_nav_mobile_toggle" data-ui="nav_main.btn_mobile_toggle" title="Navigation" aria-label="Navigation" aria-controls="ib_nav_mobile_drawer" aria-expanded="false">
+    <button id="ib_nav_mobile_toggle" type="button" class="iconbtn ib_nav_mobile_toggle" data-ui="nav_main.btn_mobile_toggle" data-ib-pickkey="nav_main.btn_mobile_toggle" title="Navigation" aria-label="Navigation" aria-controls="ib_nav_mobile_drawer" aria-expanded="false">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
         <path d="M4 6h7M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    <button id="ib_topbar_mobile_toggle" type="button" class="iconbtn ib_topbar_mobile_toggle" data-ui="topbar_mobile.btn_toggle" title="Topbar umschalten" aria-label="Topbar umschalten" aria-controls="ib_topbar_mobile_panel" aria-expanded="false">
+    <button id="ib_topbar_mobile_toggle" type="button" class="iconbtn ib_topbar_mobile_toggle" data-ui="topbar_mobile.btn_toggle" data-ib-pickkey="topbar_mobile.btn_toggle" title="Topbar umschalten" aria-label="Topbar umschalten" aria-controls="ib_topbar_mobile_panel" aria-expanded="false">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
         <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    <div id="ib_topbar_mobile_panel" class="topbar_profile_group" data-ui="topbar_main.panel_profile" title="topbar.profile">
-      <select id="ui_profile_sel" data-ui="nav_profile.select_select" title="nav.profile.select"></select>
-      <button id="ui_profile_apply" type="button" class="iconbtn" data-ui="nav_profile.btn_apply" title="Anwenden" aria-label="Anwenden">
+    <div id="ib_topbar_mobile_panel" class="topbar_profile_group" data-ui="topbar_main.panel_profile" data-ib-pickkey="topbar_main.panel_profile" title="topbar.profile">
+      <select id="ui_profile_sel" data-ui="nav_profile.select_select" data-ib-pickkey="nav_profile.select_select" title="nav.profile.select"></select>
+      <button id="ui_profile_apply" type="button" class="iconbtn" data-ui="nav_profile.btn_apply" data-ib-pickkey="nav_profile.btn_apply" title="Anwenden" aria-label="Anwenden">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
           <path d="M16.6582 9.28638C18.098 10.1862 18.8178 10.6361 19.0647 11.2122C19.2803 11.7152 19.2803 12.2847 19.0647 12.7878C18.8178 13.3638 18.098 13.8137 16.6582 14.7136L9.896 18.94C8.29805 19.9387 7.49907 20.4381 6.83973 20.385C6.26501 20.3388 5.73818 20.0469 5.3944 19.584C5 19.053 5 18.1108 5 16.2264V7.77357C5 5.88919 5 4.94701 5.3944 4.41598C5.73818 3.9531 6.26501 3.66111 6.83973 3.6149C7.49907 3.5619 8.29805 4.06126 9.896 5.05998L16.6582 9.28638Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
         </svg>
       </button>
-      <button id="ui_profile_save" type="button" class="iconbtn" data-ui="nav_profile.btn_save" title="Speichern" aria-label="Speichern">
+      <button id="ui_profile_save" type="button" class="iconbtn" data-ui="nav_profile.btn_save" data-ib-pickkey="nav_profile.btn_save" title="Speichern" aria-label="Speichern">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
           <path fill-rule="evenodd" clip-rule="evenodd" d="M18.1716 1C18.702 1 19.2107 1.21071 19.5858 1.58579L22.4142 4.41421C22.7893 4.78929 23 5.29799 23 5.82843V20C23 21.6569 21.6569 23 20 23H4C2.34315 23 1 21.6569 1 20V4C1 2.34315 2.34315 1 4 1H18.1716ZM4 3C3.44772 3 3 3.44772 3 4V20C3 20.5523 3.44772 21 4 21L5 21L5 15C5 13.3431 6.34315 12 8 12L16 12C17.6569 12 19 13.3431 19 15V21H20C20.5523 21 21 20.5523 21 20V6.82843C21 6.29799 20.7893 5.78929 20.4142 5.41421L18.5858 3.58579C18.2107 3.21071 17.702 3 17.1716 3H17V5C17 6.65685 15.6569 8 14 8H10C8.34315 8 7 6.65685 7 5V3H4ZM17 21V15C17 14.4477 16.5523 14 16 14L8 14C7.44772 14 7 14.4477 7 15L7 21L17 21ZM9 3H15V5C15 5.55228 14.5523 6 14 6H10C9.44772 6 9 5.55228 9 5V3Z" fill="currentColor"/>
         </svg>
       </button>
       <!-- TOMBSTONE: TS-2026-0003 – Removed topbar Profile-Info button per Issue #392 (use page Help/Info icons instead). -->
-      <button id="ui_picker_toggle" type="button" class="iconbtn" data-ui="nav_main.btn_ui_picker" title="Picker" aria-label="Picker">
+      <button id="ui_picker_toggle" type="button" class="iconbtn" data-ui="nav_main.btn_ui_picker" data-ib-pickkey="nav_main.btn_ui_picker" title="Picker" aria-label="Picker">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
           <path fill-rule="evenodd" clip-rule="evenodd" d="M5 6C5.55228 6 6 5.55228 6 5C6 4.44772 5.55228 4 5 4C4.44772 4 4 4.44772 4 5C4 5.55228 4.44772 6 5 6ZM18 13C18 12.4477 17.5523 12 17 12C16.4477 12 16 12.4477 16 13V16H13C12.4477 16 12 16.4477 12 17C12 17.5523 12.4477 18 13 18H16V21C16 21.5523 16.4477 22 17 22C17.5523 22 18 21.5523 18 21V18H21C21.5523 18 22 17.5523 22 17C22 16.4477 21.5523 16 21 16H18V13ZM10 5C10 5.55228 9.55228 6 9 6C8.44771 6 8 5.55228 8 5C8 4.44772 8.44771 4 9 4C9.55228 4 10 4.44772 10 5ZM13 6C13.5523 6 14 5.55228 14 5C14 4.44772 13.5523 4 13 4C12.4477 4 12 4.44772 12 5C12 5.55228 12.4477 6 13 6ZM18 5C18 5.55228 17.5523 6 17 6C16.4477 6 16 5.55228 16 5C16 4.44772 16.4477 4 17 4C17.5523 4 18 4.44772 18 5ZM17 10C17.5523 10 18 9.55228 18 9C18 8.44771 17.5523 8 17 8C16.4477 8 16 8.44771 16 9C16 9.55228 16.4477 10 17 10ZM10 17C10 17.5523 9.55228 18 9 18C8.44771 18 8 17.5523 8 17C8 16.4477 8.44771 16 9 16C9.55228 16 10 16.4477 10 17ZM5 18C5.55228 18 6 17.5523 6 17C6 16.4477 5.55228 16 5 16C4.44772 16 4 16.4477 4 17C4 17.55228 4.44772 18 5 18ZM6 13C6 13.5523 5.55228 14 5 14C4.44772 14 4 13.5523 4 13C4 12.4477 4.44772 12 5 12C5.55228 12 6 12.4477 6 13ZM5 10C5.55228 10 6 9.55228 6 9C6 8.44771 5.55228 8 5 8C4.44772 8 4 8.44771 4 9C4 9.55228 4.44772 10 5 10Z" fill="currentColor"/>
         </svg>
       </button>
-      <button id="ui_superpicker_toggle" type="button" class="iconbtn" data-ui="nav_main.btn_ui_picker_super" title="S-Picker" aria-label="S-Picker">
+      <button id="ui_superpicker_toggle" type="button" class="iconbtn" data-ui="nav_main.btn_ui_picker_super" data-ib-pickkey="nav_main.btn_ui_picker_super" title="S-Picker" aria-label="S-Picker">
         <svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true" focusable="false">
           <path d="M8,26H4a2.0021,2.0021,0,0,1-2-2V20H4v4H8Z" fill="currentColor"/>
           <rect x="2" y="12" width="2" height="4" fill="currentColor"/>
@@ -2729,15 +2729,15 @@
           <path d="M27,32a.9967.9967,0,0,1-.707-.293l-6.1377-6.1377L16.832,30.5547a1,1,0,0,1-1.79-.2676l-6-20A1,1,0,0,1,10.2871,9.042l20,6a1,1,0,0,1,.2676,1.79l-4.9854,3.3233L31.707,26.293a.9994.9994,0,0,1,0,1.414l-4,4A.9967.9967,0,0,1,27,32Zm0-2.4141L29.5859,27,22.431,19.845l5.2458-3.4978L11.4917,11.4917l4.8555,16.1851L19.845,22.431Z" fill="currentColor"/>
         </svg>
       </button>
-      <button id="ib_nav_back" type="button" data-ui="nav_history.btn_back" title="nav.history.back" aria-label="Vorheriges Element">◀</button>
-      <button id="ib_nav_forward" type="button" data-ui="nav_history.btn_forward" title="nav.history.forward" aria-label="Naechstes Element">▶</button>
+      <button id="ib_nav_back" type="button" data-ui="nav_history.btn_back" data-ib-pickkey="nav_history.btn_back" title="nav.history.back" aria-label="Vorheriges Element">◀</button>
+      <button id="ib_nav_forward" type="button" data-ui="nav_history.btn_forward" data-ib-pickkey="nav_history.btn_forward" title="nav.history.forward" aria-label="Naechstes Element">▶</button>
 
       <button id="ib_inbox_btn" type="button" data-ui="topbar_inbox.btn_open" data-ib-pickkey="topbar_inbox.btn_open" title="Inbox" aria-label="Inbox" style="position:relative; width:auto;">
         Inbox
         <span id="ib_inbox_badge" class="ib_badge" data-ui="topbar_inbox.badge" data-ib-pickkey="topbar_inbox.badge" title="Inbox Badge"></span>
       </button>
-      <button id="ib_param_help_toggle" type="button" data-ui="nav_main.btn_param_help" title="nav.param_help">Param-Hilfe</button>
-      <button id="ib_settings_move" type="button" class="iconbtn" data-ui="nav_main.btn_settings_move" title="settings.organizer" aria-label="Verschieben">
+      <button id="ib_param_help_toggle" type="button" data-ui="nav_main.btn_param_help" data-ib-pickkey="nav_main.btn_param_help" title="nav.param_help">Param-Hilfe</button>
+      <button id="ib_settings_move" type="button" class="iconbtn" data-ui="nav_main.btn_settings_move" data-ib-pickkey="nav_main.btn_settings_move" title="settings.organizer" aria-label="Verschieben">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false">
           <rect x="14" y="4" width="6" height="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></rect>
           <rect x="14" y="14" width="6" height="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></rect>
@@ -2745,48 +2745,48 @@
           <path d="M8.396 18.8285L10.9256 17.3884L9.48551 14.8587" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg>
       </button>
-      <div class="zoom" data-ui="topbar_main.panel_zoom" title="topbar.zoom">
+      <div class="zoom" data-ui="topbar_main.panel_zoom" data-ib-pickkey="topbar_main.panel_zoom" title="topbar.zoom">
         <span class="meta">Zoom</span>
-        <button id="ib_zoom_out" type="button" aria-label="Zoom out" data-ui="topbar_zoom.btn_out" title="topbar.zoom.out">-</button>
-        <span class="pct" id="ib_zoom_pct" data-ui="topbar_zoom.panel_pct" title="topbar.zoom.pct">100%</span>
-        <button id="ib_zoom_in" type="button" aria-label="Zoom in" data-ui="topbar_zoom.btn_in" title="topbar.zoom.in">+</button>
+        <button id="ib_zoom_out" type="button" aria-label="Zoom out" data-ui="topbar_zoom.btn_out" data-ib-pickkey="topbar_zoom.btn_out" title="topbar.zoom.out">-</button>
+        <span class="pct" id="ib_zoom_pct" data-ui="topbar_zoom.panel_pct" data-ib-pickkey="topbar_zoom.panel_pct" title="topbar.zoom.pct">100%</span>
+        <button id="ib_zoom_in" type="button" aria-label="Zoom in" data-ui="topbar_zoom.btn_in" data-ib-pickkey="topbar_zoom.btn_in" title="topbar.zoom.in">+</button>
       </div>
       <div class="ib_clear_row" style="flex:1 1 140px; min-width:110px; max-width:320px;">
-        <input id="ib_page_search" type="text" data-ui="page_main.input_search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
+        <input id="ib_page_search" type="text" data-ui="page_main.input_search" data-ib-pickkey="page_main.input_search" title="page.search" placeholder="Elemente auf dieser Seite suchen..." />
         <button type="button" class="ib_clear_btn" data-clear-for="ib_page_search" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
       </div>
-      <button id="ib_page_search_prev" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_prev" title="page.search.prev" aria-label="Vorheriger Treffer">&lt;</button>
-      <button id="ib_page_search_next" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_next" title="page.search.next" aria-label="Naechster Treffer">&gt;</button>
-      <button id="ib_page_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page_main.btn_settings" title="page.settings" aria-label="Zu Einstellungen" style="display:none;">
+      <button id="ib_page_search_prev" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_prev" data-ib-pickkey="page_search.btn_prev" title="page.search.prev" aria-label="Vorheriger Treffer">&lt;</button>
+      <button id="ib_page_search_next" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_next" data-ib-pickkey="page_search.btn_next" title="page.search.next" aria-label="Naechster Treffer">&gt;</button>
+      <button id="ib_page_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page_main.btn_settings" data-ib-pickkey="page_main.btn_settings" title="page.settings" aria-label="Zu Einstellungen" style="display:none;">
       <svg fill="#000000" height="18px" width="18px" version="1.1" viewBox="0 0 24 24" xml:space="preserve"><g> <path d="M4,24c-1.1,0-2.1-0.4-2.8-1.2C0.5,22.1,0,21,0,20s0.4-2.1,1.2-2.8l8-8C9.1,8.7,9,8.1,9,7.5C9,3.4,12.4,0,16.5,0 c0.9,0,1.8,0.2,2.6,0.5L20.6,1L16,5.6L18.4,8L23,3.4l0.6,1.4C23.8,5.7,24,6.6,24,7.5c0,4.1-3.4,7.5-7.5,7.5 c-0.6,0-1.1-0.1-1.7-0.2l-8,8C6.1,23.6,5.1,24,4,24z M16.5,2c-3,0-5.5,2.5-5.5,5.5c0,0.6,0.1,1.1,0.3,1.7l0.2,0.6l-8.9,8.9 C2.2,19,2,19.5,2,20s0.2,1,0.6,1.4c0.7,0.8,2.1,0.8,2.8,0l8.9-8.9l0.6,0.2c0.5,0.2,1.1,0.3,1.7,0.3c3,0,5.5-2.5,5.5-5.5 c0-0.1,0-0.2,0-0.3l-3.6,3.6l-5.2-5.2L16.9,2C16.7,2,16.6,2,16.5,2z"></path> </g></svg>
       </button>
-      <button id="ib_page_search_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_settings" title="page.search.settings" aria-label="Sucheinstellungen">
+      <button id="ib_page_search_settings" class="iconbtn ib_page_search_btn" type="button" data-ui="page_search.btn_settings" data-ib-pickkey="page_search.btn_settings" title="page.search.settings" aria-label="Sucheinstellungen">
       <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 1 0 12 8.8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.2 1.2 0 0 1 0 1.7l-1.6 1.6a1.2 1.2 0 0 1-1.7 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V21a1.2 1.2 0 0 1-1.2 1.2h-2.2A1.2 1.2 0 0 1 10 21v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1.2 1.2 0 0 1-1.7 0l-1.6-1.6a1.2 1.2 0 0 1 0-1.7l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H3A1.2 1.2 0 0 1 1.8 13v-2.2A1.2 1.2 0 0 1 3 9.6h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1.2 1.2 0 0 1 0-1.7l1.6-1.6a1.2 1.2 0 0 1 1.7 0l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V3A1.2 1.2 0 0 1 10 1.8h2.2A1.2 1.2 0 0 1 13.4 3v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1.2 1.2 0 0 1 1.7 0l1.6 1.6a1.2 1.2 0 0 1 0 1.7l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2A1.2 1.2 0 0 1 22.2 10v2.2a1.2 1.2 0 0 1-1.2 1.2h-.2a1 1 0 0 0-.9.6Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
       </button>
-      <button id="ib_open_all" class="iconbtn" type="button" data-ui="sections_main.btn_open_all" title="sections.open_all" aria-label="Alle oeffnen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
-      <button id="ib_close_all" class="iconbtn" type="button" data-ui="sections_main.btn_close_all" title="sections.close_all" aria-label="Alle schliessen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 15l-6-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
+      <button id="ib_open_all" class="iconbtn" type="button" data-ui="sections_main.btn_open_all" data-ib-pickkey="sections_main.btn_open_all" title="sections.open_all" aria-label="Alle oeffnen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
+      <button id="ib_close_all" class="iconbtn" type="button" data-ui="sections_main.btn_close_all" data-ib-pickkey="sections_main.btn_close_all" title="sections.close_all" aria-label="Alle schliessen"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 15l-6-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.6"/></svg></button>
     </div>
   </div>
 </div>
 <div class="ib_pagecard_results" id="ib_pagecard_results"></div>
 <div id="ib_page_search_modal" style="display:none; position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,0.45); padding:8vh 12px 12px 12px; box-sizing:border-box; overflow:auto;"></div>
 <template id="ib_page_search_modal_inventory">
-  <button type="button" data-ui="ib_page_search_modal.btn_close" title="Seitensuche schliessen">Schliessen</button>
-  <button type="button" data-ui="ib_page_search_modal.btn_superpicker" title="Seitensuche S-Picker">S-Picker</button>
+  <button type="button" data-ui="ib_page_search_modal.btn_close" data-ib-pickkey="ib_page_search_modal.btn_close" title="Seitensuche schliessen">Schliessen</button>
+  <button type="button" data-ui="ib_page_search_modal.btn_superpicker" data-ib-pickkey="ib_page_search_modal.btn_superpicker" title="Seitensuche S-Picker">S-Picker</button>
 </template>
 
-<div class="ib_bottombar" id="ib_error_bar" data-ui="errors_main.panel_statusbar" title="errors.statusbar">
+<div class="ib_bottombar" id="ib_error_bar" data-ui="errors_main.panel_statusbar" data-ib-pickkey="errors_main.panel_statusbar" title="errors.statusbar">
   <span class="lbl">Letzter Fehler:</span>
   <span class="time" id="ib_error_time"></span>
   <span class="msg" id="ib_error_msg"></span>
   <span class="lbl">Influx:</span>
   <span class="chip unk" id="ib_influx_chip" title="Influx Verbindung: unbekannt">?</span>
-  <button id="ib_error_last" type="button" data-ui="errors_main.btn_last" title="errors.last" style="width:auto;">Letzter Fehler</button>
-  <button id="ib_error_dialog" type="button" data-ui="errors_main.btn_dialog" title="errors.dialog" style="width:auto;">Fehlerdialog</button>
-  <button id="ib_error_bugreport" type="button" data-ui="errors_main.btn_bugreport" title="errors.bugreport" style="width:auto;">Bugreport</button>
-  <button id="ib_error_logs5" type="button" data-ui="errors_main.btn_logs5" title="errors.logs5" style="width:auto;">5 min Logs</button>
-  <button id="ib_error_jump_logs" type="button" data-ui="errors_main.btn_jump_logs" title="errors.jump_logs" style="width:auto;">Jump Logs</button>
-  <button id="ib_error_git" type="button" data-ui="errors_main.btn_git_bugreport" title="errors.git_bugreport" style="width:auto;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M9 4h6l1.5 2.5H20l-1.7 3 .7 1.2-1.7 2.8H20l-3 5h-3.5L12 20l-1.5-1.5H7l-3-5h2.7L5 10.7l.7-1.2-1.7-3H7.5L9 4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 13v3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Git Bugreport</button>
+  <button id="ib_error_last" type="button" data-ui="errors_main.btn_last" data-ib-pickkey="errors_main.btn_last" title="errors.last" style="width:auto;">Letzter Fehler</button>
+  <button id="ib_error_dialog" type="button" data-ui="errors_main.btn_dialog" data-ib-pickkey="errors_main.btn_dialog" title="errors.dialog" style="width:auto;">Fehlerdialog</button>
+  <button id="ib_error_bugreport" type="button" data-ui="errors_main.btn_bugreport" data-ib-pickkey="errors_main.btn_bugreport" title="errors.bugreport" style="width:auto;">Bugreport</button>
+  <button id="ib_error_logs5" type="button" data-ui="errors_main.btn_logs5" data-ib-pickkey="errors_main.btn_logs5" title="errors.logs5" style="width:auto;">5 min Logs</button>
+  <button id="ib_error_jump_logs" type="button" data-ui="errors_main.btn_jump_logs" data-ib-pickkey="errors_main.btn_jump_logs" title="errors.jump_logs" style="width:auto;">Jump Logs</button>
+  <button id="ib_error_git" type="button" data-ui="errors_main.btn_git_bugreport" data-ib-pickkey="errors_main.btn_git_bugreport" title="errors.git_bugreport" style="width:auto;"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="vertical-align:middle; margin-right:6px;"><path d="M9 4h6l1.5 2.5H20l-1.7 3 .7 1.2-1.7 2.8H20l-3 5h-3.5L12 20l-1.5-1.5H7l-3-5h2.7L5 10.7l.7-1.2-1.7-3H7.5L9 4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 13v3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Git Bugreport</button>
 </div>
 
 <script>

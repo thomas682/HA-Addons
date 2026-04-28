@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.466
+
+### Enhancement
+
+- Picker/S-Picker: Auch die verbliebenen statischen Dashboard-Markup-Bereiche setzen jetzt explizite lesbare `data-ib-pickkey`-Werte direkt im Template, sodass `data-ui` und Pickkey repo-weit sichtbar gepaart sind. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.465
 
 ### Enhancement
