@@ -8308,11 +8308,12 @@ function _renderModernFlowChecklist(container, opts){
       return ui.openAll || !!ui.openKeys[k];
     }
 
-    steps.forEach((s)=>{
+    steps.forEach((s, stepIdx)=>{
       const key = String(s && s.key || '');
-      const keyPick = encodeURIComponent(key || 'step');
+      const fallbackStepKey = key || ('step_' + String(stepIdx + 1));
+      const keyPick = encodeURIComponent(fallbackStepKey);
       const status = String(s && s.status || 'pending');
-      const open = _isOpen(key);
+      const open = _isOpen(fallbackStepKey);
       const durMs = Math.max(0, Math.round(Number(s && s.dur_ms || 0) || 0));
       const barPct = (maxMs > 0 && isFinite(durMs)) ? Math.max(0, Math.min(100, (durMs / maxMs) * 100)) : 0;
 
@@ -8409,8 +8410,8 @@ function _renderModernFlowChecklist(container, opts){
             ui.openAll = false;
             ui.openKeys = {};
           }
-          if(ui.openKeys[key]) delete ui.openKeys[key];
-          else ui.openKeys[key] = true;
+          if(ui.openKeys[fallbackStepKey]) delete ui.openKeys[fallbackStepKey];
+          else ui.openKeys[fallbackStepKey] = true;
           _saveFlowUiState(id, ui);
           _renderModernFlowChecklist($root, opts);
         }catch(e){}

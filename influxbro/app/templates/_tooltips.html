@@ -1840,11 +1840,13 @@
     composer.style.background = 'rgba(0,0,0,0.50)';
     composer.style.padding = '8vh 12px 12px 12px';
     composer.style.boxSizing = 'border-box';
+    composer.style.overflow = 'auto';
 
     const composerCard = document.createElement('div');
     composerCard.setAttribute('data-dialog-root', '1');
     composerCard.style.maxWidth = '860px';
-    composerCard.style.margin = '0 auto';
+    composerCard.style.margin = '0 auto 12px auto';
+    composerCard.style.maxHeight = 'calc(100vh - 16vh - 24px)';
     composerCard.style.background = '#fff';
     composerCard.style.borderRadius = '16px';
     composerCard.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
@@ -1852,11 +1854,13 @@
     composerCard.style.display = 'flex';
     composerCard.style.flexDirection = 'column';
     composerCard.style.gap = '12px';
+    composerCard.style.overflow = 'hidden';
 
     composerCard.innerHTML = `
       <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
         <div style="font-weight:800; font-size:16px;">Issue anlegen</div>
       </div>
+      <div id="influxbro_issue_scroll" style="display:flex; flex-direction:column; gap:12px; overflow:auto; min-height:0; padding-right:2px;">
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; align-items:end;">
         <div>
           <label for="influxbro_issue_kind" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Typ</label>
@@ -1896,7 +1900,7 @@
       <div id="influxbro_issue_attach_help" style="display:none; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
         <div style="font-weight:700; margin-bottom:6px;">Logfile manuell anhaengen</div>
         <div style="font-size:12px; opacity:0.85; margin-bottom:8px;">Bitte haenge das heruntergeladene Logfile bzw. den Debug-Report in GitHub manuell ueber <code>Add files</code> an.</div>
-        <img id="influxbro_issue_attach_img" alt="GitHub Add files Hinweis" style="display:block; max-width:100%; border:1px solid #ddd; border-radius:10px;" src="https://raw.githubusercontent.com/thomas682/HA-Addons/main/influxbro/images/issue_addFile.png" />
+        <div id="influxbro_issue_attach_img" style="display:block; max-width:100%; border:1px dashed #ddd; border-radius:10px; padding:10px 12px; font-size:12px; opacity:0.8; background:#fff;">GitHub: im neuen Issue rechts bzw. unten <code>Add files</code> verwenden und die zuvor heruntergeladene Datei anhaengen.</div>
       </div>
       <div id="influxbro_issue_support_bundle_box" style="display:none; border:1px solid #eee; border-radius:12px; padding:12px; background:#fafafa;">
         <div style="font-weight:700; margin-bottom:6px;">Support-Bundle (ZIP)</div>
@@ -1906,7 +1910,8 @@
         </label>
         <div class="muted" style="margin-top:6px; font-size:12px;">Das Bundle wird direkt heruntergeladen. Bitte die ZIP-Datei im Issue ueber <code>Add files</code> anhaengen.</div>
       </div>
-      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; border-top:1px solid #eee; padding-top:10px; margin-top:4px;">
         <button type="button" id="influxbro_issue_superpicker" class="ib_dialog_superpicker" data-open-superpicker="1" data-ui="issue_composer.btn_superpicker" data-ib-pickkey="issue_composer.btn_superpicker" style="cursor:pointer; padding:10px 12px;">S-Picker</button>
         <button type="button" id="influxbro_issue_cancel" data-ui="issue_composer.btn_close" data-ib-pickkey="issue_composer.btn_close" style="cursor:pointer; padding:10px 12px;">Schliessen</button>
         <button type="button" id="influxbro_issue_submit" style="cursor:pointer; padding:10px 12px;">Absenden / Issue anlegen</button>

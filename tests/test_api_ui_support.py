@@ -749,6 +749,7 @@ def test_dashboard_flow_checklist_controls_persist_and_use_explicit_pickkeys():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'const FLOW_UI_KEY_PREFIX = "influxbro_flow_ui_v1:";' in body
     assert 'if(!window.__IB_FLOW_UI[id]) window.__IB_FLOW_UI[id] = _loadFlowUiState(id);' in body
+    assert "const fallbackStepKey = key || ('step_' + String(stepIdx + 1));" in body
     assert "btnToggle.setAttribute('data-ui', id + '.btn_toggle_all');" in body
     assert "btnErr.setAttribute('data-ui', id + '.btn_only_errors');" in body
     assert "row.setAttribute('data-ib-pickkey', flowPickBase + '.row_step.' + keyPick);" in body
@@ -1379,6 +1380,9 @@ def test_confirm_dialog_template_and_popup_metadata_exist():
     assert "confirmCancel.setAttribute('data-ui', 'dialog_confirm_action.btn_cancel');" in tooltips_body
     assert "confirmOk.setAttribute('data-ui', 'dialog_confirm_action.btn_ok');" in tooltips_body
     assert "window.InfluxBroConfirm = {" in tooltips_body
+    assert "composer.style.overflow = 'auto';" in tooltips_body
+    assert "composerCard.style.maxHeight = 'calc(100vh - 16vh - 24px)';" in tooltips_body
+    assert "GitHub: im neuen Issue rechts bzw. unten <code>Add files</code> verwenden" in tooltips_body
 
 
 def test_destructive_flows_use_confirm_dialog_api():

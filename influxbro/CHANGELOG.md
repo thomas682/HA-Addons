@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.475
+
+### Fix
+
+- Issue-Report: Der Issue-Composer bleibt jetzt innerhalb des Viewports scrollbar und der Submit-Button ist direkt bedienbar. Die Anhang-Hilfe nutzt keinen fehlenden Bildpfad mehr, sodass der Bugreport-Flow auf dem Dashboard wieder sichtbar und benutzbar ist. ([#423](https://github.com/thomas682/HA-Addons/issues/423))
+- Dashboard: Die Analysis-Checklist erzeugt bei fehlenden Step-Keys nun stabile Fallback-Schluessel pro Schritt und verursacht dadurch keine wiederholten Pickkey-/Instancekey-Kollisionen mehr. ([#423](https://github.com/thomas682/HA-Addons/issues/423))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.474
 
 ### Fix
