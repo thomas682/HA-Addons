@@ -124,7 +124,7 @@
 
         <div class="page_grid">
 
-          <details class="card" open data-ui="restore_main.section_root" data-ib-pickkey="restore_main.section_root" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
+          <details class="card" open data-ui="restore_main.section_source" data-ib-pickkey="restore_main.section_source" title="restore.source" style="--restore_visible_rows: {{ (cfg.get('ui_restore_visible_rows') or 24) | int }};">
             <summary><span class="ib_summary_row"><span>Quelle (Backup)</span><button type="button" class="ib_info_icon" data-info-title="Restore: Quelle" data-info-body="Waehle genau ein Backup als Quelle fuer den Restore aus." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
             <div class="card_body">
             <div class="table_wrap" data-ui="restore_table.panel_wrap" data-ib-pickkey="restore_table.panel_wrap" title="restore.table.wrap">
@@ -193,7 +193,7 @@
             </div>
         </details>
 
-       <details class="card" open data-ui="restore_main.section_root" data-ib-pickkey="restore_main.section_root" title="restore.target">
+       <details class="card" open data-ui="restore_main.section_target" data-ib-pickkey="restore_main.section_target" title="restore.target">
           <summary><span class="ib_summary_row"><span>Ziel (Messwert)</span><button type="button" class="ib_info_icon" data-info-title="Restore: Ziel" data-info-body="Hier waehlst du die Zielserie fuer den Restore und startest die Rueckschreibung." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
           <div class="card_body">
           <div class="status" id="plan_info" data-ui="restore_main.panel_plan" data-ib-pickkey="restore_main.panel_plan" title="restore.plan" style="margin-top:8px; border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; white-space: pre-wrap;"></div>
@@ -305,7 +305,7 @@
               <span id="run_status_time"></span>
             </div>
 
-            <details id="run_details" class="card" style="display:none; margin-top: 10px;" data-ui="restore_main.section_root" data-ib-pickkey="restore_main.section_root" title="restore.run_details">
+            <details id="run_details" class="card" style="display:none; margin-top: 10px;" data-ui="restore_main.section_run_details" data-ib-pickkey="restore_main.section_run_details" title="restore.run_details">
               <summary><span class="ib_summary_row"><span>Restore Details</span><button type="button" class="ib_info_icon" data-info-title="Restore: Details" data-info-body="Zeigt Details des laufenden/letzten Restore-Jobs.\n\nEnthaelt:\n- Meta-Infos (Quelle/Ziel/Zeitraum).\n- Query/Write-Aktion (best-effort).\n- Vorschau der geschriebenen Line-Protocol Zeilen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
               <div class="card_body">
                 <div class="muted" id="run_details_meta" style="margin-top:6px;"></div>

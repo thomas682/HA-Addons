@@ -110,7 +110,7 @@
     .diag_wrap { background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:12px; padding:16px; overflow: visible; }
 
     /* Prevent the diagram section root from becoming a scroll container */
-    details[data-ui="perf_page.diagram.section_root" data-ib-pickkey="perf_page.diagram.section_root"] { overflow: visible; }
+    details[data-ui="perf_page.section_diagram" data-ib-pickkey="perf_page.section_diagram"] { overflow: visible; }
 
     /* Tabs inside the diagram section */
     .perf_tabs { display:flex; gap:8px; flex-wrap:wrap; }
@@ -241,10 +241,10 @@
     @media(max-width:900px){ .corr_wrap .corr_view .wf-lbl{min-width:200px;max-width:200px} }
 
     /* Enable internal scrolling in list + detail boxes (not on the whole section) */
-    details[data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root"] .card_body { display:flex; flex-direction:column; min-height:0; }
-    details[data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root"] .pane_stack { flex:1 1 auto; min-height:0; align-items:stretch; }
-    details[data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root"] .pane_col { display:flex; flex-direction:column; min-height:0; }
-    details[data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root"] .pane_col .pane_box { flex:1 1 auto; min-height:0; }
+    details[data-ui="perf_page.section_traces" data-ib-pickkey="perf_page.section_traces"] .card_body { display:flex; flex-direction:column; min-height:0; }
+    details[data-ui="perf_page.section_traces" data-ib-pickkey="perf_page.section_traces"] .pane_stack { flex:1 1 auto; min-height:0; align-items:stretch; }
+    details[data-ui="perf_page.section_traces" data-ib-pickkey="perf_page.section_traces"] .pane_col { display:flex; flex-direction:column; min-height:0; }
+    details[data-ui="perf_page.section_traces" data-ib-pickkey="perf_page.section_traces"] .pane_col .pane_box { flex:1 1 auto; min-height:0; }
     .diag_wrap .tv {
       --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --bg4: #292e36;
       --border: #30363d; --border-hover: #484f58;
@@ -418,7 +418,7 @@
     {% include "_nav.html" %}
     <main class="content" data-ui="perf_page.main" data-ib-pickkey="perf_page.main" title="perf.page">
       <div class="perf_split" id="perf_split">
-      <details class="card perf_split_top" open data-ui="perf_page.section_root" data-ib-pickkey="perf_page.section_root" title="perf_page.section_root">
+      <details class="card perf_split_top" open data-ui="perf_page.section_traces" data-ib-pickkey="perf_page.section_traces" title="perf_page.section_root">
         <summary>
           <span class="ib_summary_row">
             <span>Performanceanalyse</span>
@@ -503,7 +503,7 @@
       </details>
 
       <div class="perf_splitter" id="perf_splitter" title="Hoehe anpassen"></div>
-      <details class="card perf_split_bottom" open data-ui="perf_page.diagram.section_root" data-ib-pickkey="perf_page.diagram.section_root" title="perf_page.diagram.section_root">
+      <details class="card perf_split_bottom" open data-ui="perf_page.section_diagram" data-ib-pickkey="perf_page.section_diagram" title="perf_page.diagram.section_root">
         <summary><span class="ib_summary_row"><span>Diagramm</span></span></summary>
         <div class="card_body">
           <div class="muted">Grafische Zeitleiste (Waterfall) fuer den selektierten Trace.</div>

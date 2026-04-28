@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 
 def test_bugreport_meta_includes_recent_ui_actions(load_app_module, tmp_path):
@@ -1396,3 +1397,30 @@ def test_destructive_flows_use_confirm_dialog_api():
     assert "pickerKey: 'dialog_backup_delete_confirm.root'" in backup_body
     assert "pickerKey: 'dialog_fullrestore_confirm.root'" in restore_body
     assert "pickerKey: 'dialog_restore_confirm.root'" in restore_body
+
+
+def test_pick_registry_skips_template_blueprints_and_static_duplicate_keys_are_bounded():
+    topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "function _isInertPickNode(el)" in topbar_body
+    assert "if(el.closest('template')) return true;" in topbar_body
+    assert "if(el.closest('[data-ib-template=\"1\"]')) return true;" in topbar_body
+
+    templates_dir = Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates"
+    counts = {}
+    for template_path in sorted(templates_dir.glob("*.html")):
+        for line_no, line in enumerate(template_path.read_text().splitlines(), 1):
+            for marker in re.finditer(r'<[^>]+data-ib-pickkey="([^"]+)"', line):
+                key = marker.group(1)
+                counts.setdefault(key, []).append(f"{template_path.name}:{line_no}")
+
+    def _allowed_duplicate_key(k: str) -> bool:
+        if k == 'config_test_success.btn_ok':
+            return True
+        return (
+            k.startswith("dashboard.cache_timeline.btn_hl.")
+            or k.startswith("dashboard.cache_timeline.btn_ac.")
+            or k.startswith("dashboard.cache_timeline.btn_ol.")
+        )
+
+    disallowed = {k: v for k, v in counts.items() if len(v) > 1 and not _allowed_duplicate_key(k)}
+    assert disallowed == {}

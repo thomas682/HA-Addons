@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.472
+
+### Fix
+
+- Picker/Registry: Die Registry ignoriert jetzt Template-/Blueprint-Knoten explizit, mehrere statische Doppelbelegungen in `performance`, `restore`, `export`, `import`, `history` und `stats` wurden entkoppelt, und ein Test-Gate blockiert neue statische Pickkey-Duplikate im Markup. ([#422](https://github.com/thomas682/HA-Addons/issues/422))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.471
 
 ### Enhancement

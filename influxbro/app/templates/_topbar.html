@@ -758,10 +758,19 @@
         return parts.join('/');
       }catch(e){ return ''; }
     }
+    function _isInertPickNode(el){
+      try{
+        if(!el || !el.closest) return false;
+        if(el.closest('template')) return true;
+        if(el.closest('[data-ib-template="1"]')) return true;
+      }catch(e){}
+      return false;
+    }
      function _ensurePickkey(el){
        try{
-         if(!el || !el.getAttribute || !el.setAttribute) return;
-         if(el.getAttribute('data-ib-pickkey')) return;
+          if(!el || !el.getAttribute || !el.setAttribute) return;
+          if(_isInertPickNode(el)) return;
+          if(el.getAttribute('data-ib-pickkey')) return;
          const ui = _normKey(el.getAttribute('data-ui'));
          const id = _normKey(el.getAttribute('id'));
          const page = _pageKey();
@@ -781,7 +790,8 @@
      function _ensureInstancekey(el){
        try{
          if(!el || !el.getAttribute || !el.setAttribute) return;
-         if(el.getAttribute('data-ib-instancekey')) return;
+          if(_isInertPickNode(el)) return;
+          if(el.getAttribute('data-ib-instancekey')) return;
          const pk = _normKey(el.getAttribute('data-ib-pickkey'));
          if(!pk) return;
          const item = _normKey(el.getAttribute('data-ib-itemkey'));
@@ -824,9 +834,10 @@
         try{
           const groups = {};
          document.querySelectorAll('[data-ib-instancekey]').forEach((el)=>{
-           try{
-             if(!el || !el.getAttribute) return;
-             const ik = _normKey(el.getAttribute('data-ib-instancekey'));
+            try{
+              if(!el || !el.getAttribute) return;
+              if(_isInertPickNode(el)) return;
+              const ik = _normKey(el.getAttribute('data-ib-instancekey'));
              if(!ik) return;
              if(!groups[ik]) groups[ik] = [];
              groups[ik].push(el);
@@ -856,17 +867,19 @@
          const ikMap = {};
          let autoPk = 0;
          let autoIk = 0;
-         document.querySelectorAll('[data-ib-pickkey]').forEach((el)=>{
-           try{
-             const pk = _normKey(el.getAttribute('data-ib-pickkey'));
+          document.querySelectorAll('[data-ib-pickkey]').forEach((el)=>{
+            try{
+              if(_isInertPickNode(el)) return;
+              const pk = _normKey(el.getAttribute('data-ib-pickkey'));
              if(!pk) return;
              pkMap[pk] = (pkMap[pk] || 0) + 1;
              if(String(el.getAttribute('data-ib-pickkey-auto') || '') === '1') autoPk += 1;
            }catch(e){}
          });
-         document.querySelectorAll('[data-ib-instancekey]').forEach((el)=>{
-           try{
-             const ik = _normKey(el.getAttribute('data-ib-instancekey'));
+          document.querySelectorAll('[data-ib-instancekey]').forEach((el)=>{
+            try{
+              if(_isInertPickNode(el)) return;
+              const ik = _normKey(el.getAttribute('data-ib-instancekey'));
              if(!ik) return;
              ikMap[ik] = (ikMap[ik] || 0) + 1;
              if(String(el.getAttribute('data-ib-instancekey-auto') || '') === '1') autoIk += 1;
