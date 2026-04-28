@@ -1857,7 +1857,7 @@ function _iconsPaletteRender(){
         const key = String(it.key || '');
         const ov = (_ICON_OVERRIDES && _ICON_OVERRIDES[key]) ? String(_ICON_OVERRIDES[key] || '') : '';
         const def = (_ICON_DEFAULT && _ICON_DEFAULT[key]) ? String(_ICON_DEFAULT[key] || '') : '';
-        const svg = ov || def || '';
+        const svg = _iconOnlyMarkup(ov || def || '');
         if(!svg) return;
         if(seenSvg[svg]) return;
         seenSvg[svg] = 1;
@@ -1906,6 +1906,20 @@ async function _iconsApplySvgToKey(targetKey, svg, sourceKey){
     _iconsSetStatus('Icon uebernommen: ' + k + (sourceKey ? (' <- ' + sourceKey) : ''));
   }catch(e){
     _iconsSetErr(String(e || 'Icon uebernehmen fehlgeschlagen'));
+  }
+}
+
+function _iconOnlyMarkup(raw){
+  try{
+    const html = String(raw || '').trim();
+    if(!html) return '';
+    const host = document.createElement('div');
+    host.innerHTML = html;
+    const svg = host.querySelector('svg');
+    if(svg) return svg.outerHTML;
+    return html;
+  }catch(e){
+    return String(raw || '').trim();
   }
 }
 
@@ -2052,12 +2066,13 @@ function _iconModalOpen(key){
     const hasOv = !!(_ICON_OVERRIDES && _ICON_EDIT_KEY && _ICON_OVERRIDES[_ICON_EDIT_KEY]);
     const def = (_ICON_DEFAULT && _ICON_EDIT_KEY && _ICON_DEFAULT[_ICON_EDIT_KEY]) ? String(_ICON_DEFAULT[_ICON_EDIT_KEY]||'') : '';
     const cur = hasOv ? String(_ICON_OVERRIDES[_ICON_EDIT_KEY]||'') : def;
+    const curMarkup = _iconOnlyMarkup(cur);
     try{ if($iconSvgSub) $iconSvgSub.textContent = (area ? (area + ' | ') : '') + (label || '') + (hasOv ? ' | Override aktiv' : ' | Default (kein Override)'); }catch(e){}
     try{ $iconSvgText.value = cur; }catch(e){}
     try{
       if($iconSvgPreview){
         $iconSvgPreview.innerHTML = '';
-        if(cur) $iconSvgPreview.innerHTML = cur;
+        if(curMarkup) $iconSvgPreview.innerHTML = curMarkup;
       }
     }catch(e){}
     try{ $iconSvgModal.style.display = 'block'; }catch(e){}
@@ -2173,7 +2188,8 @@ function _iconsRender(){
       tdSvg.className = 'mono ib_icon_svg_cell';
       const ov = (_ICON_OVERRIDES && _ICON_OVERRIDES[r.key]) ? String(_ICON_OVERRIDES[r.key]||'') : '';
       const def = (_ICON_DEFAULT && _ICON_DEFAULT[r.key]) ? String(_ICON_DEFAULT[r.key]||'') : '';
-      const eff = ov || def || '';
+        const eff = ov || def || '';
+        const effMarkup = _iconOnlyMarkup(eff);
 
       if(_ICON_EDITING_KEY && String(_ICON_EDITING_KEY) === String(r.key)){
         const ta = document.createElement('textarea');
@@ -2221,7 +2237,7 @@ function _iconsRender(){
       pv.style.border = '1px solid #eee';
       pv.style.borderRadius = '8px';
       pv.style.background = '#fafafa';
-      try{ if(eff) pv.innerHTML = eff; }catch(e){}
+        try{ if(effMarkup) pv.innerHTML = effMarkup; }catch(e){}
       tdPrev.appendChild(pv);
       tr.appendChild(tdPrev);
 

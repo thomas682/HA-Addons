@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.473
+
+### Fix
+
+- Einstellungen/Icon-Manager: Die Settings-Seite rendert Icon-Palette und Vorschau jetzt nur noch mit dem extrahierten SVG-Markup statt mit kompletten UI-Elementen. Dadurch verschwindet der verbleibende `Invalid regular expression`-Fehler auf `/config`, und die dort vorher mitgerenderten Fremd-Buttons erzeugen keine Pickkey-Kollisionen mehr. 
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.472
 
 ### Fix

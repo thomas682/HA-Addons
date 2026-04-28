@@ -928,6 +928,7 @@ UI:
 - Dialoge: Reine Info-/Status-Dialoge verwenden weiterhin das bestehende Popup-Template. Aktionen mit Benutzerentscheidung (z. B. Loeschen, Ueberschreiben, Abbrechen) verwenden jetzt schrittweise ein eigenes Confirm-Dialog-Template mit `OK` und `Abbrechen`.
 - Dialoge: Rechts unten zeigt jeder Popup-/Confirm-Dialog in kleiner Schrift seinen Picker-Key (`pk`) und das verwendete Template (`tpl`) an.
 - Picker/Registry: Template-/Blueprint-Knoten gelten nicht als Live-Picker-Elemente und werden von der Registry-/Kollisionspruefung ausgeschlossen. Statische Abschnitts-/Panel-Keys in wiederkehrenden Bereichen wie `performance`, `restore`, `export`, `import`, `history` und `stats` wurden auf eindeutige fachliche Schluessel getrennt.
+- Einstellungen/Iconbilder: Palette und Preview rendern nur das eigentliche SVG statt kompletter urspruenglicher UI-Elemente. Dadurch bleiben die Einstellungen frei von fremden Button-/Panel-Instanzen und vermeiden entsprechende Pickkey-Kollisionen auf der Config-Seite.
 - Iconbilder: Speicherung erfolgt im aktiven UI-Profil (PC/MOBIL).
 - Iconbilder: Sicherheit: SVG wird serverseitig sanitisiert (XSS-Schutz) und ist groessenbegrenzt; Preview zeigt den gespeicherten Stand.
 - Iconbilder: Anwendung: Overrides werden sofort auf passende Buttons angewendet (ohne Reload, best-effort).

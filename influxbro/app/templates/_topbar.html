@@ -1149,7 +1149,7 @@
           if(!entry) return null;
           let el = null;
           if(entry.selector) el = document.querySelector(String(entry.selector));
-          if(!el && entry.ui) el = document.querySelector('[data-ui="' + String(entry.ui).replace(/" data-ib-pickkey="' + String(entry.ui).replace(/"/g,'\\"') + '"]');
+          if(!el && entry.ui) el = document.querySelector('[data-ui="' + String(entry.ui).replace(/"/g,'\\"') + '"]');
           return el;
         }catch(e){ return null; }
       }
@@ -1212,7 +1212,7 @@
         if(!PARAM_HELP_ACTIVE || !main) return;
         Object.keys(PARAM_LINKS).forEach((ui)=>{
           try{
-            const el = document.querySelector('[data-ui="' + ui.replace(/" data-ib-pickkey="' + ui.replace(/"/g,'\\"') + '"]');
+            const el = document.querySelector('[data-ui="' + ui.replace(/"/g,'\\"') + '"]');
             if(!el) return;
             const host = el.closest('.control, .card, .table_wrap, details, .ib_pagecard, .nav_item, [data-ui]') || el;
             if(!host || host.querySelector(':scope > .ib_param_hint_badge')) return;
