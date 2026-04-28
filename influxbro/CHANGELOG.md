@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.470
+
+### Fix
+
+- Einstellungen/Icon-Manager: Doppelte SVGs in der Palette werden nur noch einmal gezeigt, die ersten vier Tabellenspalten bleiben beim horizontalen Scrollen fixiert, und `Edit` sowie Doppelklick oeffnen den Inline-Editor wieder zuverlaessig. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Picker/UI: Backup-Query-Detailbereiche verwenden eigene Panel-Pickkeys statt Button-Pickkeys, und die letzten bekannten button-spezifischen `width:100%`-Sonderregeln wurden auf normale Breiten zurueckgestellt. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.469
 
 ### Fix
