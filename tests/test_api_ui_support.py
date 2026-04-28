@@ -1244,3 +1244,31 @@ def test_api_ui_inventory_returns_items(load_app_module, tmp_path):
     assert "analysis_log_modal.btn_close" in keys
     assert "analysis_log_modal.btn_superpicker" in keys
     assert "picker_multi.panel_bar" in keys
+
+
+def test_readable_picker_fallback_uses_data_ui_and_explicit_dynamic_pickkeys():
+    topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    nav_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    table_cols_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+
+    assert "if(ui) return ui;" in topbar_body
+    assert "if(ui){ el.setAttribute('data-ib-pickkey', ui);" in topbar_body
+    assert "if(id){ el.setAttribute('data-ib-pickkey', 'id.' + id);" in topbar_body
+    assert "multiBar.setAttribute('data-ib-pickkey', 'picker_multi.panel_bar');" in topbar_body
+    assert "closeBtn.setAttribute('data-ui', 'ib_page_search_modal.btn_close');" in topbar_body
+    assert "closeBtn.setAttribute('data-ib-pickkey', 'ib_page_search_modal.btn_close');" in topbar_body
+
+    assert "splitter.setAttribute('data-ib-pickkey', 'nav_main.handle_sidebar_split');" in nav_body
+    assert "if(!el.getAttribute('data-ib-pickkey')) el.setAttribute('data-ib-pickkey', 'id.' + id);" in nav_body
+
+    assert "details.setAttribute('data-ib-pickkey', dataUi);" in config_body
+    assert "section.setAttribute('data-ib-pickkey', dataUi);" in config_body
+
+    assert "if(tid) host.setAttribute('data-ib-instancekey', 'table.' + tid + '.rowcount');" in table_cols_body
+
+    assert "close.setAttribute('data-ui', 'analysis_log_modal.btn_close');" in index_body
+    assert "close.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_close');" in index_body
+    assert "refresh.setAttribute('data-ui', 'analysis_log_modal.btn_refresh');" in index_body
+    assert "refresh.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_refresh');" in index_body

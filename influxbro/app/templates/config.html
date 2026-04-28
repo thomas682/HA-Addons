@@ -3516,6 +3516,7 @@ function _cfgMakeSection(title, dataUi, note){
   details.className = 'card';
   details.open = true;
   details.setAttribute('data-ui', dataUi);
+  details.setAttribute('data-ib-pickkey', dataUi);
   details.setAttribute('title', dataUi);
   details.innerHTML = '<summary><span class="ib_summary_row"><span>' + title + '</span></span></summary><div class="card_body"></div>';
   const body = details.querySelector('.card_body');
@@ -3529,6 +3530,7 @@ function _cfgRetitle(section, title, dataUi){
   try{
     if(!section) return;
     section.setAttribute('data-ui', dataUi);
+    section.setAttribute('data-ib-pickkey', dataUi);
     section.setAttribute('title', dataUi);
     const span = section.querySelector(':scope > summary .ib_summary_row > span:first-child');
     if(span) span.textContent = title;
@@ -4148,6 +4150,7 @@ try{
       details.id = 'cfg_custom_group_' + id;
       const dataUi = 'config_settings.group_custom_' + id;
       details.setAttribute('data-ui', dataUi);
+      details.setAttribute('data-ib-pickkey', dataUi);
       details.setAttribute('title', dataUi);
       details.setAttribute('data-settings-group', id);
       details.dataset.settingsGroup = id;
@@ -4175,6 +4178,7 @@ try{
       details.id = 'cfg_custom_subgroup_' + id;
       const dataUi = 'config_settings.subgroup_custom_' + id;
       details.setAttribute('data-ui', dataUi);
+      details.setAttribute('data-ib-pickkey', dataUi);
       details.setAttribute('title', dataUi);
       details.setAttribute('data-settings-subgroup', id);
       details.dataset.settingsSubgroup = id;

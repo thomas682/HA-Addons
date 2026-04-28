@@ -731,7 +731,7 @@
         const pk = _normKey(a.getAttribute && a.getAttribute('data-ib-pickkey'));
         if(pk) return pk;
         const ui = _normKey(a.getAttribute && a.getAttribute('data-ui'));
-        if(ui) return 'ui.' + ui;
+        if(ui) return ui;
         const id = _normKey(a.getAttribute && a.getAttribute('id'));
         if(id) return 'id.' + id;
       }catch(e){}
@@ -765,8 +765,8 @@
          const ui = _normKey(el.getAttribute('data-ui'));
          const id = _normKey(el.getAttribute('id'));
          const page = _pageKey();
-         if(ui){ el.setAttribute('data-ib-pickkey', page + '.' + ui); el.setAttribute('data-ib-pickkey-auto', '1'); return; }
-         if(id){ el.setAttribute('data-ib-pickkey', page + '.id.' + id); el.setAttribute('data-ib-pickkey-auto', '1'); return; }
+         if(ui){ el.setAttribute('data-ib-pickkey', ui); el.setAttribute('data-ib-pickkey-auto', '1'); return; }
+         if(id){ el.setAttribute('data-ib-pickkey', 'id.' + id); el.setAttribute('data-ib-pickkey-auto', '1'); return; }
 
         const anchor = el.closest && el.closest('[data-ui],[id],[data-ib-pickkey]');
         const base = _anchorKeyFor(el) || (page + '.auto');
@@ -1616,7 +1616,17 @@
         const preview = previewSearchIndex();
         $searchModal.innerHTML = `<div style="max-width:860px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 12px 60px rgba(0,0,0,0.28); padding:14px; display:flex; flex-direction:column; gap:12px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;"><div style="font-weight:800; font-size:16px;">Seitensuche</div><button type="button" id="ib_page_search_modal_close" style="cursor:pointer; padding:10px 12px;">Schliessen</button></div><div class="muted">Die Liste zeigt Beispieltreffer mit den aktuell aktiven Suchquellen und dem aktuellen Suchtext.</div><div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;"><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="label" ${cfg.label ? 'checked' : ''}/>Label</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="visible_text" ${cfg.visible_text ? 'checked' : ''}/>Sichtbarer Text</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="direct_text" ${cfg.direct_text ? 'checked' : ''}/>Direkt Text</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="key" ${cfg.key ? 'checked' : ''}/>data-ui / id</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="sections" ${cfg.sections ? 'checked' : ''}/>Bereichspfad</label><label class="ib_page_search_modal_chk"><input type="checkbox" data-k="tooltip" ${cfg.tooltip ? 'checked' : ''}/>Tooltiptexte</label></div><div style="border:1px solid #eee; border-radius:12px; max-height:50vh; overflow:auto;"><div id="ib_page_search_preview">${preview.map(x=>`<div style="padding:10px 12px; border-bottom:1px solid #eee;"><strong>${x.ui}</strong><div style="font-size:12px; opacity:.75;">${((x.sect && x.sect.length) ? ('[' + x.sect.join(' / ') + '] ') : '') + (x.txt || '')}</div><div style="font-size:11px; opacity:.6; margin-top:4px;">${Object.entries(x.parts || {}).filter(([k,v])=>{ if(k === 'txt') return false; return String(v || '').trim(); }).map(([k,v])=>`${k}: ${String(v)}`).join(' | ')}</div></div>`).join('') || '<div style="padding:10px 12px;" class="muted">Keine Treffer mit aktueller Filterung.</div>'}</div></div></div>`;
         $searchModal.style.display = 'block';
+        try{
+          const panel = $searchModal.firstElementChild;
+          if(panel) panel.setAttribute('data-dialog-root', '1');
+        }catch(e){}
         const closeBtn = document.getElementById('ib_page_search_modal_close');
+        try{
+          if(closeBtn){
+            closeBtn.setAttribute('data-ui', 'ib_page_search_modal.btn_close');
+            closeBtn.setAttribute('data-ib-pickkey', 'ib_page_search_modal.btn_close');
+          }
+        }catch(e){}
         if(closeBtn) closeBtn.onclick = ()=>{ $searchModal.style.display = 'none'; };
         $searchModal.onclick = null;
         $searchModal.querySelectorAll('input[data-k]').forEach(cb=>cb.addEventListener('change', ()=>{
@@ -2192,6 +2202,8 @@
       multiBar.style.display = 'none';
       multiBar.style.pointerEvents = 'auto';
       multiBar.setAttribute('data-ui', 'picker_multi.panel_bar');
+      multiBar.setAttribute('data-ib-pickkey', 'picker_multi.panel_bar');
+      multiBar.setAttribute('data-ib-instancekey', 'picker_multi.panel_bar');
       multiBar.setAttribute('title', 'picker_multi.panel_bar');
       document.body.appendChild(multiBar);
       return multiBar;

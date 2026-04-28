@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.465
+
+### Enhancement
+
+- Picker/S-Picker: Verbleibende dynamische UI-Builder verwenden jetzt repo-weit lesbare explizite Picker-Keys statt kryptischer Auto-Pfade, und der Fallback verwendet vorhandene `data-ui`/`id`-Werte lesbar weiter. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.464
 
 ### Fix

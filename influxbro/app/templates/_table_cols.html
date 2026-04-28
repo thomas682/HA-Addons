@@ -1908,6 +1908,7 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       const tid = _norm(tbl.getAttribute('id'));
       if(tid) host.setAttribute('data-ib-pickkey', 'table.' + tid + '.rowcount');
       if(tid) host.setAttribute('data-ui', 'table_rowcount.' + tid);
+      if(tid) host.setAttribute('data-ib-instancekey', 'table.' + tid + '.rowcount');
     }catch(e){}
     host.style.marginLeft = '10px';
     host.style.whiteSpace = 'nowrap';

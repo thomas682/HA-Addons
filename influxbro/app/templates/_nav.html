@@ -894,6 +894,7 @@
           splitter.id = 'ib_sidebar_splitter';
           splitter.className = 'ib_sidebar_splitter';
           splitter.setAttribute('data-ui', 'nav_main.handle_sidebar_split');
+          splitter.setAttribute('data-ib-pickkey', 'nav_main.handle_sidebar_split');
           splitter.setAttribute('title', 'nav.sidebar.split');
           shell.appendChild(splitter);
         }
@@ -1289,6 +1290,7 @@
         const id = el.getAttribute('id');
         if(id){
           el.setAttribute('data-ui', id);
+          if(!el.getAttribute('data-ib-pickkey')) el.setAttribute('data-ib-pickkey', 'id.' + id);
           if(!el.getAttribute('title')) el.setAttribute('title', id);
         }
       });

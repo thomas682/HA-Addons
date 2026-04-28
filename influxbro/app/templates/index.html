@@ -9258,6 +9258,10 @@ function _ensureFilteredLogModal(){
   dlg.style.padding = '0';
   dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:70vh; max-height:85vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Gefiltertes Logging</div><button type="button" id="analysis_log_modal_close" class="btn_sm" style="width:auto;">Schliessen</button></div><div style="padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee;"><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Ausloeser</span><select id="analysis_log_filter_action" style="min-width:220px;"><option value="">Alle</option><option value="analysis_run_with_cache">Analyse mit Cache</option><option value="analysis_run_without_cache">Analyse ohne Cache</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Bereichsfilter</span><select id="analysis_log_filter_scope" style="min-width:220px;"><option value="">Alle</option><option value="dashboard_analysis">Dashboard Analyse</option><option value="dashboard_caching">Dashboard Cache</option><option value="dashboard_outliers">Dashboard Ausreisser</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Textsuche</span><input id="analysis_log_filter_text" type="text" placeholder="Volltextsuche in den Logzeilen" /></label><button type="button" id="analysis_log_filter_refresh" class="btn_sm" style="width:auto; align-self:end;">Refresh</button></div><div style="padding:12px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 auto;"><div id="analysis_log_filter_meta" class="muted" style="font-size:12px;"></div><pre id="analysis_log_filter_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45;"></pre></div></div>';
   document.body.appendChild(dlg);
+  try{
+    const panel = dlg.firstElementChild;
+    if(panel) panel.setAttribute('data-dialog-root', '1');
+  }catch(e){}
 
   // Insert a convenience button without rewriting the big HTML string.
   try{
@@ -9275,6 +9279,17 @@ function _ensureFilteredLogModal(){
   }catch(e){}
 
   const close = document.getElementById('analysis_log_modal_close');
+  try{
+    if(close){
+      close.setAttribute('data-ui', 'analysis_log_modal.btn_close');
+      close.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_close');
+    }
+    const refresh = document.getElementById('analysis_log_filter_refresh');
+    if(refresh){
+      refresh.setAttribute('data-ui', 'analysis_log_modal.btn_refresh');
+      refresh.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_refresh');
+    }
+  }catch(e){}
   if(close) close.addEventListener('click', ()=>{ try{ dlg.close(); }catch(e){ dlg.style.display='none'; } });
   return dlg;
 }
