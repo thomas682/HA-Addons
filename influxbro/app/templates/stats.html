@@ -111,6 +111,84 @@
       <div class="muted">Gesamtstatistik fuer alle Messwerte (eine Zeile pro Serie).</div>
 
       <div class="card">
+        {% set sel_section_id = 'selection_details' %}
+        {% set sel_root_ui = 'stats_selection.section_root' %}
+        {% set sel_root_title = 'section.selection' %}
+        {% set sel_summary = 'Messwertauswahl' %}
+        {% set sel_info_title = 'Statistik: Auswahl' %}
+        {% set sel_info_body = 'Filtert, welche Serien in der Gesamtstatistik auftauchen (measurement/field/entity_id/friendly_name).&#10;&#10;Performance:&#10;- Initial werden nur schnelle Basis-Spalten geladen (last/oldest/newest).&#10;- Details (count/min/max/mean) werden per Nachladen-Job berechnet und inkrementell gemerged.' %}
+        {% set sel_filters_id = 'stats_filters' %}
+        {% set sel_filters_ui = 'stats_selection.panel_filters' %}
+        {% set sel_source_ui = 'stats_selection.panel_source' %}
+        {% set sel_source_title = 'Quelle' %}
+        {% set sel_measurement_wrap_id = 'stats_measurement_wrap' %}
+        {% set sel_measurement_wrap_ui = 'stats_selection.input_measurement' %}
+        {% set sel_measurement_input_id = 'src_measurement' %}
+        {% set sel_measurement_input_ui = 'stats_combine.input_src_measurement' %}
+        {% set sel_measurement_list_id = 'measurement_list' %}
+        {% set sel_measurement_label = '_measurement' %}
+        {% set sel_measurement_count_id = 'cnt_src_measurement' %}
+        {% set sel_measurement_placeholder = 'required' %}
+        {% set sel_measurement_help_title = 'Quelle _measurement' %}
+        {% set sel_measurement_help = 'Measurement der Quelle. Aktuell ist _measurement erforderlich.' %}
+        {% set sel_measurement_desc = 'Pflichtfeld.' %}
+        {% set sel_field_wrap_id = 'stats_field_wrap' %}
+        {% set sel_field_wrap_ui = 'stats_selection.input_field' %}
+        {% set sel_field_input_id = 'src_field' %}
+        {% set sel_field_input_ui = 'stats_combine.input_src_field' %}
+        {% set sel_field_list_id = 'src_field_list' %}
+        {% set sel_field_label = '_field' %}
+        {% set sel_field_count_id = 'cnt_src_field' %}
+        {% set sel_field_placeholder = 'value' %}
+        {% set sel_field_help_title = 'Quelle _field' %}
+        {% set sel_field_help = 'Field der Quelle. Default: value.' %}
+        {% set sel_field_desc = 'Default ist <code>value</code>.' %}
+        {% set sel_entity_wrap_id = 'stats_entity_wrap' %}
+        {% set sel_entity_wrap_ui = 'stats_selection.input_entity' %}
+        {% set sel_entity_input_id = 'src_entity_id' %}
+        {% set sel_entity_input_ui = 'stats_combine.input_src_entity_id' %}
+        {% set sel_entity_list_id = 'src_entity_list' %}
+        {% set sel_entity_label = 'Entity ID (entity_id)' %}
+        {% set sel_entity_count_id = 'cnt_src_entity' %}
+        {% set sel_entity_help_title = 'Quelle entity_id' %}
+        {% set sel_entity_help = 'Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.' %}
+        {% set sel_entity_desc = 'Mindestens eins erforderlich.' %}
+        {% set sel_friendly_wrap_id = 'stats_friendly_wrap' %}
+        {% set sel_friendly_wrap_ui = 'stats_selection.input_friendly_name' %}
+        {% set sel_friendly_input_id = 'src_friendly_name' %}
+        {% set sel_friendly_input_ui = 'stats_combine.input_src_friendly' %}
+        {% set sel_friendly_list_id = 'src_friendly_list' %}
+        {% set sel_friendly_label = 'Messwert (friendly_name)' %}
+        {% set sel_friendly_count_id = 'cnt_src_friendly' %}
+        {% set sel_friendly_help_title = 'Quelle friendly_name' %}
+        {% set sel_friendly_help = 'Tag-Filter fuer die Quelle. Mindestens entity_id ODER friendly_name muss gesetzt sein.' %}
+        {% set sel_friendly_desc = 'Mindestens eins erforderlich.' %}
+        {% set sel_range_wrap_id = 'stats_range_wrap' %}
+        {% set sel_range_wrap_ui = 'stats_selection.select_range' %}
+        {% set sel_range_input_id = 'range' %}
+        {% set sel_range_select_ui = 'stats_main.select_range' %}
+        {% set sel_range_label = 'Zeitraum' %}
+        {% set sel_range_help_title = 'Zeitraum' %}
+        {% set sel_range_help = 'Zeitfilter fuer Statistik. Bei Benutzerdefiniert kannst du Start/Stop setzen. Zeiten werden als lokale Zeit interpretiert und als UTC an die API gesendet.' %}
+        {% set sel_range_desc = 'Zeitfilter fuer Statistik (bestimmt, welche Daten in die Berechnung fliessen).' %}
+        {% set sel_range_bounds_id = 'stats_range_bounds' %}
+        {% set sel_range_bounds_ui = 'stats_selection.txt_range_bounds' %}
+        {% set sel_custom_id = 'custom' %}
+        {% set sel_custom_style = 'min-width: 320px; display:none;' %}
+        {% set sel_start_id = 'start' %}
+        {% set sel_stop_id = 'stop' %}
+        {% set sel_start_ui = 'stats_main.input_start' %}
+        {% set sel_stop_ui = 'stats_main.input_stop' %}
+        {% set sel_start_label = 'Von' %}
+        {% set sel_stop_label = 'Bis' %}
+        {% set sel_custom_desc = 'Zeitangaben werden als lokale Zeit interpretiert und als UTC an die API gesendet.' %}
+        {% set sel_include_search = true %}
+        {% set sel_search_id = 'q' %}
+        {% set sel_search_ui = 'stats_main.input_search' %}
+        {% set sel_search_help_ui = 'stats_main.panel_search_help' %}
+        {% include '_measurement_selection.html' %}
+        <div class="muted" style="margin-top: 10px;">Influx Datenbank Info: siehe Menuepunkt <code>Info</code>.</div>
+        {% if false %}
         <details id="selection_details" open data-ui="stats_selection.section_root" data-ib-pickkey="stats_selection.section_root" title="section.selection">
           <summary><span class="ib_summary_row"><span>Auswahl</span><button type="button" class="ib_info_icon" data-info-title="Statistik: Auswahl" data-info-body="Filtert, welche Serien in der Gesamtstatistik auftauchen (measurement/field/entity_id/friendly_name).\n\nPerformance:\n- Initial werden nur schnelle Basis-Spalten geladen (last/oldest/newest).\n- Details (count/min/max/mean) werden per Nachladen-Job berechnet und inkrementell gemerged." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
 
@@ -232,6 +310,7 @@
           <div class="muted" style="margin-top: 10px;">Influx Datenbank Info: siehe Menuepunkt <code>Info</code>.</div>
 
         </details>
+        {% endif %}
         <div class="status" id="info" data-ui="stats_main.panel_info" data-ib-pickkey="stats_main.panel_info" title="stats.info"></div>
         <div class="progress" aria-hidden="true" style="display:none;"><div id="bar"></div></div>
 

@@ -880,6 +880,31 @@ def test_dashboard_raw_graph_context_tooltip_uses_full_point_info():
     assert "hovertemplate: '%{text}<extra></extra>'" in index_body
 
 
+def test_stats_uses_shared_measurement_selection_template():
+    stats_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "stats.html").read_text()
+    shared_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_measurement_selection.html").read_text()
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    assert "{% include '_measurement_selection.html' %}" in stats_body
+    assert "sel_root_ui = 'stats_selection.section_root'" in stats_body
+    assert '## Measurement Selection' in template_md
+    assert 'Das Dashboard ist das Referenzlayout.' in template_md
+    assert 'sel_section_id' in shared_body
+
+
+def test_dashboard_raw_action_bars_follow_two_row_layout_and_refresh_keeps_window():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    assert 'data-ui="dashboard_raw.row_customer_actions" data-ib-pickkey="dashboard_raw.row_customer_actions"' in body
+    assert '>Abbruch</button>' in body
+    assert '>Reparatur-Assistent</button>' in body
+    assert '>Automatikkorrektur</button>' in body
+    assert 'aria-label="Raw-Zeile kopieren">Zeile kopieren</button>' in body
+    assert 'loadRawFromGraph(false).then(()=>' in body
+    assert 'const disabled = !hasRows || _RAW_INFLIGHT;' in body
+    assert 'Standard Actions' in template_md
+    assert 'Customer Actions' in template_md
+
+
 def test_all_template_data_ui_literals_have_explicit_pickkeys():
     templates_dir = Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates"
     missing = []

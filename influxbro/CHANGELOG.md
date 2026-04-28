@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.478
+
+### Enhancement
+
+- Statistik/Messwertauswahl: Ein gemeinsames Auswahl-Template auf Basis des Dashboard-Layouts wurde eingeführt und die Statistik-Seite verwendet dieses Template jetzt statt einer separaten Struktur. ([#427](https://github.com/thomas682/HA-Addons/issues/427))
+- Dashboard/Raw: Die Raw-Aktionsleisten wurden in Standard- und Customer-Actions getrennt, `Abbruch` steht direkt neben `Aktualisieren`, `Reparatur-Assistent` und `Automatikkorrektur` stehen neben `Fensterbreite`, das Icon von `Zeile kopieren` wurde entfernt und der Refresh nutzt das bestehende Raw-Fenster ohne den sichtbaren Zeilenumfang zu verkürzen. ([#426](https://github.com/thomas682/HA-Addons/issues/426))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.477
 
 ### Enhancement

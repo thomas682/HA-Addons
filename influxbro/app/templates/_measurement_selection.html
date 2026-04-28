@@ -1,0 +1,151 @@
+{% set sel_section_id = sel_section_id|default('selection_details') %}
+{% set sel_root_ui = sel_root_ui|default('selection.section_root') %}
+{% set sel_root_title = sel_root_title|default(sel_root_ui) %}
+{% set sel_summary = sel_summary|default('Messwertauswahl') %}
+{% set sel_info_title = sel_info_title|default(sel_summary) %}
+{% set sel_info_body = sel_info_body|default('') %}
+{% set sel_filters_ui = sel_filters_ui|default('selection.panel_filters') %}
+{% set sel_source_ui = sel_source_ui|default('selection.panel_source') %}
+{% set sel_measurement_wrap_ui = sel_measurement_wrap_ui|default('selection.input_measurement') %}
+{% set sel_measurement_input_ui = sel_measurement_input_ui|default('selection.input_measurement_value') %}
+{% set sel_field_wrap_ui = sel_field_wrap_ui|default('selection.input_field') %}
+{% set sel_field_input_ui = sel_field_input_ui|default('selection.input_field_value') %}
+{% set sel_entity_wrap_ui = sel_entity_wrap_ui|default('selection.input_entity') %}
+{% set sel_entity_input_ui = sel_entity_input_ui|default('selection.input_entity_value') %}
+{% set sel_friendly_wrap_ui = sel_friendly_wrap_ui|default('selection.input_friendly_name') %}
+{% set sel_friendly_input_ui = sel_friendly_input_ui|default('selection.input_friendly_name_value') %}
+{% set sel_range_wrap_ui = sel_range_wrap_ui|default('selection.select_range') %}
+{% set sel_range_select_ui = sel_range_select_ui|default('selection.select_range_value') %}
+{% set sel_range_bounds_ui = sel_range_bounds_ui|default('selection.txt_range_bounds') %}
+{% set sel_search_ui = sel_search_ui|default('selection.input_search') %}
+{% set sel_search_help_ui = sel_search_help_ui|default('selection.panel_search_help') %}
+{% set sel_include_search = sel_include_search|default(false) %}
+
+<details id="{{ sel_section_id }}" open data-ui="{{ sel_root_ui }}" data-ib-pickkey="{{ sel_root_ui }}" title="{{ sel_root_title }}">
+  <summary><span class="ib_summary_row"><span>{{ sel_summary }}</span><button type="button" class="ib_info_icon" data-info-title="{{ sel_info_title }}" data-info-body="{{ sel_info_body }}"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
+
+  <div class="grid" id="{{ sel_filters_id|default('filters') }}" data-ui="{{ sel_filters_ui }}" data-ib-pickkey="{{ sel_filters_ui }}" title="{{ sel_filters_ui }}">
+    <div class="control span2" data-ui="{{ sel_source_ui }}" data-ib-pickkey="{{ sel_source_ui }}" title="{{ sel_source_ui }}">
+      <div class="card" style="margin-top:0;">
+        {% if sel_source_title %}<div style="font-weight: 800; margin-bottom:10px;">{{ sel_source_title }}</div>{% endif %}
+        <div class="grid" style="margin-top:0;">
+          <div class="ib_sel" id="{{ sel_measurement_wrap_id }}" data-ui="{{ sel_measurement_wrap_ui }}" data-ib-pickkey="{{ sel_measurement_wrap_ui }}">
+            <label class="label_row ib_sel_label"><span>{{ sel_measurement_label }}</span><span id="{{ sel_measurement_count_id }}" class="muted"></span></label>
+            <div class="ib_sel_stack">
+              <div class="ib_clear_row">
+                <input id="{{ sel_measurement_input_id }}" list="{{ sel_measurement_list_id }}" placeholder="{{ sel_measurement_placeholder|default('optional') }}" data-ui="{{ sel_measurement_input_ui }}" data-ib-pickkey="{{ sel_measurement_input_ui }}" autocomplete="off" />
+                <button type="button" class="ib_clear_btn" data-clear-for="{{ sel_measurement_input_id }}" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              </div>
+              <datalist id="{{ sel_measurement_list_id }}">
+                {% for it in (suggestions.measurements or []) %}
+                <option value="{{ it|e }}"></option>
+                {% endfor %}
+              </datalist>
+              <div class="ib_sel_desc">
+                <button type="button" class="ib_sel_help" data-title="{{ sel_measurement_help_title }}" data-help="{{ sel_measurement_help }}">?</button>
+                <div class="muted">{{ sel_measurement_desc }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="ib_sel" id="{{ sel_field_wrap_id }}" data-ui="{{ sel_field_wrap_ui }}" data-ib-pickkey="{{ sel_field_wrap_ui }}">
+            <label class="label_row ib_sel_label"><span>{{ sel_field_label }}</span><span id="{{ sel_field_count_id|default('') }}" class="muted"></span></label>
+            <div class="ib_sel_stack">
+              <div class="ib_clear_row">
+                <input id="{{ sel_field_input_id }}" list="{{ sel_field_list_id }}" placeholder="{{ sel_field_placeholder|default('optional') }}" data-ui="{{ sel_field_input_ui }}" data-ib-pickkey="{{ sel_field_input_ui }}" autocomplete="off" />
+                <button type="button" class="ib_clear_btn" data-clear-for="{{ sel_field_input_id }}" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              </div>
+              <datalist id="{{ sel_field_list_id }}"></datalist>
+              <div class="ib_sel_desc">
+                <button type="button" class="ib_sel_help" data-title="{{ sel_field_help_title }}" data-help="{{ sel_field_help }}">?</button>
+                <div class="muted">{{ sel_field_desc }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="ib_sel" id="{{ sel_entity_wrap_id }}" data-ui="{{ sel_entity_wrap_ui }}" data-ib-pickkey="{{ sel_entity_wrap_ui }}">
+            <label class="label_row ib_sel_label"><span>{{ sel_entity_label }}</span><span id="{{ sel_entity_count_id }}" class="muted"></span></label>
+            <div class="ib_sel_stack">
+              <div class="ib_clear_row">
+                <input id="{{ sel_entity_input_id }}" list="{{ sel_entity_list_id }}" placeholder="{{ sel_entity_placeholder|default('optional') }}" data-ui="{{ sel_entity_input_ui }}" data-ib-pickkey="{{ sel_entity_input_ui }}" autocomplete="off" />
+                <button type="button" class="ib_clear_btn" data-clear-for="{{ sel_entity_input_id }}" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              </div>
+              <datalist id="{{ sel_entity_list_id }}">
+                {% for it in (suggestions.entity_id or []) %}
+                <option value="{{ it|e }}"></option>
+                {% endfor %}
+              </datalist>
+              <div class="ib_sel_desc">
+                <button type="button" class="ib_sel_help" data-title="{{ sel_entity_help_title }}" data-help="{{ sel_entity_help }}">?</button>
+                <div class="muted">{{ sel_entity_desc }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="ib_sel" id="{{ sel_friendly_wrap_id }}" data-ui="{{ sel_friendly_wrap_ui }}" data-ib-pickkey="{{ sel_friendly_wrap_ui }}">
+            <label class="label_row ib_sel_label"><span>{{ sel_friendly_label }}</span><span id="{{ sel_friendly_count_id }}" class="muted"></span></label>
+            <div class="ib_sel_stack">
+              <div class="ib_clear_row">
+                <input id="{{ sel_friendly_input_id }}" list="{{ sel_friendly_list_id }}" placeholder="{{ sel_friendly_placeholder|default('optional') }}" data-ui="{{ sel_friendly_input_ui }}" data-ib-pickkey="{{ sel_friendly_input_ui }}" autocomplete="off" />
+                <button type="button" class="ib_clear_btn" data-clear-for="{{ sel_friendly_input_id }}" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              </div>
+              <datalist id="{{ sel_friendly_list_id }}">
+                {% for it in (suggestions.friendly_name or []) %}
+                <option value="{{ it|e }}"></option>
+                {% endfor %}
+              </datalist>
+              <div class="ib_sel_desc">
+                <button type="button" class="ib_sel_help" data-title="{{ sel_friendly_help_title }}" data-help="{{ sel_friendly_help }}">?</button>
+                <div class="muted">{{ sel_friendly_desc }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="control ib_sel ib_sel_time span2" id="{{ sel_range_wrap_id }}" data-ui="{{ sel_range_wrap_ui }}" data-ib-pickkey="{{ sel_range_wrap_ui }}">
+      <label class="label_row ib_sel_label"><span>{{ sel_range_label }}</span><span id="{{ sel_range_count_id|default('') }}" class="muted"></span></label>
+      <div class="ib_sel_stack">
+        <div class="ib_clear_row">
+          <select id="{{ sel_range_input_id }}" data-ui="{{ sel_range_select_ui }}" data-ib-pickkey="{{ sel_range_select_ui }}">
+            <option value="1h">Letzte 1h</option>
+            <option value="6h">Letzte 6h</option>
+            <option value="12h">Letzte 12h</option>
+            <option value="24h">Letzte 24h</option>
+            <option value="7d">Letzte 7 Tage</option>
+            <option value="30d">Letzte 30 Tage</option>
+            <option value="90d">Letzte 90 Tage</option>
+            <option value="365d">Letztes Jahr</option>
+            <option value="this_year">Dieses Jahr</option>
+            <option value="12mo">Letzte 12 Monate</option>
+            <option value="24mo">Letzte 24 Monate</option>
+            <option value="all">Alle</option>
+            <option value="custom">Benutzerdefiniert…</option>
+          </select>
+          <button type="button" class="ib_clear_btn" data-clear-for="{{ sel_range_input_id }}" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+        </div>
+        <div class="ib_sel_desc">
+          <button type="button" class="ib_sel_help" data-title="{{ sel_range_help_title }}" data-help="{{ sel_range_help }}">?</button>
+          <div class="muted">{{ sel_range_desc }}</div>
+        </div>
+      </div>
+      <div style="margin-top:6px;">
+        <div id="{{ sel_range_bounds_id }}" class="muted" data-ui="{{ sel_range_bounds_ui }}" data-ib-pickkey="{{ sel_range_bounds_ui }}"></div>
+      </div>
+    </div>
+    <div class="control span2" id="{{ sel_custom_id }}" style="{{ sel_custom_style|default('display:none;') }}">
+      <div class="grid" style="margin-top:0;">
+        <div class="control"><label>{{ sel_start_label|default('Von') }}</label><input id="{{ sel_start_id }}" type="datetime-local"{% if sel_start_ui %} data-ui="{{ sel_start_ui }}" data-ib-pickkey="{{ sel_start_ui }}"{% endif %}/></div>
+        <div class="control"><label>{{ sel_stop_label|default('Bis') }}</label><input id="{{ sel_stop_id }}" type="datetime-local"{% if sel_stop_ui %} data-ui="{{ sel_stop_ui }}" data-ib-pickkey="{{ sel_stop_ui }}"{% endif %}/></div>
+      </div>
+      <div class="muted">{{ sel_custom_desc }}</div>
+    </div>
+    {% if sel_include_search %}
+    <div style="flex:1; min-width: 260px;">
+      <label>{{ sel_search_label|default('Suche') }}</label>
+      <div class="ib_clear_row">
+        <input id="{{ sel_search_id }}" placeholder="{{ sel_search_placeholder|default('Volltext...') }}" data-ui="{{ sel_search_ui }}" data-ib-pickkey="{{ sel_search_ui }}" title="{{ sel_search_title|default(sel_search_ui) }}" />
+        <button type="button" class="ib_clear_btn" data-clear-for="{{ sel_search_id }}" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="muted help" data-ui="{{ sel_search_help_ui }}" data-ib-pickkey="{{ sel_search_help_ui }}" title="{{ sel_search_help_ui }}"></div>
+    </div>
+    {% endif %}
+  </div>
+</details>

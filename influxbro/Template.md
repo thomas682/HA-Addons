@@ -112,6 +112,9 @@ Preferred markup:
 Notes
 
 - Controls belong above the table and should be left-aligned.
+- Tabellen mit vielen Aktionen sollten zwei Leisten trennen:
+  - Standard Actions: allgemeine Tabellensteuerung (Refresh, Abbruch, Breiten, Wrap, Filter)
+  - Customer Actions: tabellen- oder domänenspezifische Aktionen darunter
 - Prefer a dedicated `Liste aktualisieren` (reload) button in the table toolbar (above the list), not mixed into unrelated page action blocks.
 - Use an icon-only refresh button for `Liste aktualisieren` (with `aria-label`).
 - Use relative URLs (Ingress-friendly).
@@ -218,6 +221,12 @@ Master
 - This file defines the base behavior and appearance ("master") for element types.
 
 Child overrides
+
+## Measurement Selection
+
+- Fuer die Messwertauswahl soll ein gemeinsames Template verwendet werden.
+- Das Dashboard ist das Referenzlayout.
+- Andere Seiten mit Messwertauswahl, insbesondere `Statistik`, sollen dieses Template wiederverwenden statt eine eigene Struktur zu duplizieren.
 
 - Individual pages may override:
   - default visible height
