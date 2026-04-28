@@ -765,7 +765,6 @@ Beim Entfernen von UI-Komponenten (HTML, JS, CSS, Backend-Funktionen) muss zwing
   - Version bump
   - `CHANGELOG.md` aktualisieren
   - `MANUAL.md` aktualisieren (falls Benutzerfuehrung/Workflows betroffen)
-- Wenn eine neue Release-Version fertiggestellt wurde (Version bump + zugehoerige Release-Aenderungen abgeschlossen), MUSS der Agent diese Release anschliessend pushen, sofern keine hoeher priorisierte System-/Developer-Sperre oder ausdrueckliche Nutzeranweisung dagegen spricht.
 
 ### GitHub Integration
 
@@ -850,7 +849,6 @@ Wenn ein Auftrag das Entfernen, Ersetzen oder Stilllegen von UI-Elementen, Templ
   - relevante `pytest`
   - UI Smoke Test unter Home Assistant Ingress
 - Workflow: HA main-first (rebase auf `origin/main` vor Push, keine stillen Breaking Changes)
-- Workflow: Eine fertiggestellte neue Release darf nicht nur lokal verbleiben; nach Abschluss der Release-Arbeit ist der Push verpflichtend, sofern kein ausdrueckliches Push-Verbot aktiv ist.
 
 #### Automatik-Regel für OpenCode
 
