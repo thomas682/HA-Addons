@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.477
+
+### Enhancement
+
+- Dashboard/Raw Graph: Der Tooltip im Kontext-Graph (`graph_ctx_plot`) zeigt jetzt wieder alle verfuegbaren Informationen zum Messwertpunkt unter dem Mauszeiger an, inklusive Zeit, Wert, Aggregation, Measurement, Field, `entity_id` und `friendly_name`. ([#425](https://github.com/thomas682/HA-Addons/issues/425))
+
+### Fix
+
+- Dashboard/Raw: Die serverseitige Delete-/Change-Engine wurde fuer InfluxDB-Sonderfaelle weiter gehaertet, damit der reproduzierte Raw-Delete-Flow stabil `200` liefert. ([#424](https://github.com/thomas682/HA-Addons/issues/424))
+- Datenpflege / DQ: Der Fallback fuer problematische Serieninventar-Abfragen ist jetzt im produktiven DQ-Lauf aktiv; reproduzierte Runs erreichen `done` statt `error`. ([#429](https://github.com/thomas682/HA-Addons/issues/429))
+- Verdichtung: Der JSON-Fehlerpfad fuer fehlende Rollup-Source-Buckets bleibt aktiv und verhindert den generischen HTML-500 in der Preview. ([#428](https://github.com/thomas682/HA-Addons/issues/428))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.476
 
 ### Fix

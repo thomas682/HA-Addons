@@ -26204,7 +26204,17 @@ from(bucket: "{cfg["bucket"]}")
                     ts = r.get_time()
                     val = r.get_value()
                     if isinstance(ts, datetime):
-                        rows.append({"time": _dt_to_rfc3339_utc_ms(ts), "value": val})
+                        rows.append({
+                            "time": _dt_to_rfc3339_utc_ms(ts),
+                            "time_full": _dt_to_rfc3339_utc_full(ts.astimezone(timezone.utc)),
+                            "value": val,
+                            "measurement": measurement,
+                            "field": field,
+                            "entity_id": entity_id,
+                            "friendly_name": friendly_name,
+                            "agg_fn": agg_fn,
+                            "mode": mode,
+                        })
         dur = int((time.monotonic() - t0) * 1000)
         LOG.info("api.window_points done from=%s measurement=%s mode=%s rows=%d dur=%dms",
             request.remote_addr, measurement, mode, len(rows), dur)

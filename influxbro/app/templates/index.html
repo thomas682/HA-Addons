@@ -2043,6 +2043,24 @@ function _ctxMaxPoints(){
   return 800;
 }
 
+function _graphCtxHoverText(point, aggName){
+  try{
+    const p = point && typeof point === 'object' ? point : {};
+    const parts = [];
+    parts.push('Zeit: ' + fmtTs(String(p.time_full || p.time || '')));
+    parts.push('Wert: ' + fmtNum(p.value));
+    if(aggName) parts.push('Aggregation: ' + String(aggName));
+    if(p.measurement) parts.push('Measurement: ' + String(p.measurement));
+    if(p.field) parts.push('Field: ' + String(p.field));
+    if(p.entity_id) parts.push('entity_id: ' + String(p.entity_id));
+    if(p.friendly_name) parts.push('friendly_name: ' + String(p.friendly_name));
+    if(p.mode) parts.push('Quelle: ' + String(p.mode));
+    return parts.join('<br>');
+  }catch(e){
+    return '';
+  }
+}
+
 function _ctxWindowFromRaw(bounds, centerMs){
   try{
     if(!bounds) return null;
@@ -2160,12 +2178,14 @@ async function refreshGraphContext(opts){
         const pts = (j && Array.isArray(j.rows)) ? j.rows : [];
         const x = [];
         const y = [];
+        const text = [];
         pts.forEach(p=>{
           const ms = Date.parse(String(p && p.time ? p.time : ''));
           const v = toFiniteNumber(p && p.value);
           if(!(isFinite(ms) && v !== null)) return;
           x.push(new Date(ms));
           y.push(v);
+          text.push(_graphCtxHoverText(p, fn === 'min' ? 'Min' : 'Max'));
         });
         traces.push({
           type: 'scatter',
@@ -2173,9 +2193,10 @@ async function refreshGraphContext(opts){
           name: (fn === 'min') ? 'Min' : 'Max',
           x,
           y,
+          text,
           line: { color: (fn === 'min') ? '#2c7fb8' : '#c62828', width: 1.4, simplify: false, shape: 'linear' },
           marker: { size: 5, symbol: 'circle', color: (fn === 'min') ? '#2c7fb8' : '#c62828' },
-          hovertemplate: '%{x|%d.%m.%y %H:%M:%S.%L}<br>%{y}<extra></extra>',
+          hovertemplate: '%{text}<extra></extra>',
           showlegend: true,
         });
       }

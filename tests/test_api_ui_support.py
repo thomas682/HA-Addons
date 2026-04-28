@@ -864,6 +864,22 @@ def test_dashboard_static_sections_pair_data_ui_with_explicit_pickkeys():
     assert 'data-ui="dashboard_graph.handle_resize" data-ib-pickkey="dashboard_graph.handle_resize"' in body
 
 
+def test_dashboard_raw_graph_context_tooltip_uses_full_point_info():
+    app_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert '"time_full": _dt_to_rfc3339_utc_full(ts.astimezone(timezone.utc))' in app_body
+    assert '"measurement": measurement' in app_body
+    assert '"field": field' in app_body
+    assert '"entity_id": entity_id' in app_body
+    assert '"friendly_name": friendly_name' in app_body
+    assert 'function _graphCtxHoverText(point, aggName)' in index_body
+    assert "parts.push('Measurement: ' + String(p.measurement));" in index_body
+    assert "parts.push('Field: ' + String(p.field));" in index_body
+    assert "parts.push('entity_id: ' + String(p.entity_id));" in index_body
+    assert "parts.push('friendly_name: ' + String(p.friendly_name));" in index_body
+    assert "hovertemplate: '%{text}<extra></extra>'" in index_body
+
+
 def test_all_template_data_ui_literals_have_explicit_pickkeys():
     templates_dir = Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates"
     missing = []

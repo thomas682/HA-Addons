@@ -931,6 +931,7 @@ UI:
 - Raw Daten: Das Loeschen einzelner Werte funktioniert auch auf InfluxDB-Setups, die kein feldgenaues Delete unterstuetzen; der Server faengt diesen Sonderfall kontrolliert ab.
 - Verdichtung: Fehlt der fuer Rollup konfigurierte Source-Bucket, zeigt die Preview jetzt einen normalen API-Fehler statt eines generischen HTML-500.
 - Datenpflege (DQ): Der Analyse-Lauf besitzt einen robusteren Fallback fuer Serieninventar-Abfragen und endet bei problematischen Influx-Mischtypen nicht mehr sofort als Lauf-Fehler.
+- Raw Graph (Kontext): Der Tooltip zeigt wieder die verfuegbaren Punktdetails des Messwertpunkts unter dem Mauszeiger, inklusive Serienkontext (`Measurement`, `Field`, `entity_id`, `friendly_name`) und der verwendeten Aggregation.
 - Picker/Registry: Template-/Blueprint-Knoten gelten nicht als Live-Picker-Elemente und werden von der Registry-/Kollisionspruefung ausgeschlossen. Statische Abschnitts-/Panel-Keys in wiederkehrenden Bereichen wie `performance`, `restore`, `export`, `import`, `history` und `stats` wurden auf eindeutige fachliche Schluessel getrennt.
 - Einstellungen/Iconbilder: Palette und Preview rendern nur das eigentliche SVG statt kompletter urspruenglicher UI-Elemente. Dadurch bleiben die Einstellungen frei von fremden Button-/Panel-Instanzen und vermeiden entsprechende Pickkey-Kollisionen auf der Config-Seite.
 - Einstellungen/Console: Die Settings-Seite ist im Normalbetrieb console-sauber. Die Auto-Pickkey-Statistik wird nur noch bei aktivem Debug-Flag ausgegeben (`localStorage['influxbro.debug.pickstats']='1'`).
