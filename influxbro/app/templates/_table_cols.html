@@ -109,6 +109,7 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       const id = _getTableId(tbl);
       if(!id) return;
       const sc = _zoomScale();
+      const prev = _readWidths(tbl) || {};
       const out = {};
       const ths = Array.from(tbl.querySelectorAll('thead th'));
       ths.forEach((th, idx)=>{
@@ -117,6 +118,16 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
         out[k] = w;
       });
       localStorage.setItem(_lsKeyV2(id), JSON.stringify(out));
+      try{
+        const changes = [];
+        Object.keys(out).forEach((k)=>{
+          if(prev[k] === out[k]) return;
+          changes.push({field: 'col_width.' + k, old: prev[k], new: out[k]});
+        });
+        if(changes.length && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue){
+          window.InfluxBroConfigLog.queue({page: 'table', area: 'table_cols.' + id, field: 'column_widths', source: 'localStorage', storage_key: _lsKeyV2(id), changes});
+        }
+      }catch(e){}
     }catch(e){}
   }
 
@@ -804,16 +815,20 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
         try{ wrapCb.checked = (localStorage.getItem(kWrap) || '') === '1'; }catch(e){}
         try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#' + tid, !!wrapCb.checked); }catch(e){}
         wrapCb.addEventListener('change', ()=>{
+          const prev = (()=>{ try{ return (localStorage.getItem(kWrap) || '') === '1'; }catch(e){ return false; } })();
           try{ localStorage.setItem(kWrap, wrapCb.checked ? '1' : '0'); }catch(e){}
           try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#' + tid, !!wrapCb.checked); }catch(e){}
+          try{ if(prev !== !!wrapCb.checked && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue) window.InfluxBroConfigLog.queue({page:'table', area:'table_wrap.' + tid, field:'wrap', source:'localStorage', storage_key:kWrap, changes:[{field:'wrap', old:prev, new:!!wrapCb.checked}]}); }catch(e){}
         });
       }
       if(colFiltCb){
         try{ colFiltCb.checked = (localStorage.getItem(kFilt) || '') === '1'; }catch(e){}
         try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#' + tid, !!colFiltCb.checked); }catch(e){}
         colFiltCb.addEventListener('change', ()=>{
+          const prev = (()=>{ try{ return (localStorage.getItem(kFilt) || '') === '1'; }catch(e){ return false; } })();
           try{ localStorage.setItem(kFilt, colFiltCb.checked ? '1' : '0'); }catch(e){}
           try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#' + tid, !!colFiltCb.checked); }catch(e){}
+          try{ if(prev !== !!colFiltCb.checked && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue) window.InfluxBroConfigLog.queue({page:'table', area:'table_filter.' + tid, field:'column_filter', source:'localStorage', storage_key:kFilt, changes:[{field:'column_filter', old:prev, new:!!colFiltCb.checked}]}); }catch(e){}
         });
       }
     }catch(e){}
@@ -1293,7 +1308,9 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       try{
         const sc = _zoomScale();
         const h = Math.round((boxEl.getBoundingClientRect().height || 0) / Math.max(0.1, sc));
+        const prev = Number(localStorage.getItem(key) || 0);
         if(h >= minPx) localStorage.setItem(key, String(h));
+        try{ if(h >= minPx && prev !== h && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue) window.InfluxBroConfigLog.queue({page:'table', area:'table_height.' + (tid || 'unknown'), field:'height_px', source:'localStorage', storage_key:key, changes:[{field:'height_px', old:isFinite(prev)?prev:null, new:h}]}); }catch(e){}
       }catch(e){}
     }
 
@@ -1346,7 +1363,22 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
     try{ return JSON.parse(localStorage.getItem(_keyFor(tbl)) || 'null'); }catch(e){ return null; }
   }
   function _write(tbl, st){
-    try{ localStorage.setItem(_keyFor(tbl), JSON.stringify(st || {})); }catch(e){}
+    try{
+      const prev = _read(tbl) || {};
+      localStorage.setItem(_keyFor(tbl), JSON.stringify(st || {}));
+      try{
+        const next = st || {};
+        const changes = [];
+        for(const k of ['key','dir']){
+          if((prev || {})[k] === next[k]) continue;
+          changes.push({field: 'sort.' + k, old: (prev || {})[k], new: next[k]});
+        }
+        if(changes.length && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue){
+          const id = _norm(tbl.getAttribute('id')) || 'unknown';
+          window.InfluxBroConfigLog.queue({page: 'table', area: 'table_sort.' + id, field: 'sort', source: 'localStorage', storage_key: _keyFor(tbl), changes});
+        }
+      }catch(e){}
+    }catch(e){}
   }
 
   function _parseVal(s){
@@ -1635,6 +1667,12 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
   }
   function _write(tid, st){
     try{ localStorage.setItem(_keyFor(tid), JSON.stringify(st || {hidden: []})); }catch(e){}
+    try{
+      if(window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue){
+        const hidden = Array.isArray((st || {}).hidden) ? (st || {}).hidden : [];
+        window.InfluxBroConfigLog.queue({page:'table', area:'table_columns.' + tid, field:'hidden_columns', source:'localStorage', storage_key:_keyFor(tid), changes:[{field:'hidden_columns', old:null, new:hidden}]});
+      }
+    }catch(e){}
   }
 
   function _apply(tbl, hiddenIdx){

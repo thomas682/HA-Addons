@@ -79,6 +79,56 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
     assert cfg["ui_raw_center_min_points"] == 1
 
 
+def test_config_logging_batch_endpoint_acks_and_persists(load_app_module, tmp_path):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+
+    r = client.post(
+        "/api/client_log_batch",
+        json={
+            "events": [
+                {
+                    "event_id": "clientA-1",
+                    "page": "Dashboard",
+                    "area": "dashboard_state",
+                    "field": "saveState",
+                    "source": "localStorage",
+                    "storage_key": "influxbro_ui_state_v1",
+                    "changes": [{"field": "raw_open", "old": False, "new": True}],
+                }
+            ]
+        },
+    )
+    j = r.get_json()
+    assert r.status_code == 200
+    assert j["ok"] is True
+    assert j["acked"] == ["clientA-1"]
+    queue_path = data_root / "influxbro_config_log_queue.jsonl"
+    ack_path = data_root / "influxbro_config_log_acks.json"
+    assert queue_path.exists()
+    assert ack_path.exists()
+    assert 'clientA-1' in ack_path.read_text()
+
+
+def test_app_state_set_logs_config_save_when_enabled(load_app_module, tmp_path):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+
+    r = client.post(
+        "/api/app_state/set",
+        json={
+            "scope": "dashboard_selection",
+            "state": {"range": "7d", "measurement": "EUR"},
+        },
+    )
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+
 def test_dashboard_raw_removed_legacy_buttons_and_added_min_points_setting():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
@@ -1416,6 +1466,37 @@ def test_buttons_do_not_use_width_100_specific_rules():
     assert 'main.content button:not(.ib_info_icon):not(.btn_sm) { width:auto; }' in config_body
     assert '.ib_pagecard_results button { display:block; width:auto;' in topbar_body
     assert 'style="display:block; width:auto; text-align:left;' in export_body
+
+
+def test_logs_page_has_config_logging_checkbox_and_handler():
+    logs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    assert '>Configuration<' in logs_body
+    assert 'id="server_config_logging"' in logs_body
+    assert 'data-ui="logs_main.chk_server_config_logging"' in logs_body
+    assert 'cfg.log_config_changes !== false' in logs_body
+    assert 'setServerConfigLogging(on)' in logs_body
+
+
+def test_client_config_log_queue_helper_and_instrumented_persist_paths_exist():
+    topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    table_cols_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+
+    assert "const CFG_LOG_QUEUE_KEY = 'influxbro.config_log_queue.v1';" in topbar_body
+    assert 'window.InfluxBroConfigLog = {' in topbar_body
+    assert 'queue: _cfgLogQueueEvent' in topbar_body
+    assert 'fetch(\'./api/client_log_batch\'' in topbar_body or 'fetch("./api/client_log_batch"' in topbar_body
+
+    assert "window.InfluxBroConfigLog.queue({page:'Dashboard', area:'dashboard_state'" in index_body
+    assert "window.InfluxBroConfigLog.queue({page:'Dashboard', area:String(id || 'flow')" in index_body
+
+    assert "window.InfluxBroConfigLog.queue({page: 'table', area: 'table_cols.' + id" in table_cols_body
+    assert "window.InfluxBroConfigLog.queue({page:'table', area:'table_wrap.' + tid" in table_cols_body
+    assert "window.InfluxBroConfigLog.queue({page:'table', area:'table_filter.' + tid" in table_cols_body
+
+    assert "window.InfluxBroConfigLog.queue({page:'Settings', area:'config_icons_table'" in config_body
+    assert "window.InfluxBroConfigLog.queue({page:'Settings', area:'config_outliers_table'" in config_body
 
 
 def test_table_helper_defaults_to_window_fit_and_template_documents_it():

@@ -3355,6 +3355,137 @@ try{
   }, true);
 }catch(e){}
 
+// Persisted config-change logging (batched + durable queue in localStorage)
+try{
+  const CFG_LOG_QUEUE_KEY = 'influxbro.config_log_queue.v1';
+  const CFG_LOG_SEQ_KEY = 'influxbro.config_log_seq.v1';
+  const CFG_LOG_CLIENT_KEY = 'influxbro.config_log_client.v1';
+  const CFG_LOG_ENABLED_KEY = 'influxbro.log_config_changes.v1';
+  let _CFG_LOG_FLUSH_T = null;
+  let _CFG_LOG_INFLIGHT = false;
+
+  function _cfgLogPage(){
+    try{
+      if(window.currentPageLabel) return String(window.currentPageLabel() || '');
+    }catch(e){}
+    try{
+      const p = (window.location && window.location.pathname) ? String(window.location.pathname) : '';
+      return p.split('/').filter(Boolean).pop() || 'unknown';
+    }catch(e){ return 'unknown'; }
+  }
+  function _cfgLogEnabled(){
+    try{
+      const raw = localStorage.getItem(CFG_LOG_ENABLED_KEY);
+      if(raw === null || raw === '') return true;
+      return raw === '1';
+    }catch(e){ return true; }
+  }
+  function _cfgLogClientId(){
+    try{
+      let raw = localStorage.getItem(CFG_LOG_CLIENT_KEY) || '';
+      raw = String(raw || '').trim();
+      if(raw) return raw;
+      raw = 'cfg-' + String(Date.now()) + '-' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem(CFG_LOG_CLIENT_KEY, raw);
+      return raw;
+    }catch(e){ return 'cfg-unknown'; }
+  }
+  function _cfgLogReadQueue(){
+    try{
+      const raw = localStorage.getItem(CFG_LOG_QUEUE_KEY);
+      const j = raw ? JSON.parse(raw) : [];
+      return Array.isArray(j) ? j : [];
+    }catch(e){ return []; }
+  }
+  function _cfgLogWriteQueue(xs){
+    try{ localStorage.setItem(CFG_LOG_QUEUE_KEY, JSON.stringify(Array.isArray(xs) ? xs : [])); }catch(e){}
+  }
+  function _cfgLogNextSeq(){
+    try{
+      const cur = parseInt(localStorage.getItem(CFG_LOG_SEQ_KEY) || '0', 10) || 0;
+      const next = cur + 1;
+      localStorage.setItem(CFG_LOG_SEQ_KEY, String(next));
+      return next;
+    }catch(e){ return Math.floor(Date.now() / 1000); }
+  }
+  function _cfgLogNormalize(val){
+    try{
+      if(val === undefined) return null;
+      if(val === null) return null;
+      if(typeof val === 'number' || typeof val === 'boolean' || typeof val === 'string') return val;
+      return JSON.stringify(val);
+    }catch(e){ return String(val); }
+  }
+  function _cfgLogQueueEvent(ev){
+    try{
+      if(!_cfgLogEnabled()) return;
+      if(!ev || typeof ev !== 'object') return;
+      const changes = Array.isArray(ev.changes) ? ev.changes.filter((c)=>c && _cfgLogNormalize(c.old) !== _cfgLogNormalize(c.new)) : [];
+      if(!changes.length) return;
+      const clientId = _cfgLogClientId();
+      const seq = _cfgLogNextSeq();
+      const row = {
+        event_id: clientId + '-' + String(seq),
+        client_id: clientId,
+        seq,
+        ts: new Date().toISOString(),
+        kind: 'config_save',
+        page: String(ev.page || _cfgLogPage()),
+        area: String(ev.area || ''),
+        field: String(ev.field || ''),
+        source: String(ev.source || ''),
+        storage_key: String(ev.storage_key || ''),
+        scope: String(ev.scope || ''),
+        changes: changes.map((c)=>({field:String(c.field || ''), old:_cfgLogNormalize(c.old), new:_cfgLogNormalize(c.new)})),
+      };
+      const q = _cfgLogReadQueue();
+      q.push(row);
+      _cfgLogWriteQueue(q);
+      if(q.length >= 20) _cfgLogFlushSoon(20); else _cfgLogFlushSoon(300);
+    }catch(e){}
+  }
+  async function _cfgLogFlushNow(){
+    try{
+      if(_CFG_LOG_INFLIGHT || !_cfgLogEnabled()) return;
+      const q = _cfgLogReadQueue();
+      if(!q.length) return;
+      _CFG_LOG_INFLIGHT = true;
+      let r;
+      try{
+        r = await fetch('./api/client_log_batch', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-InfluxBro-Request':'1','X-Requested-With':'InfluxBro'},
+          credentials:'same-origin',
+          body: JSON.stringify({kind:'config_save_batch', events:q.slice(0, 50)})
+        });
+      }catch(e){
+        _CFG_LOG_INFLIGHT = false;
+        return;
+      }
+      const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+      if(r.ok && j && j.ok && Array.isArray(j.acked)){
+        const acks = new Set(j.acked.map(x=>String(x || '')));
+        const left = _cfgLogReadQueue().filter(ev => !acks.has(String(ev && ev.event_id || '')));
+        _cfgLogWriteQueue(left);
+      }
+    }catch(e){}
+    _CFG_LOG_INFLIGHT = false;
+  }
+  function _cfgLogFlushSoon(delayMs){
+    try{ if(_CFG_LOG_FLUSH_T) clearTimeout(_CFG_LOG_FLUSH_T); }catch(e){}
+    _CFG_LOG_FLUSH_T = setTimeout(()=>{ _cfgLogFlushNow().catch(()=>{}); }, Math.max(0, Number(delayMs || 0)));
+  }
+  window.InfluxBroConfigLog = {
+    enabled: _cfgLogEnabled,
+    setEnabled: (on)=>{ try{ localStorage.setItem(CFG_LOG_ENABLED_KEY, on ? '1' : '0'); }catch(e){} },
+    queue: _cfgLogQueueEvent,
+    flush: _cfgLogFlushNow,
+  };
+  try{ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'hidden') _cfgLogFlushNow().catch(()=>{}); }); }catch(e){}
+  try{ window.addEventListener('pagehide', ()=>{ _cfgLogFlushNow().catch(()=>{}); }); }catch(e){}
+  _cfgLogFlushSoon(1000);
+}catch(e){}
+
 // Global console error reporter - sends all browser errors to server log
 try{
   function _pendingNavContext(){

@@ -2373,8 +2373,8 @@ function initIconbilder(){
     try{
       if($iconsAutoWidth) $iconsAutoWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroTableCols && window.InfluxBroTableCols.autoFit('#icons_tbl', {maxRows: 200}); }catch(e){}; });
       if($iconsWinWidth) $iconsWinWidth.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ window.InfluxBroTableCols && window.InfluxBroTableCols.windowFit('#icons_tbl', {minW: 120}); }catch(e){}; });
-      if($iconsWrap) $iconsWrap.addEventListener('change', ()=>{ const on = !!$iconsWrap.checked; try{ localStorage.setItem('influxbro.icons_tbl.wrap', on ? '1' : '0'); }catch(e){}; try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#icons_tbl', on); }catch(e){}; });
-      if($iconsColFilter) $iconsColFilter.addEventListener('change', ()=>{ const on = !!$iconsColFilter.checked; try{ localStorage.setItem('influxbro.icons_tbl.colfilter', on ? '1' : '0'); }catch(e){}; try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#icons_tbl', on); }catch(e){}; });
+      if($iconsWrap) $iconsWrap.addEventListener('change', ()=>{ const on = !!$iconsWrap.checked; const key='influxbro.icons_tbl.wrap'; let prev=false; try{ prev=(localStorage.getItem(key)||'')==='1'; }catch(e){}; try{ localStorage.setItem(key, on ? '1' : '0'); }catch(e){}; try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#icons_tbl', on); }catch(e){}; try{ if(prev !== on && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue) window.InfluxBroConfigLog.queue({page:'Settings', area:'config_icons_table', field:'wrap', source:'localStorage', storage_key:key, changes:[{field:'wrap', old:prev, new:on}]}); }catch(e){}; });
+      if($iconsColFilter) $iconsColFilter.addEventListener('change', ()=>{ const on = !!$iconsColFilter.checked; const key='influxbro.icons_tbl.colfilter'; let prev=false; try{ prev=(localStorage.getItem(key)||'')==='1'; }catch(e){}; try{ localStorage.setItem(key, on ? '1' : '0'); }catch(e){}; try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#icons_tbl', on); }catch(e){}; try{ if(prev !== on && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue) window.InfluxBroConfigLog.queue({page:'Settings', area:'config_icons_table', field:'column_filter', source:'localStorage', storage_key:key, changes:[{field:'column_filter', old:prev, new:on}]}); }catch(e){}; });
     }catch(e){}
 
     try{ if($iconsSearch) $iconsSearch.addEventListener('input', ()=>_iconsRender()); }catch(e){}
@@ -5018,8 +5018,10 @@ try{
       try{ $outliersWrap.checked = (localStorage.getItem(kWrap) || '') === '1'; }catch(e){}
       try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#outliers_tbl', $outliersWrap.checked); }catch(e){}
       $outliersWrap.addEventListener('change', ()=>{
+        const prev = (()=>{ try{ return (localStorage.getItem(kWrap)||'') === '1'; }catch(e){ return false; } })();
         try{ localStorage.setItem(kWrap, $outliersWrap.checked ? '1' : '0'); }catch(e){}
         try{ window.InfluxBroTableWrap && window.InfluxBroTableWrap.setWrap('#outliers_tbl', $outliersWrap.checked); }catch(e){}
+        try{ if(prev !== !!$outliersWrap.checked && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue) window.InfluxBroConfigLog.queue({page:'Settings', area:'config_outliers_table', field:'wrap', source:'localStorage', storage_key:kWrap, changes:[{field:'wrap', old:prev, new:!!$outliersWrap.checked}]}); }catch(e){}
       });
     }
   }catch(e){}
@@ -5029,8 +5031,10 @@ try{
       try{ $outliersColFilter.checked = (localStorage.getItem(kFilt) || '') === '1'; }catch(e){}
       try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#outliers_tbl', $outliersColFilter.checked); }catch(e){}
       $outliersColFilter.addEventListener('change', ()=>{
+        const prev = (()=>{ try{ return (localStorage.getItem(kFilt)||'') === '1'; }catch(e){ return false; } })();
         try{ localStorage.setItem(kFilt, $outliersColFilter.checked ? '1' : '0'); }catch(e){}
         try{ window.InfluxBroTableFilter && window.InfluxBroTableFilter.setVisible('#outliers_tbl', $outliersColFilter.checked); }catch(e){}
+        try{ if(prev !== !!$outliersColFilter.checked && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue) window.InfluxBroConfigLog.queue({page:'Settings', area:'config_outliers_table', field:'column_filter', source:'localStorage', storage_key:kFilt, changes:[{field:'column_filter', old:prev, new:!!$outliersColFilter.checked}]}); }catch(e){}
       });
     }
   }catch(e){}

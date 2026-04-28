@@ -90,6 +90,13 @@
           </label>
         </div>
         <div>
+          <label>Configuration</label>
+          <label style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px;">
+            <input id="server_config_logging" type="checkbox" data-ui="logs_main.chk_server_config_logging" data-ib-pickkey="logs_main.chk_server_config_logging" title="logs.server_config_logging" />
+            <span class="muted" style="opacity:0.85;">logge Config</span>
+          </label>
+        </div>
+        <div>
           <label>Tail</label>
           <select id="tail" data-ui="logs_main.select_tail" data-ib-pickkey="logs_main.select_tail" title="logs.tail">
             <option value="200">200</option>
@@ -286,6 +293,7 @@
       const $serverProfile = document.getElementById('server_profile');
       const $serverInfluxQueries = document.getElementById('server_influx_queries');
       const $serverCacheUsage = document.getElementById('server_cache_usage');
+      const $serverConfigLogging = document.getElementById('server_config_logging');
       const $tail = document.getElementById('tail');
       const $refresh = document.getElementById('refresh');
       const $jumpOldest = document.getElementById('jump_oldest');
@@ -496,6 +504,8 @@
           if(["error","debug","trace"].includes(p)) $serverProfile.value = p;
           if($serverInfluxQueries) $serverInfluxQueries.checked = !!cfg.log_influx_queries;
           if($serverCacheUsage) $serverCacheUsage.checked = !!cfg.log_cache_usage;
+          if($serverConfigLogging) $serverConfigLogging.checked = (cfg.log_config_changes !== false);
+          try{ localStorage.setItem('influxbro.log_config_changes.v1', (cfg.log_config_changes !== false) ? '1' : '0'); }catch(e){}
         }catch(e){}
       }
 
@@ -550,6 +560,26 @@
           }
           const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
           if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+          return true;
+        }catch(e){
+          err(String(e && e.message ? e.message : e));
+          return false;
+        }
+      }
+
+      async function setServerConfigLogging(on){
+        try{
+          const payload = { log_config_changes: !!on };
+          let r;
+          try{
+            r = await fetch("./api/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)});
+          }catch(e){
+            try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/config', {method:'POST'}, e); }catch(x){}
+            throw new Error('Failed to fetch');
+          }
+          const j = await r.json().catch(()=>({ok:false,error:"Invalid JSON"}));
+          if(!r.ok || !j.ok) throw new Error(j.error || ("HTTP " + r.status));
+          try{ localStorage.setItem('influxbro.log_config_changes.v1', (!!on) ? '1' : '0'); }catch(e){}
           return true;
         }catch(e){
           err(String(e && e.message ? e.message : e));
@@ -891,6 +921,7 @@
       if($serverProfile) $serverProfile.addEventListener('change', ()=>{ setServerProfile($serverProfile.value).then(()=>loadLogs().catch(()=>{})); });
       if($serverInfluxQueries) $serverInfluxQueries.addEventListener('change', ()=>{ setServerInfluxQueries($serverInfluxQueries.checked).then(()=>loadLogs().catch(()=>{})); });
       if($serverCacheUsage) $serverCacheUsage.addEventListener('change', ()=>{ setServerCacheUsage($serverCacheUsage.checked).then(()=>loadLogs().catch(()=>{})); });
+      if($serverConfigLogging) $serverConfigLogging.addEventListener('change', ()=>{ setServerConfigLogging($serverConfigLogging.checked).then(()=>loadLogs().catch(()=>{})); });
       $follow.addEventListener('change', ()=>setFollow(!!($follow && $follow.checked)));
       $wrap.addEventListener('change', ()=>{ applyWrap(); });
       $q.addEventListener('input', ()=>applySearch());

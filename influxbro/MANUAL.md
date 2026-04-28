@@ -937,6 +937,9 @@ UI:
 - Iconbilder: Die Actions sind in Standard- und Customer-Bereich getrennt. Der Status der Icon-Tabelle steht in einem eigenen Panel unterhalb der Standard-Actions statt zwischen den Buttons.
 - Iconbilder: `Nur ueberschrieben` erklaert jetzt direkt, dass nur geaenderte Iconsaetze angezeigt werden, die ueber die Einstellungen angepasst wurden.
 - Tabellen: Fehlen gespeicherte Spaltenbreiten, startet eine Tabelle standardmaessig in `Fensterbreite`.
+- Logs: In der Gruppe `Configuration` gibt es die Option `logge Config`. Ist sie aktiv, werden persistierte UI-/Config-Aenderungen als `INFO` protokolliert.
+- Logs: Die Konfigurationsaenderungen werden aus Performancegruenden nicht einzeln sofort geschrieben, sondern clientseitig gepuffert und in Batches an den Server uebergeben. Bis zum Ack bleiben sie lokal persistent, und der Server schreibt sie vor dem Ack dauerhaft in seine Queue-Datei unter `/data`.
+- Logging erfasst in der ersten Stufe insbesondere gespeicherte Dashboard-Zustaende, `app_state`-Aenderungen, Tabellenbreiten/-hoehen, Wrap/Filter, Sortierung und ausgewaehlte Settings-Tabellenzustände.
 - Picker/Registry: Template-/Blueprint-Knoten gelten nicht als Live-Picker-Elemente und werden von der Registry-/Kollisionspruefung ausgeschlossen. Statische Abschnitts-/Panel-Keys in wiederkehrenden Bereichen wie `performance`, `restore`, `export`, `import`, `history` und `stats` wurden auf eindeutige fachliche Schluessel getrennt.
 - Einstellungen/Iconbilder: Palette und Preview rendern nur das eigentliche SVG statt kompletter urspruenglicher UI-Elemente. Dadurch bleiben die Einstellungen frei von fremden Button-/Panel-Instanzen und vermeiden entsprechende Pickkey-Kollisionen auf der Config-Seite.
 - Einstellungen/Console: Die Settings-Seite ist im Normalbetrieb console-sauber. Die Auto-Pickkey-Statistik wird nur noch bei aktivem Debug-Flag ausgegeben (`localStorage['influxbro.debug.pickstats']='1'`).

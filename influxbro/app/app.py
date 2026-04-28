@@ -85,6 +85,14 @@ UI_ACTIONS_MAX_MEM = 200
 UI_ACTIONS_MEM: "deque[dict[str, Any]]" = deque(maxlen=UI_ACTIONS_MAX_MEM)
 UI_ACTIONS_PATH = DATA_DIR / "influxbro_ui_actions.jsonl"
 
+CONFIG_LOG_LOCK = threading.RLock()
+CONFIG_LOG_QUEUE_PATH = DATA_DIR / "influxbro_config_log_queue.jsonl"
+CONFIG_LOG_ACK_PATH = DATA_DIR / "influxbro_config_log_acks.json"
+CONFIG_LOG_ACK_MAX = 50000
+CONFIG_LOG_ACK_IDS: set[str] = set()
+CONFIG_LOG_ACK_ORDER: "deque[str]" = deque()
+CONFIG_LOG_ACK_LOADED = False
+
 TRACE_LOCK = threading.RLock()
 TRACE_PATH = DATA_DIR / "influxbro_traces.json"
 TRACE_ENABLED = True
@@ -806,6 +814,18 @@ def configure_logging(cfg: dict[str, Any]) -> None:
     except Exception:
         pass
 
+    try:
+        if _config_log_enabled(cfg):
+            _config_log_replay_pending()
+    except Exception:
+        pass
+
+    try:
+        if _config_log_enabled(cfg):
+            _config_log_replay_pending()
+    except Exception:
+        pass
+
 
 def _trace_configure(cfg: dict[str, Any]) -> None:
     global TRACE_ENABLED
@@ -1482,6 +1502,7 @@ DEFAULT_CFG = {
     "log_http_requests": False,
     "log_influx_queries": False,
     "log_cache_usage": False,
+    "log_config_changes": True,
 
     # UI log colors (used in client log view)
     "ui_log_error_bg": "#FFE0E0",
@@ -21339,6 +21360,7 @@ def api_set_config():
     _bool("log_http_requests", False)
     _bool("log_influx_queries", False)
     _bool("log_cache_usage", False)
+    _bool("log_config_changes", True)
     try:
         prof = str(cfg.get("log_profile") or "debug").strip().lower()
     except Exception:
@@ -21413,6 +21435,26 @@ def api_set_config():
 
     save_cfg(cfg)
     LOG.info("api.config_save done from=%s changed=%s", request.remote_addr, changed_keys)
+    try:
+        if _config_log_enabled(cfg):
+            changes = []
+            for k in changed_keys:
+                changes.append({
+                    "field": k,
+                    "old": _config_log_redact(k, old_cfg.get(k)),
+                    "new": _config_log_redact(k, cfg.get(k)),
+                })
+            if changes:
+                LOG.info(_config_log_format({
+                    "page": "Settings",
+                    "area": "config_save",
+                    "field": "config",
+                    "source": "api_config",
+                    "storage_key": "options.json",
+                    "changes": changes,
+                }))
+    except Exception:
+        pass
     try:
         configure_logging(cfg)
     except Exception:
@@ -28881,8 +28923,32 @@ def api_app_state_set():
     if not _app_state_size_ok(state):
         return jsonify({"ok": False, "error": "state too large"}), 413
     st = _app_state_load()
+    prev = st.get(scope) if isinstance(st.get(scope), dict) else {}
     st[scope] = state
     _app_state_save(st)
+    try:
+        cfg = load_cfg()
+        if _config_log_enabled(cfg):
+            changes = []
+            keys = sorted(set(prev.keys()) | set(state.keys()))
+            for key in keys:
+                old = prev.get(key)
+                new = state.get(key)
+                if old == new:
+                    continue
+                changes.append({"field": key, "old": _config_log_redact(key, old), "new": _config_log_redact(key, new)})
+            if changes:
+                LOG.info(_config_log_format({
+                    "page": "server",
+                    "area": scope,
+                    "field": scope,
+                    "source": "app_state",
+                    "scope": scope,
+                    "storage_key": APP_STATE_PATH.name,
+                    "changes": changes,
+                }))
+    except Exception:
+        pass
     return jsonify({"ok": True, "scope": scope})
 
 
@@ -30172,6 +30238,177 @@ def _client_event_log(kind_hint: str) -> Response:
         pass
 
     return jsonify({"ok": True})
+
+
+def _config_log_enabled(cfg: dict[str, Any] | None = None) -> bool:
+    try:
+        cur = cfg if isinstance(cfg, dict) else load_cfg()
+        return bool(cur.get("log_config_changes", True))
+    except Exception:
+        return True
+
+
+def _config_log_ack_load() -> None:
+    global CONFIG_LOG_ACK_LOADED
+    if CONFIG_LOG_ACK_LOADED:
+        return
+    CONFIG_LOG_ACK_LOADED = True
+    try:
+        if not CONFIG_LOG_ACK_PATH.exists():
+            return
+        raw = json.loads(CONFIG_LOG_ACK_PATH.read_text(encoding="utf-8"))
+        ids = raw.get("ids") if isinstance(raw, dict) else None
+        if not isinstance(ids, list):
+            return
+        for item in ids[-CONFIG_LOG_ACK_MAX:]:
+            sid = str(item or "").strip()
+            if not sid or sid in CONFIG_LOG_ACK_IDS:
+                continue
+            CONFIG_LOG_ACK_IDS.add(sid)
+            CONFIG_LOG_ACK_ORDER.append(sid)
+    except Exception:
+        return
+
+
+def _config_log_ack_save() -> None:
+    try:
+        CONFIG_LOG_ACK_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = CONFIG_LOG_ACK_PATH.with_suffix(CONFIG_LOG_ACK_PATH.suffix + ".tmp")
+        tmp.write_text(json.dumps({"ids": list(CONFIG_LOG_ACK_ORDER)[-CONFIG_LOG_ACK_MAX:]}, ensure_ascii=True), encoding="utf-8")
+        os.replace(tmp, CONFIG_LOG_ACK_PATH)
+    except Exception:
+        return
+
+
+def _config_log_record_seen(event_id: str) -> None:
+    sid = str(event_id or "").strip()
+    if not sid or sid in CONFIG_LOG_ACK_IDS:
+        return
+    CONFIG_LOG_ACK_IDS.add(sid)
+    CONFIG_LOG_ACK_ORDER.append(sid)
+    while len(CONFIG_LOG_ACK_ORDER) > CONFIG_LOG_ACK_MAX:
+        try:
+            old = CONFIG_LOG_ACK_ORDER.popleft()
+        except Exception:
+            break
+        try:
+            CONFIG_LOG_ACK_IDS.discard(old)
+        except Exception:
+            pass
+
+
+def _config_log_redact(field_name: str, value: Any) -> Any:
+    key = str(field_name or "").strip().lower()
+    if key and any(tok in key for tok in ("token", "password", "secret", "admin_token")):
+        return "***"
+    if isinstance(value, (dict, list)):
+        try:
+            return json.dumps(value, ensure_ascii=True)[:500]
+        except Exception:
+            return str(value)[:500]
+    return value
+
+
+def _config_log_format(event: dict[str, Any]) -> str:
+    page = str(event.get("page") or "").strip()[:80]
+    area = str(event.get("area") or "").strip()[:160]
+    field = str(event.get("field") or "").strip()[:160]
+    source = str(event.get("source") or "").strip()[:80]
+    storage_key = str(event.get("storage_key") or event.get("scope") or "").strip()[:160]
+    changes = event.get("changes") if isinstance(event.get("changes"), list) else []
+    safe = []
+    for item in changes[:50]:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("field") or "").strip()[:160]
+        safe.append({"field": name, "old": _config_log_redact(name, item.get("old")), "new": _config_log_redact(name, item.get("new"))})
+    return "Config speicherung page=%s area=%s field=%s source=%s key=%s changes=%s" % (
+        page,
+        area,
+        field,
+        source,
+        storage_key,
+        json.dumps(safe, ensure_ascii=True),
+    )
+
+
+def _config_log_replay_pending() -> None:
+    try:
+        _config_log_ack_load()
+        if not CONFIG_LOG_QUEUE_PATH.exists():
+            return
+        lines = CONFIG_LOG_QUEUE_PATH.read_text(encoding="utf-8").splitlines()
+        dirty = False
+        for line in lines[-10000:]:
+            try:
+                row = json.loads(line)
+                event = row.get("event") if isinstance(row, dict) else None
+            except Exception:
+                continue
+            if not isinstance(event, dict):
+                continue
+            eid = str(event.get("event_id") or "").strip()
+            if not eid or eid in CONFIG_LOG_ACK_IDS:
+                continue
+            LOG.info(_config_log_format(event))
+            _config_log_record_seen(eid)
+            dirty = True
+        if dirty:
+            _config_log_ack_save()
+    except Exception:
+        return
+
+
+@app.post("/api/client_log_batch")
+def api_client_log_batch():
+    cfg = load_cfg()
+    if not _config_log_enabled(cfg):
+        return jsonify({"ok": True, "acked": []})
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        body = {}
+    events = body.get("events") if isinstance(body, dict) else None
+    if not isinstance(events, list):
+        return jsonify({"ok": False, "error": "events must be a list"}), 400
+    if len(events) > 200:
+        return jsonify({"ok": False, "error": "too many events"}), 413
+
+    with CONFIG_LOG_LOCK:
+        _config_log_ack_load()
+        _config_log_replay_pending()
+        CONFIG_LOG_QUEUE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        acked: list[str] = []
+        pending: list[dict[str, Any]] = []
+        for raw in events:
+            if not isinstance(raw, dict):
+                continue
+            eid = str(raw.get("event_id") or "").strip()[:120]
+            if not eid:
+                continue
+            if eid in CONFIG_LOG_ACK_IDS:
+                acked.append(eid)
+                continue
+            pending.append(raw)
+        if pending:
+            with CONFIG_LOG_QUEUE_PATH.open("a", encoding="utf-8") as f:
+                for ev in pending:
+                    f.write(json.dumps({"event": ev}, ensure_ascii=True) + "\n")
+                try:
+                    f.flush()
+                    os.fsync(f.fileno())
+                except Exception:
+                    pass
+            for ev in pending:
+                try:
+                    eid = str(ev.get("event_id") or "").strip()
+                    LOG.info(_config_log_format(ev))
+                    _config_log_record_seen(eid)
+                    acked.append(eid)
+                except Exception:
+                    continue
+            _config_log_ack_save()
+    return jsonify({"ok": True, "acked": acked})
 
 
 @app.post("/api/client_error")

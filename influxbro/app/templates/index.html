@@ -1545,7 +1545,20 @@ function _loadFlowUiState(id){
 
 function _saveFlowUiState(id, ui){
   try{
-    localStorage.setItem(FLOW_UI_KEY_PREFIX + String(id || 'flow'), JSON.stringify(_normalizeFlowUiState(ui)));
+    const key = FLOW_UI_KEY_PREFIX + String(id || 'flow');
+    let prev = {};
+    try{ prev = _loadFlowUiState(id); }catch(e){ prev = {}; }
+    const next = _normalizeFlowUiState(ui);
+    localStorage.setItem(key, JSON.stringify(next));
+    try{
+      const changes = [];
+      if(!!prev.openAll !== !!next.openAll) changes.push({field:'openAll', old:!!prev.openAll, new:!!next.openAll});
+      if(!!prev.onlyErrors !== !!next.onlyErrors) changes.push({field:'onlyErrors', old:!!prev.onlyErrors, new:!!next.onlyErrors});
+      if(JSON.stringify(prev.openKeys || {}) !== JSON.stringify(next.openKeys || {})) changes.push({field:'openKeys', old:prev.openKeys || {}, new:next.openKeys || {}});
+      if(changes.length && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue){
+        window.InfluxBroConfigLog.queue({page:'Dashboard', area:String(id || 'flow'), field:'flow_ui_state', source:'localStorage', storage_key:key, changes});
+      }
+    }catch(e){}
   }catch(e){}
 }
 
@@ -2366,6 +2379,7 @@ async function refreshGraphMainAgg(opts){
 
 function saveState(){
   try{
+    const prev = loadState();
     const j = {
       scan_preset: $scanPreset ? $scanPreset.value : "counter",
       out_min: $outMin ? $outMin.value : "",
@@ -2412,6 +2426,18 @@ function saveState(){
       analysis_show_ignored: ANALYSIS_SHOW_IGNORED,
     };
     localStorage.setItem(LS_KEY, JSON.stringify(j));
+    try{
+      const changes = [];
+      Object.keys(j).forEach((k)=>{
+        const old = prev ? prev[k] : undefined;
+        const now = j[k];
+        if(JSON.stringify(old) === JSON.stringify(now)) return;
+        changes.push({field:k, old, new:now});
+      });
+      if(changes.length && window.InfluxBroConfigLog && window.InfluxBroConfigLog.queue){
+        window.InfluxBroConfigLog.queue({page:'Dashboard', area:'dashboard_state', field:'saveState', source:'localStorage', storage_key:LS_KEY, changes});
+      }
+    }catch(e){}
   }catch(e){}
 }
 

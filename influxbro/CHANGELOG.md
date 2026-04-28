@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.480
+
+### Enhancement
+
+- Logs/Configuration: Neue Option `logge Config` auf der Logs-Seite. Persistierte UI-/Config-Aenderungen werden jetzt performant ueber eine clientseitig persistente Batch-Queue an den Server uebergeben und dort als `INFO`-Eintraege `Config speicherung ...` protokolliert. Die Queue bleibt bis zum Server-Ack im Browser erhalten und wird serverseitig vor dem Ack dauerhaft in `/data` gesichert. ([#432](https://github.com/thomas682/HA-Addons/issues/432))
+- Instrumentiert in der ersten Ausbaustufe: Dashboard-`saveState`, Flow-UI-State, serverseitige `app_state`-Saves, Tabellen-Spaltenbreiten, Wrap/Filter, Tabellenhoehen, Sortierung/Spaltensichtbarkeit sowie lokale Persistenzpfade der Settings-Icon-/Outlier-Tabellen. ([#432](https://github.com/thomas682/HA-Addons/issues/432))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.479
 
 ### Enhancement
