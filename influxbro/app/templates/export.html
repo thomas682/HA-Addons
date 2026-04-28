@@ -458,7 +458,7 @@
                   $targetEntries.innerHTML = '<div class="muted" style="padding:10px 12px;">Keine Unterordner vorhanden.</div>';
                   return;
                 }
-                $targetEntries.innerHTML = rows.map(name => `<button type="button" class="btn_sm target_entry" data-name="${name.replace(/"/g,'&quot;')}" style="display:block; width:100%; text-align:left; border:none; border-bottom:1px solid var(--line); border-radius:0; padding:10px 12px; background:transparent;">${name}</button>`).join('');
+                $targetEntries.innerHTML = rows.map(name => `<button type="button" class="btn_sm target_entry" data-name="${name.replace(/"/g,'&quot;')}" style="display:block; width:auto; text-align:left; border:none; border-bottom:1px solid var(--line); border-radius:0; padding:10px 12px; background:transparent;">${name}</button>`).join('');
                 $targetEntries.querySelectorAll('.target_entry').forEach(btn => {
                   btn.addEventListener('click', async (ev)=>{
                     try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}

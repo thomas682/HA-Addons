@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.469
+
+### Fix
+
+- Einstellungen/Icon-Manager: Die ersten vier Spalten der Icon-Tabelle (`Area`, `data-ui Key`, `Label`, `SVG (Override)`) bleiben jetzt beim horizontalen Scrollen fixiert; die Icon-Palette zeigt gleiche SVGs nur einmal, und der Inline-Editor wird bei Doppelklick oder `Edit` wieder zuverlässig geöffnet. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Picker/UI: Echte Pickkey-Duplikate in Backup-Query-Detailbereichen wurden entkoppelt, und bekannte `button width:100%`-Spezialregeln wurden auf normale Button-Breiten zurückgestellt. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.468
 
 ### Fix
