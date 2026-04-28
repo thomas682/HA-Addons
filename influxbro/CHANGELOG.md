@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.479
+
+### Enhancement
+
+- Einstellungen/Icon-Manager: Die Icon-Tabelle folgt jetzt deutlicher dem Tabellen-Template: Standard- und Customer-Actions sind getrennt, der Status steht in einem eigenen Panel unter der Standard-Action-Leiste, die Zeilenhoehe wird nicht mehr durch lange SVG-Code-Texte aufgeblasen und die Tabellen-Rowcount-Anzeige ist dort ausgeblendet. ([#430](https://github.com/thomas682/HA-Addons/issues/430))
+- Tabellen: `Fensterbreite` ist jetzt der Default fuer Tabellen ohne gespeicherte Spaltenbreiten. Die Template-Dokumentation beschreibt dies sowie den separaten Status-/Info-Panel-Block unterhalb der Standard-Action-Leiste. ([#430](https://github.com/thomas682/HA-Addons/issues/430))
+- Einstellungen/Icon-Manager: Unter `Nur ueberschrieben` wird jetzt direkt erlaeutert, dass nur geaenderte Iconsaetze angezeigt werden, die ueber die Einstellungen angepasst wurden. ([#431](https://github.com/thomas682/HA-Addons/issues/431))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.478
 
 ### Enhancement

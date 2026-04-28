@@ -1374,6 +1374,12 @@ def test_config_icon_manager_has_sticky_header_palette_and_explicit_button_width
     assert 'id="icons_jump" class="btn_sm"' in config_body and 'style="width:auto;"' in config_body
     assert '#icons_tbl th:nth-child(1), #icons_tbl td:nth-child(1) { position: sticky; left: 0;' in config_body
     assert '#icons_tbl th:nth-child(4), #icons_tbl td:nth-child(4) { position: sticky; left: 62ch;' in config_body
+    assert 'id="icons_status_panel"' in config_body
+    assert 'data-ui="config_settings.panel_icons_status"' in config_body
+    assert 'id="icons_customer_actions_panel"' in config_body
+    assert 'data-ui="config_settings.row_icons_customer_actions"' in config_body
+    assert 'Es werden nur die geaenderten Iconsaetze angezeigt' in config_body
+    assert 'data-ib-hide-rowcounts="1"' in config_body
 
 
 def test_config_icon_manager_edit_and_dragdrop_logic_present():
@@ -1410,6 +1416,16 @@ def test_buttons_do_not_use_width_100_specific_rules():
     assert 'main.content button:not(.ib_info_icon):not(.btn_sm) { width:auto; }' in config_body
     assert '.ib_pagecard_results button { display:block; width:auto;' in topbar_body
     assert 'style="display:block; width:auto; text-align:left;' in export_body
+
+
+def test_table_helper_defaults_to_window_fit_and_template_documents_it():
+    table_cols_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    assert 'const hadSaved = !!_readWidths(tbl);' in table_cols_body
+    assert 'if(!hadSaved){' in table_cols_body
+    assert "windowFit(tbl, {minW: 80});" in table_cols_body
+    assert 'Dies ist der Standardzustand fuer Tabellen ohne gespeicherte Spaltenbreiten.' in template_md
+    assert 'Status-/Infotext für eine Tabelle gebraucht wird' in template_md
 
 
 def test_confirm_dialog_template_and_popup_metadata_exist():

@@ -168,7 +168,10 @@
     #icons_tbl th:nth-child(3), #icons_tbl td:nth-child(3) { position: sticky; left: 42ch; z-index: 3; background: inherit; min-width: 20ch; }
     #icons_tbl th:nth-child(4), #icons_tbl td:nth-child(4) { position: sticky; left: 62ch; z-index: 3; background: inherit; min-width: 32ch; }
     #icons_tbl thead th:nth-child(-n+4) { z-index: 5; }
+    #icons_tbl thead tr.ib_filter_row th { top: 30px; z-index: 4; }
+    #icons_tbl thead tr.ib_filter_row th:nth-child(-n+4) { z-index: 6; }
     #icons_tbl tr.ib_icon_drop_target td { box-shadow: inset 0 0 0 2px rgba(14, 116, 144, 0.35); }
+    #icons_tbl tbody td { height: max(34px, var(--ib-icon-row-height, 34px)); vertical-align: middle; }
     #icons_tbl textarea.ib_icon_svg_edit {
       width: 100%;
       min-height: 120px;
@@ -186,7 +189,9 @@
     .ib_icon_palette_item { display:flex; align-items:center; justify-content:center; min-height:44px; border:1px solid #ddd; border-radius:10px; background:#fff; cursor:grab; padding:6px; }
     .ib_icon_palette_item:active { cursor:grabbing; }
     .ib_icon_palette_item svg { max-width:24px; max-height:24px; }
-    #icons_tbl td.ib_icon_svg_cell .ib_icon_code { display:block; white-space:pre-wrap; word-break:break-word; }
+    #icons_tbl td.ib_icon_svg_cell .ib_icon_code { display:block; max-height:2.8em; overflow:auto; white-space:pre-wrap; word-break:break-word; }
+    #icons_status_panel { margin-top:10px; border:1px solid #eee; border-radius:12px; padding:10px 12px; background:#fafafa; }
+    #icons_customer_actions_panel { margin-top:10px; border:1px solid #eee; border-radius:12px; padding:10px 12px; background:#fafafa; }
     /* Color picker row */
     .color_pick_row { display:flex; gap:8px; align-items:center; }
     .color_pick_row input[type="color"] { width:44px; height:36px; padding:0; flex:0 0 auto; }
@@ -403,7 +408,7 @@
                 </div>
               </div>
               <div class="param_row">
-                <div class="param_label">Nur ueberschrieben</div>
+                <div class="param_label">Nur ueberschrieben<span class="param_hint">Es werden nur die geaenderten Iconsaetze angezeigt, die ueber Einstellungen geaendert wurden.</span></div>
                 <div class="param_control">
                   <label class="ib_chk_row"><input type="checkbox" id="icons_only_overrides" data-ui="config_settings.chk_icons_only_overrides" data-ib-pickkey="config_settings.chk_icons_only_overrides" title="settings.icons.only_overrides" /><span></span></label>
                 </div>
@@ -440,19 +445,24 @@
 
                   <label><input type="checkbox" id="icons_wrap" class="row_sel" data-ui="config_settings.chk_icons_umbruch" data-ib-pickkey="config_settings.chk_icons_umbruch" title="config_settings.chk_icons_umbruch"/>Umbruch</label>
                   <label><input type="checkbox" id="icons_colfilter" class="row_sel" data-ui="config_settings.chk_icons_spaltenfilter" data-ib-pickkey="config_settings.chk_icons_spaltenfilter" title="config_settings.chk_icons_spaltenfilter"/>Spaltenfilter</label>
-
+                </div>
+              </div>
+              <div id="icons_status_panel" data-ui="config_settings.panel_icons_status" data-ib-pickkey="config_settings.panel_icons_status" title="config_settings.panel_icons_status">
+                <span class="muted" id="icons_status">...</span>
+              </div>
+              <div id="icons_customer_actions_panel" data-ui="config_settings.panel_icons_customer_actions" data-ib-pickkey="config_settings.panel_icons_customer_actions" title="config_settings.panel_icons_customer_actions">
+                <div class="tbl_actions" data-ui="config_settings.row_icons_customer_actions" data-ib-pickkey="config_settings.row_icons_customer_actions" title="config_settings.row_icons_customer_actions">
                   <button id="icons_edit" class="btn_sm" type="button" data-ui="config_settings.btn_icons_edit" data-ib-pickkey="config_settings.btn_icons_edit" title="settings.icons.edit" style="width:auto;">Edit</button>
                   <button id="icons_undo" class="btn_sm" type="button" data-ui="config_settings.btn_icons_undo" data-ib-pickkey="config_settings.btn_icons_undo" title="settings.icons.undo" style="width:auto;" disabled>Undo</button>
                   <button id="icons_jump" class="btn_sm" type="button" data-ui="config_settings.btn_icons_jump" data-ib-pickkey="config_settings.btn_icons_jump" title="settings.icons.jump" style="width:auto;" disabled>Jump</button>
-                  <span class="muted" id="icons_status">...</span>
                 </div>
               </div>
               <div id="icons_palette_box" data-ui="config_settings.panel_icons_palette" data-ib-pickkey="config_settings.panel_icons_palette" title="settings.icons.palette">
                 <div class="muted" style="margin-bottom:8px;">Icon-Palette: SVG per Drag & Drop auf eine Tabellenzeile ziehen oder ein Icon aus einer Tabellenzeile in eine andere Zeile kopieren.</div>
                 <div id="icons_palette_grid" data-ui="config_settings.grid_icons_palette" data-ib-pickkey="config_settings.grid_icons_palette" title="settings.icons.palette.grid"></div>
               </div>
-              <div id="icons_tbl_box" style="border:1px solid #eee; border-radius:12px; overflow:auto; max-height:520px; margin-top:10px;">
-                <table id="icons_tbl" class="cfg_tbl ib_tbl" data-ui="config_settings.tbl_icons" data-ib-pickkey="config_settings.tbl_icons" title="settings.icons.table">
+              <div id="icons_tbl_box" data-ib-hide-rowcounts="1" style="border:1px solid #eee; border-radius:12px; overflow:auto; max-height:520px; margin-top:10px;">
+                <table id="icons_tbl" class="cfg_tbl ib_tbl" data-sort-custom="1" data-ib-hide-rowcounts="1" data-ui="config_settings.tbl_icons" data-ib-pickkey="config_settings.tbl_icons" title="settings.icons.table">
                   <thead>
                     <tr>
                       <th style="width:14ch;">Area</th>

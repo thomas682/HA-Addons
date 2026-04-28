@@ -211,7 +211,11 @@ thead tr.ib_filter_row input, thead tr.ib_filter_row select { width: 100%; heigh
       tbl.style.tableLayout = tbl.style.tableLayout || 'fixed';
     }catch(e){}
 
+    const hadSaved = !!_readWidths(tbl);
     applySavedWidths(tbl);
+    if(!hadSaved){
+      try{ windowFit(tbl, {minW: 80}); }catch(e){}
+    }
     const ths = Array.from(tbl.querySelectorAll('thead th'));
     ths.forEach((th, idx)=>{
       const nxt = ths[idx + 1];

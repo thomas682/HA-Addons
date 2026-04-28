@@ -115,6 +115,7 @@ Notes
 - Tabellen mit vielen Aktionen sollten zwei Leisten trennen:
   - Standard Actions: allgemeine Tabellensteuerung (Refresh, Abbruch, Breiten, Wrap, Filter)
   - Customer Actions: tabellen- oder domänenspezifische Aktionen darunter
+- Wenn Status-/Infotext für eine Tabelle gebraucht wird, soll dieser in einem eigenen kleinen Panel/Kartenblock unter der Standard-Action-Leiste stehen, nicht inline zwischen Buttons.
 - Prefer a dedicated `Liste aktualisieren` (reload) button in the table toolbar (above the list), not mixed into unrelated page action blocks.
 - Use an icon-only refresh button for `Liste aktualisieren` (with `aria-label`).
 - Use relative URLs (Ingress-friendly).
@@ -139,6 +140,7 @@ Notes
   - Calls `InfluxBroTableCols.autoFit('#table_id', {maxRows: ...})`.
 - Button: `Fensterbreite`
   - Calls `InfluxBroTableCols.windowFit('#table_id')`.
+  - Dies ist der Standardzustand fuer Tabellen ohne gespeicherte Spaltenbreiten.
   - Algorithm requirement:
     1) First set widths so that each column content is fully visible for the sampled rows.
     2) Measure the resulting full table width.
