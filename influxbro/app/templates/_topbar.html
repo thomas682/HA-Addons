@@ -861,6 +861,9 @@
       }
 
      let _loggedPickStats = false;
+     function _debugPickStatsEnabled(){
+       try{ return localStorage.getItem('influxbro.debug.pickstats') === '1'; }catch(e){ return false; }
+     }
      function _validatePickRegistry(){
        try{
          const pkMap = {};
@@ -889,10 +892,10 @@
          const ikDup = Object.keys(ikMap).filter(k=>ikMap[k] > 1);
          if(pkDup.length) console.error('[InfluxBro] pickkey collision(s):', pkDup.slice(0, 20));
          if(ikDup.length) console.error('[InfluxBro] instancekey collision(s):', ikDup.slice(0, 20));
-         if(!_loggedPickStats){
-           _loggedPickStats = true;
-           if(autoPk || autoIk) console.warn('[InfluxBro] auto pickkeys:', autoPk, 'auto instancekeys:', autoIk);
-         }
+          if(!_loggedPickStats){
+            _loggedPickStats = true;
+            if((autoPk || autoIk) && _debugPickStatsEnabled()) console.warn('[InfluxBro] auto pickkeys:', autoPk, 'auto instancekeys:', autoIk);
+          }
        }catch(e){}
      }
 

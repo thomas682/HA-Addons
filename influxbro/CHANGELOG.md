@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.474
+
+### Fix
+
+- Einstellungen/Console: Die verbleibenden kaputten `data-ui`-Selektor-Strings in `_topbar.html` wurden repariert und die Auto-Pickkey-Statistik wird im Normalbetrieb nicht mehr als Warnung ausgegeben. Die Einstellungsseite ist damit im Standardbetrieb ohne Console-Meldungen. 
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.473
 
 ### Fix
