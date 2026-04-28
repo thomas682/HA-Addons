@@ -1319,3 +1319,30 @@ def test_config_sections_use_unique_readable_pickkeys():
     assert 'data-ui="config_settings.section_logs" data-ib-pickkey="config_settings.section_logs"' in config_body
     assert 'data-ui="config_settings.section_outliers" data-ib-pickkey="config_settings.section_outliers"' in config_body
     assert 'data-ui="config_settings.section_root" data-ib-pickkey="config_settings.section_root"' not in config_body
+
+
+def test_config_icon_manager_has_sticky_header_palette_and_explicit_button_widths():
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert '#icons_tbl thead th { position: sticky; top: 0; z-index: 2;' in config_body
+    assert 'id="icons_palette_box"' in config_body
+    assert 'id="icons_palette_grid"' in config_body
+    assert 'id="icons_edit" class="btn_sm"' in config_body and 'style="width:auto;"' in config_body
+    assert 'id="icons_undo" class="btn_sm"' in config_body and 'style="width:auto;"' in config_body
+    assert 'id="icons_jump" class="btn_sm"' in config_body and 'style="width:auto;"' in config_body
+
+
+def test_config_icon_manager_edit_and_dragdrop_logic_present():
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'let _ICON_DND_KEY = \'\'' in config_body
+    assert 'let _ICON_DND_SVG = \'\'' in config_body
+    assert 'let _ICON_INLINE_SAVE_BUSY = false;' in config_body
+    assert 'function _iconsPaletteRender()' in config_body
+    assert 'async function _iconsApplySvgToKey(targetKey, svg, sourceKey)' in config_body
+    assert "item.setAttribute('data-ib-pickkey', 'config_settings.icon_palette_item.' + safeKey);" in config_body
+    assert "tr.setAttribute('data-ib-pickkey', 'config_settings.row_icons_entry.' + safeRowKey);" in config_body
+    assert "ta.value = String(eff || '');" in config_body
+    assert "if(ev && ev.key === 'Enter' && !ev.shiftKey){" in config_body
+    assert "_iconsSaveInlineEdit(String(ta.value || ''));" in config_body
+    assert "tr.draggable = true;" in config_body
+    assert "tr.addEventListener('drop', async (ev)=>{" in config_body
+    assert "_iconsSelect(r.key);" in config_body

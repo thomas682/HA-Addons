@@ -162,6 +162,8 @@
     #icons_tbl td.ib_icon_search_match { background: rgba(0, 196, 255, 0.10); }
     #icons_tbl td.ib_icon_search_current { background: rgba(0, 196, 255, 0.22); box-shadow: inset 0 0 0 2px rgba(0, 196, 255, 0.55); }
     #icons_tbl td.ib_icon_svg_cell { cursor: pointer; }
+    #icons_tbl thead th { position: sticky; top: 0; z-index: 2; background: var(--ib-table-head-bg, #fafafa); }
+    #icons_tbl tr.ib_icon_drop_target td { box-shadow: inset 0 0 0 2px rgba(14, 116, 144, 0.35); }
     #icons_tbl textarea.ib_icon_svg_edit {
       width: 100%;
       min-height: 120px;
@@ -174,6 +176,12 @@
       font-variant-numeric: tabular-nums;
       line-height: 1.25;
     }
+    #icons_palette_box { border:1px solid #eee; border-radius:12px; padding:10px; margin-top:10px; background:#fafafa; }
+    #icons_palette_grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(44px, 1fr)); gap:8px; max-height:220px; overflow:auto; }
+    .ib_icon_palette_item { display:flex; align-items:center; justify-content:center; min-height:44px; border:1px solid #ddd; border-radius:10px; background:#fff; cursor:grab; padding:6px; }
+    .ib_icon_palette_item:active { cursor:grabbing; }
+    .ib_icon_palette_item svg { max-width:24px; max-height:24px; }
+    #icons_tbl td.ib_icon_svg_cell .ib_icon_code { display:block; white-space:pre-wrap; word-break:break-word; }
     /* Color picker row */
     .color_pick_row { display:flex; gap:8px; align-items:center; }
     .color_pick_row input[type="color"] { width:44px; height:36px; padding:0; flex:0 0 auto; }
@@ -428,11 +436,15 @@
                   <label><input type="checkbox" id="icons_wrap" class="row_sel" data-ui="config_settings.chk_icons_umbruch" data-ib-pickkey="config_settings.chk_icons_umbruch" title="config_settings.chk_icons_umbruch"/>Umbruch</label>
                   <label><input type="checkbox" id="icons_colfilter" class="row_sel" data-ui="config_settings.chk_icons_spaltenfilter" data-ib-pickkey="config_settings.chk_icons_spaltenfilter" title="config_settings.chk_icons_spaltenfilter"/>Spaltenfilter</label>
 
-                  <button id="icons_edit" class="btn_sm" type="button" data-ui="config_settings.btn_icons_edit" data-ib-pickkey="config_settings.btn_icons_edit" title="settings.icons.edit">Edit</button>
-                  <button id="icons_undo" class="btn_sm" type="button" data-ui="config_settings.btn_icons_undo" data-ib-pickkey="config_settings.btn_icons_undo" title="settings.icons.undo" disabled>Undo</button>
-                  <button id="icons_jump" class="btn_sm" type="button" data-ui="config_settings.btn_icons_jump" data-ib-pickkey="config_settings.btn_icons_jump" title="settings.icons.jump" disabled>Jump</button>
+                  <button id="icons_edit" class="btn_sm" type="button" data-ui="config_settings.btn_icons_edit" data-ib-pickkey="config_settings.btn_icons_edit" title="settings.icons.edit" style="width:auto;">Edit</button>
+                  <button id="icons_undo" class="btn_sm" type="button" data-ui="config_settings.btn_icons_undo" data-ib-pickkey="config_settings.btn_icons_undo" title="settings.icons.undo" style="width:auto;" disabled>Undo</button>
+                  <button id="icons_jump" class="btn_sm" type="button" data-ui="config_settings.btn_icons_jump" data-ib-pickkey="config_settings.btn_icons_jump" title="settings.icons.jump" style="width:auto;" disabled>Jump</button>
                   <span class="muted" id="icons_status">...</span>
                 </div>
+              </div>
+              <div id="icons_palette_box" data-ui="config_settings.panel_icons_palette" data-ib-pickkey="config_settings.panel_icons_palette" title="settings.icons.palette">
+                <div class="muted" style="margin-bottom:8px;">Icon-Palette: SVG per Drag & Drop auf eine Tabellenzeile ziehen oder ein Icon aus einer Tabellenzeile in eine andere Zeile kopieren.</div>
+                <div id="icons_palette_grid" data-ui="config_settings.grid_icons_palette" data-ib-pickkey="config_settings.grid_icons_palette" title="settings.icons.palette.grid"></div>
               </div>
               <div id="icons_tbl_box" style="border:1px solid #eee; border-radius:12px; overflow:auto; max-height:520px; margin-top:10px;">
                 <table id="icons_tbl" class="cfg_tbl ib_tbl" data-ui="config_settings.tbl_icons" data-ib-pickkey="config_settings.tbl_icons" title="settings.icons.table">
@@ -1684,6 +1696,7 @@ const $iconsWinWidth = document.getElementById('icons_windowwidth');
 const $iconsWrap = document.getElementById('icons_wrap');
 const $iconsColFilter = document.getElementById('icons_colfilter');
 const $iconsTbl = document.getElementById('icons_tbl');
+const $iconsPaletteGrid = document.getElementById('icons_palette_grid');
 const $iconsStatus = document.getElementById('icons_status');
 const $iconsErr = document.getElementById('icons_err');
 
@@ -1708,6 +1721,9 @@ let _ICON_EDIT_BEFORE = null;
 let _ICON_UNDO_LAST = {}; // key -> previous svg (string|null)
 let _ICON_SEARCH_MATCHES = [];
 let _ICON_SEARCH_INDEX = -1;
+let _ICON_DND_KEY = '';
+let _ICON_DND_SVG = '';
+let _ICON_INLINE_SAVE_BUSY = false;
 
 function _iconsToolbarUpdate(){
   try{
@@ -1809,8 +1825,80 @@ function _iconsSelect(key){
     const k = String(key || '').trim();
     _ICON_SELECTED_KEY = k;
     _iconsToolbarUpdate();
-    _iconsRender();
+    if($iconsTbl){
+      $iconsTbl.querySelectorAll('tbody tr').forEach((tr)=>{
+        try{ tr.classList.toggle('ib_row_sel', String(tr.dataset.key || '') === k); }catch(e){}
+      });
+    }
   }catch(e){}
+}
+
+function _iconsClearDropTargets(){
+  try{
+    if(!$iconsTbl) return;
+    $iconsTbl.querySelectorAll('tbody tr.ib_icon_drop_target').forEach((tr)=>{ try{ tr.classList.remove('ib_icon_drop_target'); }catch(e){}; });
+  }catch(e){}
+}
+
+function _iconsPaletteRender(){
+  try{
+    if(!$iconsPaletteGrid) return;
+    $iconsPaletteGrid.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    (_ICON_INV || []).forEach((it)=>{
+      try{
+        if(!it || !it.key) return;
+        const key = String(it.key || '');
+        const ov = (_ICON_OVERRIDES && _ICON_OVERRIDES[key]) ? String(_ICON_OVERRIDES[key] || '') : '';
+        const def = (_ICON_DEFAULT && _ICON_DEFAULT[key]) ? String(_ICON_DEFAULT[key] || '') : '';
+        const svg = ov || def || '';
+        if(!svg) return;
+        const item = document.createElement('div');
+        const safeKey = key.replace(/[^a-zA-Z0-9_.-]+/g, '_');
+        item.className = 'ib_icon_palette_item';
+        item.draggable = true;
+        item.title = key;
+        item.setAttribute('data-ui', 'config_settings.icon_palette_item');
+        item.setAttribute('data-ib-pickkey', 'config_settings.icon_palette_item.' + safeKey);
+        item.setAttribute('data-ib-instancekey', 'config_settings.icon_palette_item.' + safeKey);
+        try{ item.innerHTML = svg; }catch(e){ item.textContent = key; }
+        item.addEventListener('dragstart', (ev)=>{
+          _ICON_DND_KEY = key;
+          _ICON_DND_SVG = svg;
+          try{
+            if(ev.dataTransfer){
+              ev.dataTransfer.setData('text/plain', svg);
+              ev.dataTransfer.setData('application/x-influxbro-icon-key', key);
+              ev.dataTransfer.effectAllowed = 'copy';
+            }
+          }catch(e){}
+        });
+        frag.appendChild(item);
+      }catch(e){}
+    });
+    $iconsPaletteGrid.appendChild(frag);
+  }catch(e){}
+}
+
+async function _iconsApplySvgToKey(targetKey, svg, sourceKey){
+  try{
+    const k = String(targetKey || '').trim();
+    const sv = String(svg || '').trim();
+    if(!k || !sv) return;
+    const before = (_ICON_OVERRIDES && _ICON_OVERRIDES[k]) ? String(_ICON_OVERRIDES[k] || '') : '';
+    if(String(before || '') !== String(sv || '')){
+      _ICON_UNDO_LAST = _ICON_UNDO_LAST || {};
+      _ICON_UNDO_LAST[k] = before ? before : null;
+    }
+    await _iconsFetchJson('./api/icon_svg/set', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key: k, svg: sv})});
+    _ICON_SELECTED_KEY = k;
+    await _iconsLoad();
+    try{ if(window.InfluxBroApplyIconOverrides) window.InfluxBroApplyIconOverrides(); }catch(e){}
+    _iconsSetErr('');
+    _iconsSetStatus('Icon uebernommen: ' + k + (sourceKey ? (' <- ' + sourceKey) : ''));
+  }catch(e){
+    _iconsSetErr(String(e || 'Icon uebernehmen fehlgeschlagen'));
+  }
 }
 
 function _iconsPathForArea(area){
@@ -1876,6 +1964,8 @@ function _iconsCancelInlineEdit(){
 
 async function _iconsSaveInlineEdit(newSvg){
   try{
+    if(_ICON_INLINE_SAVE_BUSY) return;
+    _ICON_INLINE_SAVE_BUSY = true;
     const k = String(_ICON_EDITING_KEY || _ICON_SELECTED_KEY || '').trim();
     if(!k){ _iconsSetErr('Bitte zuerst eine Zeile markieren.'); return; }
     _iconsSetErr('');
@@ -1896,6 +1986,8 @@ async function _iconsSaveInlineEdit(newSvg){
     _iconsToolbarUpdate();
   }catch(e){
     _iconsSetErr(String(e || 'Save failed'));
+  }finally{
+    _ICON_INLINE_SAVE_BUSY = false;
   }
 }
 
@@ -2010,6 +2102,7 @@ async function _iconsLoad(){
       $iconsArea.innerHTML = '<option value="">Alle</option>' + areas.map(a=>'<option value="'+String(a).replace(/"/g,'&quot;')+'">'+a+'</option>').join('');
     }
   }catch(e){}
+  _iconsPaletteRender();
   _iconsRender();
 }
 
@@ -2043,9 +2136,16 @@ function _iconsRender(){
     const frag = document.createDocumentFragment();
     rows.forEach(r => {
       const tr = document.createElement('tr');
+      const safeRowKey = String(r.key || '').replace(/[^a-zA-Z0-9_.-]+/g, '_');
       tr.dataset.key = String(r.key || '');
+      tr.setAttribute('data-ui', 'config_settings.row_icons_entry');
+      tr.setAttribute('data-ib-pickkey', 'config_settings.row_icons_entry.' + safeRowKey);
+      tr.setAttribute('data-ib-instancekey', 'config_settings.row_icons_entry.' + safeRowKey);
       if(_ICON_SELECTED_KEY && String(_ICON_SELECTED_KEY) === String(r.key)) tr.classList.add('ib_row_sel');
-      tr.addEventListener('click', ()=>_iconsSelect(r.key));
+      tr.addEventListener('click', (ev)=>{
+        try{ if(ev) { ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
+        _iconsSelect(r.key);
+      });
 
       const tdArea = document.createElement('td');
       tdArea.textContent = r.area;
@@ -2070,7 +2170,7 @@ function _iconsRender(){
         const ta = document.createElement('textarea');
         ta.className = 'ib_icon_svg_edit';
         ta.spellcheck = false;
-        ta.value = String(ov || '');
+        ta.value = String(eff || '');
         ta.addEventListener('keydown', (ev)=>{
           try{
             if(ev && ev.key === 'Escape'){
@@ -2078,7 +2178,7 @@ function _iconsRender(){
               _iconsCancelInlineEdit();
               return;
             }
-            if(ev && ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)){
+            if(ev && ev.key === 'Enter' && !ev.shiftKey){
               ev.preventDefault();
               _iconsSaveInlineEdit(String(ta.value || ''));
               return;
@@ -2092,8 +2192,11 @@ function _iconsRender(){
         tdSvg.appendChild(ta);
         setTimeout(()=>{ try{ ta.focus(); ta.selectionStart = ta.value.length; ta.selectionEnd = ta.value.length; }catch(e){} }, 0);
       }else{
+        const code = document.createElement('span');
+        code.className = 'ib_icon_code';
         const show = eff || '';
-        tdSvg.textContent = show ? (show.length > 120 ? (show.slice(0, 120) + '...') : show) : '';
+        code.textContent = show;
+        tdSvg.appendChild(code);
         try{ tdSvg.title = ov ? 'Override' : (def ? 'Default' : ''); }catch(e){}
         tdSvg.addEventListener('dblclick', ()=>_iconsBeginInlineEdit(r.key));
       }
@@ -2113,9 +2216,47 @@ function _iconsRender(){
       tdPrev.appendChild(pv);
       tr.appendChild(tdPrev);
 
+      if(eff){
+        tr.draggable = true;
+        tr.addEventListener('dragstart', (ev)=>{
+          _ICON_DND_KEY = String(r.key || '');
+          _ICON_DND_SVG = String(eff || '');
+          try{
+            if(ev.dataTransfer){
+              ev.dataTransfer.setData('text/plain', String(eff || ''));
+              ev.dataTransfer.setData('application/x-influxbro-icon-key', String(r.key || ''));
+              ev.dataTransfer.effectAllowed = 'copy';
+            }
+          }catch(e){}
+        });
+      }
+      tr.addEventListener('dragover', (ev)=>{
+        try{
+          if(!_ICON_DND_SVG) return;
+          ev.preventDefault();
+          if(ev.dataTransfer) ev.dataTransfer.dropEffect = 'copy';
+          _iconsClearDropTargets();
+          tr.classList.add('ib_icon_drop_target');
+        }catch(e){}
+      });
+      tr.addEventListener('dragleave', ()=>{ try{ tr.classList.remove('ib_icon_drop_target'); }catch(e){}; });
+      tr.addEventListener('drop', async (ev)=>{
+        try{
+          ev.preventDefault();
+          ev.stopPropagation();
+        }catch(e){}
+        _iconsClearDropTargets();
+        const targetKey = String(r.key || '');
+        const svg = String(_ICON_DND_SVG || (ev.dataTransfer ? ev.dataTransfer.getData('text/plain') : '') || '');
+        const sourceKey = String(_ICON_DND_KEY || (ev.dataTransfer ? ev.dataTransfer.getData('application/x-influxbro-icon-key') : '') || '');
+        if(!targetKey || !svg) return;
+        await _iconsApplySvgToKey(targetKey, svg, sourceKey);
+      });
+
       frag.appendChild(tr);
     });
       tbody.appendChild(frag);
+      _iconsClearDropTargets();
 
      const matchCount = _iconsUpdateSearchState({ keepCurrent: true });
 

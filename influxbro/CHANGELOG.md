@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.468
+
+### Fix
+
+- Einstellungen/Icon-Manager: Config-JavaScript parst wieder fehlerfrei, die Icon-Tabelle behaelt ihre Sortierung bei Zeilenselektion, `SVG (Override)` startet mit dem sichtbaren SVG-Code im Editor, `Enter` speichert direkt, und die Toolbar-Buttons bleiben auf normaler Breite. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Einstellungen/Icon-Manager: Eine Drag-and-Drop-Icon-Palette oberhalb der Tabelle erlaubt das Uebernehmen von SVGs auf Zielzeilen sowie das Kopieren von Icons zwischen Tabellenzeilen per Drag-and-Drop. ([#420](https://github.com/thomas682/HA-Addons/issues/420))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.467
 
 ### Fix

@@ -913,7 +913,9 @@ UI:
 - Picker/S-Picker: Fehlende Pickkeys werden weiterhin best-effort ergaenzt, aber vorhandene `data-ui`- und `id`-Werte werden nun repo-weit lesbar als Picker-Key genutzt. Dynamische Builder setzen fuer neue sichtbare Elemente moeglichst direkt explizite `data-ib-pickkey`-Werte.
 - Dashboard/Altbestand: Die vorhandenen statischen Dashboard-Templates fuehren `data-ui` und `data-ib-pickkey` jetzt direkt gemeinsam im Markup, damit auch aeltere Bereiche ohne Rueckgriff auf die automatische Picker-Normalisierung eindeutig referenzierbar bleiben.
 - Einstellungen: Wiederholte Config-Sektionen besitzen jetzt eigene fachliche Sektionskeys. Dadurch bleiben Summary-/Label-/Button-Elemente in den Einstellungen auch bei mehrfachen gleichartigen Cards eindeutig, ohne wachsende `instancekey`-Auto-Ketten zu erzeugen.
-- Iconbilder: Pro Key kann eine Override-SVG hinterlegt werden (Zeile markieren, `Edit` klicken oder Doppelklick auf die SVG-Zelle). Speichern erfolgt per Blur oder Ctrl+Enter.
+- Iconbilder: Oberhalb der Tabelle gibt es jetzt eine Icon-Palette mit allen verfuegbaren SVGs. Ein Icon kann per Drag-and-Drop direkt auf eine Tabellenzeile uebernommen werden; alternativ kann ein Icon aus einer Tabellenzeile per Drag-and-Drop auf eine andere Zeile kopiert werden.
+- Iconbilder: Die Tabellenkopfzeile bleibt beim vertikalen Scrollen fixiert. Zeilenklick markiert nur noch die Zeile und setzt keine Sortierung mehr zurueck. Das Inline-Editieren in `SVG (Override)` startet mit dem aktuell sichtbaren SVG-Code und `Enter` speichert direkt.
+- Iconbilder: Pro Key kann eine Override-SVG hinterlegt werden (Zeile markieren, `Edit` klicken oder Doppelklick auf die SVG-Zelle). Speichern erfolgt per Blur oder `Enter`.
 - Iconbilder: Toolbar:
   - `Edit`: editieren der selektierten Zeile direkt in der Tabelle
   - `Undo`: letzten Wert vor der Aenderung fuer die selektierte Zeile wiederherstellen
