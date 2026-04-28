@@ -255,6 +255,14 @@
                     <option value="stark_anonymisiert">stark anonymisiert</option>
                   </select>
                 </div>
+                <div style="flex:1; min-width:220px;">
+                  <label>Snapshot</label>
+                  <select id="support_bundle_snapshot" data-ui="logs_support_bundle.select_snapshot" data-ib-pickkey="logs_support_bundle.select_snapshot"></select>
+                </div>
+                <div style="flex:0 0 auto; min-width:140px;">
+                  <label>&nbsp;</label>
+                  <button id="support_bundle_snapshot_create" type="button" data-ui="logs_support_bundle.btn_snapshot_create" data-ib-pickkey="logs_support_bundle.btn_snapshot_create">Snapshot erzeugen</button>
+                </div>
               </div>
 
               <div class="muted" style="font-size:12px;">Inhalt</div>
@@ -268,6 +276,7 @@
                 <label style="display:flex; gap:8px; align-items:center;"><input id="sb_cache_meta" type="checkbox" checked /> Cache-Meta</label>
                 <label style="display:flex; gap:8px; align-items:center;"><input id="sb_context" type="checkbox" checked /> Kontext</label>
                 <label style="display:flex; gap:8px; align-items:center;"><input id="sb_settings" type="checkbox" checked /> Settings Snapshot</label>
+                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_support_snapshot" type="checkbox" checked /> Snapshot</label>
                 <label style="display:flex; gap:8px; align-items:center;"><input id="sb_browser_errors" type="checkbox" checked /> Browser-Fehler</label>
               </div>
             </div>
@@ -284,6 +293,7 @@
             <button class="btn_sm" id="support_bundle_preview_btn" type="button" data-ui="logs_support_bundle.btn_preview" data-ib-pickkey="logs_support_bundle.btn_preview">Vorschau</button>
             <button class="btn_sm" id="support_bundle_download_btn" type="button" data-ui="logs_support_bundle.btn_download" data-ib-pickkey="logs_support_bundle.btn_download" disabled>Download ZIP</button>
           </div>
+          <div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: logs_support_bundle.dialog | tpl: dialog_info_popup</div>
         </div>
       </div>
 
@@ -318,6 +328,8 @@
       const $sbClose = document.getElementById('support_bundle_close');
       const $sbHours = document.getElementById('support_bundle_hours');
       const $sbProfile = document.getElementById('support_bundle_profile');
+      const $sbSnapshot = document.getElementById('support_bundle_snapshot');
+      const $sbSnapshotCreate = document.getElementById('support_bundle_snapshot_create');
       const $sbPreview = document.getElementById('support_bundle_preview');
       const $sbPreviewBtn = document.getElementById('support_bundle_preview_btn');
       const $sbDownloadBtn = document.getElementById('support_bundle_download_btn');
@@ -330,9 +342,51 @@
       const $sbCacheMeta = document.getElementById('sb_cache_meta');
       const $sbContext = document.getElementById('sb_context');
       const $sbSettings = document.getElementById('sb_settings');
+      const $sbSupportSnapshot = document.getElementById('sb_support_snapshot');
       const $sbBrowserErrors = document.getElementById('sb_browser_errors');
 
       let _SB_LAST = null;
+
+      async function loadSupportSnapshots(){
+        try{
+          if(!$sbSnapshot) return;
+          let r;
+          try{ r = await fetch('./api/support_bundle/snapshots'); }
+          catch(e){ return; }
+          const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+          if(!r.ok || !j.ok) return;
+          const rows = Array.isArray(j.rows) ? j.rows : [];
+          const prev = String($sbSnapshot.value || '');
+          $sbSnapshot.innerHTML = '';
+          const none = document.createElement('option');
+          none.value = '';
+          none.textContent = 'kein Snapshot';
+          $sbSnapshot.appendChild(none);
+          rows.forEach((row)=>{
+            const opt = document.createElement('option');
+            opt.value = String(row.id || '');
+            opt.textContent = String(row.label || row.id || 'Snapshot');
+            $sbSnapshot.appendChild(opt);
+          });
+          if(prev && rows.some(r => String(r.id||'') === prev)) $sbSnapshot.value = prev;
+          else if(rows.length) $sbSnapshot.value = String(rows[0].id || '');
+        }catch(e){}
+      }
+
+      async function createSupportSnapshot(){
+        err('');
+        let r;
+        try{
+          r = await fetch('./api/support_bundle/snapshot/create', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
+        }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/support_bundle/snapshot/create', {}, e); }catch(x){}
+          throw new Error('Failed to fetch');
+        }
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        await loadSupportSnapshots();
+        if($sbSnapshot) $sbSnapshot.value = String(j.row && j.row.id ? j.row.id : '');
+      }
 
       let FOLLOW = true;
       let RAW = "";
@@ -796,8 +850,10 @@
             cache_meta: !!($sbCacheMeta && $sbCacheMeta.checked),
             context: !!($sbContext && $sbContext.checked),
             settings_snapshot: !!($sbSettings && $sbSettings.checked),
+            support_snapshot: !!($sbSupportSnapshot && $sbSupportSnapshot.checked),
             browser_errors: !!($sbBrowserErrors && $sbBrowserErrors.checked),
           },
+          snapshot_id: String($sbSnapshot && $sbSnapshot.value ? $sbSnapshot.value : ''),
           context: {
             page: 'logs',
           },
@@ -831,6 +887,7 @@
         try{ if($sbPreview) $sbPreview.textContent = 'Noch keine Vorschau.'; }catch(e){}
         try{ if($sbDownloadBtn) $sbDownloadBtn.disabled = true; }catch(e){}
         _SB_LAST = null;
+        loadSupportSnapshots().catch(()=>{});
         try{ if($sbDialog) $sbDialog.style.display = 'flex'; }catch(e){}
       }
 
@@ -964,8 +1021,9 @@
         if($supportBundle) $supportBundle.addEventListener('click', ()=>openSupportBundle());
         if($sbClose) $sbClose.addEventListener('click', ()=>closeSupportBundle());
         if($sbDialog) $sbDialog.addEventListener('click', (ev)=>{ try{ if(ev && ev.target === $sbDialog) closeSupportBundle(); }catch(e){} });
-        if($sbPreviewBtn) $sbPreviewBtn.addEventListener('click', ()=>supportBundlePreview().catch(e=>err(String(e && e.message ? e.message : e))));
-        if($sbDownloadBtn) $sbDownloadBtn.addEventListener('click', ()=>supportBundleDownload().catch(e=>err(String(e && e.message ? e.message : e))));
+      if($sbPreviewBtn) $sbPreviewBtn.addEventListener('click', ()=>supportBundlePreview().catch(e=>err(String(e && e.message ? e.message : e))));
+      if($sbDownloadBtn) $sbDownloadBtn.addEventListener('click', ()=>supportBundleDownload().catch(e=>err(String(e && e.message ? e.message : e))));
+      if($sbSnapshotCreate) $sbSnapshotCreate.addEventListener('click', ()=>createSupportSnapshot().catch(e=>err(String(e && e.message ? e.message : e))));
       }catch(e){}
 
       applyWrap();

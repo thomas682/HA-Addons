@@ -173,8 +173,11 @@ Notes
   - Auto-injected when a table has an `id`.
   - Must be comprehensive and should contain:
     - Purpose (Sinn und Zweck) of this list
+    - A short introduction that explains the function and content of the table so a user immediately understands what this table is for
     - Column list with a precise description for each column
     - Action column(s): a detailed explanation for every action
+    - All applicable toolbar actions/buttons/checkboxes/filter toggles/window-fit controls for this table; no table-specific control may be omitted
+  - The table title line (`.table_title`) and the table action/title header (`.table_head`) must remain fixed above the scroll area and must not scroll away with the table content.
   - Preferred: register a per-table spec via `window.InfluxBroTableInfoSpec[table_id]`.
 
 Example (in the page template JS):

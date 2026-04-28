@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.12.481
+
+### Enhancement
+
+- Support Bundle: Im Dialog koennen jetzt Support-Bundle-Snapshots erzeugt und aus einer Snapshot-Liste ausgewaehlt werden. Der neueste Snapshot ist vorselektiert und kann bei Preview/Download als `snapshot.json` ins Bundle aufgenommen werden. Der Dialog zeigt ausserdem seine Footer-Metadaten (`pk` / `tpl`). ([#433](https://github.com/thomas682/HA-Addons/issues/433))
+
+### Fix
+
+- Tabellen/Jobs & Cache: Die Tabellenregeln wurden geschaerft. Jobs-/Cache-/Timer-/Usage-Tabellen beschreiben ihre Toolbar-/Checkbox-/Fensterbreite-/Select-All-Controls jetzt vollstaendiger im Info-Dialog, und auf der Jobs-&-Cache-Seite bleiben `table_title` und `table_head` oberhalb des Scrollbereichs fixiert. ([#434](https://github.com/thomas682/HA-Addons/issues/434))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.480
 
 ### Enhancement

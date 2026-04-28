@@ -137,6 +137,7 @@ DQ_RULES_PATH = DATA_DIR / "dq" / "auto_rules.json"
 DQ_HA_SNAP_DIR = DATA_DIR / "dq" / "ha_metadata_snapshots"
 DQ_HA_PROPOSALS_DIR = DATA_DIR / "dq" / "ha_config_proposals"
 DQ_YAML_PATCH_DIR = DATA_DIR / "dq" / "yaml_patch_proposals"
+SUPPORT_BUNDLE_SNAP_DIR = DATA_DIR / "support_bundle_snapshots"
 
 # Rollup / Downsampling (Issue #412)
 ROLLUP_LOCK = threading.RLock()
@@ -13038,6 +13039,7 @@ def _support_bundle_collect(body: dict[str, Any]) -> tuple[dict[str, bytes], dic
 
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     include = body.get("include") if isinstance(body.get("include"), dict) else {}
+    snapshot_id = str(body.get("snapshot_id") or "").strip()
     profile = _support_bundle_profile(body.get("profile"))
 
     try:
@@ -13216,6 +13218,18 @@ def _support_bundle_collect(body: dict[str, Any]) -> tuple[dict[str, bytes], dic
         artifacts["settings.json"] = _support_safe_json(settings, profile).encode("utf-8")
         names.append("settings.json")
 
+    if bool(include.get("support_snapshot")) and snapshot_id:
+        try:
+            sp = _support_snapshot_path(snapshot_id)
+            if sp.exists():
+                raw = sp.read_text(encoding="utf-8")
+                artifacts["snapshot.json"] = _support_bundle_redact_text(raw, profile).encode("utf-8")
+                names.append("snapshot.json")
+            else:
+                warnings.append("Snapshot nicht gefunden")
+        except Exception:
+            warnings.append("Snapshot nicht verfuegbar")
+
     if bool(include.get("browser_errors")):
         be = client.get("client_errors") if isinstance(client, dict) else None
         if be is not None:
@@ -13284,6 +13298,21 @@ def api_support_bundle_download():
         if warnings:
             resp.headers["X-InfluxBro-Warnings"] = str(len(warnings))
         return resp
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
+
+
+@app.get("/api/support_bundle/snapshots")
+def api_support_bundle_snapshots():
+    return jsonify({"ok": True, "rows": _support_snapshot_list()})
+
+
+@app.post("/api/support_bundle/snapshot/create")
+def api_support_bundle_snapshot_create():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    try:
+        row = _support_snapshot_create(cfg)
+        return jsonify({"ok": True, "row": row})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
 
@@ -13407,6 +13436,47 @@ def _backup_pack_zip_tree(
     except Exception:
         pass
     return zpath
+
+
+def _support_snapshot_path(snapshot_id: str) -> Path:
+    sid = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(snapshot_id or "").strip())[:80]
+    return SUPPORT_BUNDLE_SNAP_DIR / f"{sid}.json"
+
+
+def _support_snapshot_list() -> list[dict[str, Any]]:
+    SUPPORT_BUNDLE_SNAP_DIR.mkdir(parents=True, exist_ok=True)
+    rows: list[dict[str, Any]] = []
+    for p in sorted(SUPPORT_BUNDLE_SNAP_DIR.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            raw = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        rows.append({
+            "id": str(raw.get("id") or p.stem),
+            "created_at": str(raw.get("created_at") or ""),
+            "label": str(raw.get("label") or p.stem),
+            "path": str(p),
+        })
+    return rows
+
+
+def _support_snapshot_create(cfg: dict[str, Any]) -> dict[str, Any]:
+    SUPPORT_BUNDLE_SNAP_DIR.mkdir(parents=True, exist_ok=True)
+    created = _utc_now_iso_ms()
+    sid = uuid.uuid4().hex
+    snap = {
+        "id": sid,
+        "created_at": created,
+        "label": f"Snapshot {created}",
+        "monitor": _monitor_template_snapshot(),
+        "app_state": _app_state_load(),
+        "settings": _support_bundle_redact_obj({"config": cfg, "runtime": read_runtime_cfg()}, "anonymisiert"),
+    }
+    path = _support_snapshot_path(sid)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
+    return {"id": sid, "created_at": created, "label": snap["label"], "path": str(path)}
 
 
 def _backup_create_range(

@@ -1477,6 +1477,20 @@ def test_logs_page_has_config_logging_checkbox_and_handler():
     assert 'setServerConfigLogging(on)' in logs_body
 
 
+def test_support_bundle_dialog_has_snapshot_controls_and_metadata():
+    logs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    app_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "app.py").read_text()
+    assert 'id="support_bundle_snapshot"' in logs_body
+    assert 'id="support_bundle_snapshot_create"' in logs_body
+    assert 'id="sb_support_snapshot"' in logs_body
+    assert 'pk: logs_support_bundle.dialog | tpl: dialog_info_popup' in logs_body
+    assert 'function loadSupportSnapshots()' in logs_body
+    assert 'function createSupportSnapshot()' in logs_body
+    assert '@app.get("/api/support_bundle/snapshots")' in app_body
+    assert '@app.post("/api/support_bundle/snapshot/create")' in app_body
+    assert 'support_snapshot' in app_body
+
+
 def test_client_config_log_queue_helper_and_instrumented_persist_paths_exist():
     topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
@@ -1507,6 +1521,17 @@ def test_table_helper_defaults_to_window_fit_and_template_documents_it():
     assert "windowFit(tbl, {minW: 80});" in table_cols_body
     assert 'Dies ist der Standardzustand fuer Tabellen ohne gespeicherte Spaltenbreiten.' in template_md
     assert 'Status-/Infotext für eine Tabelle gebraucht wird' in template_md
+
+
+def test_jobs_table_info_specs_cover_toolbar_controls_and_sticky_rule_documented():
+    jobs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    assert 'Selektiere alle / keine: markieren sichtbare Zeilen gesammelt.' in jobs_body
+    assert 'Spaltenbreite automatisch / Fensterbreite: passen die Tabelle an Inhalte bzw. die verfügbare Breite an.' in jobs_body
+    assert '.table_title { position: sticky; top: 0;' in jobs_body
+    assert '.table_head { display:flex; justify-content:space-between; gap: 12px; align-items:flex-end; flex-wrap:wrap; position: sticky; top: 24px;' in jobs_body
+    assert 'All applicable toolbar actions/buttons/checkboxes/filter toggles/window-fit controls for this table; no table-specific control may be omitted' in template_md
+    assert 'The table title line (`.table_title`) and the table action/title header (`.table_head`) must remain fixed above the scroll area' in template_md
 
 
 def test_confirm_dialog_template_and_popup_metadata_exist():
