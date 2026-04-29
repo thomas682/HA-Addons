@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.491
+
+### Fix
+
+- Query-Test-Dialog / Dashboard-Selector: Der Query-Test-Dialog faellt nicht mehr an einem lokal gescopten `applyMiniCheckboxStyle`-Helfer aus. Gleichzeitig nutzt `/api/measurements?range=all` ohne weitere Filter wieder den leichten `schema.measurements(...)`-Pfad statt die teure Distinct-All-Time-Abfrage, wodurch unnoetige Timeouts und 500er bei der Messwertliste vermieden werden. ([#445](https://github.com/thomas682/HA-Addons/issues/445))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.490
 
 ### Enhancement

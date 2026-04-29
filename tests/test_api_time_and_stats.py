@@ -386,6 +386,45 @@ def test_measurements_selector_filters_default_to_all_time(load_app_module, tmp_
     assert "-24h" not in q
 
 
+def test_measurements_all_without_filters_uses_schema_measurements(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+
+    captured: dict[str, object] = {"q": None}
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured["q"] = q
+            return []
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.get("/api/measurements?range=all")
+    assert r.status_code == 200
+    q = captured["q"]
+    assert isinstance(q, str)
+    assert 'schema.measurements(bucket: "b")' in q
+    assert 'distinct(column: "_measurement")' not in q
+
+
 def test_tag_values_respects_selector_limit_setting(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured: dict[str, object] = {"q": None}

@@ -322,9 +322,12 @@ Query-Test-Dialog:
 - Pro History-Eintrag kannst du den kompletten Querytext oder nur eine markierte Teilselektion kopieren.
 - `Einfuegen oben` uebernimmt den kompletten Eintrag oder nur die markierte Teilselektion direkt in das obere Query-Feld.
 - Buttons: `Ausfuehren` (startet die Query), `Abbrechen` (bricht laufende Query ab), `Loeschen` (leert Query-Feld), `Kopieren` (kopiert Query).
+- Der Query-Test-Dialog bleibt auch dann benutzbar, wenn einzelne UI-Helfer noch nicht im aeusseren Scope liegen; die Checkbox `Query History` hat dafuer einen lokalen Fallback-Stylingpfad.
 - Status-Zeile: zeigt Startzeit, Endzeit, Dauer, Query-Sprache und Anzahl Ergebniszeilen.
 - Unten: Resultatfeld mit JSON-Ausgabe der Query-Ergebnisse. Buttons: `Resultat kopieren`, `Resultat loeschen`.
 - Sicherheit: Mutierende Queries (DELETE, DROP, SELECT INTO, to(), delete) werden erkannt und blockiert.
+
+- Die Messwertliste (`/api/measurements`) verwendet fuer `range=all` ohne weitere Filter wieder den leichten `schema.measurements(...)`-Pfad. Teurere All-Time-Distinct-Scans werden nur noch genutzt, wenn tatsaechlich `field`, `entity_id`, `friendly_name` oder explizites `start/stop` die Query einschraenken.
 - Abbruch: Waehrend die Query laeuft, kann sie ueber `Abbrechen` gestoppt werden. Die UI zeigt sofort "Abgebrochen" an.
 
 Details (Sampling) + Ableitung:

@@ -230,6 +230,7 @@ def test_query_test_dialog_includes_query_history_panel():
     assert "./api/query_history?limit=500" in body
     assert "Einfuegen oben" in body
     assert "selectedOrFull(area)" in body
+    assert "applyMiniCheckboxStyleSafe" in body
 
 
 def test_settings_include_bugreport_log_history_hours():

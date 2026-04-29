@@ -3204,10 +3204,25 @@
           historyToggleRow.style.gap = '8px';
           historyToggleRow.style.flexWrap = 'wrap';
 
+          const applyMiniCheckboxStyleSafe = (el)=>{
+            try{
+              if(typeof applyMiniCheckboxStyle === 'function'){
+                applyMiniCheckboxStyle(el);
+                return;
+              }
+            }catch(e){}
+            try{
+              if(!el) return;
+              el.className = 'row_sel';
+              el.style.transform = 'scale(0.95)';
+              el.style.transformOrigin = 'left center';
+            }catch(e){}
+          };
+
           const historyToggle = document.createElement('input');
           historyToggle.type = 'checkbox';
           historyToggle.id = 'influxbro_querytest_history_toggle';
-          applyMiniCheckboxStyle(historyToggle);
+          applyMiniCheckboxStyleSafe(historyToggle);
 
           const historyToggleLbl = document.createElement('label');
           historyToggleLbl.htmlFor = 'influxbro_querytest_history_toggle';

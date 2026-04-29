@@ -22147,7 +22147,7 @@ def measurements():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                if field or entity_id or friendly_name or selector_start_dt or selector_stop_dt or selector_range:
+                if field or entity_id or friendly_name or selector_start_dt or selector_stop_dt:
                     range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
                     predicate_parts = ["exists r._measurement"]
                     if field:
