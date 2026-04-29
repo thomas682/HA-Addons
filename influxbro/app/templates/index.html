@@ -16375,16 +16375,18 @@ try{
     let restored = false;
     try{ restored = cacheRestoreIfAvailable(); }catch(e){ restored = false; }
 
-    // Load measurements first so dropdowns have options
-    await loadMeasurements({silent: true});
-
-    // Restore stored selection early so list loads can narrow correctly.
+    // Restore stored selection before the first measurements request so any
+    // already-known filters can narrow the initial selector queries.
     if(globalSel.measurement_filter){ if($mf) $mf.value = String(globalSel.measurement_filter); }
     else if(globalSel.measurement){ if($mf) $mf.value = String(globalSel.measurement); }
     if(globalSel.field) ensureOption($f, globalSel.field);
     if(globalSel.field) $f.value = String(globalSel.field);
     if(globalSel.friendly_name) $n.value = globalSel.friendly_name;
     if(globalSel.entity_id) $e.value = globalSel.entity_id;
+
+    // Load measurements after restoring stored selector values.
+    await loadMeasurements({silent: true});
+
     await loadDashboardFields(String(($mf && $mf.value) || '').trim(), {silent: true});
     await refreshDashboardSuggestions({silent: true});
     saveState();

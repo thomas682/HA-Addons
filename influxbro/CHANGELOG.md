@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.492
+
+### Fix
+
+- Dashboard-Start: Gespeicherte Selector-Werte (`measurement`, `field`, `entity_id`, `friendly_name`) werden jetzt vor dem ersten `loadMeasurements()`-Aufruf ins UI zurueckgeschrieben. Dadurch kann die initiale Measurement-Abfrage vorhandene Filter direkt beruecksichtigen, statt zuerst unnoetig breit zu laden und erst danach den gespeicherten Zustand zu restaurieren. ([#446](https://github.com/thomas682/HA-Addons/issues/446))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.491
 
 ### Fix

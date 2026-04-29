@@ -233,6 +233,13 @@ def test_query_test_dialog_includes_query_history_panel():
     assert "applyMiniCheckboxStyleSafe" in body
 
 
+def test_dashboard_restores_global_selection_before_initial_measurements_load():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    restore_idx = body.index("if(globalSel.measurement_filter)")
+    load_idx = body.index("await loadMeasurements({silent: true});")
+    assert restore_idx < load_idx
+
+
 def test_settings_include_bugreport_log_history_hours():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'id="bugreport_log_history_hours"' in body
