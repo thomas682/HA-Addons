@@ -317,6 +317,10 @@ Query-Test-Dialog:
 
 - Der Query-Test-Dialog kann aus mehreren Stellen geoeffnet werden: Dashboard (Query-Icon neben Query-Details), Graph-Bereich, Raw-Bereich und Diagnose-Seite.
 - Oben: Textarea zum Eingeben oder Bearbeiten der Query.
+- Unterhalb von `influxbro_querytest_input` gibt es die Checkbox `Query History`.
+- Das eingeblendete Panel zeigt bisherige Queries aus dem serverseitigen Trace-Store, neueste oben.
+- Pro History-Eintrag kannst du den kompletten Querytext oder nur eine markierte Teilselektion kopieren.
+- `Einfuegen oben` uebernimmt den kompletten Eintrag oder nur die markierte Teilselektion direkt in das obere Query-Feld.
 - Buttons: `Ausfuehren` (startet die Query), `Abbrechen` (bricht laufende Query ab), `Loeschen` (leert Query-Feld), `Kopieren` (kopiert Query).
 - Status-Zeile: zeigt Startzeit, Endzeit, Dauer, Query-Sprache und Anzahl Ergebniszeilen.
 - Unten: Resultatfeld mit JSON-Ausgabe der Query-Ergebnisse. Buttons: `Resultat kopieren`, `Resultat loeschen`.

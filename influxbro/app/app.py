@@ -29290,6 +29290,50 @@ def api_trace_get(trace_id: str):
     return jsonify({"ok": True, "trace": tr})
 
 
+@app.get("/api/query_history")
+def api_query_history():
+    if not TRACE_ENABLED:
+        return jsonify({"ok": True, "enabled": False, "queries": []})
+    try:
+        limit = int(request.args.get("limit", "500"))
+    except Exception:
+        limit = 500
+    limit = max(1, min(5000, limit))
+
+    rows: list[dict[str, Any]] = []
+    with TRACE_LOCK:
+        for tid in list(TRACE_MEM):
+            tr = TRACE_INDEX.get(tid)
+            if not isinstance(tr, dict):
+                continue
+            trace_id = str(tr.get("trace_id") or tid)
+            page = str(tr.get("page") or "")
+            action = str(tr.get("action") or "")
+            started_at = str(tr.get("started_at") or "")
+            queries = tr.get("queries") if isinstance(tr.get("queries"), list) else []
+            for q in queries:
+                if not isinstance(q, dict):
+                    continue
+                query_txt = str(q.get("query") or "").strip()
+                if not query_txt:
+                    continue
+                rows.append({
+                    "at": str(q.get("at") or started_at),
+                    "label": str(q.get("label") or ""),
+                    "trace_id": trace_id,
+                    "span_id": str(q.get("span_id") or ""),
+                    "page": page,
+                    "action": action,
+                    "query": query_txt,
+                })
+
+    def _sort_key(item: dict[str, Any]) -> str:
+        return str(item.get("at") or "")
+
+    rows.sort(key=_sort_key, reverse=True)
+    return jsonify({"ok": True, "enabled": True, "queries": rows[:limit]})
+
+
 @app.post("/api/trace/client_span")
 def api_trace_client_span():
     if not TRACE_ENABLED:

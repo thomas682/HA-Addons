@@ -223,6 +223,15 @@ def test_info_popup_persists_size_per_dialog():
     assert "_applyPopupSize(title || 'Hinweis');" in body
 
 
+def test_query_test_dialog_includes_query_history_panel():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'influxbro_querytest_history_toggle' in body
+    assert 'influxbro_querytest_history_panel' in body
+    assert "./api/query_history?limit=500" in body
+    assert "Einfuegen oben" in body
+    assert "selectedOrFull(area)" in body
+
+
 def test_settings_include_bugreport_log_history_hours():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'id="bugreport_log_history_hours"' in body

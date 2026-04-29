@@ -108,3 +108,38 @@ def test_trace_recent_endpoint_exists(load_app_module):
     assert r.status_code == 200
     j = r.get_json()
     assert j and j.get("ok") is True
+
+
+def test_query_history_endpoint_returns_aggregated_queries(load_app_module):
+    mod = load_app_module()
+    mod.TRACE_ENABLED = True
+    with mod.TRACE_LOCK:
+        mod.TRACE_MEM.clear()
+        mod.TRACE_INDEX.clear()
+        mod.TRACE_MEM.append("trace-a")
+        mod.TRACE_INDEX["trace-a"] = {
+            "trace_id": "trace-a",
+            "page": "dashboard_page.main",
+            "action": "dashboard_query_test",
+            "started_at": "2026-04-29T12:00:00Z",
+            "queries": [
+                {
+                    "at": "2026-04-29T12:00:02Z",
+                    "label": "query_test",
+                    "span_id": "trace-a:1",
+                    "query": "from(bucket: \"b\") |> range(start: -1h)",
+                }
+            ],
+        }
+
+    client = mod.app.test_client()
+    r = client.get("/api/query_history?limit=10")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j and j.get("ok") is True
+    assert j.get("enabled") is True
+    rows = j.get("queries") or []
+    assert len(rows) == 1
+    assert rows[0]["trace_id"] == "trace-a"
+    assert rows[0]["label"] == "query_test"
+    assert "range(start: -1h)" in rows[0]["query"]

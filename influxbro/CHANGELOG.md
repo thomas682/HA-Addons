@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.490
+
+### Enhancement
+
+- Query-Test-Dialog: Unterhalb von `influxbro_querytest_input` gibt es jetzt die Checkbox `Query History`. Sie blendet ein Panel mit bisherigen Queries aus dem serverseitigen Trace-Store ein (neueste oben). Eintraege lassen sich direkt kopieren oder ganz/teilweise in das obere Query-Feld einfuegen. ([#443](https://github.com/thomas682/HA-Addons/issues/443))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.489
 
 ### Fix

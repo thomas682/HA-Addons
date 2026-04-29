@@ -3198,6 +3198,37 @@
           resultBtnRow.style.gap = '8px';
           resultBtnRow.style.flexWrap = 'wrap';
 
+          const historyToggleRow = document.createElement('div');
+          historyToggleRow.style.display = 'flex';
+          historyToggleRow.style.alignItems = 'center';
+          historyToggleRow.style.gap = '8px';
+          historyToggleRow.style.flexWrap = 'wrap';
+
+          const historyToggle = document.createElement('input');
+          historyToggle.type = 'checkbox';
+          historyToggle.id = 'influxbro_querytest_history_toggle';
+          applyMiniCheckboxStyle(historyToggle);
+
+          const historyToggleLbl = document.createElement('label');
+          historyToggleLbl.htmlFor = 'influxbro_querytest_history_toggle';
+          historyToggleLbl.textContent = 'Query History';
+          historyToggleLbl.style.fontSize = '12px';
+          historyToggleLbl.style.opacity = '0.9';
+
+          const historyPanel = document.createElement('div');
+          historyPanel.id = 'influxbro_querytest_history_panel';
+          historyPanel.style.display = 'none';
+          historyPanel.style.flex = '0 0 auto';
+          historyPanel.style.border = '1px solid #eee';
+          historyPanel.style.borderRadius = '12px';
+          historyPanel.style.background = '#fafafa';
+          historyPanel.style.padding = '10px 12px';
+          historyPanel.style.maxHeight = '260px';
+          historyPanel.style.overflow = 'auto';
+
+          historyToggleRow.appendChild(historyToggle);
+          historyToggleRow.appendChild(historyToggleLbl);
+
           const copyResultBtn = document.createElement('button');
           copyResultBtn.type = 'button';
           copyResultBtn.id = 'influxbro_querytest_copy_result';
@@ -3223,6 +3254,8 @@
           resultBtnRow.appendChild(clearResultBtn);
 
           contentWrap.appendChild(queryArea);
+          contentWrap.appendChild(historyToggleRow);
+          contentWrap.appendChild(historyPanel);
           contentWrap.appendChild(btnRow);
           contentWrap.appendChild(statusLine);
           contentWrap.appendChild(resultWrap);
@@ -3236,6 +3269,132 @@
 
           let queryAbortController = null;
           let lastQueryValue = '';
+          let historyLoaded = false;
+
+          function insertIntoQueryArea(txt){
+            const value = String(txt || '');
+            if(!value) return;
+            try{
+              const start = Number(queryArea.selectionStart || 0);
+              const end = Number(queryArea.selectionEnd || 0);
+              const before = String(queryArea.value || '').slice(0, start);
+              const after = String(queryArea.value || '').slice(end);
+              queryArea.value = before + value + after;
+              const pos = before.length + value.length;
+              queryArea.focus();
+              queryArea.selectionStart = pos;
+              queryArea.selectionEnd = pos;
+            }catch(e){
+              queryArea.value = String(queryArea.value || '') + value;
+            }
+          }
+
+          function selectedOrFull(textarea){
+            try{
+              const s = Number(textarea.selectionStart || 0);
+              const e = Number(textarea.selectionEnd || 0);
+              const full = String(textarea.value || '');
+              if(e > s) return full.slice(s, e);
+              return full;
+            }catch(e){
+              return String(textarea && textarea.value ? textarea.value : '');
+            }
+          }
+
+          async function renderQueryHistory(){
+            historyPanel.innerHTML = '';
+            const loading = document.createElement('div');
+            loading.textContent = 'Lade Query History...';
+            loading.className = 'muted';
+            historyPanel.appendChild(loading);
+            try{
+              const r = await fetch('./api/query_history?limit=500');
+              const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+              historyPanel.innerHTML = '';
+              if(!r.ok || !j.ok){
+                historyPanel.textContent = String(j.error || ('HTTP ' + r.status));
+                return;
+              }
+              const xs = Array.isArray(j.queries) ? j.queries : [];
+              if(!xs.length){
+                historyPanel.textContent = '(keine Query History vorhanden)';
+                return;
+              }
+              xs.forEach((it, idx)=>{
+                const card = document.createElement('div');
+                card.style.border = '1px solid #eee';
+                card.style.borderRadius = '10px';
+                card.style.background = '#fff';
+                card.style.padding = '8px 10px';
+                card.style.marginTop = idx === 0 ? '0' : '8px';
+
+                const head = document.createElement('div');
+                head.style.display = 'flex';
+                head.style.justifyContent = 'space-between';
+                head.style.gap = '8px';
+                head.style.alignItems = 'baseline';
+                head.style.flexWrap = 'wrap';
+                const ts = document.createElement('div');
+                ts.style.fontSize = '11px';
+                ts.style.opacity = '0.7';
+                ts.textContent = String(it.at || '');
+                const lab = document.createElement('div');
+                lab.style.fontSize = '11px';
+                lab.style.fontWeight = '700';
+                lab.textContent = String(it.label || 'query');
+                head.appendChild(lab);
+                head.appendChild(ts);
+
+                const area = document.createElement('textarea');
+                area.readOnly = true;
+                area.value = String(it.query || '');
+                area.style.width = '100%';
+                area.style.minHeight = '72px';
+                area.style.marginTop = '6px';
+                area.style.padding = '8px 10px';
+                area.style.boxSizing = 'border-box';
+                area.style.border = '1px solid #eee';
+                area.style.borderRadius = '8px';
+                area.style.background = '#fafafa';
+                area.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+                area.style.fontSize = '11px';
+                area.style.lineHeight = '1.35';
+                area.style.resize = 'vertical';
+
+                const actions = document.createElement('div');
+                actions.style.display = 'flex';
+                actions.style.gap = '8px';
+                actions.style.flexWrap = 'wrap';
+                actions.style.marginTop = '6px';
+
+                const copyBtn = document.createElement('button');
+                copyBtn.type = 'button';
+                copyBtn.textContent = 'Kopieren';
+                copyBtn.className = 'btn_sm';
+                copyBtn.style.width = 'auto';
+                copyBtn.onclick = async ()=>{
+                  try{ await navigator.clipboard.writeText(selectedOrFull(area)); }catch(e){}
+                };
+
+                const insertBtn = document.createElement('button');
+                insertBtn.type = 'button';
+                insertBtn.textContent = 'Einfuegen oben';
+                insertBtn.className = 'btn_sm';
+                insertBtn.style.width = 'auto';
+                insertBtn.onclick = ()=>{ insertIntoQueryArea(selectedOrFull(area)); };
+
+                actions.appendChild(copyBtn);
+                actions.appendChild(insertBtn);
+                card.appendChild(head);
+                card.appendChild(area);
+                card.appendChild(actions);
+                historyPanel.appendChild(card);
+              });
+              historyLoaded = true;
+            }catch(e){
+              historyPanel.textContent = String(e && e.message ? e.message : e);
+            }
+          }
 
           function renderResult(rows){
             if(!rows || !rows.length){
@@ -3368,6 +3527,12 @@
           clearResultBtn.onclick = ()=>{
             resultPre.textContent = '(noch keine Ausfuehrung)';
             statusLine.style.display = 'none';
+          };
+
+          historyToggle.onchange = ()=>{
+            const show = !!historyToggle.checked;
+            historyPanel.style.display = show ? 'block' : 'none';
+            if(show && !historyLoaded){ renderQueryHistory().catch(()=>{}); }
           };
 
           const closeBtn = document.getElementById('influxbro_popup_close');
