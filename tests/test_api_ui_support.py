@@ -65,6 +65,7 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
             "ui_raw_center_max_points": 0,
             "ui_raw_center_range_default": -5,
             "ui_raw_center_min_points": 0,
+            "ui_timer_disabled_opacity": 999,
         },
     )
     assert r.status_code == 200
@@ -77,6 +78,7 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
     assert cfg["ui_raw_center_max_points"] == 1
     assert cfg["ui_raw_center_range_default"] == 0
     assert cfg["ui_raw_center_min_points"] == 1
+    assert cfg["ui_timer_disabled_opacity"] == 100
 
 
 def test_config_logging_batch_endpoint_acks_and_persists(load_app_module, tmp_path):
@@ -454,6 +456,8 @@ def test_settings_layout_and_null_safe_bindings_are_present():
     assert '.color_pick_row input[type="text"] { flex:1 1 auto; min-width:0; }' in config
     assert '_setVal(el.ui_filter_control_width_px' in config
     assert '_setVal(el.ui_job_color_running' in config
+    assert "ui_timer_disabled_color" in config
+    assert "ui_timer_disabled_opacity" in config
     assert 'window.__InfluxBroEarlyClientLogInstalled' in config
     assert 'function reportConfigError(message, extra, stack){' in config
     assert 'function _getEl(id){' in config
@@ -461,6 +465,16 @@ def test_settings_layout_and_null_safe_bindings_are_present():
     assert "ui_log_error_bg: _getEl('ui_log_error_bg') ? String(_getEl('ui_log_error_bg').value || '').trim() : ''," in config
     assert "reportConfigError('Settings initial load failed'" in config
     assert "reportConfigError('Settings action binding failed'" in config
+
+
+def test_timer_table_shows_status_column_and_disabled_style_settings():
+    jobs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
+    assert '--ui-timer-disabled-fg:' in jobs
+    assert '--ui-timer-disabled-opacity:' in jobs
+    assert 'tr.timer_disabled td {' in jobs
+    assert '<th style="width: 120px;">Status</th>' in jobs
+    assert "isDisabled ? 'deaktiviert' : ''" in jobs
+    assert "tr.classList.add('timer_disabled');" in jobs
 
 
 def test_dashboard_abort_buttons_and_search_width_are_updated():

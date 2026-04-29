@@ -12,6 +12,8 @@
       --ui-job-done: {{ (cfg.get('ui_job_color_done') or '#eefaf1') }};
       --ui-job-err: {{ (cfg.get('ui_job_color_error') or '#fff0f0') }};
       --ui-job-cancel: {{ (cfg.get('ui_job_color_cancelled') or '#f6f6f6') }};
+      --ui-timer-disabled-fg: {{ (cfg.get('ui_timer_disabled_color') or '#7a7a7a') }};
+      --ui-timer-disabled-opacity: {{ (cfg.get('ui_timer_disabled_opacity') or 72) | int }};
     }
     body { font-family: system-ui, sans-serif; margin: 0; }
     .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
@@ -58,6 +60,7 @@
     tr.job_state_done td { background: var(--ui-job-done); }
     tr.job_state_error td { background: var(--ui-job-err); }
     tr.job_state_cancelled td { background: var(--ui-job-cancel); }
+    tr.timer_disabled td { color: var(--ui-timer-disabled-fg); opacity: calc(var(--ui-timer-disabled-opacity) / 100); }
     tr.row_selected td { outline: 2px solid rgba(255,153,0,0.55); outline-offset: -2px; }
     .timeline_bar { position:relative; height:22px; border:1px solid #ddd; border-radius:8px; background:#fff; overflow:hidden; min-width:220px; }
     .timeline_seg { position:absolute; top:0; bottom:0; border-radius:6px; }
@@ -375,6 +378,7 @@
            <table id="timers_tbl" class="ib_tbl" data-ui="jobs_timers.tbl_table" data-ib-pickkey="jobs_timers.tbl_table" title="timers.table">
              <thead>
                 <tr>
+                  <th style="width: 120px;">Status</th>
                   <th style="width: 140px;">id</th>
                   <th style="width: 140px;">enabled</th>
                   <th style="width: 260px;">Modus</th>
@@ -1563,11 +1567,14 @@
         for(const t of xs){
           const tr = document.createElement('tr');
           const id = String(t.id || '');
+          const isDisabled = !t.auto_update;
           try{
             const stc = String(t.last_state || '');
             if(stc) tr.classList.add('job_state_' + stc);
           }catch(e){}
+          if(isDisabled) tr.classList.add('timer_disabled');
           tr.innerHTML = [
+            `<td class="mono timer_status_cell">${isDisabled ? 'deaktiviert' : ''}</td>`,
             `<td class="mono">${id}</td>`,
             `<td class="mono">${String((t.enabled ? 'true' : 'false'))} / auto=${String((t.auto_update ? 'true' : 'false'))}</td>`,
             `<td class="mono timer_mode_cell"></td>`,
@@ -1578,7 +1585,7 @@
           tr.setAttribute('data-timer-id', id);
           tr.addEventListener('click', ()=>{ SELECTED_TIMER_ID = id; toggleSelected(SELECTED_TIMER_IDS, id); applySelectedRows($timersBody, 'data-timer-id', SELECTED_TIMER_IDS); syncToolbarButtons(); });
           if(SELECTED_TIMER_IDS.has(id)) tr.classList.add('row_selected');
-          const tdMode = tr.children[2];
+          const tdMode = tr.children[3];
           if(id === 'dash_cache' || id === 'stats_cache' || id === 'stats_full' || id === 'analysis_nightly'){
             const modeText = document.createElement('span');
             modeText.className = 'mono';
@@ -1833,6 +1840,7 @@
         window.InfluxBroTableInfoSpec[pkey + ':timers_tbl'] = {
           purpose: 'Zeigt Timer Jobs (Scheduler) fuer Cache/Statistik. Dient zum manuellen Start/Abbruch und zur Anzeige von last/next run.',
           columns: {
+            'Status': 'Leer bei aktiven Timern, sonst `deaktiviert` wenn Auto-Update fuer diese Zeile ausgeschaltet wurde.',
             'id': 'Stabile Timer-ID.',
             'enabled': 'Aktiv/Auto-Update Status.',
             'Modus': 'Aktueller Refresh-Modus (hours/daily) und Parameter.',
@@ -1849,6 +1857,7 @@
             'Modus: aendert Refresh-Modus und Parameter.',
             'Start: startet einen faelligen Job sofort (best-effort).',
             'Abbruch: bricht den laufenden Timer-Job ab (best-effort).',
+            'Deaktivieren / Aktivieren: schalten Auto-Update fuer markierte Timer um. Deaktivierte Zeilen werden links markiert und grau dargestellt.',
           ],
         };
         window.InfluxBroTableInfoSpec[pkey + ':usage_tbl'] = {

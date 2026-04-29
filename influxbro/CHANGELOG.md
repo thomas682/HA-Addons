@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.483
+
+### Enhancement
+
+- Jobs & Cache / Timer Jobs: Deaktivierte Timer zeigen jetzt links einen `deaktiviert`-Status und werden in der Tabelle grau dargestellt. Farbe und Deckkraft lassen sich in den Einstellungen unter `Jobs & Cache` anpassen. ([#436](https://github.com/thomas682/HA-Addons/issues/436))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.482
 
 ### Fix

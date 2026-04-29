@@ -1432,6 +1432,8 @@ DEFAULT_CFG = {
     "ui_job_color_done": "#eefaf1",
     "ui_job_color_error": "#fff0f0",
     "ui_job_color_cancelled": "#f6f6f6",
+    "ui_timer_disabled_color": "#7a7a7a",
+    "ui_timer_disabled_opacity": 72,
 
     # Safety: auto-cancel jobs after N seconds (0 = disabled)
     "jobs_max_runtime_seconds": 3600,
@@ -21283,6 +21285,8 @@ def api_set_config():
     _clamp_color("ui_job_color_done", "#eefaf1")
     _clamp_color("ui_job_color_error", "#fff0f0")
     _clamp_color("ui_job_color_cancelled", "#f6f6f6")
+    _clamp_color("ui_timer_disabled_color", "#7a7a7a")
+    _clamp_int("ui_timer_disabled_opacity", 72, 0, 100)
     _clamp_color("ui_picker_outline_light_bg", "#FF00AA")
     _clamp_color("ui_picker_outline_dark_bg", "#00E5FF")
     _clamp_color("ui_analysis_cache_hidden_color", "#b0b0b0")

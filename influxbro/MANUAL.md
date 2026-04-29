@@ -494,6 +494,8 @@ Timer Jobs:
 - Tabelle `Timer Jobs`: zeigt Intervall-/Nightly-Jobs mit naechstem Lauf (aus Einstellungen abgeleitet) und kurzer Erklaerung.
 - Timer-Tabelle: Aktionen laufen jetzt ueber die obere Toolbar nach Zeilenselektion.
 - Buttons: `Modus`, `History`, `Start`, `Abbruch`, `Deaktivieren`, `Aktivieren`.
+- Spalte `Status`: bleibt bei aktiven Timern leer und zeigt `deaktiviert`, wenn `Auto-Update` fuer die Zeile ausgeschaltet wurde.
+- Deaktivierte Timer-Zeilen werden grau dargestellt. Farbe und Deckkraft sind in `Einstellungen -> Jobs & Cache` konfigurierbar.
 - `last run`: zeigt den letzten Laufzeitpunkt (persistent) inkl. Laufdauer; bei Fehler wird `err` angezeigt und die Zeile wird rot markiert.
 - `Modus`: erlaubt das Aendern der Scheduler-Parameter:
   - `hours`: alle N Stunden

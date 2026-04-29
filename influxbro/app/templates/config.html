@@ -1122,6 +1122,21 @@
                   </div>
                 </div>
               </div>
+              <div class="param_row">
+                <div class="param_label">Timer deaktiviert: Schriftfarbe<span class="param_hint">Textfarbe fuer deaktivierte Timer-Zeilen.</span></div>
+                <div class="param_control">
+                  <div class="color_pick_row">
+                    <input id="ui_timer_disabled_color_color" type="color" value="#7A7A7A" />
+                    <input id="ui_timer_disabled_color" placeholder="#RRGGBB" />
+                  </div>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Timer deaktiviert: Deckkraft (%)<span class="param_hint">0 = sehr blass, 100 = volle Deckkraft.</span></div>
+                <div class="param_control">
+                  <input id="ui_timer_disabled_opacity" class="cfg_num_wide" type="number" min="0" max="100" step="1" />
+                </div>
+              </div>
             </div>
           </div>
         </details>
@@ -1654,7 +1669,7 @@ const ids = [
   "ui_status_show_sysinfo",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
   ,"ui_sel_auto_width","ui_sel_width_px"
-  ,"jobs_max_runtime_seconds","ui_job_color_running","ui_job_color_done","ui_job_color_error","ui_job_color_cancelled"
+  ,"jobs_max_runtime_seconds","ui_job_color_running","ui_job_color_done","ui_job_color_error","ui_job_color_cancelled","ui_timer_disabled_color","ui_timer_disabled_opacity"
   ,"ui_tooltips_enabled"
   ,"ui_tooltip_doc_open_mode"
   ,"restore_preview_lines"
@@ -2437,6 +2452,7 @@ const $jobRunColor = document.getElementById('ui_job_color_running_color');
 const $jobDoneColor = document.getElementById('ui_job_color_done_color');
 const $jobErrColor = document.getElementById('ui_job_color_error_color');
 const $jobCancelColor = document.getElementById('ui_job_color_cancelled_color');
+const $timerDisabledColor = document.getElementById('ui_timer_disabled_color_color');
 
 // Log highlight colors
 const $logErrorBgColor = document.getElementById('ui_log_error_bg_color');
@@ -2601,17 +2617,20 @@ function _syncJobColorPickersFromText(){
   try{ const v = el.ui_job_color_done ? String(el.ui_job_color_done.value || '').trim() : ''; if($jobDoneColor && _isHexColor(v)) $jobDoneColor.value = v; }catch(e){}
   try{ const v = el.ui_job_color_error ? String(el.ui_job_color_error.value || '').trim() : ''; if($jobErrColor && _isHexColor(v)) $jobErrColor.value = v; }catch(e){}
   try{ const v = el.ui_job_color_cancelled ? String(el.ui_job_color_cancelled.value || '').trim() : ''; if($jobCancelColor && _isHexColor(v)) $jobCancelColor.value = v; }catch(e){}
+  try{ const v = el.ui_timer_disabled_color ? String(el.ui_timer_disabled_color.value || '').trim() : ''; if($timerDisabledColor && _isHexColor(v)) $timerDisabledColor.value = v; }catch(e){}
 }
 
 try{ if($jobRunColor && el.ui_job_color_running) $jobRunColor.addEventListener('input', ()=>{ try{ el.ui_job_color_running.value = String($jobRunColor.value || '').toUpperCase(); }catch(e){}; _syncJobColorPickersFromText(); }); }catch(e){}
 try{ if($jobDoneColor && el.ui_job_color_done) $jobDoneColor.addEventListener('input', ()=>{ try{ el.ui_job_color_done.value = String($jobDoneColor.value || '').toUpperCase(); }catch(e){}; _syncJobColorPickersFromText(); }); }catch(e){}
 try{ if($jobErrColor && el.ui_job_color_error) $jobErrColor.addEventListener('input', ()=>{ try{ el.ui_job_color_error.value = String($jobErrColor.value || '').toUpperCase(); }catch(e){}; _syncJobColorPickersFromText(); }); }catch(e){}
 try{ if($jobCancelColor && el.ui_job_color_cancelled) $jobCancelColor.addEventListener('input', ()=>{ try{ el.ui_job_color_cancelled.value = String($jobCancelColor.value || '').toUpperCase(); }catch(e){}; _syncJobColorPickersFromText(); }); }catch(e){}
+try{ if($timerDisabledColor && el.ui_timer_disabled_color) $timerDisabledColor.addEventListener('input', ()=>{ try{ el.ui_timer_disabled_color.value = String($timerDisabledColor.value || '').toUpperCase(); }catch(e){}; _syncJobColorPickersFromText(); }); }catch(e){}
 
 try{ if(el.ui_job_color_running) el.ui_job_color_running.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 try{ if(el.ui_job_color_done) el.ui_job_color_done.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 try{ if(el.ui_job_color_error) el.ui_job_color_error.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 try{ if(el.ui_job_color_cancelled) el.ui_job_color_cancelled.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
+try{ if(el.ui_timer_disabled_color) el.ui_timer_disabled_color.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 
 function _syncLogColorPickersFromText(){
   try{ const v = _getEl('ui_log_error_bg') ? String(_getEl('ui_log_error_bg').value || '').trim() : ''; if($logErrorBgColor && _isHexColor(v)) $logErrorBgColor.value = v; }catch(e){}
@@ -3003,6 +3022,8 @@ function setForm(cfg){
   _safeSet(el.ui_job_color_done, 'value', cfg.ui_job_color_done ?? '#eefaf1');
   _safeSet(el.ui_job_color_error, 'value', cfg.ui_job_color_error ?? '#fff0f0');
   _safeSet(el.ui_job_color_cancelled, 'value', cfg.ui_job_color_cancelled ?? '#f6f6f6');
+  _safeSet(el.ui_timer_disabled_color, 'value', cfg.ui_timer_disabled_color ?? '#7a7a7a');
+  _safeSet(el.ui_timer_disabled_opacity, 'value', cfg.ui_timer_disabled_opacity ?? 72);
   _syncJobColorPickersFromText();
 
   _safeSet(el.backup_dir, 'value', cfg.backup_dir ?? "/config/influxbro/backup");
@@ -3171,6 +3192,8 @@ function getForm(){
     ui_job_color_done: String(el.ui_job_color_done.value || '').trim(),
     ui_job_color_error: String(el.ui_job_color_error.value || '').trim(),
     ui_job_color_cancelled: String(el.ui_job_color_cancelled.value || '').trim(),
+    ui_timer_disabled_color: String(el.ui_timer_disabled_color.value || '').trim(),
+    ui_timer_disabled_opacity: parseInt(el.ui_timer_disabled_opacity.value, 10),
 
     backup_dir: (el.backup_dir.value || "").trim(),
     backup_min_free_mb: parseInt(el.backup_min_free_mb.value, 10),
