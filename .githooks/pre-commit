@@ -1,0 +1,2 @@
+#!/bin/sh
+python3 tools/check_version_bump.py --mode pre-commit

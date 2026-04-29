@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.486
+
+### Enhancement
+
+- Repository-Tooling: Neue lokale Versionsbump-Guards fuer Commit und Push. Ein gemeinsames Checkscript prueft jetzt Code-Aenderungen gegen `influxbro/config.yaml`, ist als `pre-commit`-Hook eingebunden und kann ueber `.githooks/pre-push` via `core.hooksPath` aktiviert werden. ([#437](https://github.com/thomas682/HA-Addons/issues/437))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.485
 
 ### Enhancement

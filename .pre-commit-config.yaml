@@ -1,4 +1,11 @@
 repos:
+  - repo: local
+    hooks:
+      - id: version-bump-guard
+        name: version-bump-guard
+        entry: python3 tools/check_version_bump.py --mode pre-commit
+        language: system
+        pass_filenames: false
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.9
     hooks:

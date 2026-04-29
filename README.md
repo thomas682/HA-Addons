@@ -19,3 +19,18 @@ Kurze Installation:
 Projekt-Doku, Screenshots und weitere Hinweise liegen unter:
 
 - `influxbro/README.md`
+
+## Git-Hooks fuer Versionsbump-Policy
+
+Wenn Code-Dateien geaendert werden (`*.py`, `*.html`, `*.js`, `*.css`, `Dockerfile`, `*.sh`), muss derselbe Commit auch einen Versionsbump in `influxbro/config.yaml` enthalten.
+
+Hook-Aktivierung lokal:
+
+1. `git config core.hooksPath .githooks`
+2. `python3 -m pip install pre-commit`
+3. `pre-commit install`
+
+Danach gilt:
+
+- `pre-commit`: blockiert Commits mit Code-Aenderungen ohne Versionsbump in `influxbro/config.yaml`
+- `.githooks/pre-push`: blockiert Pushes, wenn ein zu pushender Commit Code-Aenderungen ohne Versionsbump enthaelt
