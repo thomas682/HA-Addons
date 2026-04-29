@@ -181,6 +181,8 @@ Gespeicherte Dashboard-Selectorwerte werden beim Seitenstart jetzt vor dem erste
 
 Wenn fuer die aktuell gewaehlte `entity_id` mehrere historische `friendly_name`-Varianten im gewaehlten Zeitraum gefunden werden, erscheint zwischen `Messwertauswahl` und `Caching` die eigenstaendige, auf-/zuklappbare Section `Mehrere Messwertnamen`. Beim ersten Anzeigen klappt sie automatisch auf; danach kann sie manuell wieder geschlossen werden. Das Innenlayout folgt der Vorlage `messwertnamen-professional.html`: Panel-Header mit Aktion, Summary-Bar, obere Vergleichsachse sowie Listenzeilen mit Index, Name, Zeitraum, Punkte und Status. Mit `Auf letzten Namen vereinigen` werden aeltere Namensbereiche direkt auf den neuesten Namen umgeschrieben; die Aktion erzeugt einen Change-Block und bleibt dadurch in Verlauf/Undo sichtbar.
 
+Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.
+
 Die Felder `Feld`, `Name` und `Grund Filter` besitzen jetzt jeweils einen dauerhaft sichtbaren Button `Feld leeren` direkt neben dem Eingabefeld.
 
 Auch `_measurement`-Werte mit Sonderzeichen wie `°F` werden direkt ueber die echten Daten gefiltert. Wenn es zu einem Measurement keine passenden Fields, friendly_names oder Entity IDs gibt, bleiben die anderen Listen entsprechend leer.

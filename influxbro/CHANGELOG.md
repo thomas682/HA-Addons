@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.496
+
+### Fix
+
+- Dashboard / Mehrere Messwertnamen: Dynamisch erzeugte Zeilen der Namensliste verwenden jetzt stabile, pro Variante eindeutige `data-ib-pickkey`-/`data-ib-instancekey`-Werte statt eines gemeinsamen Schluessels. Dadurch verschwindet die Console-Meldung zu Pickkey-Kollisionen beim Oeffnen der Dashboard-Seite. ([#447](https://github.com/thomas682/HA-Addons/issues/447))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.495
 
 ### Enhancement

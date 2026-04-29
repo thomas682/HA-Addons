@@ -5086,6 +5086,21 @@ function _nameTimelineHistoricClass(idx){
   return 'is-historic-3';
 }
 
+function _nameTimelinePickKey(row, idx){
+  try{
+    const raw = [
+      String(row && row.value ? row.value : ''),
+      String(row && row.oldest_time ? row.oldest_time : ''),
+      String(row && row.newest_time ? row.newest_time : ''),
+      String(idx || 0),
+    ].join('|').toLowerCase();
+    const safe = raw.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80);
+    return 'dashboard_selection.panel_name_timeline_row.' + (safe || ('row_' + String(idx || 0)));
+  }catch(e){
+    return 'dashboard_selection.panel_name_timeline_row.row_' + String(idx || 0);
+  }
+}
+
 function renderNameTimeline(rows){
   try{
     const rs = (rows || []).slice().sort((a, b)=>{
@@ -5158,8 +5173,10 @@ function renderNameTimeline(rows){
       const newestMs = Date.parse(String(row && row.newest_time ? row.newest_time : ''));
       const card = document.createElement('div');
       card.className = `ib-namepanel-row${isLatest ? ' is-current' : ''}`;
+      const rowPick = _nameTimelinePickKey(row, idx);
       card.setAttribute('data-ui', 'dashboard_selection.panel_name_timeline_row');
-      card.setAttribute('data-ib-pickkey', 'dashboard_selection.panel_name_timeline_row');
+      card.setAttribute('data-ib-pickkey', rowPick);
+      card.setAttribute('data-ib-instancekey', rowPick);
       card.innerHTML = [
         `<div class="ib-namepanel-row-index">${String(idx + 1).padStart(2, '0')}</div>`,
         `<div class="ib-namepanel-row-name"><div class="ib-namepanel-row-name-text">${_escHtml(String(row.value || ''))}</div><div class="ib-namepanel-row-name-meta">${_escHtml(_nameTimelineDaysText(oldestMs, newestMs))}</div></div>`,

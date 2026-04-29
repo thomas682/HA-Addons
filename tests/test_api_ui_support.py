@@ -516,12 +516,16 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert 'function _nameTimelineDaysText(' in body
     assert 'function _nameTimelineFmtTick(' in body
     assert 'function _nameTimelineFmtDateTime(' in body
+    assert 'function _nameTimelinePickKey(' in body
     assert 'class="ib-namepanel"' in body
     assert 'class="ib-namepanel-header"' in body
     assert 'class="ib-namepanel-summarybar"' in body
     assert 'class="ib-namepanel-timeline"' in body
     assert 'class="ib-namepanel-list"' in body
     assert 'class="ib-namepanel-row' in body
+    assert "const rowPick = _nameTimelinePickKey(row, idx);" in body
+    assert "card.setAttribute('data-ib-pickkey', rowPick);" in body
+    assert "card.setAttribute('data-ib-instancekey', rowPick);" in body
     assert '$nameTimelinePanel.open = true;' in body
     assert '$nameTimelinePanel.open = false;' in body
     assert 'function mergeFriendlyNamesToLatest()' in body
