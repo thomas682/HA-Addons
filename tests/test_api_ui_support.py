@@ -500,13 +500,16 @@ def test_timer_table_shows_status_column_and_disabled_style_settings():
 
 def test_dashboard_name_timeline_panel_and_merge_action_exist():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert 'id="name_timeline_panel"' in body
+    assert '<details id="name_timeline_panel" class="section"' in body
+    assert '<summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title"' in body
     assert 'id="name_merge_latest_btn"' in body
     assert 'Mehrere Messwertnamen' in body
     assert 'id="name_timeline_summary"' in body
     assert 'function renderNameTimeline(rows)' in body
     assert 'function _nameTimelinePct(' in body
     assert 'function _nameTimelineBadge(' in body
+    assert '$nameTimelinePanel.open = true;' in body
+    assert '$nameTimelinePanel.open = false;' in body
     assert 'function mergeFriendlyNamesToLatest()' in body
     assert './api/friendly_name_merge_latest' in body
 

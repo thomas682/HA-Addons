@@ -547,21 +547,23 @@
     </div>
   </div>
 
-  <div class="table_wrap" id="name_timeline_panel" style="display:none; margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
-    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-      <div>
-        <div style="font-weight:700;" data-ui="dashboard_selection.section_multi_name_title" data-ib-pickkey="dashboard_selection.section_multi_name_title">Mehrere Messwertnamen</div>
-        <div class="muted" id="name_timeline_title"></div>
+  <details id="name_timeline_panel" class="section" style="display:none; margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
+    <summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title" data-ib-pickkey="dashboard_selection.section_multi_name_title">Mehrere Messwertnamen</span></span></summary>
+    <div class="card_body">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <div>
+          <div class="muted" id="name_timeline_title"></div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <button id="name_merge_latest_btn" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_selection.btn_name_merge_latest" data-ib-pickkey="dashboard_selection.btn_name_merge_latest" disabled>Auf letzten Namen vereinigen</button>
+        </div>
       </div>
-      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <button id="name_merge_latest_btn" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_selection.btn_name_merge_latest" data-ib-pickkey="dashboard_selection.btn_name_merge_latest" disabled>Auf letzten Namen vereinigen</button>
+      <div id="name_timeline_summary" class="muted" style="margin-top:8px; display:none; gap:8px; flex-wrap:wrap; align-items:center;" data-ui="dashboard_selection.panel_name_timeline_summary" data-ib-pickkey="dashboard_selection.panel_name_timeline_summary"></div>
+      <div class="table_box" style="max-height: 300px; overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; background:#fcfcfc;">
+        <div id="name_timeline_rows" style="display:flex; flex-direction:column; gap:10px; padding:10px 12px;"></div>
       </div>
     </div>
-    <div id="name_timeline_summary" class="muted" style="margin-top:8px; display:none; gap:8px; flex-wrap:wrap; align-items:center;" data-ui="dashboard_selection.panel_name_timeline_summary" data-ib-pickkey="dashboard_selection.panel_name_timeline_summary"></div>
-    <div class="table_box" style="max-height: 300px; overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; background:#fcfcfc;">
-      <div id="name_timeline_rows" style="display:flex; flex-direction:column; gap:10px; padding:10px 12px;"></div>
-    </div>
-  </div>
+  </details>
 
   </details>
 
@@ -4784,7 +4786,10 @@ async function loadComboRanges(groupTag, fixed){
 function hideNameTimelinePanel(){
   try{
     LAST_NAME_TIMELINE_ROWS = [];
-    if($nameTimelinePanel) $nameTimelinePanel.style.display = 'none';
+    if($nameTimelinePanel){
+      $nameTimelinePanel.open = false;
+      $nameTimelinePanel.style.display = 'none';
+    }
     if($nameTimelineRows) $nameTimelineRows.innerHTML = '';
     if($nameTimelineTitle) $nameTimelineTitle.textContent = '';
     if($nameTimelineSummary){ $nameTimelineSummary.innerHTML = ''; $nameTimelineSummary.style.display = 'none'; }
@@ -4868,6 +4873,7 @@ function renderNameTimeline(rows){
     });
     if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = !(latestName && rs.length > 1);
     $nameTimelinePanel.style.display = 'block';
+    $nameTimelinePanel.open = true;
   }catch(e){}
 }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.494
+
+### Enhancement
+
+- Dashboard / Mehrere Messwertnamen: Die Namens-Zeitleiste ist jetzt als echte auf-/zuklappbare Section innerhalb der Messwertauswahl umgesetzt. Sobald mehrere historische `friendly_name`-Varianten gefunden werden, blendet sich die Section ein und klappt automatisch auf; danach kann sie vom Nutzer manuell wieder geschlossen werden. Die vorhandene Merge-/Undo-Logik bleibt unveraendert erhalten. ([#439](https://github.com/thomas682/HA-Addons/issues/439))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.493
 
 ### Enhancement
