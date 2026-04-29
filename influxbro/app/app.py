@@ -22310,6 +22310,241 @@ base
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
+
+@app.post("/api/friendly_name_merge_latest")
+def api_friendly_name_merge_latest():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip()
+    entity_id = str(body.get("entity_id") or "").strip()
+    target_friendly_name = str(body.get("target_friendly_name") or "").strip()
+    raw_sources = body.get("source_friendly_names")
+    source_friendly_names = [str(x or "").strip() for x in raw_sources] if isinstance(raw_sources, list) else []
+    source_friendly_names = [x for x in source_friendly_names if x and x != target_friendly_name]
+    range_key = body.get("range")
+
+    if not measurement or not field or not entity_id:
+        return jsonify({"ok": False, "error": "measurement, field and entity_id required"}), 400
+    if not target_friendly_name:
+        return jsonify({"ok": False, "error": "target_friendly_name required"}), 400
+    if not source_friendly_names:
+        return jsonify({"ok": False, "error": "source_friendly_names required"}), 400
+
+    if int(cfg.get("influx_version", 2)) != 2:
+        return jsonify({"ok": False, "error": "friendly_name merge currently supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({
+            "ok": False,
+            "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
+        }), 400
+
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+    selector_range, selector_start_dt, selector_stop_dt = _selector_effective_time_filter(cfg, range_key, start_dt, stop_dt)
+    range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
+
+    quoted_sources = ", ".join(_flux_str(name) for name in source_friendly_names)
+    q = f'''
+from(bucket: "{cfg["bucket"]}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)} and r.entity_id == {_flux_str(entity_id)})
+  |> filter(fn: (r) => exists r.friendly_name)
+  |> filter(fn: (r) => contains(value: r.friendly_name, set: [{quoted_sources}]))
+  |> group()
+  |> sort(columns: ["_time"])
+'''
+
+    parent_id = uuid.uuid4().hex
+    parent = {
+        "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+        "block_id": parent_id,
+        "created_at": _utc_now_iso_ms(),
+        "source": {
+            "user_id": None,
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+            "trigger_page": "dashboard",
+            "trigger_source": "friendly_name_merge_latest",
+            "trigger_action": "merge_latest_name",
+            "trigger_button": "dashboard_selection.btn_name_merge_latest",
+        },
+        "operation_source": "friendly_name_merge_latest",
+        "reason": "friendly_name_merge_latest",
+        "status": "created",
+        "undo_status": "not_run",
+        "repeat_status": "not_run",
+        "affected_count": 0,
+        "payload_mode": "inline",
+        "payload_inline": [],
+        "series_summary": {
+            "measurement": measurement,
+            "field": field,
+            "entity_id": entity_id,
+            "friendly_name": target_friendly_name,
+        },
+        "meta": {
+            "child_blocks": [],
+            "undo_supported": True,
+            "target_friendly_name": target_friendly_name,
+            "source_friendly_names": list(source_friendly_names),
+            "range": {
+                "start": _dt_to_rfc3339_utc_full(selector_start_dt) if selector_start_dt else None,
+                "stop": _dt_to_rfc3339_utc_full(selector_stop_dt) if selector_stop_dt else None,
+                "range": selector_range,
+            },
+        },
+    }
+    save_change_block(parent, items=[])
+
+    child_ids: list[str] = []
+    max_items = 5000
+    updated = 0
+    changed_sources: set[str] = set()
+
+    def exec_child(items: list[dict[str, Any]], *, kind: str) -> int:
+        if not items:
+            return 0
+        cid = uuid.uuid4().hex
+        cb = {
+            "schema_version": CHANGE_BLOCK_SCHEMA_VERSION,
+            "block_id": cid,
+            "created_at": _utc_now_iso_ms(),
+            "source": parent["source"],
+            "operation_source": "friendly_name_merge_latest",
+            "reason": f"friendly_name_merge_latest:{kind}#{len(child_ids)}",
+            "status": "created",
+            "undo_status": "not_run",
+            "repeat_status": "not_run",
+            "affected_count": len(items),
+            "series_summary": parent.get("series_summary") or {},
+            "meta": {"parent_block_id": parent_id, "chunk_index": len(child_ids), "kind": kind, "undo_supported": True},
+        }
+        save_change_block(cb, items=items)
+        out = execute_change_block(cid)
+        if not out.get("ok"):
+            raise RuntimeError("friendly_name merge conflict")
+        child_ids.append(cid)
+        _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids)})
+        try:
+            return int(out.get("applied") or 0)
+        except Exception:
+            return 0
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            items: list[dict[str, Any]] = []
+            for rec in qapi.query_stream(q, org=cfg["org"]):
+                ts = rec.get_time()
+                val = rec.get_value()
+                if not isinstance(ts, datetime) or val is None:
+                    continue
+                tags: dict[str, str] = {}
+                for key, tag_value in (rec.values or {}).items():
+                    if key in ("result", "table"):
+                        continue
+                    if str(key).startswith("_"):
+                        continue
+                    if tag_value is None:
+                        continue
+                    tags[str(key)] = str(tag_value)
+                current_name = str(tags.get("friendly_name") or "").strip()
+                if not current_name or current_name == target_friendly_name or current_name not in source_friendly_names:
+                    continue
+                changed_sources.add(current_name)
+                ts_iso = _dt_to_rfc3339_utc_full(ts.astimezone(timezone.utc))
+                old_row = {"_time": ts_iso, "_measurement": measurement, "_field": field, "_value": val, **tags}
+                new_tags = dict(tags)
+                new_tags["friendly_name"] = target_friendly_name
+                new_row = {"_time": ts_iso, "_measurement": measurement, "_field": field, "_value": val, **new_tags}
+                pid = {
+                    "bucket": str(cfg.get("bucket") or ""),
+                    "org": str(cfg.get("org") or ""),
+                    "measurement": measurement,
+                    "field": field,
+                    "timestamp": ts_iso,
+                    "tag_set": tags,
+                }
+                items.append({
+                    "schema_version": CHANGE_ITEM_SCHEMA_VERSION,
+                    "item_id": uuid.uuid4().hex,
+                    "block_id": "",
+                    "op": "update",
+                    "point_identity": pid,
+                    "old_point": old_row,
+                    "new_point": new_row,
+                    "conflict_policy": "blind",
+                })
+                if len(items) >= max_items:
+                    updated += exec_child(items, kind="rename")
+                    items = []
+            if items:
+                updated += exec_child(items, kind="rename")
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    if updated <= 0:
+        return jsonify({"ok": True, "updated": 0, "change_block_id": parent_id, "target_friendly_name": target_friendly_name})
+
+    _cb_patch_block_meta(parent_id, {"child_blocks": list(child_ids), "updated": updated})
+    try:
+        _history_append({
+            "kind": "friendly_name_merge",
+            "action": "friendly_name_merge_latest",
+            "series": {
+                "measurement": measurement,
+                "field": field,
+                "entity_id": entity_id,
+                "friendly_name": target_friendly_name,
+                "tags": {"entity_id": entity_id, "friendly_name": target_friendly_name},
+            },
+            "target_friendly_name": target_friendly_name,
+            "source_friendly_names": sorted(changed_sources),
+            "change_block_id": parent_id,
+            "updated": updated,
+            "start": body.get("start"),
+            "stop": body.get("stop"),
+            "range": selector_range,
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+        })
+    except Exception:
+        pass
+
+    try:
+        _undo_mgr(cfg).register_action(
+            action_type="update",
+            bucket=str(cfg.get("bucket") or ""),
+            measurement=measurement,
+            group_label=f"friendly_name_merge ({updated})",
+            before_rows=[],
+            after_rows=[],
+            meta={"change_block_id": parent_id, "undo_supported": True},
+        )
+    except Exception:
+        pass
+
+    try:
+        _dash_cache_mark_dirty_series(measurement, field, entity_id, target_friendly_name, "friendly_name_merge")
+        _stats_cache_mark_dirty_series(measurement, field, entity_id, target_friendly_name, "friendly_name_merge")
+        for old_name in changed_sources:
+            _dash_cache_mark_dirty_series(measurement, field, entity_id, old_name, "friendly_name_merge")
+            _stats_cache_mark_dirty_series(measurement, field, entity_id, old_name, "friendly_name_merge")
+    except Exception:
+        pass
+
+    return jsonify({
+        "ok": True,
+        "updated": updated,
+        "change_block_id": parent_id,
+        "target_friendly_name": target_friendly_name,
+        "source_friendly_names": sorted(changed_sources),
+    })
+
 class _ApiError(Exception):
     def __init__(self, message: str, status: int = 400):
         super().__init__(message)

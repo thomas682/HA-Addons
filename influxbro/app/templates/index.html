@@ -547,6 +547,32 @@
     </div>
   </div>
 
+  <div class="table_wrap" id="name_timeline_panel" style="display:none; margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <div>
+        <div style="font-weight:700;">Analyse Messwertname</div>
+        <div class="muted" id="name_timeline_title"></div>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button id="name_merge_latest_btn" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_selection.btn_name_merge_latest" data-ib-pickkey="dashboard_selection.btn_name_merge_latest" disabled>Auf letzten Namen vereinigen</button>
+      </div>
+    </div>
+    <div class="table_box" style="max-height: 240px; overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px;">
+      <table style="margin-top:0;">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Von</th>
+            <th>Bis</th>
+            <th>Anzahl</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="name_timeline_rows"></tbody>
+      </table>
+    </div>
+  </div>
+
   </details>
 
   <div id="stats_total_store" style="display:none;"><table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table></div>
@@ -1107,6 +1133,10 @@ const $outlierStatusTime = document.getElementById('outlier_status_time');
 const $tagChoices = document.getElementById('tag_choices');
 const $tagChoicesTitle = document.getElementById('tag_choices_title');
 const $tagChoicesRows = document.getElementById('tag_choices_rows');
+const $nameTimelinePanel = document.getElementById('name_timeline_panel');
+const $nameTimelineTitle = document.getElementById('name_timeline_title');
+const $nameTimelineRows = document.getElementById('name_timeline_rows');
+const $nameMergeLatestBtn = document.getElementById('name_merge_latest_btn');
 
 // Row details (before/after list) are rendered inline under the selected row.
 
@@ -4760,6 +4790,101 @@ async function loadComboRanges(groupTag, fixed){
   return j.rows || [];
 }
 
+function hideNameTimelinePanel(){
+  try{
+    LAST_NAME_TIMELINE_ROWS = [];
+    if($nameTimelinePanel) $nameTimelinePanel.style.display = 'none';
+    if($nameTimelineRows) $nameTimelineRows.innerHTML = '';
+    if($nameTimelineTitle) $nameTimelineTitle.textContent = '';
+    if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = true;
+  }catch(e){}
+}
+
+function renderNameTimeline(rows){
+  try{
+    const rs = (rows || []).slice().sort((a, b)=>{
+      const ta = Date.parse(String(a && a.newest_time ? a.newest_time : ''));
+      const tb = Date.parse(String(b && b.newest_time ? b.newest_time : ''));
+      return (isFinite(tb) ? tb : 0) - (isFinite(ta) ? ta : 0);
+    });
+    LAST_NAME_TIMELINE_ROWS = rs;
+    if(!$nameTimelinePanel || !$nameTimelineRows || !$nameTimelineTitle){
+      return;
+    }
+    if(rs.length <= 1){
+      hideNameTimelinePanel();
+      return;
+    }
+    const latest = rs[0] || null;
+    const latestName = latest ? String(latest.value || '') : '';
+    $nameTimelineTitle.textContent = latestName
+      ? `Historische friendly_name-Werte fuer ${String(($e && $e.value) || '').trim()} im aktuellen Zeitraum. Neuester Name: ${latestName}`
+      : 'Historische friendly_name-Werte im aktuellen Zeitraum.';
+    $nameTimelineRows.innerHTML = '';
+    rs.forEach((row, idx)=>{
+      const tr = document.createElement('tr');
+      const isLatest = idx === 0;
+      tr.innerHTML = [
+        `<td>${String(row.value || '')}</td>`,
+        `<td>${row.oldest_time ? fmtTs(String(row.oldest_time)) : ''}</td>`,
+        `<td>${row.newest_time ? fmtTs(String(row.newest_time)) : ''}</td>`,
+        `<td>${(row.count !== null && row.count !== undefined) ? String(row.count) : ''}</td>`,
+        `<td>${isLatest ? 'aktuell' : 'historisch'}</td>`,
+      ].join('');
+      $nameTimelineRows.appendChild(tr);
+    });
+    if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = !(latestName && rs.length > 1);
+    $nameTimelinePanel.style.display = 'block';
+  }catch(e){}
+}
+
+async function refreshNameTimelinePanel(){
+  try{
+    const measurement = String(($m && $m.value) || '').trim();
+    const field = String(($f && $f.value) || '').trim();
+    const entityId = String(($e && $e.value) || '').trim();
+    if(!measurement || !field || !entityId){
+      hideNameTimelinePanel();
+      return;
+    }
+    const rows = await loadComboRanges('friendly_name', { entity_id: entityId, friendly_name: null });
+    renderNameTimeline(rows || []);
+  }catch(e){
+    hideNameTimelinePanel();
+  }
+}
+
+async function mergeFriendlyNamesToLatest(){
+  const rows = (LAST_NAME_TIMELINE_ROWS || []).slice();
+  if(rows.length <= 1) return;
+  const target = String(rows[0] && rows[0].value ? rows[0].value : '').trim();
+  const sources = rows.slice(1).map(r => String(r && r.value ? r.value : '').trim()).filter(Boolean);
+  if(!target || !sources.length) return;
+  const measurement = String(($m && $m.value) || '').trim();
+  const field = String(($f && $f.value) || '').trim();
+  const entityId = String(($e && $e.value) || '').trim();
+  if(!measurement || !field || !entityId) return;
+  const txt = `Historische friendly_name-Werte auf den neuesten Namen vereinigen?\n\nEntity: ${entityId}\nZiel: ${target}\nQuellen:\n- ${sources.join('\n- ')}`;
+  if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+    const want = await window.InfluxBroConfirm.ask({ title: 'Messwertnamen vereinigen', text: txt, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_name_merge_latest_confirm.root', templateName: 'dialog_confirm_action' });
+    if(!want) return;
+  }else if(!confirm(txt)) return;
+  const payload = {
+    measurement,
+    field,
+    entity_id: entityId,
+    target_friendly_name: target,
+    source_friendly_names: sources,
+    ...selectorQueryTimeParams(),
+  };
+  const j = await api('./api/friendly_name_merge_latest', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}, { key: 'friendly_name_merge_latest', status: 'Vereinige historische Messwertnamen...' });
+  try{
+    if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('Messwertnamen vereinigt', `Ziel: ${target}\nAktualisiert: ${String(j.updated || 0)}\nChange-Block: ${String(j.change_block_id || '')}`);
+  }catch(e){}
+  try{ await refreshDashboardSuggestions({silent:true}); }catch(e){}
+  try{ await refreshNameTimelinePanel(); }catch(e){}
+}
+
 async function loadUiConfig(){
   try{
     const j = await api("./api/config");
@@ -5311,6 +5436,7 @@ let ALL_MEASUREMENTS = [];
 let ALL_FRIENDLY = [];
 let ALL_ENTITY = [];
 let ALL_FIELDS = [];
+let LAST_NAME_TIMELINE_ROWS = [];
 
 function setDatalistOptions(listEl, items){
   try{
@@ -5596,6 +5722,7 @@ async function refreshDashboardSuggestions(opts){
   }catch(e){
     // ignore (best effort, like combine)
   }
+  try{ await refreshNameTimelinePanel(); }catch(e){}
   autoSpanAll();
   return true;
 }
@@ -15542,12 +15669,13 @@ $r?.addEventListener("change", async ()=>{
     renderRangeFromTo();
     _updateAnalysisStatus();
     refreshAnalysisStartInfo().catch(()=>{});
+    refreshNameTimelinePanel().catch(()=>{});
     saveGlobalDashboardSelection().catch(()=>{});
   }catch(e){ displayError(e); }
 });
 
-$start?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); saveGlobalDashboardSelection().catch(()=>{}); } });
-$stop?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); saveGlobalDashboardSelection().catch(()=>{}); } });
+$start?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshNameTimelinePanel().catch(()=>{}); saveGlobalDashboardSelection().catch(()=>{}); } });
+$stop?.addEventListener("change", async ()=>{ if($r?.value==="custom") { saveState(); autoSpanAll(); renderTableRange(); renderRangeFromTo(); refreshNameTimelinePanel().catch(()=>{}); saveGlobalDashboardSelection().catch(()=>{}); } });
 
 // Search inputs (case-insensitive filtering)
 // (search inputs removed; datalist inputs filter automatically)
@@ -16019,6 +16147,7 @@ if($analysisRunWithCache) $analysisRunWithCache.addEventListener('click', (ev)=>
 if($analysisRunWithoutCache) $analysisRunWithoutCache.addEventListener('click', (ev)=>{ _stop(ev); startDashboardAnalysis('refresh'); });
 if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); cancelLoadNow(); });
 if($analysisHistoryBtn) $analysisHistoryBtn.addEventListener("click", (ev)=>{ _stop(ev); _showAnalysisHistory().catch(displayError); });
+if($nameMergeLatestBtn) $nameMergeLatestBtn.addEventListener("click", (ev)=>{ _stop(ev); mergeFriendlyNamesToLatest().catch(displayError); });
 
 // Analysis confirm dialog event listeners
 try{

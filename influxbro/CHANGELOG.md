@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.485
+
+### Enhancement
+
+- Dashboard / Messwertauswahl: Unterhalb der Auswahl erscheint jetzt ein Panel `Analyse Messwertname`, sobald fuer die aktuelle `entity_id` im gewaehlten Zeitraum mehrere historische `friendly_name`-Werte existieren. Der neueste Name wird erkannt, fruehere Namensbereiche werden mit Zeitfenster angezeigt und koennen per Button direkt auf den letzten Namen vereinigt werden. Die Aenderung laeuft als Change-Block und bleibt damit im Verlauf/Undo nachvollziehbar. ([#439](https://github.com/thomas682/HA-Addons/issues/439))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.484
 
 ### Fix

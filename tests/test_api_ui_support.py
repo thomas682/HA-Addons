@@ -481,6 +481,15 @@ def test_timer_table_shows_status_column_and_disabled_style_settings():
     assert "tr.classList.add('timer_disabled');" in jobs
 
 
+def test_dashboard_name_timeline_panel_and_merge_action_exist():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="name_timeline_panel"' in body
+    assert 'id="name_merge_latest_btn"' in body
+    assert 'function renderNameTimeline(rows)' in body
+    assert 'function mergeFriendlyNamesToLatest()' in body
+    assert './api/friendly_name_merge_latest' in body
+
+
 def test_dashboard_abort_buttons_and_search_width_are_updated():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
@@ -1579,6 +1588,7 @@ def test_destructive_flows_use_confirm_dialog_api():
     assert "pickerKey: 'dialog_job_delete_confirm.root'" in jobs_body
     assert "pickerKey: 'dialog_cache_delete_confirm.root'" in jobs_body
     assert "pickerKey: 'dialog_analysis_cache_delete_selected_confirm.root'" in jobs_body
+    assert "pickerKey: 'dialog_name_merge_latest_confirm.root'" in index_body
     assert "pickerKey: 'dialog_fullbackup_delete_confirm.root'" in backup_body
     assert "pickerKey: 'dialog_backup_delete_confirm.root'" in backup_body
     assert "pickerKey: 'dialog_fullrestore_confirm.root'" in restore_body

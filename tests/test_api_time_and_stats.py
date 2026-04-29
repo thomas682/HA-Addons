@@ -852,6 +852,96 @@ def test_api_jobs_delete_rejects_active_jobs(load_app_module, tmp_path):
     assert j["blocked_job_ids"] == ["job-live-1"]
 
 
+def test_friendly_name_merge_latest_creates_change_block(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+
+    class _FakeRecord:
+        def __init__(self, ts: str, value: float, friendly_name: str):
+            from datetime import datetime, timezone
+
+            self._time = datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc)
+            self._value = value
+            self.values = {
+                "entity_id": "sensor.demo",
+                "friendly_name": friendly_name,
+                "host": "ha",
+            }
+
+        def get_time(self):
+            return self._time
+
+        def get_value(self):
+            return self._value
+
+    class _FakeQueryAPI:
+        def query_stream(self, q: str, org: str | None = None):
+            return iter([
+                _FakeRecord("2026-01-01T00:00:00Z", 1.0, "Alt A"),
+                _FakeRecord("2026-01-02T00:00:00Z", 2.0, "Alt B"),
+                _FakeRecord("2026-01-03T00:00:00Z", 3.0, "Neu"),
+            ])
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    saved_blocks: list[tuple[dict, list[dict] | None]] = []
+
+    def _save_change_block(block: dict, *, items=None):
+        saved_blocks.append((dict(block), list(items) if items is not None else None))
+        return block
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+    monkeypatch.setattr(app_mod, "save_change_block", _save_change_block)
+    monkeypatch.setattr(app_mod, "execute_change_block", lambda _bid: {"ok": True, "applied": 2})
+    monkeypatch.setattr(app_mod, "_cb_patch_block_meta", lambda *args, **kwargs: None)
+    monkeypatch.setattr(app_mod, "_history_append", lambda payload: None)
+    monkeypatch.setattr(app_mod, "_dash_cache_mark_dirty_series", lambda *args, **kwargs: None)
+    monkeypatch.setattr(app_mod, "_stats_cache_mark_dirty_series", lambda *args, **kwargs: None)
+
+    class _Undo:
+        def register_action(self, **kwargs):
+            return None
+
+    monkeypatch.setattr(app_mod, "_undo_mgr", lambda cfg: _Undo())
+
+    client = app_mod.app.test_client()
+    r = client.post(
+        "/api/friendly_name_merge_latest",
+        json={
+            "measurement": "kWh",
+            "field": "value",
+            "entity_id": "sensor.demo",
+            "target_friendly_name": "Neu",
+            "source_friendly_names": ["Alt A", "Alt B"],
+            "range": "all",
+        },
+    )
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["updated"] == 2
+    child_items = [items for block, items in saved_blocks if items]
+    assert len(child_items) == 1
+    assert len(child_items[0]) == 2
+    assert all(item["op"] == "update" for item in child_items[0])
+    assert all(item["new_point"]["friendly_name"] == "Neu" for item in child_items[0])
+
+
 def test_stats_v2_flux_avoids_time_label_literal(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured: list[str] = []
