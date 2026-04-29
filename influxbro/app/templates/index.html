@@ -369,6 +369,246 @@
     .section { margin-top: 14px; }
     .section_title { font-weight: 700; margin: 14px 0 6px 0; }
 
+    .ib-namepanel {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .ib-namepanel-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+    }
+    .ib-namepanel-header-text { flex: 1; min-width: 0; }
+    .ib-namepanel-header-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+    }
+    .ib-namepanel-header-subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      line-height: 1.55;
+    }
+    .ib-namepanel-header-subtitle code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      background: #f7f8fa;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid #e5e7eb;
+      color: #4b5563;
+    }
+    .ib-namepanel-header-action { flex-shrink: 0; }
+    .ib-namepanel-btn-primary {
+      background: #2563eb;
+      color: #fff;
+      border: 1px solid #2563eb;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .ib-namepanel-btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+    .ib-namepanel-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+    .ib-namepanel-summarybar {
+      display: flex;
+      background: #f7f8fa;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .ib-namepanel-summary-stat {
+      flex: 1;
+      padding: 14px 24px;
+      border-right: 1px solid #e5e7eb;
+      min-width: 0;
+    }
+    .ib-namepanel-summary-stat:last-child { border-right: none; flex: 2; }
+    .ib-namepanel-summary-label {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 500;
+      margin-bottom: 4px;
+      letter-spacing: 0.02em;
+    }
+    .ib-namepanel-summary-value {
+      font-size: 14px;
+      color: #111827;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ib-namepanel-summary-value.muted { font-weight: 500; color: #4b5563; }
+    .ib-namepanel-timeline {
+      padding: 18px 24px 8px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .ib-namepanel-timeline-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .ib-namepanel-timeline-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #4b5563;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .ib-namepanel-timeline-range {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      color: #6b7280;
+    }
+    .ib-namepanel-axis {
+      position: relative;
+      height: 6px;
+      background: #f7f8fa;
+      border: 1px solid #e5e7eb;
+      border-radius: 3px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+    .ib-namepanel-segment {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      transition: opacity 0.15s;
+      cursor: pointer;
+    }
+    .ib-namepanel-segment:hover { opacity: 0.85; }
+    .ib-namepanel-segment.is-current { background: #f59e0b; }
+    .ib-namepanel-segment.is-historic { background: #94a3b8; }
+    .ib-namepanel-segment.is-historic-2 { background: #cbd5e1; }
+    .ib-namepanel-segment.is-historic-3 { background: #64748b; }
+    .ib-namepanel-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 10px;
+      color: #9ca3af;
+    }
+    .ib-namepanel-list { display: flex; flex-direction: column; }
+    .ib-namepanel-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 240px 90px 120px;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 24px;
+      border-bottom: 1px solid #e5e7eb;
+      transition: background 0.1s;
+    }
+    .ib-namepanel-row:last-child { border-bottom: none; }
+    .ib-namepanel-row:hover { background: #fafbfc; }
+    .ib-namepanel-row.is-current {
+      background: linear-gradient(to right, #fffbeb 0%, #fffbeb 4px, transparent 4px);
+      border-left: 3px solid #f59e0b;
+      padding-left: 21px;
+    }
+    .ib-namepanel-row-index {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      color: #9ca3af;
+      font-weight: 500;
+      text-align: center;
+    }
+    .ib-namepanel-row-name { min-width: 0; }
+    .ib-namepanel-row-name-text {
+      font-size: 14px;
+      font-weight: 500;
+      color: #111827;
+      margin-bottom: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ib-namepanel-row-name-meta {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      color: #6b7280;
+    }
+    .ib-namepanel-row-period {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+    .ib-namepanel-row-period .from-to {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .ib-namepanel-row-period .arrow { color: #9ca3af; }
+    .ib-namepanel-row-points {
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .ib-namepanel-row-points-num {
+      font-size: 13px;
+      color: #111827;
+      font-weight: 500;
+    }
+    .ib-namepanel-row-points-label {
+      font-size: 10px;
+      color: #9ca3af;
+      letter-spacing: 0.02em;
+    }
+    .ib-namepanel-row-status { text-align: right; }
+    .ib-namepanel-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .ib-namepanel-badge-current {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .ib-namepanel-badge-current::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #f59e0b;
+    }
+    .ib-namepanel-badge-historic {
+      background: #f3f4f6;
+      color: #4b5563;
+      border: 1px solid #e5e7eb;
+    }
+    @media (max-width: 980px) {
+      .ib-namepanel-header { flex-direction: column; }
+      .ib-namepanel-summarybar { flex-direction: column; }
+      .ib-namepanel-summary-stat { border-right: none; border-bottom: 1px solid #e5e7eb; }
+      .ib-namepanel-summary-stat:last-child { border-bottom: none; }
+      .ib-namepanel-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 12px 16px;
+      }
+      .ib-namepanel-row-index,
+      .ib-namepanel-row-points,
+      .ib-namepanel-row-status { text-align: left; }
+      .ib-namepanel-row.is-current { padding-left: 13px; }
+    }
+
     /* Chip-grid for outlier type selection */
     .ib-chip-grid { display:flex; flex-wrap:wrap; gap:6px; }
     .ib-chip { display:inline-flex; align-items:center; gap:6px; background:#f8f8f8; border:1px solid #ddd; border-radius:20px; padding:4px 14px 4px 10px; cursor:pointer; transition:all 0.2s ease; user-select:none; position:relative; overflow:hidden; font-size:12px; }
@@ -547,24 +787,26 @@
     </div>
   </div>
 
+  </details>
+
   <details id="name_timeline_panel" class="section" style="display:none; margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
     <summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title" data-ib-pickkey="dashboard_selection.section_multi_name_title">Mehrere Messwertnamen</span></span></summary>
     <div class="card_body">
-      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-        <div>
-          <div class="muted" id="name_timeline_title"></div>
+      <div class="ib-namepanel">
+        <div class="ib-namepanel-header">
+          <div class="ib-namepanel-header-text">
+            <div class="ib-namepanel-header-title">Mehrere Messwertnamen</div>
+            <div class="ib-namepanel-header-subtitle" id="name_timeline_title"></div>
+          </div>
+          <div class="ib-namepanel-header-action">
+            <button id="name_merge_latest_btn" class="ib-namepanel-btn-primary" data-ui="dashboard_selection.btn_name_merge_latest" data-ib-pickkey="dashboard_selection.btn_name_merge_latest" disabled>Auf letzten Namen vereinigen</button>
+          </div>
         </div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <button id="name_merge_latest_btn" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_selection.btn_name_merge_latest" data-ib-pickkey="dashboard_selection.btn_name_merge_latest" disabled>Auf letzten Namen vereinigen</button>
-        </div>
-      </div>
-      <div id="name_timeline_summary" class="muted" style="margin-top:8px; display:none; gap:8px; flex-wrap:wrap; align-items:center;" data-ui="dashboard_selection.panel_name_timeline_summary" data-ib-pickkey="dashboard_selection.panel_name_timeline_summary"></div>
-      <div class="table_box" style="max-height: 300px; overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; background:#fcfcfc;">
-        <div id="name_timeline_rows" style="display:flex; flex-direction:column; gap:10px; padding:10px 12px;"></div>
+        <div id="name_timeline_summary" class="ib-namepanel-summarybar" style="display:none;" data-ui="dashboard_selection.panel_name_timeline_summary" data-ib-pickkey="dashboard_selection.panel_name_timeline_summary"></div>
+        <div id="name_timeline_axis" class="ib-namepanel-timeline" style="display:none;" data-ui="dashboard_selection.panel_name_timeline_axis" data-ib-pickkey="dashboard_selection.panel_name_timeline_axis"></div>
+        <div id="name_timeline_rows" class="ib-namepanel-list" data-ui="id.name_timeline_rows" data-ib-pickkey="id.name_timeline_rows"></div>
       </div>
     </div>
-  </details>
-
   </details>
 
   <div id="stats_total_store" style="display:none;"><table class="stats_tbl"><tbody id="stats_tot_body"></tbody></table></div>
@@ -1128,6 +1370,7 @@ const $tagChoicesRows = document.getElementById('tag_choices_rows');
 const $nameTimelinePanel = document.getElementById('name_timeline_panel');
 const $nameTimelineTitle = document.getElementById('name_timeline_title');
 const $nameTimelineSummary = document.getElementById('name_timeline_summary');
+const $nameTimelineAxis = document.getElementById('name_timeline_axis');
 const $nameTimelineRows = document.getElementById('name_timeline_rows');
 const $nameMergeLatestBtn = document.getElementById('name_merge_latest_btn');
 
@@ -4793,6 +5036,7 @@ function hideNameTimelinePanel(){
     if($nameTimelineRows) $nameTimelineRows.innerHTML = '';
     if($nameTimelineTitle) $nameTimelineTitle.textContent = '';
     if($nameTimelineSummary){ $nameTimelineSummary.innerHTML = ''; $nameTimelineSummary.style.display = 'none'; }
+    if($nameTimelineAxis){ $nameTimelineAxis.innerHTML = ''; $nameTimelineAxis.style.display = 'none'; }
     if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = true;
   }catch(e){}
 }
@@ -4808,6 +5052,38 @@ function _nameTimelinePct(totalStartMs, totalStopMs, valueMs){
 
 function _nameTimelineBadge(text, bg, fg){
   return `<span style="display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:3px 9px; font-size:11px; font-weight:700; background:${bg}; color:${fg};">${_escHtml(String(text || ''))}</span>`;
+}
+
+function _nameTimelineDaysText(oldestMs, newestMs){
+  if(!(isFinite(oldestMs) && isFinite(newestMs))) return '';
+  const days = Math.max(1, Math.round((newestMs - oldestMs) / 86400000));
+  return `${days} Tage`;
+}
+
+function _nameTimelineFmtTick(ms){
+  try{
+    const dt = new Date(ms);
+    const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+    return `${months[dt.getUTCMonth()] || ''} ${String(dt.getUTCFullYear()).slice(-2)}`;
+  }catch(e){
+    return '';
+  }
+}
+
+function _nameTimelineFmtDateTime(ms){
+  try{
+    const dt = new Date(ms);
+    const pad = (n)=> String(n).padStart(2, '0');
+    return `${pad(dt.getUTCDate())}.${pad(dt.getUTCMonth()+1)}.${dt.getUTCFullYear()} ${pad(dt.getUTCHours())}:${pad(dt.getUTCMinutes())}`;
+  }catch(e){
+    return '';
+  }
+}
+
+function _nameTimelineHistoricClass(idx){
+  if(idx === 1) return 'is-historic';
+  if(idx === 2) return 'is-historic-2';
+  return 'is-historic-3';
 }
 
 function renderNameTimeline(rows){
@@ -4831,43 +5107,65 @@ function renderNameTimeline(rows){
     const validStopMs = rs.map(row => Date.parse(String(row && row.newest_time ? row.newest_time : ''))).filter(v => isFinite(v));
     const totalStartMs = validStartMs.length ? Math.min(...validStartMs) : 0;
     const totalStopMs = validStopMs.length ? Math.max(...validStopMs) : 1;
-    $nameTimelineTitle.textContent = latestName
-      ? `Historische friendly_name-Werte fuer ${String(($e && $e.value) || '').trim()} im aktuellen Zeitraum. Neuester Name: ${latestName}`
-      : 'Historische friendly_name-Werte im aktuellen Zeitraum.';
+    const entityId = String(($e && $e.value) || '').trim();
+    const totalDays = Math.max(1, Math.round((totalStopMs - totalStartMs) / 86400000));
+    if($nameTimelineTitle){
+      $nameTimelineTitle.innerHTML = latestName
+        ? `Historische <code>friendly_name</code>-Werte für <code>${_escHtml(entityId)}</code> im aktuellen Zeitraum.`
+        : 'Historische <code>friendly_name</code>-Werte im aktuellen Zeitraum.';
+    }
     if($nameTimelineSummary){
       const variants = rs.length;
       const totalCount = rs.reduce((sum, row)=> sum + (Number(row && row.count || 0) || 0), 0);
       $nameTimelineSummary.innerHTML = [
-        _nameTimelineBadge(`${variants} Varianten`, '#eef3ff', '#1d3f72'),
-        _nameTimelineBadge(`${totalCount} Punkte`, '#eefaf1', '#17522b'),
-        _nameTimelineBadge(`Neuester Name: ${latestName || '-'}`, '#fff8e6', '#7a5300'),
-      ].join(' ');
+        `<div class="ib-namepanel-summary-stat"><div class="ib-namepanel-summary-label">Varianten</div><div class="ib-namepanel-summary-value">${variants}</div></div>`,
+        `<div class="ib-namepanel-summary-stat"><div class="ib-namepanel-summary-label">Datenpunkte</div><div class="ib-namepanel-summary-value">${totalCount.toLocaleString('de-DE')}</div></div>`,
+        `<div class="ib-namepanel-summary-stat"><div class="ib-namepanel-summary-label">Zeitraum</div><div class="ib-namepanel-summary-value muted">${_escHtml(_nameTimelineFmtDateTime(totalStartMs))} — ${_escHtml(_nameTimelineFmtDateTime(totalStopMs))}</div></div>`,
+        `<div class="ib-namepanel-summary-stat"><div class="ib-namepanel-summary-label">Aktueller Name</div><div class="ib-namepanel-summary-value">${_escHtml(latestName || '-')}</div></div>`,
+      ].join('');
       $nameTimelineSummary.style.display = 'flex';
+    }
+    if($nameTimelineAxis){
+      const segments = rs.map((row, idx)=>{
+        const oldestMs = Date.parse(String(row && row.oldest_time ? row.oldest_time : ''));
+        const newestMs = Date.parse(String(row && row.newest_time ? row.newest_time : ''));
+        const leftPct = isFinite(oldestMs) ? _nameTimelinePct(totalStartMs, totalStopMs, oldestMs) : 0;
+        const rightPct = isFinite(newestMs) ? _nameTimelinePct(totalStartMs, totalStopMs, newestMs) : leftPct;
+        const widthPct = Math.max(2, rightPct - leftPct);
+        const cls = idx === 0 ? 'is-current' : _nameTimelineHistoricClass(idx);
+        return `<div class="ib-namepanel-segment ${cls}" style="left:${leftPct.toFixed(2)}%; width:${widthPct.toFixed(2)}%;" title="${_escAttr(String(row && row.value ? row.value : ''))}"></div>`;
+      }).join('');
+      const tickCount = 6;
+      const ticks = [];
+      for(let i = 0; i < tickCount; i++){
+        const ratio = tickCount === 1 ? 0 : (i / (tickCount - 1));
+        ticks.push(`<span>${_escHtml(_nameTimelineFmtTick(totalStartMs + ((totalStopMs - totalStartMs) * ratio)))}</span>`);
+      }
+      $nameTimelineAxis.innerHTML = [
+        `<div class="ib-namepanel-timeline-header">`,
+        `  <div class="ib-namepanel-timeline-title">Zeitliche Verteilung</div>`,
+        `  <div class="ib-namepanel-timeline-range">${totalDays} Tage · ${rs.length} Varianten</div>`,
+        `</div>`,
+        `<div class="ib-namepanel-axis">${segments}</div>`,
+        `<div class="ib-namepanel-ticks">${ticks.join('')}</div>`,
+      ].join('');
+      $nameTimelineAxis.style.display = 'block';
     }
     $nameTimelineRows.innerHTML = '';
     rs.forEach((row, idx)=>{
       const isLatest = idx === 0;
       const oldestMs = Date.parse(String(row && row.oldest_time ? row.oldest_time : ''));
       const newestMs = Date.parse(String(row && row.newest_time ? row.newest_time : ''));
-      const leftPct = isFinite(oldestMs) ? _nameTimelinePct(totalStartMs, totalStopMs, oldestMs) : 0;
-      const rightPct = isFinite(newestMs) ? _nameTimelinePct(totalStartMs, totalStopMs, newestMs) : leftPct;
-      const widthPct = Math.max(2, rightPct - leftPct);
       const card = document.createElement('div');
-      card.style.border = '1px solid #ececec';
-      card.style.borderRadius = '12px';
-      card.style.background = isLatest ? '#fffdf4' : '#fff';
-      card.style.padding = '10px 12px';
+      card.className = `ib-namepanel-row${isLatest ? ' is-current' : ''}`;
       card.setAttribute('data-ui', 'dashboard_selection.panel_name_timeline_row');
       card.setAttribute('data-ib-pickkey', 'dashboard_selection.panel_name_timeline_row');
       card.innerHTML = [
-        `<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap;">`,
-        `  <div style="font-weight:700;">${_escHtml(String(row.value || ''))}</div>`,
-        `  <div>${isLatest ? _nameTimelineBadge('aktuell', '#fff2c7', '#6c4d00') : _nameTimelineBadge('historisch', '#f0f0f0', '#555')}</div>`,
-        `</div>`,
-        `<div class="muted" style="margin-top:4px; font-size:12px;">${row.oldest_time ? fmtTs(String(row.oldest_time)) : ''} -> ${row.newest_time ? fmtTs(String(row.newest_time)) : ''} | ${(row.count !== null && row.count !== undefined) ? String(row.count) : '0'} Punkte</div>`,
-        `<div style="position:relative; height:12px; border-radius:999px; background:#eef1f5; margin-top:10px; overflow:hidden;">`,
-        `  <div style="position:absolute; left:${leftPct.toFixed(2)}%; width:${widthPct.toFixed(2)}%; min-width:10px; top:0; bottom:0; border-radius:999px; background:${isLatest ? 'linear-gradient(90deg,#ffb347,#ffd36e)' : 'linear-gradient(90deg,#7aa7ff,#9cc0ff)'};"></div>`,
-        `</div>`,
+        `<div class="ib-namepanel-row-index">${String(idx + 1).padStart(2, '0')}</div>`,
+        `<div class="ib-namepanel-row-name"><div class="ib-namepanel-row-name-text">${_escHtml(String(row.value || ''))}</div><div class="ib-namepanel-row-name-meta">${_escHtml(_nameTimelineDaysText(oldestMs, newestMs))}</div></div>`,
+        `<div class="ib-namepanel-row-period"><div class="from-to"><span>${_escHtml(_nameTimelineFmtDateTime(oldestMs))}</span><span class="arrow">→</span><span>${_escHtml(_nameTimelineFmtDateTime(newestMs))}</span></div></div>`,
+        `<div class="ib-namepanel-row-points"><div class="ib-namepanel-row-points-num">${(Number(row.count || 0) || 0).toLocaleString('de-DE')}</div><div class="ib-namepanel-row-points-label">Punkte</div></div>`,
+        `<div class="ib-namepanel-row-status"><span class="ib-namepanel-badge ${isLatest ? 'ib-namepanel-badge-current' : 'ib-namepanel-badge-historic'}">${isLatest ? 'aktuell' : 'historisch'}</span></div>`,
       ].join('');
       $nameTimelineRows.appendChild(card);
     });

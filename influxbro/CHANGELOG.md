@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.495
+
+### Enhancement
+
+- Dashboard / Mehrere Messwertnamen: Die Section wurde aus der Messwertauswahl herausgezogen und steht jetzt als eigenstaendiger, auf-/zuklappbarer Block zwischen `Messwertauswahl` und `Caching`. Das Innenlayout wurde auf die Vorlage `demo/messwertnamen-professional.html` umgestellt: Panel-Header mit Aktion, Summary-Bar, obere Vergleichsachse und 1:1-Listenlayout mit Index, Name, Zeitraum, Punkte und Status. ([#439](https://github.com/thomas682/HA-Addons/issues/439))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.494
 
 ### Enhancement
