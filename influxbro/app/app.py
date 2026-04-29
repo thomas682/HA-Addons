@@ -8838,6 +8838,12 @@ def rollup_page():
     return render_template("rollup.html", cfg=cfg, allow_delete=True, nav="rollup")
 
 
+@app.get("/audit")
+def audit_page():
+    cfg = load_cfg()
+    return render_template("audit.html", cfg=cfg, allow_delete=True, nav="audit")
+
+
 @app.get("/dq")
 def dq_page():
     cfg = load_cfg()
@@ -16040,6 +16046,218 @@ def api_fullrestore_job_start():
     t = threading.Thread(target=_fullrestore_job_thread, args=(job_id, cfg, bdir, backup_id), daemon=True)
     t.start()
     return jsonify({"ok": True, "job_id": job_id})
+
+
+def _audit_window_value(window_raw: str | None) -> str:
+    raw = str(window_raw or "-90d").strip() or "-90d"
+    if re.match(r"^-(?:\d+(?:ms|s|m|h|d|w))+$", raw):
+        return raw
+    raise ValueError("window invalid")
+
+
+def _audit_tag_key_value(tag_key_raw: str | None) -> str:
+    raw = str(tag_key_raw or "entity_id").strip() or "entity_id"
+    if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", raw):
+        return raw
+    raise ValueError("tag_key invalid")
+
+
+def _rollup_profile_by_id(cfg: dict[str, Any], profile_id: str) -> dict[str, Any] | None:
+    profiles = _rollup_profiles_load(cfg)
+    return next((p for p in profiles if isinstance(p, dict) and str(p.get("id") or "") == profile_id), None)
+
+
+def _audit_pick_latest_backup_run(profile_id: str) -> dict[str, Any] | None:
+    for run in _rollup_runs_list(limit=200):
+        if not isinstance(run, dict):
+            continue
+        if str(run.get("profile_id") or "") != profile_id:
+            continue
+        if str(run.get("backup_id") or "").strip():
+            return run
+    return None
+
+
+@app.get("/api/audit")
+def api_audit():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    if int(cfg.get("influx_version", 2) or 2) != 2:
+        return jsonify({"ok": False, "error": "audit supports InfluxDB v2 only"}), 400
+    if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+        return jsonify({"ok": False, "error": "InfluxDB v2 requires token, org, bucket"}), 400
+
+    profile_id = str(request.args.get("profile_id") or "default").strip() or "default"
+    prof = _rollup_profile_by_id(cfg, profile_id)
+    if not prof:
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+
+    raw_bucket = str(request.args.get("raw_bucket") or prof.get("source_bucket") or "").strip()
+    agg_bucket = str(request.args.get("agg_bucket") or request.args.get("longterm_bucket") or prof.get("target_bucket") or "").strip()
+    measurement_raw = str(request.args.get("measurement_raw") or "").strip()
+    measurement_agg = str(request.args.get("measurement_agg") or measurement_raw).strip()
+    field = str(request.args.get("field") or "value").strip() or "value"
+    try:
+        tag_key = _audit_tag_key_value(request.args.get("tag_key"))
+        window = _audit_window_value(request.args.get("window"))
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    if not raw_bucket or not agg_bucket:
+        return jsonify({"ok": False, "error": "raw_bucket and agg_bucket required"}), 400
+
+    latest_run = _audit_pick_latest_backup_run(profile_id)
+    backup_meta = None
+    if latest_run:
+        try:
+            backup_meta = _rollup_backup_validate(str(latest_run.get("backup_id") or ""))
+        except Exception:
+            backup_meta = None
+
+    backup = {
+        "exists": bool(backup_meta),
+        "backup_id": str((backup_meta or {}).get("backup_id") or (latest_run or {}).get("backup_id") or ""),
+        "created_at": str((backup_meta or {}).get("created_at") or (latest_run or {}).get("created_at") or ""),
+        "restore_available": bool(backup_meta),
+        "profile_id": profile_id,
+    }
+
+    counts = {"raw": 0, "agg": 0}
+    per_tag_raw: dict[str, int] = {}
+    per_tag_agg: dict[str, int] = {}
+
+    q_total_raw = f'''
+from(bucket: "{raw_bucket}")
+  |> range(start: {window})
+  |> filter(fn: (r) => r._field == {_flux_str(field)}{f' and r._measurement == {_flux_str(measurement_raw)}' if measurement_raw else ''})
+  |> keep(columns: ["_value"])
+  |> count(column: "_value")
+  |> group()
+  |> sum(column: "_value")
+'''
+    q_total_agg = f'''
+from(bucket: "{agg_bucket}")
+  |> range(start: {window})
+  |> filter(fn: (r) => r._field == {_flux_str(field)}{f' and r._measurement == {_flux_str(measurement_agg)}' if measurement_agg else ''})
+  |> keep(columns: ["_value"])
+  |> count(column: "_value")
+  |> group()
+  |> sum(column: "_value")
+'''
+    q_per_tag_raw = f'''
+from(bucket: "{raw_bucket}")
+  |> range(start: {window})
+  |> filter(fn: (r) => r._field == {_flux_str(field)}{f' and r._measurement == {_flux_str(measurement_raw)}' if measurement_raw else ''})
+  |> filter(fn: (r) => exists r.{tag_key})
+  |> group(columns: ["{tag_key}"])
+  |> count(column: "_value")
+'''
+    q_per_tag_agg = f'''
+from(bucket: "{agg_bucket}")
+  |> range(start: {window})
+  |> filter(fn: (r) => r._field == {_flux_str(field)}{f' and r._measurement == {_flux_str(measurement_agg)}' if measurement_agg else ''})
+  |> filter(fn: (r) => exists r.{tag_key})
+  |> group(columns: ["{tag_key}"])
+  |> count(column: "_value")
+'''
+
+    try:
+        with v2_client(cfg) as c:
+            qapi = c.query_api()
+            for rec in qapi.query_stream(q_total_raw, org=cfg["org"]):
+                try:
+                    counts["raw"] += int(rec.get_value() or 0)
+                except Exception:
+                    continue
+            for rec in qapi.query_stream(q_total_agg, org=cfg["org"]):
+                try:
+                    counts["agg"] += int(rec.get_value() or 0)
+                except Exception:
+                    continue
+            for rec in qapi.query_stream(q_per_tag_raw, org=cfg["org"]):
+                key = str((rec.values or {}).get(tag_key) or "").strip()
+                if not key:
+                    continue
+                try:
+                    per_tag_raw[key] = per_tag_raw.get(key, 0) + int(rec.get_value() or 0)
+                except Exception:
+                    continue
+            for rec in qapi.query_stream(q_per_tag_agg, org=cfg["org"]):
+                key = str((rec.values or {}).get(tag_key) or "").strip()
+                if not key:
+                    continue
+                try:
+                    per_tag_agg[key] = per_tag_agg.get(key, 0) + int(rec.get_value() or 0)
+                except Exception:
+                    continue
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+
+    all_keys = sorted(set(per_tag_raw) | set(per_tag_agg))
+    per_tag = []
+    warnings: list[str] = []
+    if counts["agg"] <= 0:
+        warnings.append("Keine verdichteten Punkte im Zielbucket gefunden.")
+    if not backup["exists"]:
+        warnings.append("Kein validiertes Rollup-Backup fuer dieses Profil gefunden.")
+
+    raw_total = int(counts["raw"] or 0)
+    agg_total = int(counts["agg"] or 0)
+    aggregation_strength = (raw_total / agg_total) if raw_total > 0 and agg_total > 0 else 0.0
+    saving_percent = (100.0 * (1.0 - (agg_total / raw_total))) if raw_total > 0 and agg_total >= 0 else 0.0
+    if aggregation_strength and aggregation_strength < 1.0:
+        warnings.append("Aggregationsfaktor kleiner 1.0 - Rollup reduziert die Daten derzeit nicht.")
+
+    for key in all_keys:
+        raw_points = int(per_tag_raw.get(key, 0) or 0)
+        agg_points = int(per_tag_agg.get(key, 0) or 0)
+        ratio = (raw_points / agg_points) if raw_points > 0 and agg_points > 0 else 0.0
+        saved = (100.0 * (1.0 - (agg_points / raw_points))) if raw_points > 0 and agg_points >= 0 else 0.0
+        row_warnings: list[str] = []
+        if agg_points == 0:
+            row_warnings.append("agg_points_zero")
+        if ratio and ratio < 1.0:
+            row_warnings.append("aggregation_strength_lt_1")
+        if not backup["exists"]:
+            row_warnings.append("backup_missing")
+        if not backup["restore_available"]:
+            row_warnings.append("restore_unavailable")
+        per_tag.append({
+            "tag_key": tag_key,
+            "tag_value": key,
+            "raw_points": raw_points,
+            "agg_points": agg_points,
+            "reduction_ratio": ratio,
+            "saving_percent": saved,
+            "backup_exists": bool(backup["exists"]),
+            "restore_available": bool(backup["restore_available"]),
+            "warnings": row_warnings,
+        })
+
+    per_tag.sort(key=lambda row: (-(float(row.get("saving_percent") or 0.0)), str(row.get("tag_value") or "")))
+    return jsonify({
+        "ok": True,
+        "profile_id": profile_id,
+        "raw_bucket": raw_bucket,
+        "agg_bucket": agg_bucket,
+        "measurement_raw": measurement_raw,
+        "measurement_agg": measurement_agg,
+        "field": field,
+        "window": window,
+        "tag_key": tag_key,
+        "point_counts": {
+            "raw": raw_total,
+            "agg": agg_total,
+            "aggregation_strength": aggregation_strength,
+            "saving_percent": saving_percent,
+        },
+        "cardinality": {
+            "raw": len(per_tag_raw),
+            "agg": len(per_tag_agg),
+        },
+        "backup": backup,
+        "per_tag": per_tag,
+        "warnings": warnings,
+    })
 
 
 @app.get("/api/fullrestore_job/status")

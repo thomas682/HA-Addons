@@ -942,6 +942,72 @@ def test_friendly_name_merge_latest_creates_change_block(load_app_module, tmp_pa
     assert all(item["new_point"]["friendly_name"] == "Neu" for item in child_items[0])
 
 
+def test_api_audit_aggregates_counts_and_backup_status(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+
+    class _FakeRecord:
+        def __init__(self, value, values=None):
+            self._value = value
+            self.values = values or {}
+
+        def get_value(self):
+            return self._value
+
+    class _FakeQueryAPI:
+        def query_stream(self, q: str, org: str | None = None):
+            if 'from(bucket: "raw")' in q and 'group(columns: ["entity_id"])' not in q:
+                return iter([_FakeRecord(100)])
+            if 'from(bucket: "rollup")' in q and 'group(columns: ["entity_id"])' not in q:
+                return iter([_FakeRecord(20)])
+            if 'from(bucket: "raw")' in q and 'group(columns: ["entity_id"])' in q:
+                return iter([
+                    _FakeRecord(60, {"entity_id": "sensor.a"}),
+                    _FakeRecord(40, {"entity_id": "sensor.b"}),
+                ])
+            if 'from(bucket: "rollup")' in q and 'group(columns: ["entity_id"])' in q:
+                return iter([
+                    _FakeRecord(12, {"entity_id": "sensor.a"}),
+                    _FakeRecord(8, {"entity_id": "sensor.b"}),
+                ])
+            return iter([])
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+    monkeypatch.setattr(app_mod, "_rollup_profiles_load", lambda cfg: [{"id": "default", "source_bucket": "raw", "target_bucket": "rollup"}])
+    monkeypatch.setattr(app_mod, "_rollup_runs_list", lambda limit=200: [{"profile_id": "default", "backup_id": "b1", "created_at": "2026-04-29T10:00:00Z"}])
+    monkeypatch.setattr(app_mod, "_rollup_backup_validate", lambda backup_id: {"backup_id": backup_id, "created_at": "2026-04-29T10:00:00Z"})
+
+    client = app_mod.app.test_client()
+    r = client.get("/api/audit?profile_id=default&tag_key=entity_id&field=value")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["point_counts"]["raw"] == 100
+    assert j["point_counts"]["agg"] == 20
+    assert j["cardinality"]["raw"] == 2
+    assert j["backup"]["exists"] is True
+    assert j["backup"]["restore_available"] is True
+    assert len(j["per_tag"]) == 2
+    assert j["per_tag"][0]["backup_exists"] is True
+
+
 def test_stats_v2_flux_avoids_time_label_literal(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured: list[str] = []

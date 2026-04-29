@@ -490,6 +490,17 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert './api/friendly_name_merge_latest' in body
 
 
+def test_audit_page_and_nav_entry_exist():
+    audit = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "audit.html").read_text()
+    nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    assert 'data-ui="audit_page.main"' in audit
+    assert 'id="profile_id"' in audit
+    assert 'id="export_json"' in audit
+    assert 'id="export_csv"' in audit
+    assert './api/audit?' in audit
+    assert 'data-ui="nav_main.panel_audit"' in nav
+
+
 def test_dashboard_abort_buttons_and_search_width_are_updated():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()

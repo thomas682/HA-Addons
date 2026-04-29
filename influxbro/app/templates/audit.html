@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro - Audit</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    main.content { padding: 16px; }
+    h2 { margin: 0; }
+    .muted { opacity: 0.75; font-size: 12px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-top:12px; }
+    label { display:block; font-size:12px; opacity:0.85; margin-bottom:4px; }
+    input, select, button { box-sizing:border-box; }
+    input, select { width:100%; padding:10px 12px; min-height:40px; }
+    button { min-height:40px; padding:10px 12px; cursor:pointer; }
+    .btn_sm { min-height:34px; padding:8px 10px; width:auto; }
+    .ok { color:#0a7a28; white-space:pre-wrap; }
+    .err { color:#b00020; white-space:pre-wrap; }
+    .kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-top:10px; }
+    .kpi { border:1px solid #eee; border-radius:10px; padding:10px; background:#fafafa; }
+    .kpi .label { font-size:12px; opacity:0.72; }
+    .kpi .value { font-size:20px; font-weight:700; margin-top:4px; }
+    .pill { display:inline-flex; align-items:center; border:1px solid #ddd; border-radius:999px; padding:2px 8px; font-size:11px; }
+    .pill.ok { background:#eefaf1; border-color:#b6e2c0; }
+    .pill.warn { background:#fff8e1; border-color:#f0d78b; }
+    .pill.err { background:#fff0f0; border-color:#efb0b0; color:#b00020; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; table-layout: fixed; }
+    th, td { border: 1px solid #eee; padding: 6px; font-size: 12px; vertical-align: top; }
+    th { background:#f6f6f6; text-align:left; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .cell_warn { background:#fff8e1; }
+    .cell_err { background:#fff0f0; }
+    pre { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; }
+  </style>
+</head>
+<body>
+  {% include "_topbar.html" %}
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="audit_page.main" data-ib-pickkey="audit_page.main" title="audit.page">
+      <h2>Audit</h2>
+      <div class="muted">Audit-/Statistikansicht fuer verdichtete Messwerte. Vergleicht Raw und Rollup pro Profil, zeigt Einsparung, Backup-Status und Werte pro Tag-Schluessel.</div>
+
+      <div id="msg_ok" class="ok" style="margin-top:10px;"></div>
+      <div id="msg_err" class="err" style="margin-top:6px;"></div>
+
+      <section class="card" data-ui="audit_filters.section" data-ib-pickkey="audit_filters.section" title="audit.filters">
+        <div class="row">
+          <div style="min-width:240px; flex:0 1 280px;">
+            <label>Profil</label>
+            <select id="profile_id" data-ui="audit_filters.select_profile" data-ib-pickkey="audit_filters.select_profile" title="audit.profile"></select>
+          </div>
+          <div style="min-width:180px; flex:0 1 180px;">
+            <label>Fenster</label>
+            <select id="window" data-ui="audit_filters.select_window" data-ib-pickkey="audit_filters.select_window" title="audit.window">
+              <option value="-30d">30 Tage</option>
+              <option value="-90d" selected>90 Tage</option>
+              <option value="-180d">180 Tage</option>
+            </select>
+          </div>
+          <div style="min-width:180px; flex:0 1 220px;">
+            <label>Tag-Key</label>
+            <select id="tag_key" data-ui="audit_filters.select_tag_key" data-ib-pickkey="audit_filters.select_tag_key" title="audit.tag_key">
+              <option value="entity_id" selected>entity_id</option>
+              <option value="device_id">device_id</option>
+              <option value="friendly_name">friendly_name</option>
+            </select>
+          </div>
+          <div style="min-width:200px; flex:0 1 220px;">
+            <label>Field (optional)</label>
+            <input id="field" placeholder="z. B. value" data-ui="audit_filters.input_field" data-ib-pickkey="audit_filters.input_field" title="audit.field" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <button id="load" type="button" data-ui="audit_filters.btn_load" data-ib-pickkey="audit_filters.btn_load" title="audit.load">Audit laden</button>
+          <button id="export_json" class="btn_sm" type="button" data-ui="audit_filters.btn_export_json" data-ib-pickkey="audit_filters.btn_export_json" title="audit.export_json">Export JSON</button>
+          <button id="export_csv" class="btn_sm" type="button" data-ui="audit_filters.btn_export_csv" data-ib-pickkey="audit_filters.btn_export_csv" title="audit.export_csv">Export CSV</button>
+        </div>
+      </section>
+
+      <section class="card" data-ui="audit_summary.section" data-ib-pickkey="audit_summary.section" title="audit.summary">
+        <div class="muted">KPI Uebersicht</div>
+        <div class="kpis" id="kpis"></div>
+        <div style="margin-top:10px;" class="muted" id="backup_meta"></div>
+        <div style="margin-top:10px;" class="muted" id="warnings"></div>
+      </section>
+
+      <section class="card" data-ui="audit_table.section" data-ib-pickkey="audit_table.section" title="audit.table">
+        <div class="muted">Details pro Tag-Wert</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Tag-Wert</th>
+              <th>Raw</th>
+              <th>Agg</th>
+              <th>Faktor</th>
+              <th>Einsparung</th>
+              <th>Backup</th>
+              <th>Warnungen</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </section>
+
+      <section class="card" data-ui="audit_debug.section" data-ib-pickkey="audit_debug.section" title="audit.debug">
+        <div class="muted">Letzte API-Antwort</div>
+        <pre id="debug_json"></pre>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const okEl = document.getElementById('msg_ok');
+    const errEl = document.getElementById('msg_err');
+    const profileSel = document.getElementById('profile_id');
+    const windowSel = document.getElementById('window');
+    const tagKeySel = document.getElementById('tag_key');
+    const fieldEl = document.getElementById('field');
+    const kpisEl = document.getElementById('kpis');
+    const rowsEl = document.getElementById('rows');
+    const warningsEl = document.getElementById('warnings');
+    const debugEl = document.getElementById('debug_json');
+    const backupMetaEl = document.getElementById('backup_meta');
+    let LAST_AUDIT = null;
+    let PROFILES = [];
+
+    function setOk(msg){ okEl.textContent = msg || ''; }
+    function setErr(msg){ errEl.textContent = msg || ''; }
+    function fmtInt(v){ const n = Number(v || 0); return isFinite(n) ? n.toLocaleString('de-DE') : '0'; }
+    function fmtPct(v){ const n = Number(v); return isFinite(n) ? n.toFixed(1) + '%' : ''; }
+    function fmtRatio(v){ const n = Number(v); return isFinite(n) ? n.toFixed(2) : ''; }
+
+    async function api(url){
+      const r = await fetch(url, { headers: { 'X-InfluxBro-Request': '1', 'X-Requested-With': 'InfluxBro' } });
+      const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+      if(!r.ok || j.ok === false) throw new Error(j.error || ('HTTP ' + r.status));
+      return j;
+    }
+
+    async function loadProfiles(){
+      const j = await api('./api/rollup/profiles');
+      PROFILES = Array.isArray(j.profiles) ? j.profiles : [];
+      profileSel.innerHTML = '';
+      PROFILES.forEach((p)=>{
+        const o = document.createElement('option');
+        o.value = String(p.id || '');
+        o.textContent = String(p.name || p.id || '');
+        profileSel.appendChild(o);
+      });
+      if(PROFILES.length && !profileSel.value) profileSel.value = String(PROFILES[0].id || '');
+    }
+
+    function currentQuery(){
+      const qs = new URLSearchParams();
+      if(profileSel.value) qs.set('profile_id', profileSel.value);
+      if(windowSel.value) qs.set('window', windowSel.value);
+      if(tagKeySel.value) qs.set('tag_key', tagKeySel.value);
+      const field = String(fieldEl.value || '').trim();
+      if(field) qs.set('field', field);
+      return qs.toString();
+    }
+
+    function renderKpis(audit){
+      const pc = audit.point_counts || {};
+      const card = audit.cardinality || {};
+      const backup = audit.backup || {};
+      const items = [
+        ['Raw-Punkte', fmtInt(pc.raw)],
+        ['Verdichtete Punkte', fmtInt(pc.agg)],
+        ['Aggregationsfaktor', fmtRatio(pc.aggregation_strength)],
+        ['Einsparung', fmtPct(pc.saving_percent)],
+        ['Kardinalitaet Raw', fmtInt(card.raw)],
+        ['Kardinalitaet Agg', fmtInt(card.agg)],
+        ['Backup', backup.exists ? 'Ja' : 'Nein'],
+        ['Restore', backup.restore_available ? 'Ja' : 'Nein'],
+      ];
+      kpisEl.innerHTML = items.map(([label, value]) => `<div class="kpi"><div class="label">${label}</div><div class="value">${value}</div></div>`).join('');
+      backupMetaEl.textContent = backup.exists ? `Backup: ${String(backup.backup_id || '')} | erstellt: ${String(backup.created_at || '')}` : 'Kein passender Rollup-Backup-Lauf gefunden.';
+    }
+
+    function renderRows(audit){
+      const rows = Array.isArray(audit.per_tag) ? audit.per_tag : [];
+      rowsEl.innerHTML = '';
+      rows.forEach((row)=>{
+        const warns = Array.isArray(row.warnings) ? row.warnings : [];
+        const cls = warns.includes('agg_points_zero') ? 'cell_err' : (warns.length ? 'cell_warn' : '');
+        const tr = document.createElement('tr');
+        tr.innerHTML = [
+          `<td class="mono">${String(row.tag_value || '')}</td>`,
+          `<td class="mono ${cls}">${fmtInt(row.raw_points)}</td>`,
+          `<td class="mono ${cls}">${fmtInt(row.agg_points)}</td>`,
+          `<td class="mono ${cls}">${fmtRatio(row.reduction_ratio)}</td>`,
+          `<td class="mono ${cls}">${fmtPct(row.saving_percent)}</td>`,
+          `<td>${row.backup_exists ? '<span class="pill ok">vorhanden</span>' : '<span class="pill err">fehlt</span>'}</td>`,
+          `<td>${warns.join(', ')}</td>`,
+        ].join('');
+        rowsEl.appendChild(tr);
+      });
+    }
+
+    function renderWarnings(audit){
+      const warns = Array.isArray(audit.warnings) ? audit.warnings : [];
+      warningsEl.textContent = warns.length ? ('Warnungen: ' + warns.join(' | ')) : 'Keine Warnungen';
+    }
+
+    function downloadText(name, text, mime){
+      const blob = new Blob([text], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportCsv(){
+      if(!LAST_AUDIT) return;
+      const rows = Array.isArray(LAST_AUDIT.per_tag) ? LAST_AUDIT.per_tag : [];
+      const lines = ['tag_value,raw_points,agg_points,reduction_ratio,saving_percent,backup_exists,warnings'];
+      rows.forEach((row)=>{
+        const warns = Array.isArray(row.warnings) ? row.warnings.join('|') : '';
+        lines.push([
+          JSON.stringify(String(row.tag_value || '')),
+          String(row.raw_points || 0),
+          String(row.agg_points || 0),
+          String(row.reduction_ratio || 0),
+          String(row.saving_percent || 0),
+          row.backup_exists ? 'true' : 'false',
+          JSON.stringify(warns),
+        ].join(','));
+      });
+      downloadText('audit.csv', lines.join('\n'), 'text/csv;charset=utf-8');
+    }
+
+    async function loadAudit(){
+      setOk(''); setErr('');
+      const j = await api('./api/audit?' + currentQuery());
+      LAST_AUDIT = j;
+      debugEl.textContent = JSON.stringify(j, null, 2);
+      renderKpis(j);
+      renderRows(j);
+      renderWarnings(j);
+      setOk('Audit geladen');
+    }
+
+    document.getElementById('load').addEventListener('click', ()=>loadAudit().catch((e)=>setErr(String(e))));
+    document.getElementById('export_json').addEventListener('click', ()=>{ if(LAST_AUDIT) downloadText('audit.json', JSON.stringify(LAST_AUDIT, null, 2), 'application/json;charset=utf-8'); });
+    document.getElementById('export_csv').addEventListener('click', ()=>exportCsv());
+
+    (async ()=>{
+      try{
+        await loadProfiles();
+        await loadAudit();
+      }catch(e){ setErr(String(e)); }
+    })();
+  </script>
+</body>
+</html>

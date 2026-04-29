@@ -48,6 +48,7 @@ Links findest du die Bereiche:
 - Statistik: Gesamtstatistik ueber viele Serien anzeigen.
 - Datenqualitaet: Raw/Clean/Rollup Architektur verwalten (Buckets/Regeln/Debug) und Query-Beispiele nutzen.
 - Verdichtung: Clean -> Rollup automatisch verdichten (Pflicht-Backup, Run/Restore).
+- Audit: Audit-/Statistikansicht fuer Verdichtung mit Raw-vs.-Rollup-Vergleich, Backup-Status und Einsparung pro Tag-Key.
 - Datenpflege: Qualitaetsanalyse und Vorschlaege fuer Reparaturen (Center).
 - Monitor: Ueberwachte Messwert-Keys pruefen, Fault-Phasen verfolgen, offene Korrekturen verwalten und Template-Status abrufen.
 - Backup: Backups fuer einen einzelnen Messwert erstellen und verwalten.
@@ -502,6 +503,26 @@ Timer Jobs:
 - `Modus`: erlaubt das Aendern der Scheduler-Parameter:
   - `hours`: alle N Stunden
   - `daily`: taeglich um HH:MM:SS
+
+## Audit
+
+- Die Seite `Audit` vergleicht fuer ein Rollup-Profil die Punktmengen im Raw-/Source-Bucket gegen den Rollup-/Target-Bucket.
+- Default-Werte kommen aus dem gewaehlten Rollup-Profil (`source_bucket`, `target_bucket`).
+- Filter:
+  - `Profil`: bestimmt Source-/Target-Bucket.
+  - `Fenster`: 30 / 90 / 180 Tage.
+  - `Tag-Key`: z. B. `entity_id`, `device_id`, `friendly_name`.
+  - `Field`: optional, Default `value`.
+- KPI-Block:
+  - Raw-Punkte
+  - Verdichtete Punkte
+  - Aggregationsfaktor
+  - Einsparung in Prozent
+  - Kardinalitaet Raw/Agg bezogen auf den gewaehlten Tag-Key
+  - Backup vorhanden / Restore verfuegbar
+- Die Detailtabelle zeigt pro Tag-Wert Raw-/Agg-Punkte, Faktor, Einsparung und Warnungen.
+- Backup-Status basiert auf dem neuesten Rollup-Run mit Backup fuer das gewaehlte Profil.
+- `Export JSON` und `Export CSV` erzeugen den aktuellen Audit-Stand direkt im Browser.
   - `weekly`: woechentlich (Wochentag 0=Mo..6=So) um HH:MM:SS
   - `manual`: nur manuell per `Start`
 - `History`: oeffnet einen Dialog mit zusammengefuehrter Timer-Historie fuer die selektierten Timer; Filter nach Timer-ID und Freitextsuche sind im Dialog moeglich.

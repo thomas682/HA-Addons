@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.487
+
+### Enhancement
+
+- Verdichtung / Audit: Neue Audit-Seite mit KPI-Uebersicht fuer Raw- vs. Rollup-Punkte, Aggregationsfaktor, Einsparung, Backup-/Restore-Status und Detailtabelle pro Tag-Key. Die Seite nutzt vorhandene Rollup-Profile und Rollup-Run-Backups als Datenbasis und erlaubt JSON-/CSV-Export direkt im Browser. ([#421](https://github.com/thomas682/HA-Addons/issues/421))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.486
 
 ### Enhancement
