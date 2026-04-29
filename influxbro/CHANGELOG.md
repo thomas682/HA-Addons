@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.493
+
+### Enhancement
+
+- Dashboard / Mehrere Messwertnamen: Die bereits vorhandene Namens-Zeitleiste wurde stilistisch auf eine kompakte Balkenansicht umgebaut. Unterhalb der Messwertauswahl erscheint jetzt die Section `Mehrere Messwertnamen` mit Uebersichts-Badges, Statuschips (`aktuell` / `historisch`) und einem horizontalen Zeitbalken pro historischem `friendly_name`. Die bestehende Merge-/Undo-Logik bleibt unveraendert erhalten. ([#439](https://github.com/thomas682/HA-Addons/issues/439))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.492
 
 ### Fix

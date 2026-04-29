@@ -550,26 +550,16 @@
   <div class="table_wrap" id="name_timeline_panel" style="display:none; margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
     <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;">
       <div>
-        <div style="font-weight:700;">Analyse Messwertname</div>
+        <div style="font-weight:700;" data-ui="dashboard_selection.section_multi_name_title" data-ib-pickkey="dashboard_selection.section_multi_name_title">Mehrere Messwertnamen</div>
         <div class="muted" id="name_timeline_title"></div>
       </div>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         <button id="name_merge_latest_btn" class="btn_sm" style="width:auto; min-width:34px; padding:6px 8px;" data-ui="dashboard_selection.btn_name_merge_latest" data-ib-pickkey="dashboard_selection.btn_name_merge_latest" disabled>Auf letzten Namen vereinigen</button>
       </div>
     </div>
-    <div class="table_box" style="max-height: 240px; overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px;">
-      <table style="margin-top:0;">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Von</th>
-            <th>Bis</th>
-            <th>Anzahl</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="name_timeline_rows"></tbody>
-      </table>
+    <div id="name_timeline_summary" class="muted" style="margin-top:8px; display:none; gap:8px; flex-wrap:wrap; align-items:center;" data-ui="dashboard_selection.panel_name_timeline_summary" data-ib-pickkey="dashboard_selection.panel_name_timeline_summary"></div>
+    <div class="table_box" style="max-height: 300px; overflow:auto; border: 1px solid #eee; border-radius: 10px; margin-top: 8px; background:#fcfcfc;">
+      <div id="name_timeline_rows" style="display:flex; flex-direction:column; gap:10px; padding:10px 12px;"></div>
     </div>
   </div>
 
@@ -1135,6 +1125,7 @@ const $tagChoicesTitle = document.getElementById('tag_choices_title');
 const $tagChoicesRows = document.getElementById('tag_choices_rows');
 const $nameTimelinePanel = document.getElementById('name_timeline_panel');
 const $nameTimelineTitle = document.getElementById('name_timeline_title');
+const $nameTimelineSummary = document.getElementById('name_timeline_summary');
 const $nameTimelineRows = document.getElementById('name_timeline_rows');
 const $nameMergeLatestBtn = document.getElementById('name_merge_latest_btn');
 
@@ -4796,8 +4787,22 @@ function hideNameTimelinePanel(){
     if($nameTimelinePanel) $nameTimelinePanel.style.display = 'none';
     if($nameTimelineRows) $nameTimelineRows.innerHTML = '';
     if($nameTimelineTitle) $nameTimelineTitle.textContent = '';
+    if($nameTimelineSummary){ $nameTimelineSummary.innerHTML = ''; $nameTimelineSummary.style.display = 'none'; }
     if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = true;
   }catch(e){}
+}
+
+function _nameTimelinePct(totalStartMs, totalStopMs, valueMs){
+  try{
+    const total = Math.max(1, totalStopMs - totalStartMs);
+    return Math.max(0, Math.min(100, ((valueMs - totalStartMs) / total) * 100));
+  }catch(e){
+    return 0;
+  }
+}
+
+function _nameTimelineBadge(text, bg, fg){
+  return `<span style="display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:3px 9px; font-size:11px; font-weight:700; background:${bg}; color:${fg};">${_escHtml(String(text || ''))}</span>`;
 }
 
 function renderNameTimeline(rows){
@@ -4817,21 +4822,49 @@ function renderNameTimeline(rows){
     }
     const latest = rs[0] || null;
     const latestName = latest ? String(latest.value || '') : '';
+    const validStartMs = rs.map(row => Date.parse(String(row && row.oldest_time ? row.oldest_time : ''))).filter(v => isFinite(v));
+    const validStopMs = rs.map(row => Date.parse(String(row && row.newest_time ? row.newest_time : ''))).filter(v => isFinite(v));
+    const totalStartMs = validStartMs.length ? Math.min(...validStartMs) : 0;
+    const totalStopMs = validStopMs.length ? Math.max(...validStopMs) : 1;
     $nameTimelineTitle.textContent = latestName
       ? `Historische friendly_name-Werte fuer ${String(($e && $e.value) || '').trim()} im aktuellen Zeitraum. Neuester Name: ${latestName}`
       : 'Historische friendly_name-Werte im aktuellen Zeitraum.';
+    if($nameTimelineSummary){
+      const variants = rs.length;
+      const totalCount = rs.reduce((sum, row)=> sum + (Number(row && row.count || 0) || 0), 0);
+      $nameTimelineSummary.innerHTML = [
+        _nameTimelineBadge(`${variants} Varianten`, '#eef3ff', '#1d3f72'),
+        _nameTimelineBadge(`${totalCount} Punkte`, '#eefaf1', '#17522b'),
+        _nameTimelineBadge(`Neuester Name: ${latestName || '-'}`, '#fff8e6', '#7a5300'),
+      ].join(' ');
+      $nameTimelineSummary.style.display = 'flex';
+    }
     $nameTimelineRows.innerHTML = '';
     rs.forEach((row, idx)=>{
-      const tr = document.createElement('tr');
       const isLatest = idx === 0;
-      tr.innerHTML = [
-        `<td>${String(row.value || '')}</td>`,
-        `<td>${row.oldest_time ? fmtTs(String(row.oldest_time)) : ''}</td>`,
-        `<td>${row.newest_time ? fmtTs(String(row.newest_time)) : ''}</td>`,
-        `<td>${(row.count !== null && row.count !== undefined) ? String(row.count) : ''}</td>`,
-        `<td>${isLatest ? 'aktuell' : 'historisch'}</td>`,
+      const oldestMs = Date.parse(String(row && row.oldest_time ? row.oldest_time : ''));
+      const newestMs = Date.parse(String(row && row.newest_time ? row.newest_time : ''));
+      const leftPct = isFinite(oldestMs) ? _nameTimelinePct(totalStartMs, totalStopMs, oldestMs) : 0;
+      const rightPct = isFinite(newestMs) ? _nameTimelinePct(totalStartMs, totalStopMs, newestMs) : leftPct;
+      const widthPct = Math.max(2, rightPct - leftPct);
+      const card = document.createElement('div');
+      card.style.border = '1px solid #ececec';
+      card.style.borderRadius = '12px';
+      card.style.background = isLatest ? '#fffdf4' : '#fff';
+      card.style.padding = '10px 12px';
+      card.setAttribute('data-ui', 'dashboard_selection.panel_name_timeline_row');
+      card.setAttribute('data-ib-pickkey', 'dashboard_selection.panel_name_timeline_row');
+      card.innerHTML = [
+        `<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start; flex-wrap:wrap;">`,
+        `  <div style="font-weight:700;">${_escHtml(String(row.value || ''))}</div>`,
+        `  <div>${isLatest ? _nameTimelineBadge('aktuell', '#fff2c7', '#6c4d00') : _nameTimelineBadge('historisch', '#f0f0f0', '#555')}</div>`,
+        `</div>`,
+        `<div class="muted" style="margin-top:4px; font-size:12px;">${row.oldest_time ? fmtTs(String(row.oldest_time)) : ''} -> ${row.newest_time ? fmtTs(String(row.newest_time)) : ''} | ${(row.count !== null && row.count !== undefined) ? String(row.count) : '0'} Punkte</div>`,
+        `<div style="position:relative; height:12px; border-radius:999px; background:#eef1f5; margin-top:10px; overflow:hidden;">`,
+        `  <div style="position:absolute; left:${leftPct.toFixed(2)}%; width:${widthPct.toFixed(2)}%; min-width:10px; top:0; bottom:0; border-radius:999px; background:${isLatest ? 'linear-gradient(90deg,#ffb347,#ffd36e)' : 'linear-gradient(90deg,#7aa7ff,#9cc0ff)'};"></div>`,
+        `</div>`,
       ].join('');
-      $nameTimelineRows.appendChild(tr);
+      $nameTimelineRows.appendChild(card);
     });
     if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = !(latestName && rs.length > 1);
     $nameTimelinePanel.style.display = 'block';
