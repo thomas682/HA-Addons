@@ -1411,6 +1411,8 @@ DEFAULT_CFG = {
     "ui_sel_desc_font_px": 10,
     "ui_sel_auto_width": True,
     "ui_sel_width_px": 260,
+    "selector_query_limit_enabled": False,
+    "selector_query_limit_days": 30,
 
     # Outlier search limit (max results returned in raw outlier search)
     "ui_raw_outlier_search_limit": 5000,
@@ -8195,6 +8197,47 @@ def _selector_range_key(range_key: str | None, start: datetime | None, stop: dat
     return rk if rk else "all"
 
 
+def _selector_effective_time_filter(
+    cfg: dict[str, Any],
+    range_key: str | None,
+    start: datetime | None,
+    stop: datetime | None,
+) -> tuple[str, datetime | None, datetime | None]:
+    selector_range = _selector_range_key(range_key, start, stop)
+    if not bool(cfg.get("selector_query_limit_enabled", False)):
+        return selector_range, start, stop
+
+    try:
+        limit_days = int(cfg.get("selector_query_limit_days", 30) or 30)
+    except Exception:
+        limit_days = 30
+    if limit_days < 1:
+        limit_days = 1
+    if limit_days > 3650:
+        limit_days = 3650
+    limit_range = f"{limit_days}d"
+
+    rk = str(range_key or "").strip().lower()
+    if rk == "custom" and start and stop:
+        return "custom", start, stop
+    if start and stop:
+        return limit_range, None, None
+    if selector_range.strip().lower() in ("all", "alle", "inf", "infinite", "infinity"):
+        return limit_range, None, None
+
+    m = re.match(r"^(\d+)([hd])$", selector_range.strip().lower())
+    if m:
+        amount = int(m.group(1))
+        unit = m.group(2)
+        if unit == "h":
+            return selector_range, None, None
+        if amount <= limit_days:
+            return selector_range, None, None
+        return limit_range, None, None
+
+    return limit_range, None, None
+
+
 def _log_selector_debug(kind: str, payload: dict[str, Any]) -> None:
     try:
         safe = json.dumps(payload, ensure_ascii=True)
@@ -8745,9 +8788,14 @@ def _initial_suggestions(cfg: dict[str, Any]) -> dict[str, list[str]]:
                 for r in t.records:
                     ms.append(str(r.get_value()))
             suggestions["measurements"] = sorted(set(ms))
+            selector_range, _selector_start_dt, _selector_stop_dt = _selector_effective_time_filter(cfg_eff, None, None, None)
+            selector_start_arg = range_to_flux(selector_range)
 
             for tag in ("friendly_name", "entity_id"):
-                q = f'import "influxdata/influxdb/schema"\nschema.tagValues(bucket: "{cfg_eff["bucket"]}", tag: "{tag}", start: -30d)'
+                q = (
+                    f'import "influxdata/influxdb/schema"\n'
+                    f'schema.tagValues(bucket: "{cfg_eff["bucket"]}", tag: "{tag}", start: {selector_start_arg})'
+                )
                 vals = []
                 for t in qapi.query(q, org=cfg_eff["org"]):
                     for r in t.records:
@@ -21287,6 +21335,8 @@ def api_set_config():
     _clamp_color("ui_job_color_cancelled", "#f6f6f6")
     _clamp_color("ui_timer_disabled_color", "#7a7a7a")
     _clamp_int("ui_timer_disabled_opacity", 72, 0, 100)
+    _clamp_int("selector_query_limit_days", 30, 1, 3650)
+    cfg["selector_query_limit_enabled"] = bool(cfg.get("selector_query_limit_enabled", False))
     _clamp_color("ui_picker_outline_light_bg", "#FF00AA")
     _clamp_color("ui_picker_outline_dark_bg", "#00E5FF")
     _clamp_color("ui_analysis_cache_hidden_color", "#b0b0b0")
@@ -21866,7 +21916,7 @@ def measurements():
             start_dt, stop_dt = _get_start_stop_from_payload({"start": start_raw, "stop": stop_raw})
         except Exception as e:
             return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
-    selector_range = _selector_range_key(range_key, start_dt, stop_dt)
+    selector_range, selector_start_dt, selector_stop_dt = _selector_effective_time_filter(cfg, range_key, start_dt, stop_dt)
     try:
         selector_limit = min(200000, max(1, int(cfg.get("ui_query_max_points", 5000) or 5000)))
     except Exception:
@@ -21879,8 +21929,8 @@ def measurements():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                if field or entity_id or friendly_name or start_dt or stop_dt:
-                    range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
+                if field or entity_id or friendly_name or selector_start_dt or selector_stop_dt or selector_range:
+                    range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
                     predicate_parts = ["exists r._measurement"]
                     if field:
                         predicate_parts.append(f"r._field == {_flux_str(field)}")
@@ -21952,7 +22002,7 @@ def fields():
             start_dt, stop_dt = _get_start_stop_from_payload({"start": start_raw, "stop": stop_raw})
         except Exception as e:
             return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
-    selector_range = _selector_range_key(range_key, start_dt, stop_dt)
+    selector_range, selector_start_dt, selector_stop_dt = _selector_effective_time_filter(cfg, range_key, start_dt, stop_dt)
     try:
         selector_limit = min(200000, max(1, int(cfg.get("ui_query_max_points", 5000) or 5000)))
     except Exception:
@@ -21967,7 +22017,7 @@ def fields():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
+                range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
                 predicate_parts = ["exists r._field"]
                 if measurement:
                     predicate_parts.append(f"r._measurement == {_flux_str(measurement)}")
@@ -22050,7 +22100,7 @@ def tag_values():
             start_dt, stop_dt = _get_start_stop_from_payload({"start": start_raw, "stop": stop_raw})
         except Exception as e:
             return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
-    selector_range = _selector_range_key(range_key, start_dt, stop_dt)
+    selector_range, selector_start_dt, selector_stop_dt = _selector_effective_time_filter(cfg, range_key, start_dt, stop_dt)
     try:
         selector_limit = min(200000, max(1, int(cfg.get("ui_query_max_points", 5000) or 5000)))
     except Exception:
@@ -22076,8 +22126,8 @@ def tag_values():
 
             with v2_client(cfg) as c:
                 # schema.tagValues does not support stop; for custom ranges we use a direct query.
-                if stop_dt and start_dt:
-                    range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
+                if selector_stop_dt and selector_start_dt:
+                    range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
                     q = f'''
 from(bucket: "{cfg["bucket"]}")
   {range_clause}
@@ -22162,6 +22212,16 @@ def api_tag_combo_ranges():
     group_tag = str(body.get("group_tag") or "").strip()
     entity_id = str(body.get("entity_id") or "").strip() or None
     friendly_name = str(body.get("friendly_name") or "").strip() or None
+    range_key = body.get("range")
+
+    start_dt: datetime | None = None
+    stop_dt: datetime | None = None
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
+
+    selector_range, selector_start_dt, selector_stop_dt = _selector_effective_time_filter(cfg, range_key, start_dt, stop_dt)
 
     if not measurement or not field:
         return jsonify({"ok": False, "error": "measurement and field required"}), 400
@@ -22201,9 +22261,10 @@ def api_tag_combo_ranges():
     predicate = " and ".join(conds)
 
     bucket = str(cfg["bucket"])
+    range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
     q = f'''
 base = from(bucket: "{bucket}")
-  |> range(start: time(v: "1970-01-01T00:00:00Z"))
+  {range_clause}
   |> filter(fn: (r) => {predicate})
   |> keep(columns: ["{group_tag}", "_time"])
   |> group(columns: ["{group_tag}"])
@@ -32115,7 +32176,7 @@ def resolve_signal():
         start_dt, stop_dt = _get_start_stop_from_payload(body)
     except Exception as e:
         return jsonify({"ok": False, "error": f"invalid start/stop: {e}"}), 400
-    selector_range = _selector_range_key(range_key, start_dt, stop_dt)
+    selector_range, selector_start_dt, selector_stop_dt = _selector_effective_time_filter(cfg, range_key, start_dt, stop_dt)
 
     # resolve_signal is a selector-like helper. This repo now defaults selectors
     # to full history when no explicit time filter is provided.
@@ -32130,7 +32191,7 @@ def resolve_signal():
                 }), 400
 
             extra = flux_tag_filter(entity_id, friendly_name)
-            range_clause = _flux_range_clause(str(eff_range), start_dt, stop_dt)
+            range_clause = _flux_range_clause(str(eff_range), selector_start_dt, selector_stop_dt)
             mfilter = f" and r._measurement == {_flux_str(measurement_filter)}" if measurement_filter else ""
             with v2_client(cfg) as c:
                 q = f'''

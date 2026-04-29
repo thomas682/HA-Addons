@@ -66,6 +66,7 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
             "ui_raw_center_range_default": -5,
             "ui_raw_center_min_points": 0,
             "ui_timer_disabled_opacity": 999,
+            "selector_query_limit_days": 0,
         },
     )
     assert r.status_code == 200
@@ -79,6 +80,7 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
     assert cfg["ui_raw_center_range_default"] == 0
     assert cfg["ui_raw_center_min_points"] == 1
     assert cfg["ui_timer_disabled_opacity"] == 100
+    assert cfg["selector_query_limit_days"] == 1
 
 
 def test_config_logging_batch_endpoint_acks_and_persists(load_app_module, tmp_path):
@@ -458,6 +460,8 @@ def test_settings_layout_and_null_safe_bindings_are_present():
     assert '_setVal(el.ui_job_color_running' in config
     assert "ui_timer_disabled_color" in config
     assert "ui_timer_disabled_opacity" in config
+    assert "selector_query_limit_enabled" in config
+    assert "selector_query_limit_days" in config
     assert 'window.__InfluxBroEarlyClientLogInstalled' in config
     assert 'function reportConfigError(message, extra, stack){' in config
     assert 'function _getEl(id){' in config

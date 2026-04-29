@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.484
+
+### Fix
+
+- Dashboard / Messwertwahl: Selector-Abfragen fuer Measurements, Fields, `entity_id`, `friendly_name`, `resolve_signal` und Tag-Kombinationsbereiche verwenden jetzt denselben Zeitraum wie die aktuelle Dashboard-Auswahl. Fuer `All` bleibt die Messwertwahl standardmaessig unlimitiert; optional kann sie in den Einstellungen bewusst auf X Tage begrenzt werden. Custom-Start/Stop behaelt dabei Vorrang. ([#438](https://github.com/thomas682/HA-Addons/issues/438))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.483
 
 ### Enhancement

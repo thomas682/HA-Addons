@@ -1072,6 +1072,19 @@
                   <input id="ui_sel_width_px" type="number" min="120" max="900" />
                 </div>
               </div>
+              <div class="param_row">
+                <div class="param_label">Einschraenkung Abfrage Messwertwahl auf x Tage</div>
+                <div class="param_control">
+                  <label class="ib_chk_row"><input type="checkbox" id="selector_query_limit_enabled" data-ui="config_settings.chk_selector_query_limit_enabled" data-ib-pickkey="config_settings.chk_selector_query_limit_enabled" title="settings.selector_query_limit_enabled" /><span></span></label>
+                </div>
+              </div>
+              <div class="param_row">
+                <div class="param_label">Tage fuer eingeschraenkte Messwertwahl</div>
+                <div class="param_control">
+                  <input id="selector_query_limit_days" class="cfg_num_wide" type="number" min="1" max="3650" step="1" />
+                </div>
+              </div>
+              <div class="section_note"><span class="muted">Diese Option begrenzt nur Selector-Abfragen der Messwertwahl wie `entity_id`- und `friendly_name`-Vorschlaege. Die eigentliche Dashboard-Datenabfrage bleibt unveraendert. Standardmaessig ist die Einschraenkung aus, damit bei Zeitraum `All` auch historische Namen und Tag-Kombinationen gefunden werden.</span></div>
             </div>
           </div>
         </details>
@@ -1668,7 +1681,7 @@ const ids = [
   "ui_status_bar_height_px","ui_status_bar_bg","ui_status_bar_fg",
   "ui_status_show_sysinfo",
   "ui_filter_label_width_px","ui_filter_control_width_px","ui_filter_search_width_px"
-  ,"ui_sel_auto_width","ui_sel_width_px"
+  ,"ui_sel_auto_width","ui_sel_width_px","selector_query_limit_enabled","selector_query_limit_days"
   ,"jobs_max_runtime_seconds","ui_job_color_running","ui_job_color_done","ui_job_color_error","ui_job_color_cancelled","ui_timer_disabled_color","ui_timer_disabled_opacity"
   ,"ui_tooltips_enabled"
   ,"ui_tooltip_doc_open_mode"
@@ -2473,6 +2486,18 @@ function _getEl(id){
   }
 }
 
+function _normalizeSelectorLimitUi(){
+  try{
+    const enabled = !!(el.selector_query_limit_enabled && el.selector_query_limit_enabled.checked);
+    if(el.selector_query_limit_days){
+      el.selector_query_limit_days.disabled = !enabled;
+      const raw = String(el.selector_query_limit_days.value || '').trim();
+      const num = parseInt(raw, 10);
+      if(enabled && (!raw || !isFinite(num) || num < 1)) el.selector_query_limit_days.value = '30';
+    }
+  }catch(e){}
+}
+
 function _isHexColor(s){
   const x = String(s || '').trim();
   return /^#[0-9a-fA-F]{6}$/.test(x);
@@ -2631,6 +2656,7 @@ try{ if(el.ui_job_color_done) el.ui_job_color_done.addEventListener('input', ()=
 try{ if(el.ui_job_color_error) el.ui_job_color_error.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 try{ if(el.ui_job_color_cancelled) el.ui_job_color_cancelled.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
 try{ if(el.ui_timer_disabled_color) el.ui_timer_disabled_color.addEventListener('input', ()=>_syncJobColorPickersFromText()); }catch(e){}
+try{ if(el.selector_query_limit_enabled) el.selector_query_limit_enabled.addEventListener('change', ()=>_normalizeSelectorLimitUi()); }catch(e){}
 
 function _syncLogColorPickersFromText(){
   try{ const v = _getEl('ui_log_error_bg') ? String(_getEl('ui_log_error_bg').value || '').trim() : ''; if($logErrorBgColor && _isHexColor(v)) $logErrorBgColor.value = v; }catch(e){}
@@ -3016,6 +3042,9 @@ function setForm(cfg){
 
   _setChecked(el.ui_sel_auto_width, !!cfg.ui_sel_auto_width);
   _safeSet(el.ui_sel_width_px, 'value', cfg.ui_sel_width_px ?? 260);
+  _setChecked(el.selector_query_limit_enabled, !!cfg.selector_query_limit_enabled);
+  _safeSet(el.selector_query_limit_days, 'value', cfg.selector_query_limit_days ?? 30);
+  _normalizeSelectorLimitUi();
 
   _safeSet(el.jobs_max_runtime_seconds, 'value', cfg.jobs_max_runtime_seconds ?? 3600);
   _setVal(el.ui_job_color_running, cfg.ui_job_color_running ?? '#eef3ff');
@@ -3090,6 +3119,7 @@ function setForm(cfg){
 }
 
 function getForm(){
+  _normalizeSelectorLimitUi();
   const outlierCfg = _outlierCfgFromRows(_readOutliersTable());
   return {
     influx_yaml_path: (el.influx_yaml_path.value || "").trim(),
@@ -3186,6 +3216,8 @@ function getForm(){
 
     ui_sel_auto_width: _isChecked(el.ui_sel_auto_width),
     ui_sel_width_px: parseInt(el.ui_sel_width_px.value, 10),
+    selector_query_limit_enabled: _isChecked(el.selector_query_limit_enabled),
+    selector_query_limit_days: parseInt(el.selector_query_limit_days.value, 10),
 
     jobs_max_runtime_seconds: parseInt(el.jobs_max_runtime_seconds.value, 10),
     ui_job_color_running: String(el.ui_job_color_running.value || '').trim(),

@@ -4746,6 +4746,7 @@ async function loadComboRanges(groupTag, fixed){
     entity_id: (fx.entity_id !== undefined) ? fx.entity_id : ($e ? ($e.value || null) : null),
     friendly_name: (fx.friendly_name !== undefined) ? fx.friendly_name : ($n ? ($n.value || null) : null),
     limit: 80,
+    ...selectorQueryTimeParams(),
   };
   const j = await api(
     './api/tag_combo_ranges',
@@ -5185,6 +5186,21 @@ function currentTimeFilter(){
   return { start: s, stop: e, range: rk };
 }
 
+function selectorQueryTimeParams(){
+  try{
+    const tf = currentTimeFilter();
+    const out = {};
+    if(tf && tf.range) out.range = tf.range;
+    if(tf && tf.start && tf.stop){
+      out.start = tf.start;
+      out.stop = tf.stop;
+    }
+    return out;
+  }catch(e){
+    return { range: ($r && $r.value) ? String($r.value || 'all') : 'all' };
+  }
+}
+
 function currentFilters(){
   const measurementValue = String(($mf && $mf.value) || ($m && $m.value) || "").trim();
   return {
@@ -5485,7 +5501,8 @@ function renderEntity(){
 async function loadMeasurements(opts){
   const o = opts || {};
   try{
-    const j = await api("./api/measurements", null, { key: "measurements", status: "Lade Measurements...", silent: !!o.silent });
+    const qs = new URLSearchParams(selectorQueryTimeParams()).toString();
+    const j = await api("./api/measurements" + (qs ? ("?" + qs) : ""), null, { key: "measurements", status: "Lade Measurements...", silent: !!o.silent });
     ALL_MEASUREMENTS = (j.measurements || []).map(String);
     renderMeasurements();
     return true;
@@ -5546,7 +5563,8 @@ async function loadDashboardFields(measurement, opts){
     if($f && !o.silent) $f.value = "";
     return true;
   }
-  const j = await api("./api/fields?measurement=" + encodeURIComponent(m), null, { key: "fields", status: "Lade Fields...", silent: !!o.silent });
+  const qp = new URLSearchParams({ measurement: m, ...selectorQueryTimeParams() });
+  const j = await api("./api/fields?" + qp.toString(), null, { key: "fields", status: "Lade Fields...", silent: !!o.silent });
   ALL_FIELDS = (j.fields || []).map(String).filter(Boolean);
   if($fieldList) $fieldList.innerHTML = ALL_FIELDS.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');
   _setSelCount($cntField, ALL_FIELDS.length);
@@ -5560,7 +5578,7 @@ async function refreshDashboardSuggestions(opts){
   const meas = String(s.measurement || '').trim();
   const eid = String(s.entity_id || '').trim();
   const fn = String(s.friendly_name || '').trim();
-  const common = { range: '24h' };
+  const common = selectorQueryTimeParams();
   if(meas) common.measurement = meas;
   try{
     ALL_ENTITY = await dashboardLoadTagValues('entity_id', {...common, friendly_name: fn || ''});
@@ -5600,7 +5618,8 @@ async function resolveDashboardSource(){
     entity_id: s.entity_id,
     measurement_filter: s.measurement || null,
   };
-  if(tf && tf.start && tf.stop){ payload.range = 'custom'; payload.start = tf.start; payload.stop = tf.stop; }
+  if(tf && tf.range) payload.range = tf.range;
+  if(tf && tf.start && tf.stop){ payload.start = tf.start; payload.stop = tf.stop; }
   const t0 = performance.now();
   const j = await api(
     "./api/resolve_signal",
