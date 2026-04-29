@@ -5713,7 +5713,7 @@ async function refreshDashboardSuggestions(opts){
     _selApplyWidthForInput($e, ALL_ENTITY);
     try{ window.InfluxBroCascade && window.InfluxBroCascade.syncInput && window.InfluxBroCascade.syncInput($e, ALL_ENTITY, { requireSource: [$n, $mf, $f], preserveWhileFocused: true }); }catch(e){}
     logSelectorLoad('entity_id', ALL_ENTITY, { measurement_filter: meas, friendly_name: fn });
-    ALL_FRIENDLY = await dashboardLoadTagValues('friendly_name', {...common, entity_id: eid || ''});
+    ALL_FRIENDLY = await dashboardLoadTagValues('friendly_name', {...common, field: String(($f && $f.value) || ''), entity_id: eid || ''});
     if($friendlyList) $friendlyList.innerHTML = ALL_FRIENDLY.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');
     _setSelCount($cntFn, ALL_FRIENDLY.length);
     _selApplyWidthForInput($n, ALL_FRIENDLY);

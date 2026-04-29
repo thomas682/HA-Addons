@@ -916,6 +916,59 @@ def test_api_tag_combo_ranges_uses_flux_accumulator_name(load_app_module, tmp_pa
     assert "acc.oldest_time" not in q
 
 
+def test_api_tag_values_uses_direct_query_for_friendly_name_with_entity_id(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    captured: dict[str, object] = {"q": None}
+
+    class _FakeRecord:
+        def get_value(self):
+            return "Disk Write"
+
+    class _FakeTable:
+        def __init__(self):
+            self.records = [_FakeRecord()]
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured["q"] = q
+            return [_FakeTable()]
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.get(
+        "/api/tag_values?tag=friendly_name&measurement=MB%2Fs&field=value&entity_id=g3_flex_garage_disk_write_rate&range=all"
+    )
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    q = captured["q"]
+    assert isinstance(q, str)
+    assert "schema.tagValues(" not in q
+    assert 'r._measurement == "MB/s"' in q
+    assert 'r._field == "value"' in q
+    assert 'r.entity_id == "g3_flex_garage_disk_write_rate"' in q
+    assert 'distinct(column: "friendly_name")' in q
+
+
 def test_friendly_name_merge_latest_creates_change_block(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
 

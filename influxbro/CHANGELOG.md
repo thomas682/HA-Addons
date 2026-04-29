@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.489
+
+### Fix
+
+- Dashboard / Messwertauswahl: Der `friendly_name`-Selector verwendet bei gesetzter `entity_id` jetzt einen enger gefilterten Direktquery-Pfad inklusive `_field`, statt fuer All-Time-Abfragen auf den breiteren `schema.tagValues(...)`-Pfad zu gehen. Dadurch bleiben alle historischen Namen auffindbar, waehrend die Query weniger unnoetig scannt und bei grossen Buckets deutlich robuster laeuft. ([#444](https://github.com/thomas682/HA-Addons/issues/444))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.488
 
 ### Fix

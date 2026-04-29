@@ -175,6 +175,8 @@ Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id`
 
 Die Bereichsanalyse fuer historische Tag-Kombinationen (`entity_id` <-> `friendly_name`) verwendet dabei denselben gueltigen Flux-Reduce-Pfad wie die restlichen Dashboard-Statistikabfragen. Dadurch funktionieren Vorschlaege und Namenszeitraeume auch bei `All` wieder ohne Parserfehler im Backend.
 
+Wenn fuer den `friendly_name`-Selector bereits eine `entity_id` ausgewaehlt ist, wird zusaetzlich auch das aktuelle `_field` in die Hintergrundabfrage uebernommen. Der Selector bleibt dadurch weiterhin vollstaendig ueber den gesamten Datenbestand (`All`), muss aber nicht mehr unnoetig ueber andere Felder derselben Entity suchen.
+
 Wenn fuer die aktuell gewaehlte `entity_id` mehrere historische `friendly_name`-Varianten im gewaehlten Zeitraum gefunden werden, erscheint unterhalb der Auswahl das Panel `Analyse Messwertname`. Dort siehst du alle Namen mit `Von`/`Bis`/`Anzahl`, der neueste Name wird als `aktuell` markiert. Mit `Auf letzten Namen vereinigen` werden aeltere Namensbereiche direkt auf den neuesten Namen umgeschrieben; die Aktion erzeugt einen Change-Block und bleibt dadurch in Verlauf/Undo sichtbar.
 
 Die Felder `Feld`, `Name` und `Grund Filter` besitzen jetzt jeweils einen dauerhaft sichtbaren Button `Feld leeren` direkt neben dem Eingabefeld.

@@ -22343,8 +22343,12 @@ def tag_values():
             predicate = " and ".join(predicate_parts) if predicate_parts else "true"
 
             with v2_client(cfg) as c:
-                # schema.tagValues does not support stop; for custom ranges we use a direct query.
-                if selector_stop_dt and selector_start_dt:
+                # For friendly_name scoped to a specific entity_id we use a direct query even for all-time
+                # lookups so the selector can keep full history without relying on broader schema scans.
+                use_direct_query = bool(selector_stop_dt and selector_start_dt)
+                if tag == "friendly_name" and entity_id:
+                    use_direct_query = True
+                if use_direct_query:
                     range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
                     q = f'''
 from(bucket: "{cfg["bucket"]}")
