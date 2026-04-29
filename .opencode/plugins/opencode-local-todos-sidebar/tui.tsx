@@ -7,6 +7,7 @@ import type path from "node:path"
 const id = "local-todos-sidebar"
 
 type SidebarData = {
+  version?: string
   active: string[]
   plan: string[]
   build: string[]
@@ -42,6 +43,19 @@ function readFileSafe(root: string, file: string) {
     return fsApi.readFileSync(wanted, "utf8")
   } catch {
     return ""
+  }
+}
+
+function readInfluxBroVersion(root: string) {
+  const fsApi = getFs()
+  const pathApi = getPath()
+  const wanted = pathApi.resolve(root, "influxbro", "config.yaml")
+  try {
+    const content = fsApi.readFileSync(wanted, "utf8")
+    const match = /^version:\s*"?([^"\r\n]+)"?/m.exec(content)
+    return match?.[1]?.trim() || "unknown"
+  } catch {
+    return "unknown"
   }
 }
 
@@ -81,12 +95,14 @@ function loadSidebarData(root: string): SidebarData {
     const todoPlan = readFileSafe(root, "todo_plan.md")
     const todoBuild = readFileSafe(root, "todo_build.md")
     return {
+      version: readInfluxBroVersion(root),
       active: extractMarkdownSection(planState, "Current Work"),
       plan: parseQueue(todoPlan),
       build: parseQueue(todoBuild),
     }
   } catch (error) {
     return {
+      version: "unknown",
       active: [],
       plan: [],
       build: [],
@@ -137,6 +153,7 @@ function SidebarContentView(props: { api: TuiPluginApi }) {
       <text fg={props.api.theme.current.text}>
         <b>OpenCode ToDos</b>
       </text>
+      <text fg={props.api.theme.current.textMuted}>InfluxBro {data().version || "unknown"}</text>
       <Show when={!data().error} fallback={<text fg={props.api.theme.current.error}>Fehler: {data().error}</text>}>
         <Section api={props.api} title="Aktiv" items={data().active} />
         <Section api={props.api} title="Plan Queue" items={data().plan} />
