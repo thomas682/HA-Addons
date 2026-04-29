@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.488
+
+### Fix
+
+- Dashboard / Messwertauswahl: `/api/tag_combo_ranges` erzeugt fuer historische `friendly_name`-Bereiche jetzt wieder gueltige Flux-Queries. Die Auswahl ueber `entity_id` laeuft damit auch bei `range=all` ohne Reduce-Parsefehler weiter. ([#442](https://github.com/thomas682/HA-Addons/issues/442))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.487
 
 ### Enhancement

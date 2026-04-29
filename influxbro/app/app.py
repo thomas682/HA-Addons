@@ -22490,10 +22490,10 @@ base = from(bucket: "{bucket}")
 base
   |> reduce(
     identity: {{oldest_time: time(v: "2100-01-01T00:00:00Z"), newest_time: time(v: "1970-01-01T00:00:00Z"), count: 0}},
-    fn: (r, acc) => ({{
-      oldest_time: if r._time < acc.oldest_time then r._time else acc.oldest_time,
-      newest_time: if r._time > acc.newest_time then r._time else acc.newest_time,
-      count: acc.count + 1,
+    fn: (r, accumulator) => ({{
+      oldest_time: if r._time < accumulator.oldest_time then r._time else accumulator.oldest_time,
+      newest_time: if r._time > accumulator.newest_time then r._time else accumulator.newest_time,
+      count: accumulator.count + 1,
     }}),
   )
   |> keep(columns: ["{group_tag}", "oldest_time", "newest_time", "count"])

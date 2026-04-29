@@ -852,6 +852,70 @@ def test_api_jobs_delete_rejects_active_jobs(load_app_module, tmp_path):
     assert j["blocked_job_ids"] == ["job-live-1"]
 
 
+def test_api_tag_combo_ranges_uses_flux_accumulator_name(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    captured: dict[str, object] = {"q": None}
+
+    class _FakeRecord:
+        def __init__(self):
+            self.values = {
+                "friendly_name": "Disk Write",
+                "oldest_time": "2026-01-01T00:00:00Z",
+                "newest_time": "2026-01-02T00:00:00Z",
+                "count": 12,
+            }
+
+    class _FakeTable:
+        def __init__(self):
+            self.records = [_FakeRecord()]
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured["q"] = q
+            return [_FakeTable()]
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.post(
+        "/api/tag_combo_ranges",
+        json={
+            "measurement": "MB/s",
+            "field": "value",
+            "group_tag": "friendly_name",
+            "entity_id": "g3_flex_garage_disk_write_rate",
+            "friendly_name": None,
+            "limit": 80,
+            "range": "all",
+        },
+    )
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    q = captured["q"]
+    assert isinstance(q, str)
+    assert "fn: (r, accumulator)" in q
+    assert "acc.oldest_time" not in q
+
+
 def test_friendly_name_merge_latest_creates_change_block(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
 
