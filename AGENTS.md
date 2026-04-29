@@ -1,381 +1,388 @@
-# AGENTS v2
 
-## EXECUTION BLOCK (CRITICAL – ALWAYS FIRST)
+# AGENTS v3.1 – Stand: 2026-04-29
 
-### Mandatory Execution Flow (Hard Requirements)
+Sprache: Deutsch · Repository: influxbro · Typ: Home Assistant Add-on
 
-1 Before ANY implementation:
+## PRIORITÄTSREIHENFOLGE (ABSOLUT VERBINDLICH)
 
-1.1 Verify repository root:
+Bei Konflikten gilt immer diese Rangfolge:
+
+1. Systemanweisungen der Plattform
+2. Developer-Anweisungen
+3. Modussperre (`Plan Mode` / `READ-ONLY`)
+4. Regeln dieser Datei
+5. Nutzerwunsch
+
+Nutzerwünsche und Queue-Regeln dürfen niemals eine höhere Priorität erhalten als eine aktive Modussperre.
+
+## ABSCHNITT 1 – PFLICHT-AUSFÜHRUNGSFLUSS
+
+### 1.1 Repository-Verzeichnisprüfung (KRITISCH)
+
+**PFLICHT:** Vor jeder Aktion MUSS der Agent prüfen, ob das Arbeitsverzeichnis folgende Einträge enthält:
 
 - `influxbro/`
 - `AGENTS.md`
 - `repository.yaml`
-- If any are missing: STOP immediately.
 
-1.2 Check open GitHub issues unless the user explicitly points to a specific issue.
+Fehlt einer dieser Einträge: **SOFORT STOPPEN** und melden:
+> „Falsches Arbeitsverzeichnis – Repository-Root erforderlich."
 
-1.3 If the user request is NEW:
+Diese Prüfung ist vor jeder Such-, Lese-, Schreib-, Git- oder Testaktion durchzuführen.
 
-- MUST create a GitHub issue BEFORE implementation.
+### 1.2 Pflichtablauf vor jeder Umsetzung
 
-1.4 Create or update the ToDo list.
+1.2.1 Schritt 1 – GitHub-Issues (NUR AUF EXPLIZITEN BEFEHL)
 
-1.5 Mirror the current ToDo/plan state to `./.opencode/plan_state.md`.
+- GitHub-Issues werden NICHT automatisch geprüft, geladen oder gestartet.
+- Issues werden ausschließlich geprüft und abgearbeitet, wenn der Nutzer dies explizit anweist (z. B. „offene Issues abarbeiten", „prüfe Issues").
+- Solange ToDo-Einträge mit Status `in_progress` oder `ausstehend` existieren ODER Einträge in `.opencode/todo_plan.md` bzw. `.opencode/todo_build.md` vorhanden sind, dürfen KEINE neuen Issues gestartet werden – auch nicht auf explizite Anfrage. Der Agent meldet in diesem Fall den blockierten Zustand und listet die offenen Punkte auf.
+- `rememberme`-Issues sind bei jeder Prüfung strikt zu überspringen, auch wenn der Nutzer nach „allen Issues" fragt.
 
-2 During implementation:
+1.2.2 Schritt 2 – Issue erstellen bei neuer Anfrage
 
-2.1 Execute all write operations strictly sequentially.
+- Ist die Anfrage NEU, MUSS ein GitHub-Issue erstellt werden, BEVOR mit der Umsetzung begonnen wird.
+- Titel: kurze Zusammenfassung
+- Body: vollständige Beschreibung
+- Label: `type/enhancement` oder `type/bug`
+- Status: `status/in_progress` wenn sofort umgesetzt wird, sonst `status/open`
 
-2.2 Keep changes minimal and consistent with the repository patterns.
+1.2.3 Schritt 3 – ToDo-Liste anlegen oder aktualisieren**
 
-2.3 Maintain exactly ONE ToDo item as `in_progress`.
+- Für jeden Auftrag MUSS eine ToDo-Liste angelegt und sichtbar gehalten werden.
+- Genau ein Eintrag trägt zu jedem Zeitpunkt den Status `in_progress`.
+- Abgeschlossene Einträge werden sofort als `erledigt` markiert.
+- ToDo Plan und ToDo Build werden gemeinsam mit der aktiven ToDo-Liste als Block im Chat angezeigt (Abschnitt 2.2 Sichtbarkeitsregel).
 
-3 After implementation (Mandatory Completion Flow):
+1.2.4 Schritt 4 – Plan-Zustand persistieren**
 
-3.0 Mandatory Security Review (Home Assistant Add-ons)
+- Den aktuellen Arbeitsstand nach jeder bedeutsamen Änderung in `./.opencode/plan_state.md` spiegeln.
+- Inhalt: aktuelle ToDo-Liste (mit Status), offene Entscheidungen, vereinbarte Planänderungen.
+- Diese Datei ist lokal zu halten und NICHT zu committen.
+- Beim Start einer neuen Sitzung MUSS `./.opencode/plan_state.md` zuerst geladen werden, sofern sie existiert. Einträge mit Status `ausstehend` oder `in_progress` sind aktiv weiterzuführen. Erledigte Einträge werden ignoriert.
 
-For every change in a Home Assistant add-on, perform a mandatory security review BEFORE marking the task as complete.
+### 1.3 Pflichtablauf während der Umsetzung
 
-Scope (minimum):
+- Alle Schreiboperationen **MÜSSEN** strikt sequenziell ausgeführt werden.
+- Änderungen minimal halten und konsistent mit bestehenden Repository-Mustern halten.
+- Genau ein ToDo-Eintrag trägt den Status `in_progress`.
+- Dateiinhalte vor jeder Änderung neu lesen – niemals auf erwartete oder frühere Versionen verlassen.
+- Schlägt ein `apply_patch` fehl, MUSS:
+  1. die betroffene Datei neu gelesen werden
+  2. die Zielstelle auf Basis des echten Inhalts neu identifiziert werden
+  3. der Patch mit robusten Ankern neu erstellt werden
+
+### 1.4 Pflichtablauf nach der Umsetzung
+
+Die folgenden Schritte sind in dieser Reihenfolge auszuführen und dürfen nicht übersprungen werden.
+
+#### Schritt A – Pflicht-Sicherheitsüberprüfung (HA Add-on)
+
+Bei jeder Änderung an einem Home Assistant Add-on MUSS vor der Fertigstellung eine Sicherheitsprüfung durchgeführt werden.
+
+**Mindest-Prüfumfang:**
 
 - `influxbro/config.yaml`
 - `influxbro/Dockerfile`
-- `influxbro/run.sh` and other startup scripts
-- backend API routes and request handlers
-- HTML/templates/frontend JavaScript
-- file operations
-- logging
-- dependency files such as `requirements.txt`, `pyproject.toml`, or `package.json`
+- `influxbro/run.sh` und weitere Startskripte
+- Backend-API-Routen und Request-Handler
+- HTML/Templates/Frontend-JavaScript
+- Dateioperationen
+- Logging
+- Abhängigkeitsdateien (`requirements.txt`, `pyproject.toml`, `package.json`)
 
-Required checks:
+**Pflichtprüfungen:**
 
-- hardcoded secrets, tokens, passwords, API keys, or internal URLs
-- secrets or sensitive values written to logs
-- missing input validation for all external inputs
-- command injection risks (subprocess/shell)
-- path traversal and unsafe file access
-- XSS and unsafe DOM injection in frontend/templates
-- CSRF-relevant write/delete actions exposed unsafely
-- SSRF via user-controlled URLs/hosts/remote fetch
-- unsafe uploads/downloads/backup/restore/import/export
-- missing authentication/authorization checks
-- dangerous default settings
-- overly broad container privileges/host mounts/devices/exposed ports
-- information leakage in error messages
-- unsafe dynamic code execution (`eval`, `exec`, or equivalent)
-- outdated or obviously risky dependencies
+- Hartcodierte Geheimnisse, Tokens, Passwörter, API-Keys oder interne URLs
+- Geheimnisse oder sensible Werte in Logs
+- Fehlende Eingabevalidierung für alle externen Eingaben
+- Command-Injection-Risiken (subprocess/shell)
+- Path-Traversal und unsicherer Dateizugriff
+- XSS und unsichere DOM-Injection in Frontend/Templates
+- CSRF-relevante Schreib-/Löschaktionen ohne Absicherung
+- SSRF über nutzerkontrollierte URLs/Hosts
+- Unsichere Upload-/Download-/Backup-/Restore-/Import-/Export-Pfade
+- Fehlende Authentifizierungs-/Autorisierungsprüfungen
+- Gefährliche Standardeinstellungen
+- Zu weitreichende Container-Privilegien, Host-Mounts, Gerätezugriffe, offene Ports
+- Informationslecks in Fehlermeldungen
+- Unsichere dynamische Code-Ausführung (`eval`, `exec` oder Äquivalente)
+- Veraltete oder offensichtlich risikobehaftete Abhängigkeiten
 
-Home Assistant add-on specific review (least privilege):
+**HA-spezifische Prüfung (Least Privilege):**
 
-- verify whether the add-on configuration grants more permissions than necessary: `host_network`, `privileged`, `full_access`, `homeassistant_api`, `ingress`, `ports`, `map`, mounted host paths, docker socket access, attached devices
-- if a permission is not clearly required, flag it and propose a reduction
+Folgende Add-on-Konfigurationen MÜSSEN auf Notwendigkeit geprüft werden. Jede nicht eindeutig benötigte Berechtigung MUSS gemeldet und eine Reduzierung vorgeschlagen werden:
 
-External input rule:
+- `host_network`, `privileged`, `full_access`, `homeassistant_api`, `ingress`, `ports`
+- gemountete Host-Pfade, Docker-Socket-Zugriff, angebundene Geräte
 
-- treat ALL external input as untrusted by default: query params, JSON bodies, form fields, filenames, paths, sorting/filter values, env vars, HA option values, URLs/hosts/IDs/tokens
+**Externe-Eingabe-Regel:**
 
-Findings policy:
+Alle externen Eingaben sind standardmäßig als nicht vertrauenswürdig zu behandeln:
+Query-Parameter, JSON-Bodies, Formularfelder, Dateinamen, Pfade, Sortier-/Filterwerte, Umgebungsvariablen, HA-Optionswerte, URLs, Hosts, IDs, Tokens.
 
-- no generic security statements without code evidence
-- every finding MUST include: severity (critical/high/medium/low), affected file + function/area, risk explanation, realistic attack scenario, concrete remediation, patch suggestion (if feasible)
+**Befunde-Pflicht:**
 
-Remediation policy:
+- Keine generischen Sicherheitsaussagen ohne Code-Belege.
+- Jeder Befund MUSS enthalten: Schweregrad (kritisch/hoch/mittel/niedrig), betroffene Datei + Funktion/Bereich, Risikoerklärung, realistisches Angriffsszenario, konkrete Behebung, Patch-Vorschlag (wenn machbar).
 
-- if a security issue can be fixed safely and unambiguously, implement the fix directly
-- keep fixes minimal, low-risk, and traceable
+**Behebungs-Pflicht:**
 
-Completion gate:
+- Ist ein Sicherheitsproblem sicher und eindeutig behebbar, MUSS die Behebung direkt implementiert werden.
+- Behebungen minimal, risikoarm und nachvollziehbar halten.
 
-- do NOT mark complete until: security review performed, findings documented, safe fixes applied where appropriate, remaining risks listed explicitly
+**Abschlussgate:**
 
-Required final output:
+Als erledigt gilt die Aufgabe erst, wenn: Sicherheitsprüfung durchgeführt, Befunde dokumentiert, sichere Fixes angewendet, verbleibende Risiken explizit aufgelistet.
 
-- security findings by severity
-- implemented fixes
-- remaining risks
-- recommended follow-up checks
+**Pflichtausgabe der Sicherheitsprüfung:**
 
-3.1 Run REQUIRED QA:
+- Befunde nach Schweregrad
+- Umgesetzte Fixes
+- Verbleibende Risiken
+- Empfohlene Folgeprüfungen
 
-- syntax check (mandatory)
-- targeted tests where relevant/available
-- runtime/API/UI checks when relevant
+#### Schritt B – Pflicht-QA
 
-3.2 If ANY required QA fails:
+Reihenfolge einhalten:
 
-- DO NOT declare the work complete.
+1. Syntaxprüfung (immer Pflicht): `python -m py_compile influxbro/app/app.py`
+2. Gezielte Tests (Pflicht wenn vorhanden): einzelner Test, einzelne Testdatei oder Keyword-gefilterter Pytest-Lauf
+3. Laufzeit-/API-Smoke-Tests (Pflicht wenn relevant für Backend-Routen, Request-Handling, Config-Loading oder UI-ausgelöste API-Aktionen)
+4. Docker-Verifikation (Pflicht nur wenn relevant für Laufzeitverhalten, Abhängigkeiten, Container-Verhalten, Startskripte, Add-on-Paketierung oder Konfigurationsverarbeitung)
+5. UI-Verifikation (Pflicht wenn relevant für Templates, JavaScript oder Browser-Interaktionen)
 
-3.3 Versioning (MANDATORY when required by repo rules):
+Fehlverhalten:**
 
-- bump `influxbro/config.yaml`
-- update `influxbro/CHANGELOG.md`
-- update `influxbro/MANUAL.md` when behavior/UI changed
+- Schlägt eine Pflichtprüfung fehl: Arbeit NICHT als abgeschlossen erklären.
+- Fehler beheben, kleinste relevante Validierung erneut ausführen.
+- Bereits vorhandene, nicht zusammenhängende Fehler blockieren den Flow NICHT automatisch – der Agent MUSS explizit begründen, warum sie nicht zusammenhängen.
 
-3.4 Git flow (HA main-first unless user explicitly overrides):
+Abschlussbericht QA:**
 
-- stage changes
-- commit
-- push to `main`
+- Welche Prüfungen wurden ausgeführt?
+- Welche wurden übersprungen und warum?
+- Endergebnis jeder ausgeführten Prüfung
 
-3.5 GitHub issue completion flow (when an issue was implemented):
+#### Schritt C – Versionierung (PFLICHT FÜR HA)
 
-- set status to `status/done`
-- add issue comment with root cause, solution, and commit hash / PR link
-- close the issue
+**Jede Änderung an Laufzeit-, UI-, API- oder Verhaltenslogik erzwingt zwingend eine neue Version. Es gibt keine Ausnahmen.**
 
-3.6 Completion Signal (MANDATORY – MUST ALWAYS EXECUTE)
+Betroffene Dateitypen: `*.py`, `*.html`, `*.js`, `*.css`, Dockerfile, Shell-/Startskripte, Laufzeit-Konfigurationen.
 
-4 After successful completion:
+Pflichtschritte:
 
-- `afplay /System/Library/Sounds/Glass.aiff`
-- `say "Fertig mit der Umsetzung"`
+- Version in `influxbro/config.yaml` inkrementieren (letztes Segment: z. B. `1.12.44 → 1.12.45`)
+- Eintrag in `influxbro/CHANGELOG.md` ergänzen (neueste Version oben)
+  - Bei GitHub-Issue: Changelog-Bullet MUSS einen klickbaren Issue-Link enthalten: `([#123](https://github.com/<owner>/<repo>/issues/123))`
+- `influxbro/MANUAL.md` aktualisieren, wenn sich Verhalten oder UI geändert haben
+- Vor dem Changelog-Eintrag: installierte HA-Core-Version ermitteln:
 
-If a new version was produced:
+  ```bash
+  curl -s -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://192.168.2.200:8123/api/config | jq -r '.version'
 
-- `say -v Anna "Generierung erfolgt, Version X Punkt Y Punkt Z wurde erzeugt"`
+  ```
 
-If blockers or failures remain:
+  Den ermittelten Wert unter `Tested with Home Assistant Core: <wert>` eintragen. `unknown` ist nur als Fallback erlaubt, wenn die Abfrage nicht erfolgreich ausgeführt werden kann.
 
-- `afplay /System/Library/Sounds/Basso.aiff`
-- `say "Einige Punkte müssten noch beantwortet werden"`
+Ohne Versionsbump: Home Assistant erkennt kein Update. Die Änderung gilt als unvollständig.
 
-### Completion Definition
+#### Schritt D – Git-Flow (HA Main-First, PFLICHT)
 
-Completion is ONLY valid if ALL mandatory steps above, including the audio/speech completion signal, were executed.
-The agent MUST NOT return control before the completion signal was executed.
+Standard:** Alle Änderungen werden direkt nach `main` gepusht, damit Home Assistant das Update erkennen kann.
 
-## Workspace Requirement (CRITICAL)
+Pflichtsequenz:
 
-- The agent MUST operate from the repository root.
-- Before any search, read, write, git, or test operation, verify that the working directory contains:
-  - influxbro/
-  - AGENTS.md
-  - repository.yaml
+1. Erforderliche QA ausführen
+2. Fehler klassifizieren: fix-bezogen/blockierend vs. bereits vorhandene/nicht zusammenhängende Fehler
+3. Bei ausschließlich vorhandenen/nicht zusammenhängenden Fehlern: Pflichtfluss fortsetzen
+4. `influxbro/config.yaml` Version erhöhen (wenn Laufzeit/UI/API/Verhalten geändert)
+5. Änderungen stagen
+6. Commit erstellen
+7. Nach `main` pushen
+8. Ergebnis klar im Chat melden
 
-- If these are not present:
-  - STOP immediately
-  - report: "Wrong working directory – repository root required"
+VERBOTEN:** Nach Codeänderungen oder nach QA stoppen, wenn diese Policy Version-Bump, Commit und Push fordert.
 
-## 📦 Bulk File Processing & Large Context Handling (CRITICAL)
+VERBOTEN:** `build`-Modus als bloße Erlaubnis behandeln, während Pflicht-Abschlussschritte übersprungen werden.
 
-### General Rule
+Abschluss-Verifikation (PFLICHT VOR FERTIGMELDUNG):**
 
-- NEVER load or analyze all files at once.
-- ALWAYS process files in small batches or individually.
+- [ ] Umsetzung abgeschlossen
+- [ ] Erforderliche QA ausgeführt
+- [ ] QA-Ergebnis klassifiziert
+- [ ] `influxbro/config.yaml` Version erhöht (wenn erforderlich)
+- [ ] Änderungen gestagt
+- [ ] Commit erstellt
+- [ ] Push nach `main` abgeschlossen
 
-### HTML / Template Analysis
+Fehlt ein Punkt: Aufgabe ist NICHT abgeschlossen.
 
-When analyzing HTML, Jinja2 templates, or UI files:
+Hochrisikoausnahme:
+Bei sicherheitsrelevanter Logik, Löschlogik, größeren Architekturänderungen oder unklaren Seiteneffekten: Weiterhin nach `main` pushen, jedoch:
 
-- Process ONE file at a time.
-- Do NOT preload multiple templates into context.
-- Limit file reads to only the relevant sections when possible.
+- strengere QA vor Push
+- Commit-Message mit `⚠ HOHES RISIKO` kennzeichnen
 
-### Iterative Processing Strategy
+Optionale Branches:
+Branches dürfen NUR verwendet werden, wenn die Änderung lokal ohne Home Assistant testbar ist ODER der Nutzer ausdrücklich einen PR-Workflow verlangt.
 
-For tasks like:
+**Commit-Konventionen:**
 
-- "analyze all HTML files"
-- "check all templates"
-- "validate project structure"
+| Präfix | Verwendung |
 
-The agent MUST:
+|---|---|
+| `feat:` | Neue Funktionen |
+| `fix:` | Fehlerbehebungen |
+| `refactor:` | Umstrukturierungen |
+| `chore:` | Wartungsarbeiten |
+| `⚠ HOHES RISIKO` | Risikobehaftete Änderungen |
 
-1. Discover file list first
-2. Iterate over files one-by-one
-3. Analyze each file independently
-4. Summarize results incrementally
-5. NEVER accumulate full file contents in memory
+Jeder Commit enthält: kurze Zusammenfassung + wichtigste Änderungen.
 
-### Output Constraints
+VERBOTEN:** Force Push.
 
-- Do NOT output full file contents unless explicitly requested
-- Only output:
-  - errors
-  - relevant snippets
-  - line references
-- Prefer summaries over full dumps
+VERBOTEN:** Push wenn Syntaxprüfung fehlgeschlagen, erforderliche QA nicht ausgeführt oder blockierende Fehler vorhanden.
 
-### Token Safety Rules
+#### Schritt E – GitHub-Issue abschließen
 
-- If context grows too large:
-  - STOP processing
-  - summarize current findings
-  - continue in next iteration
+Ein Issue gilt erst als umgesetzt, wenn:
 
-- Avoid large diffs and full-file outputs
+1. Die angeforderte Code-/Konfig-/Dokumentationsänderung tatsächlich angewendet wurde
+2. Alle relevanten Pflicht-QA-Prüfungen für dieses Issue ausgeführt wurden
+3. Keine blockierenden Fehler für dieses Issue verbleiben
+4. Die Änderung committed wurde
+5. Die Änderung nach `main` gepusht wurde (gemäß Repository-Policy)
 
-### HTML Validation Rules
+Pflichtschritte nach Umsetzung:
 
-When validating HTML structure:
+1. Issue-Statuslabel auf `status/done` setzen (vorheriges Label entfernen)
+2. Issue-Kommentar hinzufügen mit: Ursache des Problems, gewählte Lösung, Commit-Hash und/oder PR-Link
+3. Issue schließen
 
-- Focus on:
-  - tag balance (<div>, <main>, <section>, <details>)
-  - nesting correctness
-  - parent/child hierarchy
-- Ignore:
-  - styling
-  - JavaScript
-  - unrelated content
+PFLICHT: GitHub-Kommentar IMMER via HEREDOC erstellen:
 
-### Preferred Workflow
+```bash
+cat > /tmp/opencode_issue_comment.md <<'EOF'
+<vollständiger Kommentartext inkl. Backticks, $, URLs usw.>
+EOF
+gh issue comment <ISSUE_NUMMER> --repo <OWNER>/<REPO> --body-file /tmp/opencode_issue_comment.md
+```
 
-1. Identify target files
-2. Loop:
-   - read file
-   - analyze structure
-   - report issues
-3. Final summary
+VERBOTEN: `gh issue comment -b "..."` wenn der Inhalt Backticks, Dollarzeichen, shell-ähnliche Ausdrücke, URLs mit Query-Parametern, Dateipfade oder Befehle enthält.
 
-### Hard Constraint
+---
 
-The agent MUST NOT:
+#### Schritt F – Abschlusssignal (PFLICHT, IMMER AUSFÜHREN)
 
-- load entire project into context
-- analyze more than 1–2 files simultaneously
-- produce large unstructured outputs
+Nach erfolgreicher Fertigstellung:
 
-### Parallel Execution Strategy (CONTROLLED)
+```bash
+afplay /System/Library/Sounds/Glass.aiff
+say "Fertig mit der Umsetzung"
+```
 
-### Rate Limit & API Stability (MANDATORY)
+Wenn eine neue Add-on-Version erstellt wurde (Version in `influxbro/config.yaml` erhöht):
 
-#### Problem
+```bash
+say -v Anna "Generierung erfolgt, Version X Punkt Y Punkt Z wurde erzeugt"
+```
 
-External APIs (e.g. Alibaba Qwen) may reject requests if traffic increases too quickly:
-"Request rate increased too quickly"
+Bei blockierenden Fehlern oder offenen Fragen:
 
-#### Root Cause
+```bash
+afplay /System/Library/Sounds/Basso.aiff
+say "Einige Punkte muessten noch beantwortet werden"
+```
 
-Burst traffic caused by:
+Wenn der Agent auf eine Entscheidung des Nutzers wartet:
 
-- too many parallel requests
-- missing throttling
-- immediate retries
+```bash
+say "Entscheidung erforderlich"
+```
 
-#### Mandatory Rules
+Hinweis: Audio-Signale sind Best-Effort. Ein fehlendes Audio-Signal macht eine abgeschlossene Aufgabe NICHT ungültig.
 
-A. Global Request Control
+Abgeschlossen ist eine Aufgabe AUSSCHLIESSLICH, wenn alle Pflichtschritte A bis F ausgeführt wurden.
 
-- ALL external API calls MUST be routed through a single central request handler
-- Direct parallel calls from multiple modules are FORBIDDEN
+## ABSCHNITT 2 – INPUT-QUEUE UND ABARBEITUNGSLOGIK
 
-B. Parallelism Limit
+### 2.1 Grundregel: Keine Unterbrechung aktiver Abarbeitung
 
-- Maximum 2 concurrent API requests
-- MUST be enforced via semaphore / queue
-- This is NOT optional
+Solange eine Abarbeitung aktiv ist und noch nicht vollständig abgeschlossen wurde (inkl. Abschlusssignal, ohne offene Restarbeiten und ohne offene Rückfragen), gilt:
 
-C. Request Smoothing
+- **Neue Eingaben des Nutzers werden NICHT sofort ausgeführt.**
+- **Neue Eingaben werden in die entsprechende Queue eingereiht.**
+- **Der aktive Prozess läuft bis zum vollständigen Abschluss weiter.**
 
-- Introduce delay between requests:
-  - minimum 300ms
-  - recommended 400–600ms
-- Prevent burst traffic at all times
+### 2.2 Zwei Queues
 
-D. Retry Strategy
+#### ToDo Plan – Planungsanfragen
 
-- On HTTP 429:
-  - exponential backoff: 1s → 2s → 4s → 8s (max 10s)
-  - add jitter (0–500ms)
-- Immediate retry WITHOUT delay is FORBIDDEN
+Wird verwendet für: Analyseanfragen, Plan-Erstellungen, Triage-Anfragen, Fragen, Recherchen.
 
-E. Queue System
+Speicherort: `./.opencode/todo_plan.md`
+Format:
 
-- Requests exceeding concurrency MUST be queued
-- Process sequentially or controlled parallel
+```text
+## ToDo Plan – Queue
+- [ ] <Kurzbeschreibung> | Eingegangen: <Zeitstempel> | Quelle: Nutzereingabe
+```
 
-F. Fail-safe Behavior
+#### ToDo Build – Umsetzungsaufgaben
 
-- On repeated 429 errors:
-  - reduce concurrency to 1
-  - increase delay to 800–1200ms
+Wird verwendet für: Implementierungsaufträge, GO-Befehle, Issue-Umsetzungen, Codeänderungen.
 
-#### Execution Policy
+Speicherort: `./.opencode/todo_build.md`
+Format:
 
-- When in doubt, ALWAYS prefer sequential execution over parallel execution
-- Stability has priority over speed
+```text
+## ToDo Build – Queue
+- [ ] <Kurzbeschreibung> | Eingegangen: <Zeitstempel> | Quelle: Nutzereingabe
+```
 
-### General Rule plus
+Beide Dateien sind lokal zu halten und NICHT zu committen.
 
-- Parallel execution is allowed ONLY for clearly independent read, search, and validation tasks.
-- If one task can affect the assumptions, design, or implementation of another task, analysis MUST be sequential.
+#### Sichtbarkeitsregel (PFLICHT)
 
-### Allowed Parallel Tasks
+Beide Queues MÜSSEN im Chat sichtbar gehalten werden – genauso wie die aktive ToDo-Liste.
+Der Agent zeigt alle drei Listen als Block** nach jedem abgeschlossenen Schritt, nach jeder Statusmeldung und nach jedem neuen Queue-Eintrag:
 
-The following may run in parallel ONLY if they are independent:
+```text
+📋 ToDo – Aktiv
+  ✅ <erledigter Schritt>
+  🔄 <aktueller Schritt> (in_progress)
+  ⬜ <ausstehender Schritt>
 
-- reading unrelated files
-- searching the codebase
-- reviewing open GitHub issues
-- collecting logs
-- locating relevant tests
+📥 ToDo Plan – Queue  (.opencode/todo_plan.md)
+  ⬜ <Eintrag> | Eingegangen: <Zeitstempel>
+  — leer —
 
-### Sequential Analysis Required
+🔨 ToDo Build – Queue  (.opencode/todo_build.md)
+  ⬜ <Eintrag> | Eingegangen: <Zeitstempel>
+  — leer —
+```
 
-Analysis MUST remain sequential if:
+Anzeigeregeln:
 
-- tasks affect the same files or modules
-- one change can alter the design of later changes
-- API, UI, and config behavior are connected
-- there is any uncertainty about dependency order
+- Ist eine Queue leer, wird sie trotzdem angezeigt mit dem Eintrag `— leer —`.
+- Der Block wird IMMER vollständig dargestellt – nie nur einzelne Listen.
+- Nach einem neuen Queue-Eintrag wird der Block sofort aktualisiert ausgegeben.
+- Nach Abschluss der aktiven Aufgabe ersetzt der Block den regulären Status (siehe Abschnitt 2.5).
 
-### Write Operations
+### 2.3 Einreihungsregeln
 
-- All code changes MUST remain strictly sequential.
-- Version bump, changelog, manual updates, commit, and push MUST remain strictly sequential.
+| Eingabe-Typ | Ziel-Queue |
 
-### Safety Rule
+|---|---|
+| Neue Planungs-/Analyseanfrage | ToDo Plan |
+| Neuer Implementierungsauftrag oder GO | ToDo Build |
+| Präzisierung/Ergänzung zur aktiven Aufgabe | Aktive ToDo-Liste ergänzen |
+| Explizites Abbruchsignal | Sofortige Unterbrechung (siehe 2.4) |
 
-- When in doubt, prefer sequential analysis over parallel analysis.
+### 2.4 Explizite Abbruchsignale (EINZIGE Ausnahme)
 
-### Plan Mode Workflow
-
-When plan mode is active:
-
-- Create a detailed plan first.
-- Show all tasks that need to be done.
-- Group tasks logically.
-- Wait for explicit user approval before implementing anything (no file edits, no commits, no pushes).
-
-### Plan Mode Must Not Interrupt Active Build Execution
-
-- If a build/GO execution was already explicitly approved and implementation has already started, that execution remains active until a logical completion point is reached.
-- A later switch into plan mode MUST NOT retroactively stop, block, or reinterpret that already running build execution as read-only work.
-- New requests that arrive while such an active build execution is still running may be acknowledged internally, but they MUST be answered or handled only after the running build execution is completed, unless the user explicitly asks to stop or abort the build.
-- In this situation, plan mode applies only to new, not-yet-started work items and MUST be deferred until the active build execution is finished.
-- If additional build/GO-style execution requests arrive while a build execution is already active, they MUST NOT interrupt the running build. They are to be placed into a sequential execution queue and handled one after another after the current build reaches a logical completion point.
-- If additional plan-mode requests arrive while a deferred plan queue already exists behind an active build, those plan requests are also to be queued and answered sequentially after the active build and after any earlier queued plan items.
-- Only an explicit user interruption such as `stop`, `abbrechen`, or an equivalent direct cancellation instruction may interrupt a running build execution in favor of plan work.
-
-### Build Mode Must Not Interrupt Active Plan Work
-
-- If plan mode work was already explicitly requested and the agent is actively producing that plan, analysis, or decision-preparation output, a later build/GO instruction MUST NOT retroactively abort or skip that ongoing plan work mid-response.
-- The active plan work must first reach a logical completion point for the current answer before any newly requested build execution starts.
-- In this situation, the later build/GO request is to be deferred and executed immediately after the running plan response is completed, unless the user explicitly instructs the agent to stop planning and switch immediately.
-- This rule applies only to already active plan work; once the current planning response is finished, the deferred build/GO execution becomes the next required action.
-- If additional plan-mode requests arrive while plan work is already active, they MUST NOT interrupt the running plan response. They are to be placed into a sequential plan queue and answered one after another after the current plan item reaches a logical completion point.
-- If additional build/GO requests are already queued behind active plan work, those build requests must also be handled sequentially in queue order after the active plan response and after any earlier queued items.
-- Only an explicit user interruption such as `stop`, `abbrechen`, or an equivalent direct cancellation instruction may interrupt a running plan response in favor of immediate build execution.
-
-
-## Laufende Abarbeitung und Queue-Regel
-
-Wenn waehrend einer laufenden Abarbeitung eine neue Nutzernachricht eingeht, gilt grundsaetzlich:
-
-- Eine bereits begonnene Abarbeitung wird nicht stillschweigend unterbrochen.
-- Offene Arbeit ist als aktive Queue zu behandeln und zuerst sauber zu ordnen und abzuarbeiten.
-- Neue Nutzernachrichten sind standardmaessig Queue-Eintraege, keine Interrupts.
-- Neue Nutzernachrichten werden standardmaessig als Erweiterung, Praezisierung oder Scope-Aenderung der bestehenden Queue behandelt, nicht als Abbruch des laufenden Vorgangs.
-- Vor einem Themenwechsel MUSS der Agent den aktuellen Stand explizit ordnen:
-  - erfolgreich abgeschlossene Teilschritte benennen
-  - fehlgeschlagene oder offene Teilschritte benennen
-  - daraus eine aktualisierte Reihenfolge fuer die weitere Abarbeitung bilden
-- Ein neuer Befehl darf die laufende Abarbeitung nur dann sofort ersetzen, wenn der Nutzer dies explizit als Abbruch formuliert.
-
-### Explizite Abbruchsignale
-
-Nur Formulierungen mit klarer Abbruchabsicht gelten als echte Unterbrechung, zum Beispiel:
+Nur folgende Formulierungen gelten als echte Unterbrechung:
 
 - `abbrechen`
 - `stop`
@@ -385,985 +392,624 @@ Nur Formulierungen mit klarer Abbruchabsicht gelten als echte Unterbrechung, zum
 - `stattdessen mache jetzt X`
 - `verwirf den aktuellen Ablauf`
 
-Fehlt ein solches Signal, ist die neue Nachricht als Zusatz, Praezisierung oder Scope-Erweiterung zur bestehenden Queue zu behandeln.
+Fehlt ein solches Signal, ist jede neue Nachricht als Ergänzung oder Einreihung in die Queue zu behandeln.
 
-### Pflichtverhalten bei Fehlern
+### 2.5 Verhalten nach Abschluss der aktiven Aufgabe
 
-Wenn ein Schritt fehlschlaegt, darf der Agent nicht still auf einen neuen Ablauf umschalten. Stattdessen MUSS er:
+Wenn die aktive Aufgabe vollständig abgeschlossen ist (alle Pflichtschritte A–F ausgeführt, kein offener Restpunkt, kein offenes Abschlusssignal), MUSS der Agent:
 
-1. den Fehler klar benennen
-2. den bereits erfolgreich erledigten Teil vom offenen Rest trennen
-3. den offenen Rest in die Queue einsortieren
-4. erst danach neue Nutzeranweisungen in diese Queue einarbeiten
+1. Beide Queue-Dateien prüfen (`./.opencode/todo_plan.md` und `./.opencode/todo_build.md`)
+2. Den Nutzer informieren, welche Einträge ausstehen – geordnet nach Plan-Queue und Build-Queue
+3. Explizit fragen, ob die ausstehenden Todos abgearbeitet werden sollen
 
-### Pflichtverhalten bei Scope-Erweiterungen
+VERBOTEN: Ausstehende Todos automatisch und ohne Rückfrage ausführen.
 
-Wenn der Nutzer waehrend der Ausfuehrung neue Anforderungen hinzufuegt, gilt:
+Pflichtausgabe nach Abschluss:**
 
-1. die laufende Arbeit bleibt aktiv
-2. neue Anforderungen werden hinten an die Queue angehaengt oder sinnvoll einsortiert
-3. der Agent soll kurz benennen, was bereits in Arbeit war und wie die neue Anweisung eingeordnet wird
-4. nur bei ausdruecklichem Abbruch darf der Agent die bisherige Arbeit fallenlassen
+```text
+Aktive Aufgabe abgeschlossen.
 
-### Ziel
+Ausstehende Plan-Queue (.opencode/todo_plan.md):
+- <Eintrag 1>
+- <Eintrag 2>
 
-- Keine stillen Kontextwechsel
-- Keine halb abgebrochenen Arbeitsstraenge
-- Keine implizite Verdraengung laufender Aufgaben durch nachfolgende Nachrichten
+Ausstehende Build-Queue (.opencode/todo_build.md):
+- <Eintrag 1>
+- <Eintrag 2>
 
+Soll ich mit der Abarbeitung der ausstehenden Todos beginnen?
+1. Ja, Plan-Queue zuerst
+2. Ja, Build-Queue zuerst
+3. Ja, beide Queues (Plan zuerst)
+4. Nein, ich gebe neue Anweisungen
+```
 
+### 2.6 Pflichtverhalten bei Fehlern während der Abarbeitung
 
-## Modus-Prioritaet und Ausfuehrungssperre
+Schlägt ein Schritt fehl, MUSS der Agent:
 
-Wenn eine Systemanweisung, ein System-Reminder oder eine Developer-Anweisung einen eingeschraenkten Modus vorgibt, gilt diese Anweisung immer vorrangig vor allen Regeln in dieser Datei.
+1. Den Fehler klar benennen
+2. Den bereits erfolgreich erledigten Teil vom offenen Rest trennen
+3. Den offenen Rest in der Queue einsortieren
+4. Erst danach neue Nutzeranweisungen in diese Queue einarbeiten
 
-Dazu gehoeren insbesondere:
+### 2.7 Pflichtverhalten bei Scope-Erweiterungen
 
-- `Plan Mode`
-- `READ-ONLY`
-- Verbote fuer Edits, Commits, Pushes oder sonstige Systemaenderungen
-- sonstige ausdrueckliche Ausfuehrungssperren
+Fügt der Nutzer während der Ausführung neue Anforderungen hinzu:
 
-### Harte Regel
+1. Die laufende Arbeit bleibt aktiv
+2. Neue Anforderungen werden an die Build-Queue angehängt
+3. Der Agent benennt kurz, was in Arbeit war und wie die neue Anweisung eingereiht wurde
+4. Nur bei explizitem Abbruchsignal darf die bisherige Arbeit fallengelassen werden
 
-Wenn `Plan Mode` oder `READ-ONLY` aktiv ist, darf der Agent:
+---
 
-- lesen
-- suchen
-- analysieren
-- Rueckfragen stellen
-- einen Plan erstellen
-- offene Queue-Punkte ordnen
+## ABSCHNITT 3 – MODUSSPERRE
 
-Der Agent darf in diesem Modus NICHT:
+### 3.1 Aktive Sperren haben absoluten Vorrang
 
-- Dateien aendern
-- `apply_patch` verwenden
-- schreibende Bash-Befehle ausfuehren
-- Versionen erhoehen
+Wenn ein System-Hinweis, System-Reminder oder Developer-Hinweis `Plan Mode`, `READ-ONLY`, `STRICTLY FORBIDDEN`, `ZERO exceptions` oder sinngleiche Formulierungen enthält:
+
+**ERLAUBT:**
+
+- Lesen, Suchen, Analysieren
+- Rückfragen stellen
+- Plan erstellen
+- Queue-Punkte ordnen und dokumentieren
+
+**VERBOTEN (ohne Ausnahme):**
+
+- Dateien ändern (`apply_patch`, Schreib-Bash-Befehle)
+- Versionen erhöhen
 - Commits erzeugen
-- Branches aendern
-- sonstige Systemaenderungen vornehmen
+- Branches ändern oder pushen
+- GitHub-Mutationen (Issues erstellen/editieren/Labels ändern/Kommentare posten/Issues schließen oder öffnen/PRs erstellen oder verändern)
+- Abschlussschritte (Versionsbump, Changelog, Manual, Commit, Push, Issue-Abschluss)
+- Laufende Arbeit noch schnell fertigstellen
 
-Diese Sperre gilt auch dann, wenn:
+### 3.2 Queue-Einfrieren unter Modussperre
 
-- der Nutzer direkt eine Aenderung verlangt
-- noch offene Queue-Punkte existieren
-- die laufende Abarbeitung noch nicht abgeschlossen ist
-- die Regeln zur Queue-Fortsetzung sonst fuer weiteres Arbeiten sprechen wuerden
+Eine aktive Queue wird bei Modussperre eingefroren:
 
-### Queue-Verhalten unter Modussperre
+- Sie darf nur noch dokumentiert, geordnet, priorisiert und geplant werden
+- Sie darf NICHT umgesetzt, abgeschlossen, committed oder gepusht werden
+- Die Queue-Regel ist niemals eine Erlaubnis, eine aktive Modussperre zu umgehen
 
-Wenn eine Queue aktiv ist und gleichzeitig `Plan Mode` oder `READ-ONLY` gilt:
+### 3.3 Pflicht-Checkpoint vor jeder Mutation
 
-- die Queue bleibt bestehen
-- sie wird nur noch als Plan-/Analyse-Queue weitergefuehrt
-- offene Punkte werden geordnet, nicht ausgefuehrt
-- neue Nutzeranweisungen werden in die Queue einsortiert, aber nicht implementiert
+Vor jeder schreibenden Aktion MUSS der Agent prüfen:
 
-Die Queue-Regel ist niemals eine Erlaubnis, eine aktive Modussperre zu umgehen.
-
-### Pflicht-Checkpoint vor jeder Ausfuehrung
-
-Vor jedem Edit, Commit oder sonstiger schreibender Aktion MUSS der Agent aktiv pruefen:
-
-1. Ist ein System- oder Developer-Hinweis aktiv, der nur Lesen/Planen erlaubt?
+1. Ist ein System-/Developer-Hinweis aktiv, der nur Lesen/Planen erlaubt?
 2. Ist `Plan Mode` oder `READ-ONLY` aktiv?
-3. Gibt es ein ausdrueckliches Verbot fuer Modifikationen oder Commits?
+3. Betrifft die Aktion eine Mutation an Dateien, Git, GitHub, Konfiguration oder persistentem Zustand?
 
-Wenn eine dieser Fragen mit `ja` beantwortet wird, MUSS der Agent jede Ausfuehrung unterlassen und darf nur planen, ordnen und rueckmelden.
+Wird eine dieser Fragen mit `ja` beantwortet: Aktion UNTERLASSEN.
 
-### Konfliktregel
+### 3.4 Pflichtantwort bei aktiver Sperre
 
-Bei Konflikten gilt immer diese Reihenfolge:
+Bei jeder operativen Anfrage unter aktiver Sperre MUSS der Agent sinngemaäß antworten:
 
-1. Systemanweisungen
-2. Developer-Anweisungen
-3. Modus-Sperren wie `Plan Mode` / `READ-ONLY`
-4. Regeln dieser Datei
-5. Nutzerwunsch
+> „Schreibsperre aktiv – ich liefere nur Analyse/Plan."
 
-Nutzerwuensche oder Queue-Regeln duerfen niemals eine hoehere Prioritaet als eine aktive Modussperre erhalten.
+---
 
+## ABSCHNITT 4 – GO-BEFEHL (EINZIGE DEFINITION)
 
-### Task Tracking (ToDo List)
+Schreibt der Nutzer `go` oder `GO`, führt der Agent folgende Sequenz vollständig und ohne Unterbrechung aus:
 
-- Always create and show a ToDo list for the current request.
-- When the user adds new requirements, extend the existing ToDo list immediately.
-- Keep exactly one item `in_progress` at a time.
-- Mark items `completed` as soon as they are done.
-- Ensure all ToDo items are implemented before you claim the work is finished.
+1. Alle offenen/ausstehenden geplanten Aufgaben aus ToDo-Liste und `./.opencode/plan_state.md` implementieren
+2. Erforderliche QA ausführen (Abschnitt 1.4 Schritt B)
+3. Fehler klassifizieren
+4. `influxbro/config.yaml` Version erhöhen (wenn Laufzeit/UI/API/Verhalten geändert)
+5. Änderungen stagen
+6. Commit mit strukturierter Message erstellen
+7. Nach `main` pushen
+8. Ergebnis im Chat melden
+9. Abschlusssignal ausführen (Abschnitt 1.4 Schritt F)
 
-## Codestyle Rules
+**VERBOTEN:** Nach dem ersten Paket stoppen, solange kein echter Blocker existiert.
 
-## Storage Policy (Global vs. Profile-based)
+**Wenn mehrere Pakete sinnvoll sind**:
 
-This policy applies to ALL pages and functions of the app.
+- Erstes Paket committen und pushen
+- Verbleibende Aufgaben explizit als offen benennen
+- Automatisch mit dem nächsten Paket fortfahren
 
-### Global / server-side state
+**GO darf NICHT:**
 
-Store a state server-side if it changes the functional behavior or data scope and therefore must be identical across devices (e.g. iMac and iPhone).
+- Ausführung unterbrechen
+- Fragen auslösen
+- Weitere Verarbeitung pausieren oder verzögern
 
-Examples:
+---
 
-- source selection:
-  - `measurement`
-  - `field`
-  - `measurement_filter`
-  - `entity_id`
-  - `friendly_name`
-- time selection:
-  - `range`
-  - `start`
-  - `stop`
-- analysis-relevant values:
-  - selected outlier types
-  - effective analysis start value / oldest known point per series
-  - functional thresholds and limits
-- analogous functional selections on Statistics / Logs / Import / Export / Backup / Restore / Monitor / Jobs / History
+## ABSCHNITT 5 – AUTONOME AUSFÜHRUNGSRICHTLINIE
 
-Rule:
+### 5.1 Kern-Regel
 
-- If a value changes what data is queried, filtered, analyzed, imported, exported, restored, or processed, it belongs to the global/server-side state.
+Wenn der Nutzer die Umsetzung explizit freigibt (z. B. „alle Issues umsetzen", `go` oder äquivalente Formulierung), MUSS der Agent alle Aufgaben vollständig und ohne Zwischenfragen ausführen.
 
-### Profile-based UI state
+### 5.2 Keine-Unterbrechung-Regel
 
-Store a state in the active UI profile if it changes only appearance, ergonomics, or layout and may intentionally differ between profiles like `PC` and `MOBIL`.
+**VERBOTEN während freigegebener Ausführung:**
 
-Examples:
+- Schritt-für-Schritt-Bestätigungen einholen
+- Priorisierungsfragen stellen
+- „Wie soll ich vorgehen?"-Fragen stellen
+- Nummerierte Auswahlmenüs (1/2/3) für Zwischenschritte
 
-- section open/closed state (`*_open`)
-- table heights
-- splitters / resize values
-- column widths
-- wrap / no-wrap
-- column visibility
-- popup sizes
-- font sizes / row density
+### 5.3 Erlaubte Unterbrechungen (AUSSCHLIESSLICH DIESE)
 
-Rule:
+Der Agent DARF die Ausführung nur unterbrechen, wenn:
 
-- If a value changes only how the UI looks or feels, but not what data is processed, it belongs to the UI profile.
+- Kritische Informationen fehlen und kein Fortschritt möglich ist
+- Externe Abhängigkeiten erforderlich sind (z. B. Zugangsdaten, API-Zugang)
+- Mehrere gültige Umsetzungen mit erheblichem Einfluss existieren
+- Eine destruktive oder nicht umkehrbare Aktion erforderlich ist
 
-### Separation rule
+### 5.4 Multi-Issue-Ausführung
 
-- Functional global state and profile-based UI state MUST remain technically separate.
-- Browser-local state must not override a server-side functional state.
-- UI profile state must not overwrite global functional selections.
+- Issues sequenziell abarbeiten
+- Ein Issue vollständig abschließen, bevor das nächste beginnt
+- NICHT zwischen Issues fragen
+- NICHT Ausführung neu bestätigen
+- „Arbeite alle Issues ab" oder „Arbeite alle Issues außer #X ab" sind vollständige Arbeitsanweisungen – keine zusätzliche Bestätigung, kein weiteres `GO` und keine Rückfrage zur Paketbildung erforderlich
+- Schließt der Nutzer einzelne Issues explizit aus, sind alle übrigen automatisch zur Umsetzung ausgewählt
+- Offene Issues, die laut Nutzer umgesetzt werden sollen, MÜSSEN selbstständig automatisch weiter bearbeitet werden, bis keine solchen Issues mehr offen sind
 
-### App-wide inventory (applies to all pages/functions)
+### 5.5 Berichterstattung
 
-Dashboard
+Berichte NUR:
 
-- Global: source selection (`measurement`, `field`, `measurement_filter`, `entity_id`, `friendly_name`), time selection (`range`, `start`, `stop`), selected outlier types, effective analysis start value
-- Profile-based: section open states, table heights, resize/split values, popup/layout geometry
+- Nach Abschluss eines logischen Blocks (z. B. ein Issue vollständig umgesetzt)
+- Oder am Ende aller Aufgaben
 
-Statistics
+Berichte dürfen KEINE Fragen enthalten, außer bei einem echten Blocker.
 
-- Global: source/time selection and functional stats filters
-- Profile-based: section open states, table/list geometry, wrap/column visibility/widths
+## ABSCHNITT 6 – PLAN-MODUS
 
-Logs
+### 6.1 Verhalten im Plan-Modus
 
-- Global: functional query/filter state
-- Profile-based: visual list/table state and layout preferences
+Wenn Plan-Modus aktiv ist:
 
-Backup / Restore / Import / Export / Combine / Monitor / Jobs / History
+- Detaillierten Plan erstellen und alle Aufgaben anzeigen
+- Aufgaben logisch gruppieren
+- Auf explizite Nutzerfreigabe warten, bevor etwas umgesetzt wird (keine Dateiänderungen, keine Commits, keine Pushes)
 
-- Global: all functional selections and operation-relevant parameters
-- Profile-based: purely visual/open/layout state only
+**VERBOTEN:** Nach Planpräsentation proaktiv nach Issues fragen oder Issue-Triage anbieten.
 
-### Repo Layout (important for HA)
+### 6.2 Plan-Modus darf aktive Build-Ausführung nicht unterbrechen
 
-- `repository.yaml`: must stay in repo root for Home Assistant add-on repositories.
-- `influxbro/config.yaml`: add-on metadata (versioning, slug, ingress settings).
-- `influxbro/Dockerfile`: container build.
-- `influxbro/run.sh`: add-on entrypoint (reads `/data/options.json`).
-- `influxbro/app/app.py`: Flask app.
-- `influxbro/app/templates/*.html`: UI templates (inline JS/CSS).
+- Läuft bereits eine freigegebene Build-Ausführung, bleibt diese bis zu einem logischen Abschlusspunkt aktiv.
+- Ein späterer Wechsel in den Plan-Modus darf diese laufende Ausführung NICHT rückwirkend stoppen oder als Read-Only umdeuten.
+- Neue Plan-Anfragen während laufender Build-Ausführung werden in die ToDo-Plan-Queue eingereiht.
+- Nur ein explizites Abbruchsignal (Abschnitt 2.4) kann eine laufende Build-Ausführung zugunsten von Plan-Arbeit unterbrechen.
 
-Constraints:
+### 6.3 Build-Modus darf aktive Plan-Arbeit nicht unterbrechen
 
-- Do not rename the add-on directory or change `slug` in `influxbro/config.yaml`.
-- Home Assistant detects updates via the `version:` field in `influxbro/config.yaml`.
-- The container expects HA mounts:
-  - `/data` (writable, persistent)
-  - `/config` (read-only in this add-on)
+- Läuft bereits aktive Plan-Arbeit, DARF ein späterer Build/GO-Befehl diese nicht abbrechen.
+- Der aktuelle Plan-Antwort muss zuerst einen logischen Abschlusspunkt erreichen.
+- Der Build/GO-Befehl wird danach als nächste Aktion ausgeführt, es sei denn, der Nutzer weist ausdrücklich an sofort zu wechseln.
 
-### Code Style Guidelines
+## ABSCHNITT 7 – BULK-VERARBEITUNG UND KONTEXT-MANAGEMENT
 
-### General
+### 7.1 Allgemeine Regel (KRITISCH)
 
-- Keep changes minimal and consistent with existing patterns (Flask + inline templates).
-- Prefer readability over cleverness; this add-on is operated by Home Assistant users.
-- Do not introduce new dependencies unless they are clearly justified.
+- **NIEMALS** alle Dateien gleichzeitig laden oder analysieren.
+- Dateien IMMER in kleinen Stapeln oder einzeln verarbeiten.
 
-### Python formatting
+### 7.2 HTML-/Template-Analyse
 
-- Indentation: 4 spaces.
-- Strings: prefer double quotes for user-facing text consistency in this codebase.
-- Use f-strings for formatting.
-- Keep lines reasonably short (~100 chars) unless it harms clarity.
+- Jeweils NUR eine Datei verarbeiten.
+- Mehrere Templates NICHT vorab in den Kontext laden.
+- Dateilektüre auf relevante Abschnitte beschränken, wo möglich.
 
-### Imports
+### 7.3 Iterative Verarbeitungsstrategie
 
-- Group and order imports:
-  1) standard library
-  2) third-party
-  3) local imports
-- One import per line when practical.
-- Avoid unused imports.
+Für Aufgaben wie „alle HTML-Dateien analysieren", „alle Templates prüfen", „Projektstruktur validieren":
 
-Example:
+1. Dateiliste zuerst ermitteln
+2. Dateien einzeln iterieren
+3. Jede Datei unabhängig analysieren
+4. Ergebnisse inkrementell zusammenfassen
+5. NIEMALS vollständige Dateiinhalte im Kontext ansammeln
 
-```py
-import json
-from pathlib import Path
+### 7.4 Ausgabe-Beschränkungen
 
-from flask import Flask, jsonify, request
+- Vollständige Dateiinhalte NUR auf explizite Anforderung ausgeben
+- Standard-Ausgabe: Fehler, relevante Snippets, Zeilenreferenzen
+- Zusammenfassungen vor vollständigen Dumps bevorzugen
+
+### 7.5 Token-Sicherheitsregeln
+
+Wächst der Kontext zu groß:
+
+- Verarbeitung STOPPEN
+- Bisherige Erkenntnisse zusammenfassen
+- In nächster Iteration fortfahren
+- Große Diffs und vollständige Dateiausgaben vermeiden
+
+### 7.6 HTML-Validierungsregeln
+
+Beim Validieren der HTML-Struktur Fokus auf:
+
+- Tag-Balance (`<div>`, `<main>`, `<section>`, `<details>`)
+- Korrekte Verschachtelung
+- Eltern-/Kind-Hierarchie
+
+Ignorieren: Styling, JavaScript, nicht zusammenhängender Inhalt.
+
+### 7.7 Parallelausführungsstrategie
+
+**Erlaubt (nur bei klarer Unabhängigkeit):**
+
+- Nicht zusammenhängende Dateien lesen
+- Codebasis durchsuchen
+- Offene GitHub-Issues prüfen
+- Logs sammeln
+- Relevante Tests lokalisieren
+
+**Sequenziell PFLICHT wenn:**
+
+- Aufgaben dieselben Dateien oder Module betreffen
+- Eine Änderung das Design späterer Änderungen beeinflussen kann
+- API, UI und Konfigurationsverhalten zusammenhängen
+- Unsicherheit über Abhängigkeitsreihenfolge besteht
+
+**Alle Schreiboperationen sind IMMER strikt sequenziell auszuführen.**
+
+### 7.8 Rate-Limit und API-Stabilität (PFLICHT)
+
+Externe APIs (z. B. Alibaba Qwen) können Anfragen bei zu schnellem Traffic ablehnen.
+
+**A. Globale Anfragenkontrolle:**
+
+- ALLE externen API-Aufrufe MÜSSEN über einen zentralen Request-Handler geleitet werden.
+- Direkte Parallelaufrufe aus mehreren Modulen sind VERBOTEN.
+
+**B. Parallelitätslimit:**
+
+- Maximal 2 gleichzeitige API-Anfragen
+- Durchsetzung via Semaphor/Queue ist NICHT optional
+
+**C. Request-Glättung:**
+
+- Mindestverzögerung zwischen Anfragen: 300 ms (empfohlen: 400–600 ms)
+- Burst-Traffic ist jederzeit zu verhindern
+
+**D. Retry-Strategie:**
+
+- Bei HTTP 429: Exponentieller Backoff: 1 s → 2 s → 4 s → 8 s (max 10 s) + Jitter (0–500 ms)
+- Sofortiger Retry OHNE Verzögerung ist VERBOTEN
+
+**E. Fail-Safe:**
+
+- Bei wiederholten 429-Fehlern: Parallelität auf 1 reduzieren, Verzögerung auf 800–1200 ms erhöhen
+
+**Grundsatz:** Stabilität hat Vorrang vor Geschwindigkeit.
+
+## ABSCHNITT 8 – ISSUE-VERWALTUNG
+
+### 8.1 Grundregeln (KRITISCH)
+
+- **Issues werden NIEMALS automatisch geprüft, geladen oder gestartet.**
+- Issues werden ausschließlich auf expliziten Befehl des Nutzers geprüft und abgearbeitet (Auslöser: Abschnitt 16.2).
+- Nur bei NEUER Anfrage fragen, ob ein Issue erstellt oder sofort umgesetzt werden soll.
+- Bezieht sich die Anfrage auf ein bestehendes Issue: direkt weiterarbeiten, keine Rückfrage.
+- **Sperrbedingung:** Sind noch Todos offen (ToDo-Liste, `todo_plan.md`, `todo_build.md`), dürfen KEINE neuen Issues gestartet werden – auch nicht auf Anfrage. Der Agent meldet den blockierten Zustand und listet offene Punkte auf.
+- `rememberme`-Issues sind bei jeder Prüfung, Triage oder Sammelumsetzung strikt zu überspringen, auch wenn der Nutzer nach „allen Issues“ fragt.
+
+### 8.2 Issue-Status-Labels (PFLICHT)
+
+Genau EIN Status-Label pro Issue zu jedem Zeitpunkt:
+
+- `status/open`
+- `status/in_progress`
+- `status/done`
+- `status/cancelled`
+
+Status-Labels schließen sich gegenseitig aus. Das vorherige Label MUSS entfernt werden, bevor ein neues gesetzt wird.
+
+- Wiedereröffnetes Issue: `status/done` und `status/cancelled` entfernen, `status/open` setzen.
+- Geschlossenes Issue: DARF NICHT `status/open` oder `status/in_progress` behalten.
+- Bei Divergenz zwischen GitHub-Zustand und Status-Label: sofort korrigieren.
+
+### 8.3 Prioritätsgesteuerte Abarbeitung
+
+- Offene Issues IMMER in Reihenfolge ihrer Priorität abarbeiten, höchste zuerst.
+- Issues ohne Priorität erst, wenn keine höher priorisierten sinnvoll bearbeitbar sind.
+- Gleichpriorisierte Issues: nach fachlicher Abhängigkeit, dann Alter, dann Aufwand.
+- Abweichung von Prioritätsreihenfolge nur bei technischer Blockade, fehlenden Informationen oder ausdrücklicher Nutzeranweisung – immer kurz begründen.
+
+**Prioritäts-Mapping:**
+
+| Label | Rang |
+
+|---|---|
+| `P1`, `Critical`, `Highest`, `1` | Sofort bevorzugt |
+| `P2`, `High`, `2` | Nach P1 |
+| `P3`, `Medium`, `Normal`, `3` | Nach P2 |
+| `P4`, `Low`, `4` | Nach P3 |
+| Keine Priorität | Zuletzt |
+
+### 8.4 Issues laden und synchronisieren
+
+```bash
+gh issue list --repo <owner>/<repo> --state open --limit 200
+gh issue list --repo <owner>/<repo> --state open --label type/bug --limit 200
+gh issue list --repo <owner>/<repo> --state open --label type/enhancement --limit 200
 ```
 
-### Types
+Offene Items in lokale ToDo-Liste und `./.opencode/plan_state.md` aufnehmen (mit `#<id>` + Titel).
 
-- Add type hints for new/changed functions.
-- Prefer built-in generics: `dict[str, object]`, `list[str]`.
-- For JSON-like payloads, use `dict[str, Any]` and validate/normalize at the boundary.
+### 8.5 Shortcut „prüfe Issues"
 
-### Naming
+Gibt der Nutzer exakt `prüfe Issues` ein:
 
-- Functions/vars: `snake_case`.
-- Constants: `UPPER_SNAKE_CASE`.
-- Flask route handlers: short verb-ish names (`measurements`, `fields`, `api_test`).
-- Private helpers: prefix with `_`.
+Zuerst OHNE vorherige Issue-Liste diese Auswahl stellen:
 
-### Error handling and API responses
+1. `Alle Issues umsetzen` – alle offenen Issues sofort ohne weitere Nachfragen umsetzen
+2. `Auswahl treffen` – Issue-Liste anzeigen (gruppiert nach `type/bug` vs. `type/enhancement`), Nutzer wählt aus
 
-- Treat Flask routes as trust boundaries:
-  - validate required params
-  - normalize types (`int(...)`, `bool(...)`)
-  - return clear errors with appropriate HTTP status codes.
-- Prefer a consistent JSON envelope for API endpoints:
-  - success: `{"ok": true, ...}`
-  - error: `{"ok": false, "error": "..."}`
-- Avoid broad `except Exception` in pure helpers; it is acceptable at the HTTP boundary to
-  prevent crashes, but include useful error messages and status codes.
+Die Issue-Liste darf VOR dieser Auswahl NICHT geladen oder angezeigt werden.
 
-### Security / Safety
+### 8.6 Triage-Flow
 
-- Never log or return secrets (token/password). Keep the existing redaction behavior.
-- Any path coming from users must be constrained; keep traversal protections like
-  `_resolve_cfg_path()` and extend them rather than bypassing.
-- Deletion must remain opt-in:
-  - gated by `ALLOW_DELETE`
-  - requires exact confirmation phrase
+- Issues grouped nach `type/bug` und `type/enhancement` anzeigen
+- Pro Issue Entscheidung ermöglichen: jetzt umsetzen / zurückstellen / ablehnen
+- Entscheidungen auf GitHub spiegeln:
+  - Jetzt umsetzen: `status/in_progress`, Kommentar „zur Umsetzung ausgewählt"
+  - Zurückstellen: `status/open`, Kommentar „zurückgestellt"
+  - Ablehnen: `status/cancelled`, Kommentar mit Begründung, Issue schließen
+- Nur explizit als „jetzt umsetzen" gewählte Issues in ToDo-Liste und `plan_state.md` aufnehmen
 
-### Flask + InfluxDB conventions
+## ABSCHNITT 9 – AUFGABEN-TRACKING
 
-- InfluxDB v2 clients should be context-managed and closed (`with v2_client(cfg): ...`).
-- For v1 client usage, keep timeouts and SSL verification configurable.
-- Keep query size bounded (the UI downsamples to ~5000 points); preserve or improve this.
+### 9.1 ToDo-Liste und Queues – Sichtbarkeit (PFLICHT)
 
-### Templates (HTML/JS/CSS)
+- Für jeden Auftrag IMMER eine ToDo-Liste erstellen und sichtbar halten.
+- Bei neuen Anforderungen: bestehende ToDo-Liste sofort erweitern.
+- Genau ein Eintrag trägt den Status `in_progress`.
+- Einträge sofort als `erledigt` markieren, sobald abgeschlossen.
+- Alle ToDo-Einträge MÜSSEN umgesetzt sein, bevor Fertigstellung erklärt wird.
+- **Alle drei Listen werden gemeinsam als Block im Chat sichtbar gehalten** (aktive ToDo + ToDo Plan + ToDo Build). Regeln siehe Abschnitt 2.2 Sichtbarkeitsregel.
 
-- Keep templates self-contained; no build step exists.
-- Use relative URLs (`./api/...`) to work under HA Ingress.
-- Keep JS simple (no framework). Prefer small functions and explicit DOM lookups.
-- For destructive actions, preserve confirmation UI and add additional guardrails if needed.
+**Statussymbole (einheitlich für alle drei Listen):**
 
-#### UI Design Standard
+| Symbol | Bedeutung |
 
-- Before adding or modifying any GUI element:
-  - consult influxbro/Template.md
-- Maintain consistent layout patterns across all UI components
-- Ensure:
-  - consistent spacing
-  - consistent card/layout structure
-  - consistent naming of classes and IDs
-- UI components must be validated not only on container level but also for all child elements
-  
-## Release and Versioning
+|---|---|
+| ✅ | Erledigt |
+| 🔄 | In Bearbeitung (`in_progress`) |
+| ⬜ | Ausstehend |
+| ❌ | Fehlgeschlagen / blockiert |
+| ⏸ | Eingefroren (aktive Modussperre) |
 
-### Versioning / Releases (Home Assistant add-on)
+### 9.2 Plan-Zustand persistieren
 
-- Jede Codeaenderung erfordert zwingend eine neue Version.
-  - Wenn Dateien mit Code oder Laufzeitlogik geaendert werden (z. B. `*.py`, `*.html`, `*.js`, `*.css`, Docker-/Start-/Shell-Logik, Laufzeit-Configs), MUSS immer eine neue Add-on-Version erzeugt werden.
-  - Dies gilt auch fuer kleine Korrekturen, Umstrukturierungen und rein technische Anpassungen.
+- `./.opencode/plan_state.md` nach jeder bedeutsamen Änderung aktualisieren.
+- Inhalt: aktuelle ToDo-Liste (mit Status), offene Entscheidungen/Fragen, vereinbarte Planänderungen.
+- Lokal halten, NICHT committen.
+- Beim Sitzungsstart: `plan_state.md` laden und ausstehende Punkte wiederherstellen.
 
-- Bump `version:` in `influxbro/config.yaml` for any user-visible change.
-- Do not change `slug:`.
-- Keep `repository.yaml` in the repo root.
+### 9.3 Anforderungslog (Fallback ohne GitHub)
 
-### Release Workflow
+Falls GitHub-Issues nicht verfügbar: Anforderungen in `./.opencode/requests_log.md` dokumentieren.
 
-- If you change add-on behavior (Python/HTML/JS/CSS, Dockerfile, run scripts, configs that affect runtime), also:
-  - bump `influxbro/config.yaml:version` (so Home Assistant detects the update)
-  - add an entry to `influxbro/CHANGELOG.md` for that version
-  - update the user handbook `influxbro/MANUAL.md` so it reflects the current UI/behavior for that version
-  - when the change implements a GitHub Issue, the corresponding changelog bullets MUST include a clickable issue link in the form `([#123](https://github.com/<owner>/<repo>/issues/123))`
-  - verify `influxbro/CHANGELOG.md` completeness/order (the file MUST list version entries in descending order, newest version at the top)
-    - The CHANGELOG.md must present versions in strict descending order (most recent first). When adding a new entry, insert it at the top under the new version heading.
+- Format: Datum + Beschreibung + Status (`offen`, `in_progress`, `erledigt`, `abgebrochen`)
+- Lokal halten, NICHT committen.
+- Status bei Start/Abschluss/Abbruch aktualisieren, optional mit Commit-Hash.
 
-## Dependency / Compatibility Rules
+## ABSCHNITT 10 – TOMBSTONE-PROZESS (UI-KOMPONENTEN-ENTFERNUNG)
 
-- If you change Python dependencies (new imports, add/remove packages, or behavior that requires a new library version), update `influxbro/requirements.txt` in the same change.
-- For each released add-on version, record the Home Assistant Core version the add-on was tested with.
-  - Preferred place: the corresponding entry in `influxbro/CHANGELOG.md` (e.g. a Maintenance bullet: `Tested with Home Assistant Core: 2026.3.0`).
-  - **Ermittlung der HA Core Version:** Vor dem Schreiben des Changelog-Eintrags MUSS die installierte Home Assistant Core Version auf dem Echtsystem ermittelt werden:
-  
-    ```bash
-    curl -s -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://192.168.2.200:8123/api/config | jq -r '.version'
-    ```
-  
-  Der ermittelte Wert MUSS im Changelog-Eintrag unter `Tested with Home Assistant Core: <wert>` eingetragen werden.
-  - `unknown` ist nur als Fallback erlaubt, wenn genau diese Abfrage im aktuellen Umfeld nicht erfolgreich ausgefuehrt werden kann oder keinen verwertbaren Versionswert liefert.
+### 10.1 Pflicht-Auslöser
 
-## Support & Logging
+Beim Entfernen, Ersetzen oder Stilllegen von UI-Elementen, Templates, Buttons, Tabellen, Dialogen, Frontend-Aktionen, API-gebundenen UI-Funktionen oder Routen MUSS der Agent automatisch den vollständigen Tombstone-Workflow ausführen.
 
-- Ensure user-visible UI errors are also written to the add-on log file.
-  - In particular: client-side/network errors like "Failed to fetch" must be reported from the browser to the backend and logged.
-  - When adding new UI error messages, verify they show up in `Logs` (logfile) during failure scenarios.
+**VERBOTEN:** UI-Entfernungen als reine Löschaufgabe behandeln.
 
+### 10.2 Pflichtablauf
 
-## UI-Komponenten-Entfernung (Tombstones Pflichtprozess)
+**Schritt 1 – UI-Relevanz prüfen:**
+Als UI-relevant gelten: Templates (`*.html`), Inline-JavaScript, CSS/Selektoren, Buttons/Menüs/Dialoge/Tabellen/Karten/Filter/Formulare, API-Aufrufe aus UI-Aktionen, Routen mit UI-Bezug.
 
-Beim Entfernen von UI-Komponenten (HTML, JS, CSS, Backend-Funktionen) muss zwingend ein nachvollziehbarer "Tombstone" hinterlassen werden.
+**Schritt 2 – Abhängigkeiten vollständig ermitteln:**
+Vor jeder Entfernung prüfen: HTML-/Template-Referenzen, JavaScript-Funktionen, Event-Handler/Listener, CSS-Klassen/IDs/Selektoren, Fetch-/API-Aufrufe, Backend-Endpunkte mit UI-Bezug, Ingress-/Routing-Auswirkungen, Dokumentation/MANUAL/UI-Hinweise.
 
-### Pflichtregeln
+**Schritt 3 – Tombstone anlegen:**
+`.tombstones.yml` MUSS im selben Arbeitsgang ergänzt werden mit mindestens:
 
-- Keine stille Entfernung
-- Jede entfernte UI-Komponente MUSS in `.tombstones.yml` dokumentiert werden
-- Tombstone-Kommentar im Code ist Pflicht
-- Abhängigkeiten prüfen (JS, API, CSS, Templates, Ingress)
+- `path`, `tombstone_id`, `reason`, `owner`
+- `impacted_selectors`, `impacted_actions`
+- `migration_plan`, `route_plan`, `ci_reference`
 
-### Tombstone Datei
+Code-Kommentar an der Entfernungsstelle: `// TOMBSTONE: TS-XXXX – Beschreibung`
 
-- Zentrale Datei: `.tombstones.yml`
-- Jeder Eintrag benötigt eindeutige `tombstone_id`
+**Schritt 4 – Folgecode bereinigen:**
+Funktionen, Selektoren, Event-Handler, API-Aufrufe oder Routen, die ausschließlich zum entfernten Element gehören, MÜSSEN entfernt oder stillgelegt werden. Noch anderweitig verwendete Funktionen dürfen NICHT entfernt werden. Bei Unklarheit: markieren und prüfen, nicht stillschweigend löschen.
 
-### Code-Kommentar
+**Schritt 5 – Migrations- und Ersatzpfad dokumentieren:**
+Wenn ersetzt: Tombstone-Eintrag nennt neuen Pfad/Funktion/Route. Wenn Route entfällt: Redirect-Prüfung erforderlich. Bei HA Ingress: relative Pfade verwenden.
 
-```js
-// TOMBSTONE: TS-XXXX – Beschreibung
-```
+**Schritt 6 – Abschlussbericht erweitern:**
+Bericht enthält: betroffene UI-Komponente(n), Tombstone-ID(s), entfernte Folgefunktionen, bewusst beibehaltene Restfunktionen mit Begründung, Migrations-/Redirect-Hinweise.
 
-### Pflichtprüfungen nach Entfernung
+### 10.3 Verifikations-Checkliste (Pflicht)
 
-- Keine JS Errors
-- Keine 404 durch alte API/UI Calls
-- HA Ingress funktioniert weiterhin
-- API-Endpunkte korrekt entfernt
+- [ ] `.tombstones.yml` Eintrag vorhanden, `tombstone_id` eindeutig
+- [ ] `// TOMBSTONE: <id>` Kommentar an Entfernungs-/Opt-out-Stelle
+- [ ] Keine toten Selektoren/CSS-Klassen
+- [ ] Keine toten JS-Handler/Listener
+- [ ] Keine UI-Calls auf entfernte API-Endpunkte
+- [ ] Ingress/Routes: keine 404s, ggf. Redirect/Migration dokumentiert
+- [ ] `py_compile` bestanden
+- [ ] Relevante `pytest` bestanden
+- [ ] UI-Smoke-Test unter Home Assistant Ingress
 
-### CI / QA Pflicht
-
-- Syntax Check
-- API Smoke Tests
-- UI Test im HA System
-
-### Version / Docs Pflicht
-
-- Wenn sich Laufzeit- oder UI-Verhalten aendert (auch durch Entfernen/Stilllegen):
-  - Version bump
-  - `CHANGELOG.md` aktualisieren
-  - `MANUAL.md` aktualisieren (falls Benutzerfuehrung/Workflows betroffen)
-
-### GitHub Integration
-
-- Issue muss Tombstone-ID referenzieren
-- Label Empfehlung: `type/ui-removal`, `requires-tombstone`
-
-### Automatische Tombstone-Ausführung bei UI-Entfernungen
-
-Wenn ein Auftrag das Entfernen, Ersetzen oder Stilllegen von UI-Elementen, Templates, Buttons, Tabellen, Dialogen, frontendbezogenen Aktionen, API-gebundenen UI-Funktionen oder Routen umfasst, MUSS der Agent automatisch einen vollständigen Tombstone-Workflow ausführen.
-
-#### Pflichtablauf
-
-1. UI-Relevanz prüfen
-
-- Prüfen, ob die Änderung direkt oder indirekt UI-relevant ist.
-- Als UI-relevant gelten insbesondere:
-  - Templates (`*.html`)
-  - Inline-JavaScript
-  - CSS/Selektoren
-  - Buttons, Menüs, Dialoge, Tabellen, Karten, Filter, Formulare
-  - API-Aufrufe, die von UI-Aktionen ausgelöst werden
-  - Routen oder Views mit UI-Bezug
-
-2. Abhängigkeiten vollständig ermitteln
-
-- Vor jeder Entfernung zwingend prüfen:
-  - HTML-/Template-Referenzen
-  - JavaScript-Funktionen
-  - Event-Handler / Listener
-  - CSS-Klassen, IDs, Selektoren
-  - Fetch-/API-Aufrufe
-  - Backend-Endpunkte mit Bezug zur UI
-  - Ingress-/Routing-Auswirkungen
-  - Dokumentation / MANUAL / Hinweise im UI
-
-3. Tombstone automatisch anlegen
-
-- `.tombstones.yml` MUSS im selben Arbeitsgang ergänzt werden.
-- Der Eintrag MUSS mindestens enthalten:
-  - `path`
-  - `tombstone_id`
-  - `reason`
-  - `owner`
-  - `impacted_selectors`
-  - `impacted_actions`
-  - `migration_plan`
-  - `route_plan`
-  - `ci_reference`
-
-4. Folgecode bereinigen
-
-- Funktionen, Selektoren, Event-Handler, API-Aufrufe oder Routen, die ausschließlich zu dem entfernten UI-Element gehören, MÜSSEN ebenfalls entfernt oder stillgelegt werden.
-- Funktionen dürfen NICHT entfernt werden, wenn sie an anderer Stelle noch verwendet werden.
-- Wenn unklar ist, ob ein Element noch verwendet wird, ist es zu markieren und zu prüfen statt es stillschweigend zu löschen.
-
-5. Migrations- und Ersatzpfad dokumentieren
-
-- Wenn das entfernte UI-Element ersetzt wurde, MUSS der Tombstone-Eintrag den neuen Pfad / die neue Funktion / Route nennen.
-- Wenn eine Route entfällt, MUSS geprüft werden, ob ein Redirect oder eine kompatible Ersatzbehandlung erforderlich ist.
-- Bei Home Assistant Ingress sind relative Pfade zu verwenden.
-
-6. Abschlussbericht erweitern
-
-- Der Abschlussbericht MUSS enthalten:
-  - betroffene UI-Komponente(n)
-  - Tombstone-ID(s)
-  - entfernte Folgefunktionen
-  - bewusst beibehaltene Restfunktionen mit kurzer Begründung
-  - Migrations- oder Redirect-Hinweise
-
-### Verification Checklist (Pflicht)
-
-- Repo: `.tombstones.yml` Eintrag vorhanden, `tombstone_id` eindeutig
-- Code: `// TOMBSTONE: <id>` Kommentar an der Entfernungs-/Opt-out-Stelle
-- Abhaengigkeiten:
-  - keine toten Selektoren/CSS-Klassen
-  - keine toten JS-Handler/Listener
-  - keine UI-Calls auf entfernte API-Endpunkte
-  - Ingress/Routes: keine 404s, ggf. Redirect/Migration dokumentiert
-- QA:
-  - `py_compile`
-  - relevante `pytest`
-  - UI Smoke Test unter Home Assistant Ingress
-- Workflow: HA main-first (rebase auf `origin/main` vor Push, keine stillen Breaking Changes)
-
-#### Automatik-Regel für OpenCode
-
-- Der Agent darf UI-Entfernungen NICHT als reine Löschaufgabe behandeln.
-- Jede UI-Entfernung ist automatisch als kombinierte Aufgabe zu behandeln aus:
-  - UI-Entfernung
-  - Abhängigkeitsanalyse
-  - Folgecode-Bereinigung
-  - Tombstone-Dokumentation
-  - QA-/Ingress-Prüfung
-
-#### Verbotene Verkürzung
-
-- Verboten ist insbesondere:
-  - nur HTML zu löschen, ohne JS/CSS/API zu prüfen
-  - nur einen Button zu entfernen, ohne den Handler zu prüfen
-  - eine UI-Aktion zu löschen, ohne den Backend-Endpunkt zu prüfen
-  - Routen zu entfernen, ohne Migrations- oder Redirect-Prüfung
-
-### Verboten
+### 10.4 Verboten
 
 - UI löschen ohne Tombstone
 - API entfernen ohne Migration
-- Silent Breaking Changes
-
-
-
-## UI Picker Eindeutigkeit (Pickkey Pflicht)
-
-Damit UI-Elemente in Issues/Chat immer 100% eindeutig referenzierbar sind, gilt ab jetzt:
-
-- Jedes sichtbare, support-relevante UI-Element MUSS eine stabile `data-ui` Kennung besitzen.
-- Jedes sichtbare UI-Element MUSS zusaetzlich eine eindeutige `data-ib-pickkey` Kennung besitzen.
-- Das gilt fuer alle Typen:
-  - Buttons, Links, Inputs, Selects, Checkboxen, Labels
-  - Sektionen (`details/summary`), Cards, Panels
-  - Tabellen inkl. Toolbars, Resize-Handles, Filterleisten, Rowcounts
-  - Dialoge/Popups/Overlays
-  - dynamisch erzeugte UI (per JS/`innerHTML`/DOM APIs)
-- Dynamisch erzeugte sichtbare Elemente MUESSEN `data-ui` und `data-ib-pickkey` beim Erzeugen setzen.
-- S-Picker Ausgabe muss den kanonischen Referenztext liefern: `<PICK:<Page>|<pickkey>>`.
-- Neu (v1): Support-Referenzen verwenden das 2-stufige Modell `pk` (Produkt-Key) + `ik` (Instanz-Key): `<PICK:<Page>|v=1;pk=<pk>;ik=<ik>>`.
-- `data-ib-pickkey` entspricht `pk` (stabil/release-tauglich), `data-ib-instancekey` entspricht `ik` (zur Laufzeit eindeutig).
-- Fallback-Referenzen ohne Pickkey sind nur Migrationszustand und nicht akzeptabel als Endzustand.
-- `unknown` ist nur als Fallback erlaubt.
-
-Pflicht bei UI-Aenderungen:
-
-- Wenn du sichtbare UI-Elemente anfasst, musst du bestehende betroffene Elemente mit auf `data-ib-pickkey` nachziehen.
-- Wenn du UI-Elemente entfernst: Tombstone-Prozess bleibt weiterhin Pflicht.
-
-
-## Issue Rules
-
-### Handling Rule
-
-- Only ask whether a request should be recorded as an issue or implemented immediately if it is a NEW request
-- If the request relates to an existing issue or context:
-  - continue implementation without asking
-
-### Requirements Tracking (preferred: GitHub Issues)
-
-- Track requirements primarily as GitHub Issues so others can create/report items externally.
-- **AUTOMATISCHE ISSUE-ERSTELLUNG:** Wenn der Benutzer eine neue Aufgabe/Anforderung im Chat stellt, MUSS der Agent automatisch ein GitHub Issue erstellen, BEVOR mit der Umsetzung begonnen wird.
-  - Issue-Titel: Kurze Zusammenfassung der Anforderung
-  - Issue-Body: Vollstaendige Beschreibung der Anforderung (wie vom Benutzer formuliert)
-  - Label: `type/enhancement` fuer neue Features, `type/bug` fuer Fehler
-  - Status: `status/in_progress` wenn sofort umgesetzt wird, sonst `status/open`
-  - Nach Umsetzung: Status auf `status/done` setzen, Kommentar mit Commit-Hash/PR-Link hinzufuegen
-- Use the issue templates to distinguish between:
-  - Bug reports (not working): label with `type/bug`
-  - Enhancements (feature requests): label with `type/enhancement`
-- Use exactly one status label per issue: `status/open`, `status/in_progress`, `status/done`, `status/cancelled`.
-- Ensure the label set exists in GitHub (create once in the GitHub UI); the issue templates assume these labels are available.
-- When implementing, link PRs to issues and close them via `Fixes #<id>`.
-
-### GitHub Issue Status Label Consistency (MANDATORY)
-
-- Exactly ONE status label may exist on an issue at any time:
-  - `status/open`
-  - `status/in_progress`
-  - `status/done`
-  - `status/cancelled`
-- Status labels are mutually exclusive. The agent MUST remove any previous status label before setting a new one.
-- A reopened issue MUST NEVER keep `status/done` or `status/cancelled`.
-- When an issue is reopened:
-  - remove `status/done`
-  - remove `status/cancelled`
-  - set `status/open` by default
-  - set `status/in_progress` only if work is actively resumed immediately
-- A closed issue MUST NOT remain with `status/open` or `status/in_progress`.
-- When closing an issue:
-  - use `status/done` if the work is completed
-  - use `status/cancelled` only if the issue is intentionally not implemented / declined
-- If GitHub state and status label ever diverge, the agent MUST treat that as an inconsistency and correct the label state immediately.
-- Repository automation should enforce this label consistency, but the agent MUST NOT rely on automation alone and must still set the correct status explicitly.
-
-### Prioritätsgesteuerte Issue-Abarbeitung
-
-Falls GitHub-Issues eine Priorität besitzen, ist diese bei der Auswahl und Reihenfolge der Bearbeitung verbindlich zu beachten.
-
-#### Pflichtregeln
-
-- Bearbeite offene Issues immer in Reihenfolge ihrer Priorität, höchster zuerst.
-- Issues ohne Priorität dürfen erst bearbeitet werden, wenn keine höher priorisierten offenen Issues mehr sinnvoll bearbeitbar sind.
-- Gleichpriorisierte Issues sind nach fachlicher Abhängigkeit, danach Alter, danach Umsetzungsaufwand sinnvoll zu ordnen.
-- Eine Abweichung von der Prioritätsreihenfolge ist nur zulässig bei technischer Blockade, fehlenden Informationen oder ausdrücklicher Nutzeranweisung.
-- Jede Abweichung ist kurz zu begründen.
-
-#### Standard-Mapping
-
-- `P1`, `Critical`, `Highest`, `1` → sofort bevorzugt
-- `P2`, `High`, `2` → nach P1
-- `P3`, `Medium`, `Normal`, `3` → nach P2
-- `P4`, `Low`, `4` → nach P3
-- keine Priorität → zuletzt
-
-#### Umsetzungspflicht
-
-- Vor Start einer Sammelbearbeitung ist die offene Issue-Liste auf Prioritätsangaben zu prüfen und entsprechend zu sortieren.
-- Die Bearbeitung darf nicht unsortiert oder zufällig begonnen werden, wenn Prioritäten vorhanden sind.
-
-### GitHub Issues: Check, Select, Sync
-
-- Always check for open GitHub Issues when starting work on new items (unless the user explicitly points to a specific issue).
-  - Commands:
-    - `gh issue list --repo <owner>/<repo> --state open --limit 200`
-    - `gh issue list --repo <owner>/<repo> --state open --label type/bug --limit 200`
-    - `gh issue list --repo <owner>/<repo> --state open --label type/enhancement --limit 200`
-- Issues mit dem Label `rememberme` duerfen bei Issue-Pruefung, Triage oder Sammelumsetzung NICHT bearbeitet, umgesetzt, veraendert, kommentiert, geschlossen oder in Auswahl-/Umsetzungspakete aufgenommen werden.
-- `rememberme`-Issues sind bei jeder Bearbeitung offener Issues strikt zu ueberspringen, auch wenn der Benutzer allgemein nach offenen Issues oder nach "allen Issues" fragt.
-- Present open items grouped by **Bugs** (`type/bug`) vs **Enhancements** (`type/enhancement`).
-- The user must be able to decide per issue:
-  - implement now
-  - defer (backlog)
-  - decline
-- This per-issue decision flow applies only during explicit triage mode.
-- If the user explicitly requests implementation of all open issues or a defined subset of open issues, do NOT require per-issue decisions and process the selected issues immediately.
-
-- Reflect the user's decision back to GitHub:
-  - implement now: set `status/in_progress` and add a short comment "picked for implementation"
-  - defer: keep `status/open` and add a short comment "deferred"
-  - decline: set `status/cancelled`, add a short comment with reason (if provided), and close the issue
-
-### Issue Completion (STRICT)
-
-- An issue counts as implemented only when:
-  1. the requested code/config/documentation change is actually applied
-  2. all REQUIRED relevant QA checks for that issue have been executed
-  3. blocking failures for that issue do not remain
-  4. the change has been committed
-  5. if repository policy requires it, the change has also been pushed
-
-- Once an issue is implemented by the above definition, the agent MUST immediately do all of the following:
-  1. set the issue status label to `status/done`
-  2. add an issue comment containing at least:
-     - root cause
-     - implemented solution
-     - commit hash and/or PR link
-  3. set the issue to 'close'
-
-- This completion flow is MANDATORY and MUST NOT be skipped.
-- The issue MUST be closed even if no PR exists; in that case the commit hash is sufficient.
-- Do NOT wait for extra user confirmation to perform the close step if the issue was selected for implementation.
-
-- Wenn du angewiesen wirst, offene Issues zu bearbeiten oder abzuarbeiten, musst du vor jeder Umsetzung den gesamten Issue-Text, alle Kommentare und insbesondere die neuesten Kommentare/Fehlermeldungen lesen und beruecksichtigen.
-- Die neueste Information im Issue hat Vorrang vor aelteren Annahmen; keine Umsetzung auf Basis veralteter Informationen.
-- Vor jeder Aenderung muss der aktuelle Ist-Zustand der betroffenen Datei(en) gelesen werden; nicht auf erwartete oder fruehere Versionen verlassen.
-- Bei `apply_patch verification failed` ist verpflichtend:
-  1. betroffene Datei erneut lesen
-  2. Zielstelle auf Basis des echten Inhalts neu identifizieren
-  3. Patch robust mit Ankern/Kontext statt unveraenderten Erwartungszeilen neu erstellen
-- Nach jeder Issue-Umsetzung muss der Issue-Kommentar mindestens enthalten:
-  - Ursache des Problems
-  - gewaehlte Loesung
-  - Commit-Hash und/oder PR-Link
-- Nach jeder erfolgreich abgeschlossenen Issue-Umsetzung ist das Issue im selben Arbeitsgang zwingend auf `status/done` zu setzen und zu schliessen.
-- Ein Issue darf nach erfolgreicher Umsetzung nicht offen bleiben, nur weil kein PR existiert oder kein weiterer Benutzerhinweis vorliegt.
-- Sync selected issues into the local open-points list:
-  - add chosen "implement now" issues to the in-chat ToDo list and to `./.opencode/plan_state.md` (with `#<id>` + title)
-  - when the issue is completed/declined/deferred, update `./.opencode/plan_state.md` accordingly
-- Before declaring an implemented issue complete, verify all of the following:
-  - [ ] requested change implemented
-  - [ ] relevant QA completed
-  - [ ] issue comment added
-  - [ ] status set to `status/done`
-  - [ ] issue closed
-- The issue close step MUST happen only after the required repository completion flow for that issue is finished.
-- If the repository policy requires push to `main`, the issue must not be closed before that push succeeded.
-
-### GitHub Comment Execution Safety (CRITICAL)
-
-#### Core Rule
-
-When creating GitHub issue comments via CLI, the agent MUST ensure that the comment text is NOT interpreted by the shell.
-
-#### Mandatory Method (ALWAYS USE)
-
-The agent MUST:
-
-A. Write the full comment text into a temporary Markdown file using a HEREDOC with single-quoted EOF:
-
-```bash
-cat > /tmp/opencode_issue_comment.md <<'EOF'
-<full comment text including backticks, $, URLs, etc.>
-EOF
-```
-
-B. Post the comment using:
-
-```bash
-gh issue comment <ISSUE_NUMBER> --repo <OWNER>/<REPO> --body-file /tmp/opencode_issue_comment.md
-```
-
-#### Forbidden Patterns (STRICT)
-
-The agent MUST NOT use:
-
-```bash
-gh issue comment -b "..."
-```
-
-if the content contains any of:
+- Stille Breaking Changes
+- Nur HTML löschen ohne JS/CSS/API zu prüfen
+- Nur Button entfernen ohne Handler zu prüfen
+- UI-Aktion löschen ohne Backend-Endpunkt zu prüfen
+- Routen entfernen ohne Migrations-/Redirect-Prüfung
 
-- backticks (`...`)
-- dollar signs ($...)
-- shell-like expressions
-- URLs with query parameters
-- file paths or commands
+## ABSCHNITT 11 – UI-PICKER-EINDEUTIGKEIT (PICKKEY-PFLICHT)
 
-Reason:
+- Jedes sichtbare, support-relevante UI-Element MUSS eine stabile `data-ui`-Kennung besitzen.
+- Jedes sichtbare UI-Element MUSS zusätzlich eine eindeutige `data-ib-pickkey`-Kennung besitzen.
+- Gilt für: Buttons, Links, Inputs, Selects, Checkboxen, Labels, Sektionen (`details/summary`), Cards, Panels, Tabellen inkl. Toolbars/Resize-Handles/Filterleisten/Rowcounts, Dialoge/Popups/Overlays, dynamisch erzeugte UI-Elemente.
+- Dynamisch erzeugte sichtbare Elemente MÜSSEN `data-ui` und `data-ib-pickkey` beim Erzeugen setzen.
+- S-Picker-Ausgabe liefert kanonischen Referenztext: `<PICK:<Seite>|<pickkey>>`.
+- Referenzmodell v1: `<PICK:<Seite>|v=1;pk=<pk>;ik=<ik>>` (`data-ib-pickkey` = `pk` stabil/release-tauglich, `data-ib-instancekey` = `ik` zur Laufzeit eindeutig).
+- Fallback-Referenzen ohne Pickkey sind nur Migrationszustand, kein akzeptabler Endzustand.
+- Bei UI-Änderungen: betroffene Elemente auf `data-ib-pickkey` nachziehen.
+- Bei UI-Entfernungen: Tombstone-Prozess bleibt weiterhin Pflicht.
 
-- Backticks trigger command substitution in the shell
-- This leads to unintended command execution (e.g. "command not found")
-- Comment content becomes corrupted or partially executed
+## ABSCHNITT 12 – SPEICHER-POLICY (GLOBAL vs. PROFIL)
 
-#### Rationale
+Diese Policy gilt für ALLE Seiten und Funktionen der App.
 
-Backticks inside double quotes are interpreted by the shell as commands:
+### 12.1 Global/Server-seitiger Zustand
 
-```bash
-`GET /api/app_state`
-```
+Server-seitig speichern, wenn der Wert das funktionale Verhalten oder den Datenumfang ändert und daher geräteübergreifend identisch sein muss.
 
-→ becomes command execution instead of literal text
+Beispiele: Quellauswahl (`measurement`, `field`, `measurement_filter`, `entity_id`, `friendly_name`), Zeitauswahl (`range`, `start`, `stop`), ausgewählte Ausreißertypen, effektiver Analyse-Startwert, funktionale Schwellenwerte.
 
-This MUST be prevented by using HEREDOC with <<'EOF'.
+**Regel:** Ändert ein Wert, welche Daten abgefragt, gefiltert, analysiert, importiert, exportiert, wiederhergestellt oder verarbeitet werden, gehört er zum globalen/server-seitigen Zustand.
 
-#### Optional Post-Processing
+### 12.2 Profilbasierter UI-Zustand
 
-After posting the comment, the agent MAY:
+Im aktiven UI-Profil speichern, wenn der Wert nur Darstellung, Ergonomie oder Layout ändert.
 
-```bash
-gh issue edit <ISSUE_NUMBER> --repo <OWNER>/<REPO> --remove-label "status/in_progress" --add-label "status/done"
-gh issue close <ISSUE_NUMBER> --repo <OWNER>/<REPO>
-```
+Beispiele: Abschnitt geöffnet/geschlossen (`*_open`), Tabellenhöhen, Splitter-/Resize-Werte, Spaltenbreiten, Wrap/No-Wrap, Spaltensichtbarkeit, Popup-Größen, Schriftgrößen/Zeilendichte.
 
-### Completion Rule
+**Regel:** Ändert ein Wert nur das Aussehen oder Gefühl der UI, nicht jedoch welche Daten verarbeitet werden, gehört er zum UI-Profil.
 
-A GitHub issue comment is considered successfully created ONLY if:
+### 12.3 Trennungsregel
 
-- the comment content is fully intact
-- no shell errors occurred during execution
-- no unintended commands were executed
+- Funktionaler globaler Zustand und profilbasierter UI-Zustand MÜSSEN technisch getrennt bleiben.
+- Browser-lokaler Zustand darf server-seitigen funktionalen Zustand NICHT überschreiben.
+- UI-Profilzustand darf globale funktionale Auswahlen NICHT überschreiben.
 
-### GitHub Issues: Proactive Prompting
+## ABSCHNITT 13 – REPO-LAYOUT UND CODE-STIL
 
-- In plan mode, after presenting the plan for the user's request, ALWAYS ask whether the user wants to triage GitHub Issues now.
-- After finishing implementation of the user's selected points (i.e. when the ToDo list is completed), ALSO ask whether the user wants to triage GitHub Issues next.
+### 13.1 Repository-Struktur
 
-Triage flow:
+- `repository.yaml`: MUSS im Repo-Root verbleiben (HA Add-on Repository-Anforderung).
+- `influxbro/config.yaml`: Add-on-Metadaten (Versionierung, Slug, Ingress-Einstellungen).
+- `influxbro/Dockerfile`: Container-Build.
+- `influxbro/run.sh`: Add-on-Einstiegspunkt (liest `/data/options.json`).
+- `influxbro/app/app.py`: Flask-App.
+- `influxbro/app/templates/*.html`: UI-Templates (Inline-JS/CSS).
 
-- List open issues grouped by Bugs (`type/bug`) vs Enhancements (`type/enhancement`).
-- Let the user pick issues to:
-  - implement now
-  - defer
-  - decline
-- Before implementation, allow the user to add/clarify requirements per selected issue (short additions to title/body/acceptance criteria).
-  Apply these clarifications to the GitHub issue as a comment (or by editing the issue body) so the context is preserved.
-- Only issues explicitly chosen as "implement now" are synced into the in-chat ToDo list and mirrored into `./.opencode/plan_state.md`.
+**Einschränkungen:**
 
-### Shortcut: "prüfe Issues" Verhalten
+- Add-on-Verzeichnis NICHT umbenennen und `slug` in `influxbro/config.yaml` NICHT ändern.
+- Home Assistant erkennt Updates über das `version:`-Feld in `influxbro/config.yaml`.
+- Container erwartet HA-Mounts: `/data` (beschreibbar, persistent), `/config` (nur lesbar in diesem Add-on).
 
-- Wenn der Benutzer genau die Phrase `prüfe Issues` eingibt, zeige zuerst eine kurze Auswahlfrage (ohne Issues vorab zu laden):
-  1) `Alle Issues umsetzen` — alle offenen Issues sofort und ohne weitere Nachfragen umsetzen.
-  2) `Auswahl treffen` — zuerst die Liste der offenen Issues anzeigen (gruppiert nach `type/bug` vs `type/enhancement`) und dem Benutzer erlauben, auszuwählen, welche umgesetzt werden sollen.
-- WICHTIG: Die Issue‑Liste darf vor der Auswahl nicht geladen oder angezeigt werden — die erste Frage ist ausschließlich dazu da, den Flow zu bestimmen.
-- Verhalten bei Auswahl:
-  - Wahl 1: Sofort mit der Implementierung aller Issues fortfahren (Änderungen anwenden, Tests/QAs ausführen, `influxbro/config.yaml` version bump, commit und push), ohne weitere per‑Issue Rückfragen.
-  - Wahl 2: Normale Triage: Issues auflisten, Auswahl ermöglichen, dann die ausgewählten Issues implementieren.
-- Diese Verhaltensregel ist eine Agenten‑Policy und wird in dieser Datei dokumentiert, damit sie persistent ist.
+### 13.2 Allgemeiner Code-Stil
 
-### Requirements Log (local, fallback)
+- Änderungen minimal und konsistent mit bestehenden Mustern (Flask + Inline-Templates).
+- Lesbarkeit vor Cleverness; dieses Add-on wird von Home Assistant-Nutzern betrieben.
+- Keine neuen Abhängigkeiten ohne klare Begründung.
 
-- If GitHub Issues are not available, record user requirements/requests (as written) in `./.opencode/requests_log.md` with date + status.
-- Status values: `open`, `in_progress`, `done`, `cancelled`.
-- Keep this file local (do not commit); it is not synced to GitHub.
-- Update the status when work starts/completes/cancels; optionally include the commit hash/PR link in the entry.
+### 13.3 Python
 
-### Persist Plan Changes (VSCode/code-server restarts)
+- Einrückung: 4 Leerzeichen.
+- Zeichenketten: doppelte Anführungszeichen für nutzerseitige Texte bevorzugen.
+- F-Strings für Formatierung verwenden.
+- Zeilen möglichst kurz halten (~100 Zeichen).
+- Imports gruppieren: 1) Standardbibliothek, 2) Drittanbieter, 3) lokale Imports. Ein Import pro Zeile. Unbenutzte Imports vermeiden.
+- Type-Hints für neue/geänderte Funktionen hinzufügen.
+- Für JSON-ähnliche Payloads: `dict[str, Any]` und an der Grenze validieren/normalisieren.
 
-- Mirror the current ToDo/plan state to a workspace file on every meaningful change so it survives editor/server restarts.
-  - File: `./.opencode/plan_state.md`
-  - Contents: current ToDo list (incl. status), open decisions/questions, and any agreed plan changes.
-- At the start of a new session, if `./.opencode/plan_state.md` exists, load it first and restore the pending items before proceeding.
-- Keep this file local (do not commit); it is session state, not project source.
+**Benennung:**
 
-## Testing Rules
+- Funktionen/Variablen: `snake_case`
+- Konstanten: `UPPER_SNAKE_CASE`
+- Flask-Route-Handler: kurze, verbnahe Namen (`measurements`, `fields`, `api_test`)
+- Private Hilfsfunktionen: Präfix `_`
 
-### Default Test Host
+### 13.4 Fehlerbehandlung und API-Antworten
 
-- Use <http://192.168.2.200:8099> for all Home Assistant-backed live integration tests.
-- Use this host for:
-  - API smoke tests
-  - UI validation
-  - integration checks
-- Localhost remains valid only for isolated local development or container-local verification.
+- Flask-Routen als Vertrauensgrenzen behandeln: erforderliche Parameter validieren, Typen normalisieren, klare Fehler mit passenden HTTP-Status-Codes zurückgeben.
+- Einheitliches JSON-Envelope: Erfolg `{"ok": true, ...}`, Fehler `{"ok": false, "error": "..."}`.
+- Keine breiten `except Exception` in reinen Hilfsfunktionen; an HTTP-Grenze akzeptabel, aber mit nützlichen Fehlermeldungen.
 
-### Playwright E2E Tests
+### 13.5 Sicherheit/Sicherheit im Code
 
-Playwright is configured for browser-based UI testing against the live HA instance.
+- Niemals Geheimnisse (Token/Passwort) loggen oder zurückgeben.
+- Nutzereingaben bei Pfaden einschränken; Traversal-Schutzfunktionen wie `_resolve_cfg_path()` erweitern, nicht umgehen.
+- Löschung muss Opt-In bleiben: durch `ALLOW_DELETE` abgesichert, exakte Bestätigungsphrase erforderlich.
 
-- Config: `playwright.config.js` (baseURL: `http://192.168.2.200:8099`)
+### 13.6 Flask + InfluxDB
+
+- InfluxDB-v2-Clients kontextverwaltet und geschlossen (`with v2_client(cfg): ...`).
+- Timeouts und SSL-Verifikation bei v1-Client konfigurierbar halten.
+- Abfragegröße begrenzt halten (UI downsampled auf ~5000 Punkte); beibehalten oder verbessern.
+
+### 13.7 Templates (HTML/JS/CSS)
+
+- Templates selbstständig halten; kein Build-Schritt vorhanden.
+- Relative URLs (`./api/...`) verwenden damit HA Ingress funktioniert.
+- JS einfach halten (kein Framework). Kleine Funktionen und explizite DOM-Lookups bevorzugen.
+- Bei destruktiven Aktionen: Bestätigungs-UI beibehalten und zusätzliche Schutzmaßnahmen ergänzen.
+
+**UI-Design-Standard:**
+
+- Vor dem Hinzufügen oder Ändern von GUI-Elementen: `influxbro/Template.md` konsultieren.
+- Konsistente Layout-Muster über alle UI-Komponenten hinweg.
+- Konsistentes Spacing, konsistente Card-/Layout-Struktur, konsistente Benennung von Klassen und IDs.
+- UI-Komponenten auf Container-Ebene UND für alle Kind-Elemente validieren.
+
+### 13.8 Abhängigkeiten und Kompatibilität
+
+- Werden Python-Abhängigkeiten geändert: `influxbro/requirements.txt` in derselben Änderung aktualisieren.
+- Pro veröffentlichter Add-on-Version die getestete Home Assistant Core-Version in `influxbro/CHANGELOG.md` dokumentieren.
+
+## ABSCHNITT 14 – TESTEN
+
+### 14.1 Standard-Testhost
+
+- `http://192.168.2.200:8099` für alle Home Assistant-gestützten Live-Integrationstests verwenden.
+- Localhost nur für isolierte lokale Entwicklung oder container-lokale Verifikation.
+
+### 14.2 Playwright E2E-Tests
+
+- Konfiguration: `playwright.config.js` (baseURL: `http://192.168.2.200:8099`)
 - Tests: `tests/e2e/*.spec.js`
-- Run: `npx playwright test` (all tests) or `npx playwright test tests/e2e/dashboard.spec.js` (single file)
+- Ausführen: `npx playwright test`
 
+### 14.3 Live-System-Tests (Pflichtablauf)
 
-### Live-System Tests (Version Check + Update via Playwright)
+Vor dem Testlauf gegen das Live-System MUSS der Versionsstand geprüft werden:
 
-Wenn Tests gegen das Live-System (Home Assistant Ingress) ausgefuehrt werden, MUSS vor dem Testlauf der Versionsstand von InfluxBro geprueft werden.
+1. Erwartete Version aus `influxbro/config.yaml → version` bestimmen
+2. Live-Version prüfen: `GET ./api/info` und Version vergleichen
+3. Stimmt die Version nicht überein: per Playwright automatisch auf neuestes Release aktualisieren, Add-on neu starten, Version erneut via `./api/info` verifizieren
 
-Pflichtablauf:
+**Prompt „teste auf dem echtsystem":**
 
-1. Erwartete Version bestimmen
+1. Live-Version prüfen:
 
-- Quelle: `influxbro/config.yaml` -> `version` (Repo-Stand).
+   ```bash
+   curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; print(json.load(sys.stdin).get('version','unknown'))"
+   ```
 
-2. Live-Version pruefen
+2. Mit Version in `influxbro/config.yaml` vergleichen
+3. Stimmen die Versionen NICHT überein: Nutzer warnen, fragen ob nur API-Tests oder warten bis Live-System aktualisiert ist
+4. Stimmen die Versionen ÜBEREIN: fragen ob zusätzlich Playwright E2E-Browser-Tests ausgeführt werden sollen
+5. Bei Bestätigung: `npx playwright test` ausführen und Ergebnisse melden
 
-- InfluxBro Web UI oeffnen (Ingress).
-- `GET ./api/info` (same-origin) ausfuehren und `version` vergleichen.
+### 14.4 Robuster lokaler Start / Healthcheck (PFLICHT)
 
-3. Wenn Version nicht korrekt ist: Update automatisieren
+**VERBOTEN:** Feste kurze Sleep-Befehle als alleinige Bereitschaftsprüfung.
 
-- Falls Live-Version != erwartete Version, MUSS per Playwright die Aktualisierung auf das neueste InfluxBro Release/Update im Home Assistant UI ausgefuehrt werden.
-- Danach Add-on neu starten (falls HA UI das nicht automatisch macht) und Version erneut via `./api/info` verifizieren.
-
-#### Playwright Anweisung (Beispiel)
-
-Voraussetzungen (als Env-Variablen):
-
-- `HA_URL` (z.B. `http://192.168.2.200:8123`)
-- `HA_USERNAME`
-- `HA_PASSWORD`
-- `INFLUXBRO_EXPECT_VERSION` (z.B. `1.12.456`)
-
-Playwright Test-Skript (Snippet, best-effort):
-
-```ts
-// playwright/influxbro-update.spec.ts
-import { test, expect } from '@playwright/test'
-
-test('update InfluxBro if version mismatches', async ({ page }) => {
-  const HA_URL = process.env.HA_URL!
-  const USER = process.env.HA_USERNAME!
-  const PASS = process.env.HA_PASSWORD!
-  const EXPECT = process.env.INFLUXBRO_EXPECT_VERSION!
-
-  await page.goto(HA_URL, { waitUntil: 'domcontentloaded' })
-
-  // Login (works for fresh sessions; already-logged-in is fine)
-  if (await page.getByLabel('Username').isVisible().catch(() => false)) {
-    await page.getByLabel('Username').fill(USER)
-    await page.getByLabel('Password').fill(PASS)
-    await page.getByRole('button', { name: /log in/i }).click()
-  }
-
-  // Open Add-ons
-  await page.goto(`${HA_URL}/hassio/dashboard`, { waitUntil: 'domcontentloaded' })
-  await page.getByRole('link', { name: /add-ons/i }).click().catch(() => {})
-  await page.getByText('InfluxBro', { exact: false }).click()
-
-  // If an Update button is present, click it
-  const updateBtn = page.getByRole('button', { name: /^update$/i })
-  if (await updateBtn.isVisible().catch(() => false)) {
-    await updateBtn.click()
-    // Wait for update to finish (best-effort: wait until Update disappears)
-    await expect(updateBtn).toBeHidden({ timeout: 10 * 60 * 1000 })
-  }
-
-  // Start/Restart add-on (best-effort)
-  const startBtn = page.getByRole('button', { name: /^start$/i })
-  if (await startBtn.isVisible().catch(() => false)) {
-    await startBtn.click()
-  }
-
-  // Open Web UI and verify version via /api/info
-  await page.getByRole('button', { name: /open web ui/i }).click()
-  const popup = await page.waitForEvent('popup')
-  await popup.waitForLoadState('domcontentloaded')
-
-  const liveVer = await popup.evaluate(async () => {
-    const r = await fetch('./api/info')
-    const j = await r.json().catch(() => ({}))
-    return String((j && j.version) || '')
-  })
-  expect(liveVer).toBe(EXPECT)
-})
-```
-
-Hinweis:
-
-- Selektoren in HA koennen je nach Version variieren. Wenn die Automation scheitert, Testlauf abbrechen und manuell updaten (oder Selektoren anpassen), bevor Live-Tests fortgesetzt werden.
-
-
-**"teste auf dem echtsystem" Prompt:**
-
-- When the user says "teste auf dem echtsystem" (or equivalent), the agent MUST:
-  1. First check if the live system version matches the latest git version:
-
-     ```bash
-     curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; print(json.load(sys.stdin).get('version','unknown'))"
-     ```
-
-  2. Compare with the latest version in `influxbro/config.yaml`.
-  3. If versions DO NOT match: warn the user that the live system is outdated and ask whether to proceed with API tests only, or skip testing until the live system is updated.
-  4. If versions MATCH: ask the user whether to also run Playwright E2E browser tests in addition to API smoke tests.
-  5. If the user confirms Playwright tests: run `npx playwright test` and report results.
-
-### Mandatory Testing & Cost-Aware Execution (REQUIRED)
-
-After every implementation, testing is REQUIRED, but execution must remain cost-efficient.
-
-### Required QA Flow
-
-Run validation in this order:
-
-1. Syntax / static sanity check first
-2. Targeted tests second
-3. Runtime / API smoke checks only if relevant
-4. Docker/build verification only if relevant
-5. Broader validation only if earlier checks fail, the user explicitly requests it, or the change is high-risk
-
-Minimum requirements:
-
-- Syntax check is ALWAYS required:
-  - `python -m py_compile influxbro/app/app.py`
-- Targeted tests are required WHEN AVAILABLE for the changed functionality:
-  - single test by node id
-  - single test file
-  - keyword-filtered pytest run
-- Runtime / API smoke tests are required WHEN RELEVANT for backend routes, request handling, config loading, or UI-triggered API actions.
-- Docker verification is required ONLY WHEN RELEVANT for runtime behavior, dependencies, container behavior, startup scripts, add-on packaging, or config handling.
-- UI verification is required WHEN RELEVANT for templates, JavaScript, or browser interactions:
-  - verify the affected page loads
-  - verify the changed interaction path only
-  - avoid broad manual retesting of unrelated pages
-
-Execution constraints:
-
-- Prefer targeted reads over full-file rereads.
-- Prefer targeted tests over full test suites.
-- Do not rerun the same failing test repeatedly without making a change.
-- Do not perform Docker/runtime validation if the change is clearly documentation-only or non-runtime-only.
-- Use minimal sufficient QA by default; do not automatically expand to full end-to-end or heavy integration tests unless needed.
-
-Failure handling and completion:
-
-- If any required check fails:
-  - do NOT declare the work complete
-  - fix the issue first
-  - rerun the smallest relevant validation set
-  - escalate validation scope only if needed
-- If a user-reported or agent-reproduced UI/browser-visible error remains present after at least one concrete fix attempt, explicitly offer a Playwright-based browser test to validate the real interaction path.
-- Implementation is ONLY complete if all relevant required checks passed.
-- After completing all REQUIRED tests, DO NOT ask the user whether additional testing should be performed unless:
-  - the user explicitly requested it
-  - critical functionality could not be tested
-  - the test environment is incomplete
-
-Reporting:
-
-- At the end of the task, explicitly report:
-  - which checks were executed
-  - which were skipped
-  - why they were skipped
-  - final result of each executed check
-
-## Build / Run / Lint / Test
-
-### Test Rules
-
-#### Robust Local Start / Healthcheck (REQUIRED)
-
-When starting a local server (Flask or similar), the agent MUST:
-
-- NOT rely on fixed short sleep (e.g. `sleep 2` / `sleep 4`)
-- ALWAYS verify readiness via API endpoint
-
-##### Readiness Rule
-
-A service is considered READY only if:
-
-- the health endpoint responds successfully
-- AND returns valid JSON
-
-Port listening alone is NOT sufficient.
-
-##### Required Health Endpoint
-
-- <http://127.0.0.1:8099/api/info>
-
-##### Mandatory Readiness Loop
-
-The agent MUST use a retry loop:
+**PFLICHT:** Retry-Loop mit Healthcheck:
 
 ```bash
 ready=0
@@ -1372,86 +1018,39 @@ for i in {1..20}; do
     python3 - <<'PY'
 import json
 from pathlib import Path
-
 data = json.loads(Path("/tmp/influxbro_info.json").read_text())
 print(data.get("version", "unknown"))
 PY
-    echo "Service ready"
+    echo "Dienst bereit"
     ready=1
     break
   fi
-  echo "Waiting for local service... ($i/20)"
+  echo "Warte auf lokalen Dienst... ($i/20)"
   sleep 1
 done
 ```
 
-##### Failure Handling
+Ein Dienst gilt NUR als bereit, wenn der Health-Endpunkt erfolgreich antwortet UND gültiges JSON zurückgibt. Port-Listening allein ist NICHT ausreichend.
 
-If the service is NOT ready after retries, the agent MUST:
+**Beim Fehlschlagen:** `/tmp/influxbro_local.log` prüfen, Prozess-Existenz, Port 8099, Fehler klassifizieren (Startzeit, Absturz, Port-Problem, Health-Endpunkt-Fehler). Bereitschaft kann nicht bestätigt werden = Blocker, NICHT fortfahren als ob die App laufen würde.
 
-- inspect `/tmp/influxbro_local.log`
-- check whether the process still exists
-- check whether port `8099` is listening
-- classify the failure as one of:
-  - startup delay
-  - app crash
-  - bind/port problem
-  - health endpoint failure
-
-If readiness cannot be confirmed, the agent MUST treat this as a blocker and MUST NOT continue as if the app were running.
-
-##### Forbidden Pattern
-
-The agent MUST NOT use a fixed short sleep as the sole readiness check, for example:
-
-```bash
-nohup python influxbro/app/app.py >/tmp/influxbro_local.log 2>&1 & sleep 4 && curl -fsS http://127.0.0.1:8099/api/info
-```
-
-Reason:
-
-- fixed sleep is unreliable
-- the app may still be starting
-- a single early failed curl can incorrectly stop the workflow
-
-##### Completion Rule
-
-The local start step is only complete if:
-
-- the app process was started
-- the health endpoint responded successfully
-- the response was validated as JSON
-- the agent explicitly reports readiness before continuing
-
-### Run locally (Docker)
-
-Minimum (no HA supervisor; you must provide `/data/options.json` yourself):
+### 14.5 Lokal ausführen (Docker)
 
 ```bash
 mkdir -p .local-data
 cat > .local-data/options.json <<'JSON'
 { "version": "dev", "allow_delete": false, "delete_confirm_phrase": "DELETE" }
 JSON
-
-docker run --rm -p 8099:8099   -v "$PWD/.local-data:/data"   -v "$PWD:/repo:ro"   influxbro:dev
+docker run --rm -p 8099:8099 -v "$PWD/.local-data:/data" -v "$PWD:/repo:ro" influxbro:dev
 ```
 
-Notes:
-
-- The UI is served on `http://127.0.0.1:8099/`.
-- In real HA, Ingress changes the base path; keep relative URLs (current templates do).
-
-#### Run locally (Python, outside Docker)
-
-This repo does not ship a lockfile/pyproject; for quick iteration:
+### 14.6 Lokal ausführen (Python, ohne Docker)
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -U pip
 python -m pip install flask influxdb-client influxdb PyYAML
-
-# emulate add-on env
 export ALLOW_DELETE=false
 export DELETE_CONFIRM_PHRASE=DELETE
 export ADDON_VERSION=dev
@@ -1459,347 +1058,113 @@ export ADDON_VERSION=dev
 python influxbro/app/app.py
 ```
 
-#### Lint / Static checks
+### 14.7 Lint / Statische Prüfungen
 
-There is no enforced linter in CI today, but ruff/black + pre-commit config exist.
-
-Baseline checks that should always work:
+Basisprüfungen (immer funktionsfähig):
 
 ```bash
 python -m compileall influxbro/app/app.py
 python -m py_compile influxbro/app/app.py
 ```
 
-Recommended (optional) tooling for agents:
+Empfohlenes Tooling:
 
 ```bash
 python -m pip install ruff black
 ruff check influxbro/app/app.py
 black --check influxbro/app/app.py
-
-# or run via pre-commit
-python -m pip install pre-commit
-pre-commit run --all-files
 ```
 
-#### Tests
-
-Pytest is available (see `tests/` + `pytest.ini`). Prefer patterns that make running a single test easy:
+### 14.8 Gezielte Tests
 
 ```bash
-# run one file
+# Eine Datei
 pytest tests/test_api_yaml_flow.py -q
 
-# run one test by node id
+# Ein Test per Node-ID
 pytest tests/test_api_yaml_flow.py::test_load_influx_yaml_resolves_secret -q
 
-# run a subset by keyword
+# Teilmenge per Keyword
 pytest -k measurements -q
 ```
 
-#### Manual “single test” (API smoke)
-
-After starting the app, these are useful targeted checks:
+### 14.9 Manuelle API-Smoke-Tests
 
 ```bash
 curl -fsS http://localhost:8099/api/info | jq .
 curl -fsS http://localhost:8099/api/config | jq .
-
-# connectivity test uses the posted form values
-curl -fsS -X POST http://localhost:8099/api/test   -H 'Content-Type: application/json'   -d '{"influx_version":2,"scheme":"http","host":"localhost","port":8086,"verify_ssl":true,"timeout_seconds":10,"org":"...","bucket":"...","token":"..."}' | jq .
 ```
 
-## End-of-Implementation Verification (Required)
+---
 
-- At the end of every implementation, explicitly verify that all requirements and all ToDo items were actually implemented.
-- If any planned item could not be implemented (or remains only partially implemented), explicitly call it out with:
-  - what is missing
-  - why it is missing
-  - what would be needed to complete it
-- Perform a final checklist-style confirmation before declaring the work finished.
+## ABSCHNITT 15 – ABSCHLUSS-VERIFIKATION
 
-## Interaction Rules
+Am Ende jeder Umsetzung MUSS der Agent explizit verifizieren, dass alle Anforderungen und alle ToDo-Einträge tatsächlich umgesetzt wurden.
 
-### Questions: Numeric Choices
+Wenn ein geplanter Punkt nicht umgesetzt werden konnte (oder nur teilweise): explizit benennen:
 
-- When asking the user to choose between options:
-  - always provide numbered options (1, 2, 3, …)
-  - allow the user to respond with just the number
-- Example:
-  1. Merge
-  2. Rebase
-  3. Fast-forward only
+- Was fehlt
+- Warum es fehlt
+- Was zur Fertigstellung benötigt wird
 
-## Execution Policies
+**Abschluss-Checkliste (PFLICHT VOR FERTIGMELDUNG):**
 
-### Autonomous Execution Policy (NO INTERMEDIATE QUESTIONS)
+- [ ] Alle Anforderungen umgesetzt
+- [ ] Alle ToDo-Einträge abgeschlossen
+- [ ] Sicherheitsprüfung durchgeführt
+- [ ] Erforderliche QA ausgeführt und bestanden
+- [ ] Version in `influxbro/config.yaml` erhöht (wenn erforderlich)
+- [ ] `influxbro/CHANGELOG.md` aktualisiert
+- [ ] `influxbro/MANUAL.md` aktualisiert (wenn UI/Verhalten geändert)
+- [ ] GitHub-Issue-Kommentar hinzugefügt
+- [ ] Issue auf `status/done` gesetzt und geschlossen
+- [ ] Commit erstellt
+- [ ] Nach `main` gepusht
+- [ ] Abschlusssignal ausgeführt
+- [ ] Beide Queue-Dateien geprüft, Nutzer über ausstehende Todos informiert (KEINE automatische Issue-Triage anbieten)
 
-#### Core Rule
+---
 
-- If the user explicitly approves implementation (e.g. "implement all issues", "go", or equivalent),
-  the agent MUST execute all tasks end-to-end WITHOUT asking intermediate questions.
+## ABSCHNITT 16 – INTERAKTIONSREGELN
 
-#### No-Interruption Rule
+### 16.1 Numerische Auswahloptionen
 
-- DO NOT ask for:
-  - step-by-step confirmation
-  - prioritization choices
-  - “how should I proceed?” questions
-  - numbered selection prompts (1/2/3)
-
-- Once execution is approved:
-  - proceed through ALL ToDo items automatically
-  - only stop if a real blocker exists
-
-#### Allowed Interruptions (ONLY THESE)
+Bei Auswahloptionen für den Nutzer:
 
-The agent MAY interrupt execution ONLY if:
-
-- critical information is missing (cannot proceed)
-- external dependency is required (e.g. credentials, API access)
-- multiple valid implementations exist with significant impact
-- a destructive or irreversible action is required
+- Immer nummerierte Optionen anbieten (1, 2, 3, …)
+- Nutzer darf mit einer einzelnen Zahl antworten
 
-#### Default Behavior
+### 16.2 Issue-Abarbeitung nur auf expliziten Befehl (PFLICHT)
 
-- Assume: user wants FULL execution of approved tasks
-- Execute tasks sequentially until:
-  - all ToDo items are completed OR
-  - a real blocker is encountered
+**VERBOTEN:** Nach Fertigstellung einer Aufgabe proaktiv nach Issues fragen, Issue-Triage anbieten oder Issues automatisch starten.
 
-#### Handling Multi-Issue Execution
+Issues werden ausschließlich geprüft und gestartet, wenn der Nutzer eine der folgenden expliziten Formulierungen verwendet:
 
-If multiple issues are selected:
-
-- process issues sequentially
-- complete one issue fully before starting the next
-- DO NOT ask between issues
-- DO NOT re-confirm execution
-- Wenn der Benutzer verlangt, dass offene Issues abgearbeitet werden, dann gilt dies fuer ALLE von ihm ausgewaehlten Issues, bis diese vollstaendig umgesetzt sind.
-- Formulierungen wie `arbeite alle Issues ab` oder `arbeite alle Issues ausser #134 ab` sind als vollstaendige Arbeitsanweisung zu verstehen; sie benoetigen keine zusaetzliche Bestaetigung, kein weiteres `GO` und keine Rueckfrage zur Paketbildung.
-- Wenn der Benutzer einzelne Issues explizit ausschliesst, dann sind alle uebrigen offenen Issues automatisch zur Umsetzung ausgewaehlt.
-- Wenn mehrere kleinere Umsetzungspakete sinnvoll sind, duerfen diese Pakete nacheinander erstellt werden, aber:
-  - die restlichen vom Benutzer angeforderten Issues bleiben verpflichtend offen im Plan
-  - sie muessen danach automatisch weiter bearbeitet werden
-  - es darf nicht nach dem ersten Paket stehen geblieben werden, solange kein echter Blocker existiert
-- Offene Issues, die laut Benutzer umgesetzt werden sollen, muessen selbststaendig automatisch weiter bearbeitet und abgeschlossen werden, bis keine solcher Issues mehr offen sind.
+- `offene Issues abarbeiten`
+- `prüfe Issues`
+- `arbeite alle Issues ab`
+- oder eine sinngleiche direkte Anweisung
 
-#### Reporting
+**Sperrbedingung (ABSOLUT):** Liegen noch ToDo-Einträge mit Status `in_progress` oder `ausstehend` vor, ODER sind Einträge in `.opencode/todo_plan.md` bzw. `.opencode/todo_build.md` vorhanden, DÜRFEN keine neuen Issues gestartet werden – auch nicht auf explizite Anfrage des Nutzers. Der Agent antwortet stattdessen mit:
 
-- Only report:
-  - after a logical block is completed (e.g. one issue fully implemented), OR
-  - at the very end
+> "Es liegen noch offene Aufgaben vor – neue Issues können erst gestartet werden, wenn alle aktuellen Todos abgeschlossen sind."
+>
+> Offene Punkte: [Auflistung der ausstehenden Einträge]
 
-- Reporting must NOT include questions unless a blocker exists
-- Reporting after one completed issue is allowed, but reporting must NOT pause or block continued execution when the user explicitly requested that multiple issues be processed automatically.
-- After reporting one completed issue, immediately continue with the next selected issue unless a real blocker exists.
+## ABSCHNITT 17 – VOLLSTÄNDIGKEITSDEFINITION
 
-### Agent Command Convention
+**Eine Aufgabe gilt AUSSCHLIESSLICH als abgeschlossen, wenn ALLE folgenden Bedingungen erfüllt sind:**
 
-#### GO
+1. Angeforderte Änderung tatsächlich angewendet
+2. Alle Pflicht-QA-Prüfungen ausgeführt
+3. Keine blockierenden Fehler vorhanden
+4. Sicherheitsprüfung durchgeführt (bei HA Add-on Änderungen)
+5. Version erhöht (wenn erforderlich)
+6. CHANGELOG und MANUAL aktualisiert (wenn erforderlich)
+7. Commit erstellt
+8. Nach `main` gepusht
+9. GitHub-Issue abgeschlossen (wenn vorhanden)
+10. Abschlusssignal ausgeführt
+11. Queue-Dateien geprüft, Nutzer über ausstehende Todos informiert
 
-- If the user writes `go` (or `GO`), treat that as: stage relevant changes, create a git commit with an appropriate message, and push to the tracked remote branch.
-
-- Showing current open GitHub issues (grouped by Bugs vs Enhancements) after an implementation package is OPTIONAL and informational only.
-
-- It MUST NOT:
-  - interrupt execution
-  - trigger questions
-  - pause or delay further processing
-
-- During active multi-issue execution:
-  - this step MUST be skipped entirely unless explicitly requested by the user
-  
-### Auto Push & PR Policy (ENFORCED – HA MAIN-FIRST MODE)
-
-#### Core Principle
-
-- Home Assistant ONLY detects updates from the `main` branch.
-- Therefore ALL changes MUST be pushed to `main` to enable testing inside Home Assistant.
-- Feature branches and PR-only workflows are NOT the default in this repository.
-
-#### Mandatory Completion Flow (NO SILENT STOP)
-
-After successful implementation AND completed QA:
-
-- DO NOT ask for confirmation.
-- ALWAYS complete this sequence for build/GO execution when applicable:
-  1. run required QA
-  2. classify any failures as either:
-     - fix-related/blocking
-     - pre-existing/unrelated
-  3. if failures are only pre-existing/unrelated, continue mandatory completion flow
-  4. bump `influxbro/config.yaml` version when runtime, UI, API, or behavior changed
-  5. stage changes
-  6. create commit
-  7. push to `main`
-  8. report result clearly in chat
-- It is FORBIDDEN to stop after code changes or after QA only, if the policy in this file requires version bump, commit, and push.
-- It is FORBIDDEN to treat `build` mode as mere permission while skipping mandatory completion steps.
-- Before declaring implementation complete, explicitly verify:
-  - implementation finished
-  - required QA executed
-  - QA result classified
-  - `influxbro/config.yaml` version bumped if required
-  - changes staged
-  - commit created
-  - push to `main` completed
-- If any item is missing, the task is NOT complete.
-
-#### Version Bump (CRITICAL FOR HA)
-
-- Jede Aenderung am Code erzwingt eine neue Version.
-  - Sobald Python, HTML, JavaScript, CSS, Docker-, Shell- oder sonstige Laufzeit-/Build-Logik geaendert wird, MUSS zwingend eine neue Add-on-Version erzeugt werden.
-  - Es gibt keine Ausnahmen fuer kleine Fixes, Refactorings oder rein strukturelle Codeaenderungen.
-
-- Every change that affects runtime, UI, API, or behavior MUST:
-  - increment `version` in `influxbro/config.yaml`
-
-- Without version bump:
-  - Home Assistant will NOT detect an update
-  - die Aenderung gilt in diesem Repository als unvollstaendig
-
-- Version format:
-  - increment last digit (e.g. 1.12.44 → 1.12.45)
-
-#### Live Verification Gate (CRITICAL FOR HA)
-
-- Before any live verification against Home Assistant / the running add-on instance, the required code changes MUST already be available as an add-on version on `main`.
-- Therefore, before a live check against the HA instance, the agent MUST first:
-  - stage changes
-  - create commit
-  - bump `influxbro/config.yaml` version if runtime/UI/API/behavior changed
-  - push to `main`
-- The agent MUST NOT rely on local-only uncommitted changes for HA live verification.
-- If the live instance still runs an older version, the agent must explicitly state that the requested live verification cannot validate the new code until the updated add-on version is installed in Home Assistant.
-
-#### Decision Logic (SIMPLIFIED FOR HA)
-
-Default rule:
-
-- If a change affects runtime, UI, API, or behavior, use the HA main-first flow:
-  - commit
-  - bump version
-  - push directly to `main`
-
-High-risk exception handling:
-
-- If the change involves security-related logic, deletion logic, major architecture changes, or unclear side effects:
-  - STILL push to `main` for HA testing
-  - BUT:
-    - ensure stricter QA before push
-    - clearly label the commit message with `⚠ HIGH-RISK`
-
-#### Optional Branch Usage (LIMITED)
-
-Branches MAY be used ONLY if:
-
-- change can be tested locally WITHOUT Home Assistant
-- OR user explicitly requests PR workflow
-
-Otherwise:
-
-- ALWAYS use `main`
-
-#### Commit Rules
-
-- Use structured commit messages:
-  - feat: for new features
-  - fix: for bug fixes
-  - refactor: for restructuring
-  - chore: for maintenance
-
-- Include short summary + key changes
-
-- For risky changes:
-  - prefix with: `⚠ HIGH-RISK`
-
-#### Issue-, Commit- und Pull-Request-Workflow
-
-- Vor jeder Umsetzung muss die Aenderung eingeordnet werden:
-  - klein, eindeutig, risikoarm -> direkter Commit
-  - komplex, mehrdeutig, mehrere Dateien oder potenziell riskant -> strengere Analyse, erweiterte QA und nur bei ausdruecklichem Benutzerwunsch Branch/PR-Workflow
-- In diesem Repository gilt weiterhin die HA-Main-First-Regel:
-  - Standard ist direkter Commit nach `main`
-  - PR/Branch nur wenn der Benutzer dies ausdruecklich verlangt oder wenn die bestehende Repo-Policy explizit dafuer geaendert wird
-- Auch wenn eine Issue existiert, ist nicht automatisch ein PR erforderlich; entscheidend sind Komplexitaet, Risiko und Repo-Policy.
-- Vor jeder Umsetzung ist verbindlich zu klaeren:
-  - betroffene Dateien/Logikbereiche
-  - Ursache des Problems
-  - ob die Loesung klein und eindeutig ist oder interpretative/risikoreiche Annahmen enthaelt
-- Wenn eine Umsetzung fehlschlaegt:
-  - denselben Ansatz nicht blind wiederholen
-  - aktuellen Datei-Iststand neu lesen
-  - Ursache analysieren
-  - Loesung auf Basis des realen Zustands neu ableiten
-
-#### Safeguards (MANDATORY)
-
-- NEVER push if:
-  - syntax check failed
-  - required QA not executed
-  - blocking errors exist
-
-- Pre-existing or unrelated failing tests do NOT automatically count as blocking errors.
-  - The agent MUST explicitly state why they are unrelated.
-  - If the implemented change passed its relevant QA, the mandatory version-bump/commit/push flow still applies.
-
-- ALWAYS ensure:
-  - minimal QA passed
-  - version bump applied
-
-- NEVER force push
-
-#### Completion Behavior
-
-After push:
-
-- report:
-  - new version number
-  - commit summary
-  - confirmation that HA update is available
-
-- DO NOT ask for confirmation
-
-#### Override Rule
-
-If user explicitly requests:
-
-- branch workflow
-- PR creation
-- no push
-
-→ follow user instruction instead of this policy
-
-#### GO Must Complete Planned Work
-
-- When the user start working on issues, you MUST ensure all open/pending planned work is implemented before committing/pushing.
-- "Planned work" includes both:
-  - the current request's ToDo list (in-chat)
-  - any remaining open items recorded in `./.opencode/plan_state.md` (if the file exists)
-- If implementing everything in one batch is not sensible (too risky/too large), you MUST:
-  - explicitly state you are splitting into multiple smaller packages,
-  - commit/push only the first package,
-  - and immediately list the remaining planned items still pending.
-- Diese verbleibenden geplanten Items muessen danach automatisch weiter umgesetzt werden, bis alle vom Benutzer angeforderten Issues abgearbeitet sind oder ein echter Blocker vorliegt.
-- Dasselbe gilt ausdruecklich fuer ausgewaehlte/offene GitHub-Issues: sie muessen selbststaendig automatisch weiter bearbeitet und abgeschlossen werden, bis keine zur Umsetzung vorgesehenen Issues mehr offen sind.
-- Auch bei Befehlen wie `arbeite alle Issues ausser #134 ab` muessen die verbleibenden offenen Issues automatisch ohne Rueckfrage bis zum Abschluss abgearbeitet werden.
-- After a successful workflow (commit + push), play a macOS completion sound:
-  - `afplay /System/Library/Sounds/Glass.aiff`
-  - If the workflow fails, play an error sound:
-    - `afplay /System/Library/Sounds/Basso.aiff`
-- After the completion sound, speak a short status message via macOS `say`:
-  - If the workflow produced a new add-on version (i.e., `influxbro/config.yaml` version was bumped as part of the changes), use a female voice and speak the version as a version number (not a date), e.g. `say -v Anna "Generierung erfolgt, Version 1 Punkt 11 Punkt 34 wurde erzeugt"` (version derived from `influxbro/config.yaml`)
-  - If the workflow ends with pending questions/blockers: `say "Einige Punkte müssten noch beantwortet werden"`
-
-### Audio Notifications (Environment-specific / macOS)
-
-- After completing any user-requested execution/workflow that runs commands, play a macOS completion sound:
-  - success / ready for next input: `afplay /System/Library/Sounds/Glass.aiff`
-  - failure / blocker: `afplay /System/Library/Sounds/Basso.aiff`
-- If you need any blocking input or decision from the user, also speak a short German prompt via `say`:
-  - default for decision needed: `say "Entscheidung erforderlich"`
-  - optional confirmation-style prompt: `say "Bitte bestaetigen"`
-- If the requested work is fully done and you are ready for the next instruction, speak:
-  - `say "Fertig mit der Umsetzung"`
-- Only speak the "Generierung erfolgt..." version message when a new add-on version was produced via version bump in `influxbro/config.yaml`.
+Fehlt ein einziger Punkt: die Aufgabe ist NICHT abgeschlossen.
