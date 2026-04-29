@@ -142,6 +142,7 @@
               <button class="btn_xs" id="jobs_copy_btn" data-ui="jobs_table.btn_copy_id" data-ib-pickkey="jobs_table.btn_copy_id" title="jobs.table.copy_id" disabled>Copy ID</button>
               <button class="btn_xs" id="jobs_open_btn" data-ui="jobs_table.btn_open_stats" data-ib-pickkey="jobs_table.btn_open_stats" title="jobs.table.open_stats" disabled>Open Statistik</button>
               <button class="btn_xs" id="jobs_cancel_btn" data-ui="jobs_table.btn_cancel" data-ib-pickkey="jobs_table.btn_cancel" title="jobs.table.cancel" disabled>Abbruch</button>
+              <button class="btn_xs" id="jobs_delete_btn" data-ui="jobs_table.btn_delete" data-ib-pickkey="jobs_table.btn_delete" title="jobs.table.delete" disabled>Loeschen</button>
             </div>
             <div class="muted">Tipp: Spaltenbreite per Ziehen am Header.</div>
           </div>
@@ -526,6 +527,7 @@
       const $jobsCopyBtn = document.getElementById('jobs_copy_btn');
       const $jobsOpenBtn = document.getElementById('jobs_open_btn');
       const $jobsCancelBtn = document.getElementById('jobs_cancel_btn');
+      const $jobsDeleteBtn = document.getElementById('jobs_delete_btn');
       const $jobsSelectAllBtn = document.getElementById('jobs_select_all_btn');
       const $jobsSelectNoneBtn = document.getElementById('jobs_select_none_btn');
 
@@ -914,10 +916,12 @@
         try{
           const sj = selectedJobs();
           const j = sj[0] || selectedJob();
+          const hasActiveJobs = sj.some(isActive);
           if($jobsDetailsBtn) $jobsDetailsBtn.disabled = !j;
           if($jobsCopyBtn) $jobsCopyBtn.disabled = !j;
           if($jobsOpenBtn) $jobsOpenBtn.disabled = !(j && String(j.type || '') === 'global_stats');
           if($jobsCancelBtn) $jobsCancelBtn.disabled = !sj.length;
+          if($jobsDeleteBtn) $jobsDeleteBtn.disabled = !sj.length || hasActiveJobs;
 
           const sc = selectedCaches();
           const c = sc[0] || selectedCache();
@@ -1159,6 +1163,22 @@
           if(!want) return;
         }else if(!confirm('Job abbrechen?\n\n' + id)) return;
         await api('./api/jobs/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: id})});
+        await loadJobs();
+      }
+
+      async function deleteJobByIds(ids){
+        const xs = Array.from(new Set((ids || []).map(id => String(id || '').trim()).filter(Boolean)));
+        if(!xs.length) return;
+        const text = xs.length === 1
+          ? ('Job aus History loeschen?\n\n' + xs[0])
+          : ('Jobs aus History loeschen?\n\n' + xs.join('\n'));
+        if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+          const want = await window.InfluxBroConfirm.ask({ title: 'Jobs loeschen', text, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_job_delete_confirm.root', templateName: 'dialog_confirm_action' });
+          if(!want) return;
+        }else if(!confirm(text)) return;
+        await api('./api/jobs/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_ids: xs})});
+        xs.forEach(id => SELECTED_JOB_IDS.delete(String(id || '')));
+        if(xs.includes(String(SELECTED_JOB_ID || ''))) SELECTED_JOB_ID = '';
         await loadJobs();
       }
 
@@ -1618,6 +1638,7 @@
       if($jobsCopyBtn) $jobsCopyBtn.onclick = async ()=>{ const j = selectedJob(); if(!j) return; try{ await navigator.clipboard.writeText(String(j.id||'')); }catch(e){} };
       if($jobsOpenBtn) $jobsOpenBtn.onclick = ()=>{ const j = selectedJob(); if(!j || String(j.type||'') !== 'global_stats') return; try{ localStorage.setItem('influxbro_global_stats_job_id_v1', String(j.id||'')); }catch(e){} location.href = './stats'; };
       if($jobsCancelBtn) $jobsCancelBtn.onclick = async ()=>{ try{ for(const j of selectedJobs()){ await cancelJobById(String(j.id||'')); } }catch(e){ err(e && e.message ? e.message : String(e)); } };
+      if($jobsDeleteBtn) $jobsDeleteBtn.onclick = async ()=>{ try{ await deleteJobByIds(selectedJobs().map(j => String(j.id || ''))); }catch(e){ err(e && e.message ? e.message : String(e)); } };
       if($cacheInfoBtn) $cacheInfoBtn.onclick = ()=>{ const m = selectedCache(); if(m) showCacheInfo(m); };
       if($cacheCheckBtn) $cacheCheckBtn.onclick = async ()=>{ try{ const m = selectedCache(); if(m) await checkCache(m); }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
       if($cacheUpdateBtn) $cacheUpdateBtn.onclick = async ()=>{ try{ for(const m of selectedCaches()){ await updateCache(m); } }catch(e){ cacheErr(e && e.message ? e.message : String(e)); } };
@@ -1760,7 +1781,7 @@
             'message': 'Kurzbeschreibung des aktuellen Schritts.',
             'current': 'Aktuelles Element/Parameter (best-effort).',
             'error': 'Fehlermeldung (falls vorhanden).',
-            'actions': 'Buttons fuer Details/Copy/Open/Abbruch.',
+            'actions': 'Buttons fuer Details/Copy/Open/Abbruch/Loeschen.',
           },
           actions: [
             'Aktualisieren: liest die Jobliste neu ein.',
@@ -1772,6 +1793,7 @@
             'Copy ID: kopiert die job_id in die Zwischenablage.',
             'Open Statistik: oeffnet die Statistik-Seite fuer global_stats Jobs.',
             'Abbruch: bricht den Job ab (best-effort).',
+            'Loeschen: entfernt abgeschlossene Job-History-Eintraege aus /data. Laufende Jobs muessen zuerst abgebrochen werden.',
           ],
         };
         window.InfluxBroTableInfoSpec[pkey + ':cache_tbl'] = {

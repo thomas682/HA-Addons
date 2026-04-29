@@ -18561,6 +18561,60 @@ def api_jobs_cancel():
     return jsonify({"ok": False, "error": "job not found"}), 404
 
 
+def _active_job_ids() -> set[str]:
+    active_ids: set[str] = set()
+    groups: list[tuple[Any, dict[str, dict[str, Any]]]] = [
+        (GLOBAL_STATS_LOCK, GLOBAL_STATS_JOBS),
+        (RESTORE_COPY_LOCK, RESTORE_COPY_JOBS),
+        (COMBINE_LOCK, COMBINE_JOBS),
+        (BACKUP_LOCK, BACKUP_JOBS),
+        (FULLBACKUP_LOCK, FULLBACKUP_JOBS),
+        (FULLRESTORE_LOCK, FULLRESTORE_JOBS),
+        (DASH_CACHE_JOBS_LOCK, DASH_CACHE_JOBS),
+        (ANALYSIS_CACHE_PATCH_LOCK, ANALYSIS_CACHE_PATCH_JOBS),
+        (ANALYSIS_NIGHTLY_LOCK, ANALYSIS_NIGHTLY_JOBS),
+        (EXPORT_LOCK, EXPORT_JOBS),
+    ]
+    for lock, jobs_map in groups:
+        with lock:
+            for job_id in jobs_map:
+                jid = str(job_id or "").strip()
+                if jid:
+                    active_ids.add(jid)
+    return active_ids
+
+
+@app.post("/api/jobs/delete")
+def api_jobs_delete():
+    body = request.get_json(force=True) or {}
+    raw_ids = body.get("job_ids")
+    job_ids: list[str] = []
+    if isinstance(raw_ids, list):
+        job_ids = [str(item or "").strip() for item in raw_ids]
+    else:
+        job_ids = [str(body.get("job_id") or "").strip()]
+    job_ids = [job_id for job_id in job_ids if job_id]
+    if not job_ids:
+        return jsonify({"ok": False, "error": "job_id required"}), 400
+
+    active_ids = _active_job_ids()
+    blocked = [job_id for job_id in job_ids if job_id in active_ids]
+    if blocked:
+        return jsonify({"ok": False, "error": "active jobs cannot be deleted", "blocked_job_ids": blocked}), 409
+
+    rows = _jobs_history_load()
+    before = len(rows)
+    wanted = set(job_ids)
+    kept = [row for row in rows if str(row.get("id") or "").strip() not in wanted]
+    deleted = before - len(kept)
+    _jobs_history_save(kept)
+    try:
+        LOG.info("jobs_delete count=%s ids=%s ip=%s ua=%s", deleted, sorted(wanted), _req_ip(), _req_ua())
+    except Exception:
+        pass
+    return jsonify({"ok": True, "deleted": deleted, "job_ids": sorted(wanted)})
+
+
 @app.get("/api/cache/list")
 def api_cache_list():
     cfg = load_cfg()

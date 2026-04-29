@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.482
+
+### Fix
+
+- Jobs & Cache: Die Jobs-Tabelle besitzt jetzt einen `Loeschen`-Button fuer markierte, bereits abgeschlossene History-Eintraege. Laufende Jobs bleiben vor versehentlichem Loeschen geschuetzt und muessen weiterhin zuerst abgebrochen werden. ([#435](https://github.com/thomas682/HA-Addons/issues/435))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.481
 
 ### Enhancement

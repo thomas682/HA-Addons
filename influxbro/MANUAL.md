@@ -463,12 +463,13 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
 - Hinweis: Export-Jobs werden hier ebenfalls als Job angezeigt und koennen abgebrochen werden.
 - Wenn ein einzelner Unterbereich (z.B. Cache/Timer/Cache Nutzung) beim Laden einen Fehler hat, werden die anderen Bereiche trotzdem geladen; die Fehlermeldung steht dann direkt im jeweiligen Unterbereich.
 - Jobs-Tabelle: Aktionen laufen jetzt ueber die obere Toolbar nach Zeilenselektion.
-- Buttons: `Details`, `Copy ID`, `Open Statistik`, `Abbruch`.
+- Buttons: `Details`, `Copy ID`, `Open Statistik`, `Abbruch`, `Loeschen`.
 - `job_id` ist als eigene Spalte sichtbar.
 - Die `%`-Spalte wurde entfernt.
 - In `message` wird kein zusaetzlicher `Modus:`-Text mehr eingeblendet.
 - Spalte `Ausloeser`: zeigt den Trigger (trigger_page + optional timer_id), z.B. `scheduler | stats_cache`.
 - Tipp: `Open Statistik` setzt die Job-ID fuer die Statistik-Seite und wechselt dorthin.
+- `Loeschen` entfernt markierte, bereits abgeschlossene Jobs aus der lokalen Job-Historie unter `/data`. Laufende Jobs koennen nicht geloescht werden und muessen zuerst ueber `Abbruch` gestoppt werden.
 - Die Suchfelder in `Jobs`, `Cache` und `Cache Nutzung` besitzen jeweils einen dauerhaft sichtbaren Button `Feld leeren`.
 
 Cache:

@@ -707,6 +707,54 @@ def test_api_jobs_includes_analysis_cache_patch_jobs(load_app_module, tmp_path):
     assert any(str(x.get("type") or "") == "analysis_cache_patch" for x in j.get("jobs", []))
 
 
+def test_api_jobs_delete_removes_history_only(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    app_mod._jobs_history_upsert({
+        "id": "job-old-1",
+        "type": "export",
+        "state": "done",
+        "started_at": "2026-03-20T10:00:00Z",
+        "updated_at": "2026-03-20T10:05:00Z",
+        "finished_at": "2026-03-20T10:05:00Z",
+    })
+    app_mod._jobs_history_upsert({
+        "id": "job-old-2",
+        "type": "export",
+        "state": "error",
+        "started_at": "2026-03-20T11:00:00Z",
+        "updated_at": "2026-03-20T11:05:00Z",
+        "finished_at": "2026-03-20T11:05:00Z",
+    })
+
+    client = app_mod.app.test_client()
+    r = client.post("/api/jobs/delete", json={"job_ids": ["job-old-1"]})
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["deleted"] == 1
+    rows = app_mod._jobs_history_load()
+    assert [str(row.get("id") or "") for row in rows] == ["job-old-2"]
+
+
+def test_api_jobs_delete_rejects_active_jobs(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    with app_mod.EXPORT_LOCK:
+        app_mod.EXPORT_JOBS["job-live-1"] = {
+            "id": "job-live-1",
+            "state": "running",
+            "started_at": "2026-03-20T10:00:00Z",
+            "updated_at": "2026-03-20T10:01:00Z",
+            "started_mono": 1.0,
+        }
+
+    client = app_mod.app.test_client()
+    r = client.post("/api/jobs/delete", json={"job_ids": ["job-live-1"]})
+    assert r.status_code == 409
+    j = r.get_json()
+    assert j["ok"] is False
+    assert j["blocked_job_ids"] == ["job-live-1"]
+
+
 def test_stats_v2_flux_avoids_time_label_literal(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured: list[str] = []

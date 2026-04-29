@@ -1558,6 +1558,7 @@ def test_destructive_flows_use_confirm_dialog_api():
     assert "pickerKey: 'dialog_raw_delete_confirm.root'" in index_body
     assert "pickerKey: 'dialog_analysis_cache_delete_confirm.root'" in index_body
     assert "pickerKey: 'dialog_job_cancel_confirm.root'" in jobs_body
+    assert "pickerKey: 'dialog_job_delete_confirm.root'" in jobs_body
     assert "pickerKey: 'dialog_cache_delete_confirm.root'" in jobs_body
     assert "pickerKey: 'dialog_analysis_cache_delete_selected_confirm.root'" in jobs_body
     assert "pickerKey: 'dialog_fullbackup_delete_confirm.root'" in backup_body
