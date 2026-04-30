@@ -4,7 +4,7 @@
 
 ### Enhancement
 
-- Dashboard / Ausreißerstrategie: Die Strategiesteuerung wurde im Messwertprofil weiter ausgebaut. Neben den Modi `Automatikwahl`, `alle ein` und `alle aus` verarbeitet das Backend jetzt zusätzliche Parametervorgaben und Korrekturreaktionen pro aktivem Typ (`bounds`, `counter`, `counterreset`, `decrease`, `gap`, `fault_phase`, `null`, `zero`). Die UI zeigt diese Felder direkt unter den effektiven Typen an; Änderungen werden messwertspezifisch serverseitig gespeichert. Zusätzlich liefert das Profil jetzt `unit_group`, `type_unit_consistency`, `counter_semantics` und eine mehrzeilige `strategy_explanation` für die Strategieinfo. 
+- Dashboard / Ausreißerstrategie: Die Strategiesteuerung wurde im Messwertprofil weiter ausgebaut. Neben den Modi `Automatikwahl`, `alle ein` und `alle aus` verarbeitet das Backend jetzt zusätzliche Parametervorgaben und Korrekturreaktionen pro aktivem Typ (`bounds`, `counter`, `counterreset`, `decrease`, `gap`, `fault_phase`, `null`, `zero`). Die UI zeigt diese Felder direkt unter den effektiven Typen an; Änderungen werden messwertspezifisch serverseitig gespeichert. Zusätzlich liefert das Profil jetzt `unit_group`, `type_unit_consistency`, `counter_semantics` und eine mehrzeilige `strategy_explanation` für die Strategieinfo. ([#456](https://github.com/thomas682/HA-Addons/issues/456))
 - Maintenance: Tested with Home Assistant Core: unknown
 
 ## 1.12.502
