@@ -8324,6 +8324,9 @@ function renderOutlierStrategyParamCards(){
     const corrections = _outlierStrategyDefaultCorrectionsForType(data, type);
     return `<section class="ib-strategy-card" data-ui="dashboard_analysis.panel_strategy_type.${_escAttr(type)}" data-ib-pickkey="dashboard_analysis.panel_strategy_type.${_escAttr(type)}"><h4>${_escHtml(def.label || type)}</h4><div class="muted">${_escHtml(def.description || '')}</div><div class="ib-form-grid">${(Array.isArray(def.params)?def.params:[]).map((f)=>_outlierStrategyRenderParamField(type, f, params[f.key], 'param')).join('')}</div><div class="ib-form-grid">${(Array.isArray(def.corrections)?def.corrections:[]).map((f)=>_outlierStrategyRenderParamField(type, f, corrections[f.key], 'correction')).join('')}</div></section>`;
   }).join('');
+  $analysisStrategyParams.querySelectorAll('input, select').forEach((el)=>{
+    el.addEventListener('change', ()=>{ saveOutlierStrategyOverride().catch(()=>{}); });
+  });
 }
 
 function _outlierStrategyCollectOverrides(){
@@ -8443,7 +8446,8 @@ function _outlierStrategyOpenDialog(){
     $analysisStrategyDialogMeta.textContent = data.ok === false ? String(data.error || 'Keine Strategiedaten') : `Messwertstrategie für ${String((data.profile && data.profile.entity_id) || '')}`;
   }
   if($analysisStrategyDialogCurrent){
-    $analysisStrategyDialogCurrent.innerHTML = `Name: <strong>${_escHtml(String(st.name || st.id || 'Fallback'))}</strong><br>Priorität: ${_escHtml(String(st.priority ?? ''))}<br>Beschreibung: ${_escHtml(String(st.description || ''))}`;
+    const explanation = (((data.profile||{}).derived||{}).strategy_explanation || []);
+    $analysisStrategyDialogCurrent.innerHTML = `Name: <strong>${_escHtml(String(st.name || st.id || 'Fallback'))}</strong><br>Priorität: ${_escHtml(String(st.priority ?? ''))}<br>Beschreibung: ${_escHtml(String(st.description || ''))}${explanation.length ? ('<br><br>' + explanation.map(line => '• ' + _escHtml(String(line || ''))).join('<br>')) : ''}`;
   }
   if($analysisStrategyDialogReasons){
     $analysisStrategyDialogReasons.innerHTML = reasons.length ? `Begründung: ${_escHtml(reasons.join(' | '))}` : 'Keine Begründung vorhanden.';

@@ -198,6 +198,8 @@ Die serverseitige Auswahl bleibt deterministisch: hoechste Prioritaet gewinnt, d
 
 Die Strategiesteuerung befindet sich jetzt direkt im Profilbereich `Messwertinfos von Homeassistant`: alle Typen werden dort als Chips angezeigt. Die Buttons `Automatikwahl`, `alle ein` und `alle aus` schalten zwischen Basisstrategie, Vollaktivierung und kompletter Deaktivierung um. Unterhalb der Typen erscheinen fuer aktive Strategien direkt die zugehoerigen Parameter- und Korrektureinstellungen. Diese Overrides werden messwertspezifisch serverseitig gespeichert.
 
+Die Strategieinfo beschreibt den abgeleiteten Messwerttyp jetzt ausfuehrlicher. Das Profil liefert dafuer zusaetzlich `unit_group`, `type_unit_consistency`, `counter_semantics` und eine mehrzeilige `strategy_explanation`. Bei Typ/Einheit-Konflikten wird nur gewarnt; es erfolgt keine automatische Umklassifizierung. Pro aktivem Typ koennen im Profilbereich jetzt direkt Erkennungsparameter (z. B. Grenzen, Rate pro Zeit, Gap-Schwelle) und Korrekturreaktionen (z. B. `mark_only`, `interpolate`, `delete_value`, `clamp_to_min/max`) messwertspezifisch gespeichert werden.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

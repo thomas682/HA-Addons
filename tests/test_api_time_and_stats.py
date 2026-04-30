@@ -1280,6 +1280,7 @@ def test_api_outlier_strategy_derives_effective_types(load_app_module, tmp_path,
     assert "counterreset" in j["effective_selected"]
     assert "gap" in j["effective_selected"]
     assert "decrease" not in j["effective_selected"]
+    assert j["profile"]["derived"]["internal_type"] == "counter_increasing"
 
 
 def test_api_outlier_strategy_override_modes(load_app_module, tmp_path):
@@ -1301,6 +1302,21 @@ def test_api_outlier_strategy_override_modes(load_app_module, tmp_path):
     assert j["override"]["mode"] == "all_off"
     assert j["override"]["manual_enable_types"] == []
     assert j["override"]["manual_disable_types"] == []
+
+
+def test_measurement_profile_derived_includes_strategy_explanation_fields(load_app_module):
+    app_mod = load_app_module()
+    derived = app_mod._measurement_profile_derived(
+        {"domain": "sensor", "device_class": "energy", "state_class": "total_increasing", "unit_of_measurement": "Wh", "available": True},
+        {"field_type": "float"},
+        {"found": True},
+    )
+    assert derived["internal_type"] == "counter_increasing"
+    assert derived["unit_group"] == "energy_total"
+    assert derived["type_unit_consistency"] == "consistent"
+    assert derived["counter_semantics"] == "monotonic_expected"
+    assert isinstance(derived["strategy_explanation"], list)
+    assert len(derived["strategy_explanation"]) >= 2
 
 
 def test_api_audit_aggregates_counts_and_backup_status(load_app_module, tmp_path, monkeypatch):

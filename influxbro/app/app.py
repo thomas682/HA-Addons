@@ -12470,6 +12470,82 @@ def _measurement_profile_field_type_from_value(value: Any) -> str | None:
     return None
 
 
+def _measurement_profile_unit_group(unit: str | None) -> str:
+    u = str(unit or "").strip().lower()
+    if not u:
+        return "unknown"
+    if u in ("wh", "kwh", "mwh"):
+        return "energy_total"
+    if u in ("w", "kw", "mw"):
+        return "power"
+    if u in ("°c", "c", "°f", "f", "k"):
+        return "temperature"
+    if u in ("m3", "l"):
+        return "volume_total"
+    if u in ("m3/h", "l/min", "l/s"):
+        return "volume_rate"
+    if u == "%":
+        return "percent"
+    if u == "v":
+        return "voltage"
+    if u == "a":
+        return "current"
+    return "unknown"
+
+
+def _measurement_profile_type_unit_consistency(internal_type: str, unit_group: str) -> str:
+    if internal_type in ("counter_increasing", "counter_resettable"):
+        return "consistent" if unit_group in ("energy_total", "volume_total") else "warning"
+    if internal_type == "gauge_numeric":
+        return "warning" if unit_group == "unknown" else "consistent"
+    if internal_type in ("binary", "enum_text"):
+        return "warning" if unit_group not in ("unknown", "percent") else "consistent"
+    return "warning" if unit_group == "unknown" else "consistent"
+
+
+def _measurement_profile_counter_semantics(internal_type: str) -> str:
+    if internal_type == "counter_increasing":
+        return "monotonic_expected"
+    if internal_type == "counter_resettable":
+        return "resettable_expected"
+    return "not_counter_like"
+
+
+def _measurement_profile_strategy_explanation(
+    ha: dict[str, Any],
+    influx: dict[str, Any],
+    derived: dict[str, Any],
+) -> list[str]:
+    lines: list[str] = []
+    internal_type = str(derived.get("internal_type") or "")
+    state_class = str(ha.get("state_class") or "")
+    unit = str(ha.get("unit_of_measurement") or "")
+    field_type = str(influx.get("field_type") or "")
+    unit_group = str(derived.get("unit_group") or "")
+    consistency = str(derived.get("type_unit_consistency") or "")
+    if internal_type == "counter_increasing":
+        lines.append(f"Der Messwert wird als Zähler steigend behandelt, weil state_class={state_class or '∅'} gesetzt ist.")
+        lines.append(f"Die Einheit {unit or '∅'} wurde als {unit_group or 'unknown'} eingeordnet, daher sind zeitbezogene Counter-Sprung- und Reset-Prüfungen aktiv.")
+        lines.append("Ein negativer Sprung gilt hier normalerweise als Fehler oder Reset-Kandidat, nicht als normaler Verlauf.")
+    elif internal_type == "counter_resettable":
+        lines.append(f"Der Messwert wird als resetbarer Zähler behandelt, weil state_class={state_class or '∅'} auf ein Summensignal mit möglichem Reset hinweist.")
+        lines.append(f"Die Einheit {unit or '∅'} wurde als {unit_group or 'unknown'} eingeordnet; Reset-, Lücken- und Null-Prüfungen bleiben aktiv.")
+        lines.append("Abfälle werden hier nicht sofort als Fehler bewertet, sondern zuerst als möglicher legitimer Reset interpretiert.")
+    elif internal_type == "gauge_numeric":
+        lines.append(f"Der Messwert wird als normaler numerischer Messwert behandelt (field_type={field_type or '∅'}).")
+        lines.append(f"Die Einheit {unit or '∅'} wurde als {unit_group or 'unknown'} eingeordnet; deshalb sind Grenzen, Lücken und Störphasen die primären Prüfungen.")
+        lines.append("Counter-spezifische Prüfungen sind deaktiviert, weil für diesen Typ steigende Monotonie nicht vorausgesetzt wird.")
+    elif internal_type == "binary":
+        lines.append("Der Messwert wird als binärer Zustand behandelt. Numerische Ausreißerregeln sind deshalb standardmäßig deaktiviert.")
+        lines.append("Aktiv bleiben nur Lücken- und NULL-Prüfungen, damit Verbindungs- oder Schreibausfälle sichtbar werden.")
+    else:
+        lines.append(f"Der Messwerttyp wurde als {internal_type or 'unknown'} eingestuft.")
+        lines.append(f"Als Grundlage dienen field_type={field_type or '∅'}, unit={unit or '∅'} und die HA-Klassifikation state_class={state_class or '∅'}.")
+    if consistency != "consistent":
+        lines.append("Die Kombination aus Messwerttyp und Einheit ist nicht vollständig plausibel; die Strategie bleibt aktiv, erzeugt aber eine Warnung statt einer automatischen Umklassifizierung.")
+    return lines[:5]
+
+
 def _measurement_profile_range(cfg: dict[str, Any], body: dict[str, Any]) -> tuple[str, datetime | None, datetime | None]:
     range_key = body.get("range")
     start_dt = None
@@ -12725,14 +12801,22 @@ def _measurement_profile_derived(ha: dict[str, Any], influx: dict[str, Any], yam
         confidence = "medium"
     if yaml_info.get("found") and ha.get("available"):
         confidence = "high" if confidence != "low" else "medium"
-    return {
+    unit_group = _measurement_profile_unit_group(unit)
+    type_unit_consistency = _measurement_profile_type_unit_consistency(internal_type, unit_group)
+    counter_semantics = _measurement_profile_counter_semantics(internal_type)
+    derived = {
         "internal_type": internal_type,
         "expected_write_type": field_type or None,
         "allow_decrease": allow_decrease,
         "allow_reset": allow_reset,
         "correction_strategy": correction_strategy,
         "confidence": confidence,
+        "unit_group": unit_group,
+        "type_unit_consistency": type_unit_consistency,
+        "counter_semantics": counter_semantics,
     }
+    derived["strategy_explanation"] = _measurement_profile_strategy_explanation(ha, influx, derived)
+    return derived
 
 
 def _measurement_profile_quality(ha: dict[str, Any], yaml_info: dict[str, Any], influx: dict[str, Any], derived: dict[str, Any]) -> dict[str, Any]:
@@ -12752,6 +12836,8 @@ def _measurement_profile_quality(ha: dict[str, Any], yaml_info: dict[str, Any], 
         warnings.append("state_class fehlt, obwohl Zaehlerverhalten relevant ist.")
     if not influx.get("field_type"):
         warnings.append("Influx-Feldtyp konnte nicht sicher bestimmt werden.")
+    if str(derived.get("type_unit_consistency") or "") != "consistent":
+        warnings.append("Messwerttyp und Einheit sind nur eingeschränkt plausibel; Strategie wird deshalb mit Warnung, aber ohne automatische Umklassifizierung angewendet.")
     field_type_consistent = bool(influx.get("field_type"))
     return {
         "classification_complete": classification_complete,

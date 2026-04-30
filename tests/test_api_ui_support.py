@@ -564,6 +564,10 @@ def test_dashboard_outlier_strategy_ui_exists():
     assert 'function renderOutlierStrategyParamCards()' in body
     assert 'function _outlierStrategySetMode(mode)' in body
     assert 'id="analysis_strategy_params"' in body
+    assert 'id="analysis_strategy_auto"' in body
+    assert 'id="analysis_strategy_all_on"' in body
+    assert 'id="analysis_strategy_all_off"' in body
+    assert 'data-ui="dashboard_selection.panel_analysis_strategy"' in body
     assert './api/outlier_strategy?' in body or './api/outlier_strategy' in body
     assert './api/outlier_strategy/config' in body
     assert './api/outlier_strategy/override' in body
