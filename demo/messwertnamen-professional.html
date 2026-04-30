@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mehrere Messwertnamen · Professionelle Darstellung</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
+    --text-faint: #9ca3af;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --current: #f59e0b;
+    --current-soft: #fef3c7;
+    --historic: #6b7280;
+    --historic-soft: #f3f4f6;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 48px 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .demo-wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .demo-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-faint);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* ─────────────────────────────────────────────
+     CONTAINER
+  ───────────────────────────────────────────── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* ─────────────────────────────────────────────
+     HEADER
+  ───────────────────────────────────────────── */
+  .panel-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .header-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .header-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  .header-subtitle code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--bg);
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .header-action {
+    flex-shrink: 0;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border: 1px solid var(--accent);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+
+  /* ─────────────────────────────────────────────
+     SUMMARY BAR
+  ───────────────────────────────────────────── */
+  .summary-bar {
+    display: flex;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .summary-stat {
+    flex: 1;
+    padding: 14px 24px;
+    border-right: 1px solid var(--border);
+    min-width: 0;
+  }
+  .summary-stat:last-child { border-right: none; flex: 2; }
+
+  .summary-stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 4px;
+    letter-spacing: 0.02em;
+  }
+
+  .summary-stat-value {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .summary-stat-value.muted {
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  /* ─────────────────────────────────────────────
+     COMPARATIVE TIMELINE (AXIS)
+  ───────────────────────────────────────────── */
+  .timeline-section {
+    padding: 18px 24px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+
+  .timeline-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .timeline-range {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .timeline-axis {
+    position: relative;
+    height: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .timeline-segment {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    transition: opacity 0.15s;
+    cursor: pointer;
+  }
+  .timeline-segment:hover { opacity: 0.85; }
+  .timeline-segment.is-current {
+    background: var(--current);
+  }
+  .timeline-segment.is-historic {
+    background: #94a3b8;
+  }
+  .timeline-segment.is-historic-2 {
+    background: #cbd5e1;
+  }
+  .timeline-segment.is-historic-3 {
+    background: #64748b;
+  }
+
+  .timeline-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-faint);
+  }
+
+  /* ─────────────────────────────────────────────
+     LIST
+  ───────────────────────────────────────────── */
+  .list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 28px 1fr 240px 90px 120px;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .row:last-child { border-bottom: none; }
+  .row:hover { background: #fafbfc; }
+
+  .row.is-current {
+    background: linear-gradient(to right, #fffbeb 0%, #fffbeb 4px, transparent 4px);
+    border-left: 3px solid var(--current);
+    padding-left: 21px;
+  }
+
+  /* Column 1: index */
+  .row-index {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    font-weight: 500;
+    text-align: center;
+  }
+
+  /* Column 2: name */
+  .row-name {
+    min-width: 0;
+  }
+  .row-name-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .row-name-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Column 3: time range */
+  .row-period {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .row-period .from-to {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .row-period .arrow {
+    color: var(--text-faint);
+  }
+  .row-period .duration {
+    font-size: 10px;
+    color: var(--text-faint);
+    margin-top: 2px;
+  }
+
+  /* Column 4: points */
+  .row-points {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .row-points-num {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .row-points-label {
+    font-size: 10px;
+    color: var(--text-faint);
+    letter-spacing: 0.02em;
+  }
+
+  /* Column 5: status badge */
+  .row-status {
+    text-align: right;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .badge-current {
+    background: var(--current-soft);
+    color: #92400e;
+    border: 1px solid #fde68a;
+  }
+  .badge-current::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--current);
+  }
+  .badge-historic {
+    background: var(--historic-soft);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  /* ─────────────────────────────────────────────
+     DEMO HEADER (just for the demo page)
+  ───────────────────────────────────────────── */
+  .demo-header {
+    margin-bottom: 32px;
+  }
+  .demo-header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .demo-header p {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-wrap">
+
+  <div class="demo-header">
+    <h1>Professionelle Darstellung – Mehrere Messwertnamen</h1>
+    <p>Dieselben Daten, klarere Hierarchie: Header · Summary-Bar · vergleichende Zeitachse · Tabellenliste.</p>
+  </div>
+
+  <div class="demo-label">Vorschlag</div>
+  <div class="panel">
+
+    <!-- HEADER -->
+    <div class="panel-header">
+      <div class="header-text">
+        <div class="header-title">Mehrere Messwertnamen</div>
+        <div class="header-subtitle">
+          Historische <code>friendly_name</code>-Werte für <code>g3_flex_garage_disk_write_rate</code> im aktuellen Zeitraum.
+        </div>
+      </div>
+      <div class="header-action">
+        <button class="btn-primary">Auf letzten Namen vereinigen</button>
+      </div>
+    </div>
+
+    <!-- SUMMARY BAR -->
+    <div class="summary-bar">
+      <div class="summary-stat">
+        <div class="summary-stat-label">Varianten</div>
+        <div class="summary-stat-value">4</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-label">Datenpunkte</div>
+        <div class="summary-stat-value">3.904</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-label">Zeitraum</div>
+        <div class="summary-stat-value muted">12.06.2025 — 29.04.2026</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-label">Aktueller Name</div>
+        <div class="summary-stat-value">Garage Innen G3 Flex Schreibgeschwindigkeit der Festplatte</div>
+      </div>
+    </div>
+
+    <!-- COMPARATIVE TIMELINE -->
+    <div class="timeline-section">
+      <div class="timeline-header">
+        <div class="timeline-title">Zeitliche Verteilung</div>
+        <div class="timeline-range">329 Tage · 4 Varianten</div>
+      </div>
+      <div class="timeline-axis">
+        <!-- Segments positioned proportionally on the actual timespan
+             Total: 12.06.2025 → 29.04.2026 ≈ 322 days
+             v1 (G3 Flex Garage Schreib...): 12.06.25 - 11.09.25 ≈ 0% → 28%
+             v2 (G3 Flex Garage Innen): 11.09.25 - 29.03.26 ≈ 28% → 89%
+             v3 (Garage Innen G3 Flex - aktuell): 29.03.26 - 29.04.26 ≈ 89% → 100%  -->
+        <div class="timeline-segment is-historic-2" style="left: 0%; width: 28%;"  title="G3 Flex Garage Schreibgeschwindigkeit der Festplatte"></div>
+        <div class="timeline-segment is-historic"   style="left: 28%; width: 61%;" title="G3 Flex Garage Innen Schreibgeschwindigkeit der Festplatte"></div>
+        <div class="timeline-segment is-current"    style="left: 89%; width: 11%;" title="Garage Innen G3 Flex Schreibgeschwindigkeit der Festplatte"></div>
+      </div>
+      <div class="timeline-ticks">
+        <span>Jun 25</span>
+        <span>Aug 25</span>
+        <span>Okt 25</span>
+        <span>Dez 25</span>
+        <span>Feb 26</span>
+        <span>Apr 26</span>
+      </div>
+    </div>
+
+    <!-- LIST -->
+    <div class="list">
+
+      <!-- Current variant -->
+      <div class="row is-current">
+        <div class="row-index">01</div>
+        <div class="row-name">
+          <div class="row-name-text">Garage Innen G3 Flex Schreibgeschwindigkeit der Festplatte</div>
+          <div class="row-name-meta">31 Tage</div>
+        </div>
+        <div class="row-period">
+          <div class="from-to">
+            <span>29.03.2026 12:20</span>
+            <span class="arrow">→</span>
+            <span>29.04.2026 14:52</span>
+          </div>
+        </div>
+        <div class="row-points">
+          <div class="row-points-num">842</div>
+          <div class="row-points-label">Punkte</div>
+        </div>
+        <div class="row-status">
+          <span class="badge badge-current">aktuell</span>
+        </div>
+      </div>
+
+      <!-- Historic 1 (longest) -->
+      <div class="row">
+        <div class="row-index">02</div>
+        <div class="row-name">
+          <div class="row-name-text">G3 Flex Garage Innen Schreibgeschwindigkeit der Festplatte</div>
+          <div class="row-name-meta">200 Tage</div>
+        </div>
+        <div class="row-period">
+          <div class="from-to">
+            <span>11.09.2025 08:04</span>
+            <span class="arrow">→</span>
+            <span>29.03.2026 11:09</span>
+          </div>
+        </div>
+        <div class="row-points">
+          <div class="row-points-num">2.503</div>
+          <div class="row-points-label">Punkte</div>
+        </div>
+        <div class="row-status">
+          <span class="badge badge-historic">historisch</span>
+        </div>
+      </div>
+
+      <!-- Historic 2 -->
+      <div class="row">
+        <div class="row-index">03</div>
+        <div class="row-name">
+          <div class="row-name-text">G3 Flex Garage Schreibgeschwindigkeit der Festplatte</div>
+          <div class="row-name-meta">91 Tage</div>
+        </div>
+        <div class="row-period">
+          <div class="from-to">
+            <span>12.06.2025 08:49</span>
+            <span class="arrow">→</span>
+            <span>11.09.2025 07:33</span>
+          </div>
+        </div>
+        <div class="row-points">
+          <div class="row-points-num">349</div>
+          <div class="row-points-label">Punkte</div>
+        </div>
+        <div class="row-status">
+          <span class="badge badge-historic">historisch</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
