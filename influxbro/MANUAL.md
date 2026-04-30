@@ -187,6 +187,15 @@ Das gefilterte Analyse-Logging (`analysis_log_modal`) folgt jetzt enger dem best
 
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
+Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus dem Profil abgeleitet werden. Grundlage sind insbesondere `derived.internal_type`, `device_class`, `state_class`, erkannter Influx-Feldtyp und weitere Profilmerkmale. Das Dashboard zeigt die effektiven Typen automatisch an. Ueber den Button `Strategiewahl` oeffnet sich ein Dialog mit:
+
+- aktiver Strategie und Begründung
+- effektiven Ausreißertypen
+- manuellen Overrides pro Typ (`erzwingen aktiv` / `erzwingen aus`)
+- benutzerdefinierten Strategien als servergespeichertes JSON
+
+Die serverseitige Auswahl bleibt deterministisch: hoechste Prioritaet gewinnt, danach Spezifitaet, danach ID. Manuelle Overrides werden danach additiv auf die Basisstrategie angewendet.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

@@ -988,7 +988,13 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div id="raw_outlier_row_count" class="muted" style="display:none;"></div>
 
         <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; margin-top:10px;" data-ui="dashboard_outliers.row_types" data-ib-pickkey="dashboard_outliers.row_types" title="dashboard_outliers.row_types">
-          <div class="muted" style="font-size:12px; line-height:1.4;">Ausreisser-Typen (Analyse/Filter)</div>
+          <div style="display:flex; flex-direction:column; gap:6px; min-width:260px;">
+            <div class="muted" style="font-size:12px; line-height:1.4;">Ausreisser-Typen (Analyse/Filter)</div>
+            <div id="analysis_strategy_info" class="muted" style="font-size:12px; line-height:1.4;" data-ui="dashboard_analysis.txt_strategy_info" data-ib-pickkey="dashboard_analysis.txt_strategy_info">Strategie wird geladen …</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button id="analysis_strategy_open" type="button" class="btn_sm" style="width:auto;" data-ui="dashboard_analysis.btn_strategiewahl" data-ib-pickkey="dashboard_analysis.btn_strategiewahl">Strategiewahl</button>
+          </div>
           <div id="analysis_types_selected" class="ib-chip-grid" data-ui="dashboard_analysis.panel_typen_gewaehlt" data-ib-pickkey="dashboard_analysis.panel_typen_gewaehlt" title="dashboard_analysis.panel_typen_gewaehlt" style="border:1px solid #eee;border-radius:12px;padding:10px;min-height:40px; flex:1 1 520px;"></div>
         </div>
 
@@ -1244,6 +1250,42 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </div>
 
+    <div id="analysis_strategy_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+      <div style="background:#fff; border-radius:16px; padding:20px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+        <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;">
+          <div>
+            <h3 style="margin:0 0 6px 0;">Strategiewahl</h3>
+            <div class="muted" id="analysis_strategy_dialog_meta" style="font-size:13px; line-height:1.45;">Serverseitige Basisstrategie fuer Ausreißer-Typen plus manuelle Overrides.</div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px;">
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+            <div style="font-weight:700;">Aktive Strategie</div>
+            <div id="analysis_strategy_dialog_current" class="muted" style="font-size:12px; line-height:1.5;"></div>
+            <div id="analysis_strategy_dialog_reasons" class="muted" style="font-size:12px; line-height:1.5;"></div>
+          </div>
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+            <div style="font-weight:700;">Effektive Typen</div>
+            <div id="analysis_strategy_dialog_effective" class="ib-chip-grid"></div>
+          </div>
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; grid-column:1 / -1;">
+            <div style="font-weight:700;">Manuelle Overrides</div>
+            <div class="muted" style="font-size:12px; line-height:1.45;">Hier kannst du die automatisch gewählten Typen pro Messwert manuell überschreiben. Die Strategie bleibt serverseitig eindeutig; Overrides werden danach additiv angewendet.</div>
+            <div id="analysis_strategy_dialog_override_grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px;"></div>
+          </div>
+          <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; grid-column:1 / -1;">
+            <div style="font-weight:700;">Benutzerdefinierte Strategien (JSON)</div>
+            <div class="muted" style="font-size:12px; line-height:1.45;">Optional zusaetzliche serverseitige Strategien. Es gilt immer die hoechste Prioritaet, danach Spezifitaet, danach ID. IDs muessen eindeutig sein.</div>
+            <textarea id="analysis_strategy_dialog_json" style="width:100%; min-height:220px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:12px;"></textarea>
+          </div>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="btn_sm" id="analysis_strategy_dialog_close" type="button" data-ui="dialog_analysis_strategy.btn_close" data-ib-pickkey="dialog_analysis_strategy.btn_close">Schliessen</button>
+          <button class="btn_sm" id="analysis_strategy_dialog_save" type="button" data-ui="dialog_analysis_strategy.btn_save" data-ib-pickkey="dialog_analysis_strategy.btn_save">Speichern</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Generic change preview / undo preview dialog (Issue #395) -->
     <div id="change_preview_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_change_preview.root" data-ib-pickkey="dialog_change_preview.root">
       <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
@@ -1409,6 +1451,17 @@ const $analysisCacheCombineBtn = document.getElementById('analysis_cache_combine
 const $analysisCacheDeleteSeriesBtn = document.getElementById('analysis_cache_delete_series');
 const $analysisStatus = document.getElementById('analysis_status');
 const $analysisHistoryBtn = document.getElementById('analysis_history');
+const $analysisStrategyInfo = document.getElementById('analysis_strategy_info');
+const $analysisStrategyOpen = document.getElementById('analysis_strategy_open');
+const $analysisStrategyDialog = document.getElementById('analysis_strategy_dialog');
+const $analysisStrategyDialogMeta = document.getElementById('analysis_strategy_dialog_meta');
+const $analysisStrategyDialogCurrent = document.getElementById('analysis_strategy_dialog_current');
+const $analysisStrategyDialogReasons = document.getElementById('analysis_strategy_dialog_reasons');
+const $analysisStrategyDialogEffective = document.getElementById('analysis_strategy_dialog_effective');
+const $analysisStrategyDialogOverrideGrid = document.getElementById('analysis_strategy_dialog_override_grid');
+const $analysisStrategyDialogJson = document.getElementById('analysis_strategy_dialog_json');
+const $analysisStrategyDialogClose = document.getElementById('analysis_strategy_dialog_close');
+const $analysisStrategyDialogSave = document.getElementById('analysis_strategy_dialog_save');
 const $btnCancelLoad = document.getElementById('cancel_load');
 const $loadStatus = document.getElementById('load_status');
 const $loadProgressFill = document.getElementById('load_progress_fill');
@@ -5396,14 +5449,17 @@ async function refreshNameTimelinePanel(){
     const field = String(($f && $f.value) || '').trim();
     const entityId = String(($e && $e.value) || '').trim();
     if(!measurement || !field || !entityId){
+      try{ await refreshOutlierStrategyPanel(); }catch(x){}
       hideNameTimelinePanel();
       return;
     }
     try{ await refreshMeasurementProfilePanel(); }catch(e){}
+    try{ await refreshOutlierStrategyPanel(); }catch(e){}
     const rows = await loadComboRanges('friendly_name', { entity_id: entityId, friendly_name: null });
     renderNameTimeline(rows || []);
   }catch(e){
     try{ await refreshMeasurementProfilePanel(); }catch(x){}
+    try{ await refreshOutlierStrategyPanel(); }catch(x){}
     hideNameTimelinePanel();
   }
 }
@@ -6458,6 +6514,7 @@ const ALL_OUTLIER_TYPES = [
 let ANALYSIS_SELECTED_TYPES = ['counter', 'decrease', 'counterreset', 'bounds', 'gap', 'fault_phase', 'null', 'zero'];
 let ANALYSIS_UNSELECTED_TYPES = [];
 let ANALYSIS_SHOW_IGNORED = false;
+let LAST_OUTLIER_STRATEGY = null;
 let IGNORED_OUTLIERS_STATE = {};
 let RAW_OUTLIER_DISPLAY_LIMIT_PER_TYPE = 100;
 
@@ -8135,6 +8192,7 @@ function renderAnalysisTypeLists(){
             ANALYSIS_SELECTED_TYPES.sort();
           }
           saveAnalysisTypes();
+          saveOutlierStrategyOverride().catch(()=>{});
           renderAnalysisTypeLists();
           renderOutlierOverviewTable();
         });
@@ -8150,6 +8208,142 @@ function saveAnalysisTypes(){
     }));
   }catch(e){}
   try{ saveGlobalDashboardSelection().catch(()=>{}); }catch(e){}
+}
+
+function _outlierStrategyCurrentSelection(){
+  return {
+    measurement: String(($mf && $mf.value) || '').trim(),
+    field: String(($f && $f.value) || '').trim(),
+    entity_id: String(($e && $e.value) || '').trim(),
+    friendly_name: String(($n && $n.value) || '').trim(),
+    range: String(($r && $r.value) || '24h').trim() || '24h',
+    start: $start ? String($start.value || '') : '',
+    stop: $stop ? String($stop.value || '') : '',
+  };
+}
+
+function _outlierStrategySetTypes(selected){
+  const xs = Array.isArray(selected) ? selected.map(x => String(x || '').trim()).filter(Boolean) : [];
+  ANALYSIS_SELECTED_TYPES = xs.slice();
+  ANALYSIS_UNSELECTED_TYPES = ALL_OUTLIER_TYPES.map(t=>t.value).filter(v => v !== 'ignored' && !ANALYSIS_SELECTED_TYPES.includes(v));
+  renderAnalysisTypeLists();
+  try{ renderOutlierOverviewTable(); }catch(e){}
+}
+
+function _outlierStrategyRenderInfo(result){
+  if(!$analysisStrategyInfo) return;
+  if(!result || result.ok === false){
+    $analysisStrategyInfo.textContent = result && result.error ? String(result.error) : 'Keine Strategie aktiv.';
+    return;
+  }
+  const st = result.strategy || {};
+  const effective = Array.isArray(result.effective_selected) ? result.effective_selected : [];
+  const reasons = Array.isArray(result.reason_log) ? result.reason_log : [];
+  $analysisStrategyInfo.innerHTML = `Strategie: <strong>${_escHtml(String(st.name || st.id || 'Fallback'))}</strong> · Effektive Typen: ${_escHtml(effective.join(', ') || '—')}${reasons.length ? ('<br><span class="muted">' + _escHtml(reasons.join(' | ')) + '</span>') : ''}`;
+}
+
+async function saveOutlierStrategyOverride(){
+  try{
+    if(!LAST_OUTLIER_STRATEGY || LAST_OUTLIER_STRATEGY.ok === false) return;
+    const sel = _outlierStrategyCurrentSelection();
+    if(!(sel.measurement && sel.field && sel.entity_id)) return;
+    const recommended = Array.isArray(LAST_OUTLIER_STRATEGY.recommended_selected) ? LAST_OUTLIER_STRATEGY.recommended_selected : [];
+    const selected = ANALYSIS_SELECTED_TYPES.filter(t => t !== 'ignored');
+    const manualEnable = selected.filter(t => !recommended.includes(t));
+    const manualDisable = recommended.filter(t => !selected.includes(t));
+    await api('./api/outlier_strategy/override', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        entity_id: sel.entity_id,
+        measurement: sel.measurement,
+        field: sel.field,
+        manual_enable_types: manualEnable,
+        manual_disable_types: manualDisable,
+      })
+    }, {silent:true});
+    LAST_OUTLIER_STRATEGY.manual_enable_types = manualEnable;
+    LAST_OUTLIER_STRATEGY.manual_disable_types = manualDisable;
+    LAST_OUTLIER_STRATEGY.effective_selected = selected.slice();
+    LAST_OUTLIER_STRATEGY.effective_unselected = ALL_OUTLIER_TYPES.map(t=>t.value).filter(v => v !== 'ignored' && !selected.includes(v));
+    _outlierStrategyRenderInfo(LAST_OUTLIER_STRATEGY);
+  }catch(e){}
+}
+
+async function refreshOutlierStrategyPanel(){
+  try{
+    const sel = _outlierStrategyCurrentSelection();
+    if(!(sel.measurement && sel.field && sel.entity_id)){
+      LAST_OUTLIER_STRATEGY = { ok: false, error: 'Strategie wird sichtbar, sobald measurement, field und entity_id vorliegen.' };
+      _outlierStrategyRenderInfo(LAST_OUTLIER_STRATEGY);
+      return;
+    }
+    const qp = new URLSearchParams(sel);
+    const j = await api('./api/outlier_strategy?' + qp.toString(), null, { key: 'outlier_strategy', status: 'Lade Strategiewahl...', silent: true });
+    LAST_OUTLIER_STRATEGY = j;
+    _outlierStrategySetTypes(j.effective_selected || []);
+    _outlierStrategyRenderInfo(j);
+    try{ saveGlobalDashboardSelection().catch(()=>{}); }catch(e){}
+  }catch(e){
+    LAST_OUTLIER_STRATEGY = { ok: false, error: e && e.message ? e.message : String(e) };
+    _outlierStrategyRenderInfo(LAST_OUTLIER_STRATEGY);
+  }
+}
+
+function _outlierStrategyOpenDialog(){
+  if(!$analysisStrategyDialog) return;
+  const data = LAST_OUTLIER_STRATEGY || { ok: false, error: 'Keine Strategiedaten geladen.' };
+  const st = data.strategy || {};
+  const effective = Array.isArray(data.effective_selected) ? data.effective_selected : [];
+  const reasons = Array.isArray(data.reason_log) ? data.reason_log : [];
+  if($analysisStrategyDialogMeta){
+    $analysisStrategyDialogMeta.textContent = data.ok === false ? String(data.error || 'Keine Strategiedaten') : `Messwertstrategie für ${String((data.profile && data.profile.entity_id) || '')}`;
+  }
+  if($analysisStrategyDialogCurrent){
+    $analysisStrategyDialogCurrent.innerHTML = `Name: <strong>${_escHtml(String(st.name || st.id || 'Fallback'))}</strong><br>Priorität: ${_escHtml(String(st.priority ?? ''))}<br>Beschreibung: ${_escHtml(String(st.description || ''))}`;
+  }
+  if($analysisStrategyDialogReasons){
+    $analysisStrategyDialogReasons.innerHTML = reasons.length ? `Begründung: ${_escHtml(reasons.join(' | '))}` : 'Keine Begründung vorhanden.';
+  }
+  if($analysisStrategyDialogEffective){
+    $analysisStrategyDialogEffective.innerHTML = (effective || []).map((t)=>`<span class="ib-chip ib-chip-active" style="--ib-chip-color:#5ea56a;"><div class="ib-chip-dot"></div><span class="ib-chip-label">${_escHtml((ALL_OUTLIER_TYPES.find(x=>x.value===t)||{}).label || t)}</span></span>`).join('') || '<div class="muted">Keine effektiven Typen.</div>';
+  }
+  if($analysisStrategyDialogOverrideGrid){
+    const manualEnable = Array.isArray(data.manual_enable_types) ? data.manual_enable_types : [];
+    const manualDisable = Array.isArray(data.manual_disable_types) ? data.manual_disable_types : [];
+    $analysisStrategyDialogOverrideGrid.innerHTML = ALL_OUTLIER_TYPES.filter(t => t.value !== 'ignored').map((t)=>{
+      const checkedEnable = manualEnable.includes(t.value) ? 'checked' : '';
+      const checkedDisable = manualDisable.includes(t.value) ? 'checked' : '';
+      return `<div style="border:1px solid #e7e7e7; border-radius:10px; padding:10px;"><div style="font-weight:700; margin-bottom:8px;">${_escHtml(t.label)}</div><label style="display:flex; gap:6px; align-items:center; font-size:12px;"><input type="checkbox" data-strategy-enable="${_escAttr(t.value)}" ${checkedEnable}/> erzwingen aktiv</label><label style="display:flex; gap:6px; align-items:center; font-size:12px; margin-top:6px;"><input type="checkbox" data-strategy-disable="${_escAttr(t.value)}" ${checkedDisable}/> erzwingen aus</label></div>`;
+    }).join('');
+  }
+  if($analysisStrategyDialogJson){
+    $analysisStrategyDialogJson.value = JSON.stringify(data.custom_strategies || [], null, 2);
+  }
+  $analysisStrategyDialog.style.display = 'flex';
+}
+
+async function _outlierStrategySaveDialog(){
+  const data = LAST_OUTLIER_STRATEGY || {};
+  const sel = _outlierStrategyCurrentSelection();
+  let customStrategies = [];
+  try{ customStrategies = JSON.parse(String($analysisStrategyDialogJson && $analysisStrategyDialogJson.value || '[]')); }catch(e){ throw new Error('Strategie-JSON ist ungültig'); }
+  await api('./api/outlier_strategy/config', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ custom_strategies: customStrategies })
+  }, { silent:true });
+  if(sel.measurement && sel.field && sel.entity_id){
+    const manualEnable = Array.from($analysisStrategyDialogOverrideGrid ? $analysisStrategyDialogOverrideGrid.querySelectorAll('[data-strategy-enable]:checked') : []).map(el => String(el.getAttribute('data-strategy-enable') || '').trim()).filter(Boolean);
+    const manualDisable = Array.from($analysisStrategyDialogOverrideGrid ? $analysisStrategyDialogOverrideGrid.querySelectorAll('[data-strategy-disable]:checked') : []).map(el => String(el.getAttribute('data-strategy-disable') || '').trim()).filter(Boolean);
+    await api('./api/outlier_strategy/override', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ entity_id: sel.entity_id, measurement: sel.measurement, field: sel.field, manual_enable_types: manualEnable, manual_disable_types: manualDisable })
+    }, { silent:true });
+  }
+  await refreshOutlierStrategyPanel();
+  if($analysisStrategyDialog) $analysisStrategyDialog.style.display = 'none';
 }
 
 function ignoredSeriesKey(base){
@@ -16735,6 +16929,9 @@ if($analysisRunWithCache) $analysisRunWithCache.addEventListener('click', (ev)=>
 if($analysisRunWithoutCache) $analysisRunWithoutCache.addEventListener('click', (ev)=>{ _stop(ev); startDashboardAnalysis('refresh'); });
 if($btnCancelLoad) $btnCancelLoad.addEventListener("click", (ev)=>{ _stop(ev); cancelLoadNow(); });
 if($analysisHistoryBtn) $analysisHistoryBtn.addEventListener("click", (ev)=>{ _stop(ev); _showAnalysisHistory().catch(displayError); });
+if($analysisStrategyOpen) $analysisStrategyOpen.addEventListener('click', (ev)=>{ _stop(ev); _outlierStrategyOpenDialog(); });
+if($analysisStrategyDialogClose) $analysisStrategyDialogClose.addEventListener('click', ()=>{ try{ if($analysisStrategyDialog) $analysisStrategyDialog.style.display = 'none'; }catch(e){}; });
+if($analysisStrategyDialogSave) $analysisStrategyDialogSave.addEventListener('click', ()=>{ _outlierStrategySaveDialog().catch(displayError); });
 if($nameMergeLatestBtn) $nameMergeLatestBtn.addEventListener("click", (ev)=>{ _stop(ev); mergeFriendlyNamesToLatest().catch(displayError); });
 
 // Analysis confirm dialog event listeners

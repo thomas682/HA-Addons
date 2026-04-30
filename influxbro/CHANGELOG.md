@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.501
+
+### Enhancement
+
+- Dashboard / Ausreißerstrategie: Neue serverseitige Strategien auf Basis des Messwertprofils. `derived.internal_type`, HA-Klassifikation und Influx-Metadaten werden jetzt zu einer deterministischen Basisstrategie zusammengeführt. Der Dashboard-Bereich zeigt die effektiven Ausreißertypen automatisch an, manuelle Overrides werden serverseitig gespeichert, und der neue Dialog `Strategiewahl` erlaubt die Sicht auf aktive Strategie, Begründung, effektive Typen sowie benutzerdefinierte Strategien/Overrides. ([#454](https://github.com/thomas682/HA-Addons/issues/454), [#453](https://github.com/thomas682/HA-Addons/issues/453))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.500
 
 ### Fix

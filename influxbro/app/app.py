@@ -175,6 +175,8 @@ UI_STATE_PATH = DATA_DIR / "influxbro_ui_state.json"
 
 APP_STATE_LOCK = threading.RLock()
 APP_STATE_PATH = DATA_DIR / "influxbro_app_state.json"
+OUTLIER_STRATEGY_LOCK = threading.RLock()
+OUTLIER_STRATEGY_PATH = DATA_DIR / "influxbro_outlier_strategies.json"
 
 # UI profiles (file-based; global active profile)
 UI_PROFILES_LOCK = threading.RLock()
@@ -12758,6 +12760,400 @@ def _measurement_profile_quality(ha: dict[str, Any], yaml_info: dict[str, Any], 
         "field_type_consistent": field_type_consistent,
         "warnings": warnings,
     }
+
+
+OUTLIER_STRATEGY_ALLOWED_TYPES = [
+    "counter",
+    "decrease",
+    "counterreset",
+    "bounds",
+    "gap",
+    "fault_phase",
+    "null",
+    "zero",
+]
+
+OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
+    {
+        "id": "builtin.counter_increasing",
+        "name": "Counter steigend",
+        "description": "Zaehler mit total_increasing: Counter-, Reset- und Abfallpruefungen aktiv.",
+        "priority": 100,
+        "match": {"internal_types": ["counter_increasing"]},
+        "enable_types": ["counter", "counterreset", "decrease", "gap", "null", "zero"],
+        "disable_types": ["bounds", "fault_phase"],
+    },
+    {
+        "id": "builtin.counter_resettable",
+        "name": "Counter resettable",
+        "description": "Ruecksetzbare Zaehler: Reset und Luecken im Fokus, Counter-Abfall konservativer.",
+        "priority": 90,
+        "match": {"internal_types": ["counter_resettable"]},
+        "enable_types": ["counterreset", "gap", "null", "zero"],
+        "disable_types": ["counter", "decrease", "bounds"],
+    },
+    {
+        "id": "builtin.gauge_numeric",
+        "name": "Numerischer Messwert",
+        "description": "Normale numerische Messwerte: Grenzen, Luecken und Stoerphasen aktiv.",
+        "priority": 80,
+        "match": {"internal_types": ["gauge_numeric", "unknown_numeric"]},
+        "enable_types": ["bounds", "gap", "fault_phase", "null", "zero"],
+        "disable_types": ["counter", "counterreset", "decrease"],
+    },
+    {
+        "id": "builtin.binary",
+        "name": "Binary",
+        "description": "Binaere Messwerte: nur Null-/Lueckenpruefung, keine numerischen Ausreissertypen.",
+        "priority": 70,
+        "match": {"internal_types": ["binary"]},
+        "enable_types": ["gap", "null"],
+        "disable_types": ["counter", "counterreset", "decrease", "bounds", "fault_phase", "zero"],
+    },
+    {
+        "id": "builtin.enum_text",
+        "name": "Text / Enum",
+        "description": "Textuelle Zustandswerte: nur Luecken-/NULL-Pruefung.",
+        "priority": 60,
+        "match": {"internal_types": ["enum_text", "unknown_text", "timestamp", "date"]},
+        "enable_types": ["gap", "null"],
+        "disable_types": ["counter", "counterreset", "decrease", "bounds", "fault_phase", "zero"],
+    },
+]
+
+
+def _measurement_profile_build(
+    cfg: dict[str, Any],
+    *,
+    entity_id: str,
+    measurement: str,
+    field: str,
+    friendly_name: str | None,
+    bucket: str,
+    body: dict[str, Any],
+) -> dict[str, Any]:
+    selector_range, start_dt, stop_dt = _measurement_profile_range(cfg, body)
+    ha = _measurement_profile_ha(entity_id)
+    yaml_info = _measurement_profile_yaml_search(entity_id, ha.get("friendly_name"), ha.get("unique_id"))
+    if int(cfg.get("influx_version", 2) or 2) == 2:
+        influx = _measurement_profile_influx_v2(
+            cfg,
+            bucket=bucket,
+            measurement=measurement,
+            field=field,
+            entity_id=entity_id,
+            friendly_name=friendly_name,
+            selector_range=selector_range,
+            start_dt=start_dt,
+            stop_dt=stop_dt,
+        )
+    else:
+        influx = _measurement_profile_influx_v1(
+            cfg,
+            measurement=measurement,
+            field=field,
+            entity_id=entity_id,
+            friendly_name=friendly_name,
+            selector_range=selector_range,
+            start_dt=start_dt,
+            stop_dt=stop_dt,
+        )
+    derived = _measurement_profile_derived(ha, influx, yaml_info)
+    quality = _measurement_profile_quality(ha, yaml_info, influx, derived)
+    return {
+        "entity_id": entity_id,
+        "ha": ha,
+        "yaml": yaml_info,
+        "influx": influx,
+        "derived": derived,
+        "quality": quality,
+    }
+
+
+def _outlier_strategy_default_store() -> dict[str, Any]:
+    return {"strategies": [], "overrides": {}}
+
+
+def _outlier_strategy_load_store() -> dict[str, Any]:
+    try:
+        if not OUTLIER_STRATEGY_PATH.exists():
+            return _outlier_strategy_default_store()
+        with OUTLIER_STRATEGY_LOCK:
+            raw = OUTLIER_STRATEGY_PATH.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(raw) if raw else {}
+        if not isinstance(data, dict):
+            return _outlier_strategy_default_store()
+        out = _outlier_strategy_default_store()
+        out["strategies"] = data.get("strategies") if isinstance(data.get("strategies"), list) else []
+        out["overrides"] = data.get("overrides") if isinstance(data.get("overrides"), dict) else {}
+        return out
+    except Exception:
+        return _outlier_strategy_default_store()
+
+
+def _outlier_strategy_save_store(store: dict[str, Any]) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with OUTLIER_STRATEGY_LOCK:
+        OUTLIER_STRATEGY_PATH.write_text(json.dumps(store or _outlier_strategy_default_store(), indent=2, sort_keys=True, ensure_ascii=True), encoding="utf-8")
+
+
+def _outlier_strategy_types_norm(values: Any) -> list[str]:
+    xs = values if isinstance(values, list) else []
+    out: list[str] = []
+    for v in xs:
+        s = str(v or "").strip().lower()
+        if s and s in OUTLIER_STRATEGY_ALLOWED_TYPES and s not in out:
+            out.append(s)
+    return out
+
+
+def _outlier_strategy_match_norm(match: Any) -> dict[str, Any]:
+    m = match if isinstance(match, dict) else {}
+    return {
+        "internal_types": [str(x or "").strip() for x in (m.get("internal_types") if isinstance(m.get("internal_types"), list) else []) if str(x or "").strip()],
+        "device_classes": [str(x or "").strip() for x in (m.get("device_classes") if isinstance(m.get("device_classes"), list) else []) if str(x or "").strip()],
+        "state_classes": [str(x or "").strip() for x in (m.get("state_classes") if isinstance(m.get("state_classes"), list) else []) if str(x or "").strip()],
+        "field_types": [str(x or "").strip() for x in (m.get("field_types") if isinstance(m.get("field_types"), list) else []) if str(x or "").strip()],
+        "units": [str(x or "").strip() for x in (m.get("units") if isinstance(m.get("units"), list) else []) if str(x or "").strip()],
+        "domains": [str(x or "").strip() for x in (m.get("domains") if isinstance(m.get("domains"), list) else []) if str(x or "").strip()],
+        "measurements": [str(x or "").strip() for x in (m.get("measurements") if isinstance(m.get("measurements"), list) else []) if str(x or "").strip()],
+        "fields": [str(x or "").strip() for x in (m.get("fields") if isinstance(m.get("fields"), list) else []) if str(x or "").strip()],
+        "entity_id_regex": str(m.get("entity_id_regex") or "").strip() or None,
+    }
+
+
+def _outlier_strategy_normalize_item(item: dict[str, Any]) -> dict[str, Any]:
+    sid = str(item.get("id") or "").strip()
+    if not sid:
+        raise ValueError("strategy id required")
+    try:
+        priority = int(item.get("priority") or 0)
+    except Exception:
+        priority = 0
+    match = _outlier_strategy_match_norm(item.get("match"))
+    enable_types = _outlier_strategy_types_norm(item.get("enable_types"))
+    disable_types = _outlier_strategy_types_norm(item.get("disable_types"))
+    if set(enable_types) & set(disable_types):
+        raise ValueError(f"strategy {sid} enables and disables the same type")
+    return {
+        "id": sid,
+        "name": str(item.get("name") or sid).strip() or sid,
+        "description": str(item.get("description") or "").strip(),
+        "priority": priority,
+        "match": match,
+        "enable_types": enable_types,
+        "disable_types": disable_types,
+    }
+
+
+def _outlier_strategy_measurement_key(entity_id: str, measurement: str, field: str) -> str:
+    return "|".join([str(entity_id or "").strip(), str(measurement or "").strip(), str(field or "").strip()])
+
+
+def _outlier_strategy_match_profile(strategy: dict[str, Any], profile: dict[str, Any]) -> tuple[bool, int, list[str]]:
+    match = _outlier_strategy_match_norm(strategy.get("match"))
+    derived = profile.get("derived") if isinstance(profile.get("derived"), dict) else {}
+    ha = profile.get("ha") if isinstance(profile.get("ha"), dict) else {}
+    influx = profile.get("influx") if isinstance(profile.get("influx"), dict) else {}
+    entity_id = str(profile.get("entity_id") or "")
+    checks = [
+        ("internal_types", str(derived.get("internal_type") or ""), "internal_type"),
+        ("device_classes", str(ha.get("device_class") or ""), "device_class"),
+        ("state_classes", str(ha.get("state_class") or ""), "state_class"),
+        ("field_types", str(influx.get("field_type") or ""), "field_type"),
+        ("units", str(ha.get("unit_of_measurement") or ""), "unit"),
+        ("domains", str(ha.get("domain") or ""), "domain"),
+        ("measurements", str(influx.get("measurement") or ""), "measurement"),
+        ("fields", str(influx.get("field") or ""), "field"),
+    ]
+    reasons: list[str] = []
+    specificity = 0
+    for key, actual, label in checks:
+        expected = match.get(key) if isinstance(match.get(key), list) else []
+        if not expected:
+            continue
+        specificity += 1
+        if actual not in expected:
+            return False, specificity, []
+        reasons.append(f"{label}={actual}")
+    regex = match.get("entity_id_regex")
+    if regex:
+        specificity += 1
+        try:
+            if not re.search(str(regex), entity_id):
+                return False, specificity, []
+            reasons.append(f"entity_id_regex={regex}")
+        except re.error:
+            return False, specificity, []
+    return True, specificity, reasons
+
+
+def _outlier_strategy_pick(profile: dict[str, Any], custom_strategies: list[dict[str, Any]]) -> dict[str, Any]:
+    candidates = [*OUTLIER_STRATEGY_BUILTINS, *custom_strategies]
+    matches: list[tuple[dict[str, Any], int, list[str]]] = []
+    for st in candidates:
+        ok, spec, reasons = _outlier_strategy_match_profile(st, profile)
+        if ok:
+            matches.append((st, spec, reasons))
+    if not matches:
+        fallback = {
+            "id": "builtin.fallback",
+            "name": "Fallback",
+            "description": "Konservative Standardstrategie bei unklarer Klassifikation.",
+            "priority": -1,
+            "enable_types": ["bounds", "gap", "null"],
+            "disable_types": ["counter", "counterreset", "decrease", "fault_phase", "zero"],
+            "match": {},
+        }
+        return {"selected": fallback, "reason_log": ["fallback_strategy"], "matched": []}
+    matches.sort(key=lambda item: (-int(item[0].get("priority") or 0), -item[1], str(item[0].get("id") or "")))
+    selected, _spec, reasons = matches[0]
+    reason_log = [f"strategy={selected.get('id')}", *reasons]
+    if len(matches) > 1:
+        reason_log.append("multiple_matches_resolved_by_priority")
+    return {
+        "selected": selected,
+        "reason_log": reason_log,
+        "matched": [{"id": st.get("id"), "priority": st.get("priority"), "specificity": spec} for st, spec, _ in matches],
+    }
+
+
+def _outlier_strategy_effective(profile: dict[str, Any], strategy: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    order = [t for t in OUTLIER_STRATEGY_ALLOWED_TYPES if t != "ignored"]
+    recommended_selected = [t for t in order if t in _outlier_strategy_types_norm(strategy.get("enable_types")) and t not in _outlier_strategy_types_norm(strategy.get("disable_types"))]
+    recommended_unselected = [t for t in order if t not in recommended_selected]
+    manual_enable = _outlier_strategy_types_norm(override.get("manual_enable_types"))
+    manual_disable = _outlier_strategy_types_norm(override.get("manual_disable_types"))
+    effective = []
+    for t in order:
+        active = t in recommended_selected
+        if t in manual_enable:
+            active = True
+        if t in manual_disable:
+            active = False
+        if active:
+            effective.append(t)
+    effective_unselected = [t for t in order if t not in effective]
+    return {
+        "recommended_selected": recommended_selected,
+        "recommended_unselected": recommended_unselected,
+        "manual_enable_types": manual_enable,
+        "manual_disable_types": manual_disable,
+        "effective_selected": effective,
+        "effective_unselected": effective_unselected,
+    }
+
+
+@app.get("/api/outlier_strategy")
+def api_outlier_strategy_get():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    entity_id = str(request.args.get("entity_id") or "").strip()
+    measurement = str(request.args.get("measurement") or "").strip()
+    field = str(request.args.get("field") or "").strip() or "value"
+    friendly_name = str(request.args.get("friendly_name") or "").strip() or None
+    bucket = str(request.args.get("bucket") or cfg.get("bucket") or cfg.get("database") or "").strip()
+    if not entity_id or not measurement or not field:
+        return jsonify({"ok": False, "error": "entity_id, measurement and field required"}), 400
+    body = {"range": request.args.get("range"), "start": request.args.get("start"), "stop": request.args.get("stop")}
+    try:
+        profile = _measurement_profile_build(
+            cfg,
+            entity_id=entity_id,
+            measurement=measurement,
+            field=field,
+            friendly_name=friendly_name,
+            bucket=bucket,
+            body=body,
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+    store = _outlier_strategy_load_store()
+    custom_strategies = []
+    seen: set[str] = set()
+    for item in store.get("strategies") if isinstance(store.get("strategies"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            st = _outlier_strategy_normalize_item(item)
+        except Exception:
+            continue
+        if st["id"] in seen:
+            continue
+        seen.add(st["id"])
+        custom_strategies.append(st)
+    picked = _outlier_strategy_pick(profile, custom_strategies)
+    key = _outlier_strategy_measurement_key(entity_id, measurement, field)
+    overrides = store.get("overrides") if isinstance(store.get("overrides"), dict) else {}
+    override = overrides.get(key) if isinstance(overrides.get(key), dict) else {}
+    eff = _outlier_strategy_effective(profile, picked["selected"], override)
+    return jsonify({
+        "ok": True,
+        "profile": profile,
+        "strategy": picked["selected"],
+        "matched": picked["matched"],
+        "reason_log": picked["reason_log"],
+        "available_types": OUTLIER_STRATEGY_ALLOWED_TYPES,
+        "custom_strategies": custom_strategies,
+        **eff,
+    })
+
+
+@app.post("/api/outlier_strategy/override")
+def api_outlier_strategy_override_set():
+    body = request.get_json(force=True) or {}
+    entity_id = str(body.get("entity_id") or "").strip()
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip() or "value"
+    if not entity_id or not measurement or not field:
+        return jsonify({"ok": False, "error": "entity_id, measurement and field required"}), 400
+    key = _outlier_strategy_measurement_key(entity_id, measurement, field)
+    manual_enable = _outlier_strategy_types_norm(body.get("manual_enable_types"))
+    manual_disable = _outlier_strategy_types_norm(body.get("manual_disable_types"))
+    if set(manual_enable) & set(manual_disable):
+        return jsonify({"ok": False, "error": "manual enable/disable overlap"}), 400
+    store = _outlier_strategy_load_store()
+    overrides = store.get("overrides") if isinstance(store.get("overrides"), dict) else {}
+    if not manual_enable and not manual_disable:
+        overrides.pop(key, None)
+    else:
+        overrides[key] = {"manual_enable_types": manual_enable, "manual_disable_types": manual_disable}
+    store["overrides"] = overrides
+    _outlier_strategy_save_store(store)
+    return jsonify({"ok": True, "override": overrides.get(key) if key in overrides else {"manual_enable_types": [], "manual_disable_types": []}})
+
+
+@app.get("/api/outlier_strategy/config")
+def api_outlier_strategy_config_get():
+    store = _outlier_strategy_load_store()
+    custom_strategies = []
+    for item in store.get("strategies") if isinstance(store.get("strategies"), list) else []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            custom_strategies.append(_outlier_strategy_normalize_item(item))
+        except Exception:
+            continue
+    return jsonify({"ok": True, "available_types": OUTLIER_STRATEGY_ALLOWED_TYPES, "builtin_strategies": OUTLIER_STRATEGY_BUILTINS, "custom_strategies": custom_strategies})
+
+
+@app.post("/api/outlier_strategy/config")
+def api_outlier_strategy_config_set():
+    body = request.get_json(force=True) or {}
+    raw = body.get("custom_strategies") if isinstance(body.get("custom_strategies"), list) else []
+    seen: set[str] = set()
+    xs: list[dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        st = _outlier_strategy_normalize_item(item)
+        if st["id"] in seen:
+            return jsonify({"ok": False, "error": f"duplicate strategy id: {st['id']}"}), 400
+        seen.add(st["id"])
+        xs.append(st)
+    store = _outlier_strategy_load_store()
+    store["strategies"] = xs
+    _outlier_strategy_save_store(store)
+    return jsonify({"ok": True, "custom_strategies": xs})
 
 
 @app.get("/api/measurement_profile")

@@ -1242,6 +1242,46 @@ def test_query_payload_prefers_v2_when_v1_database_missing(load_app_module, tmp_
     assert out["meta"]["mode"] == "dynamic"
 
 
+def test_api_outlier_strategy_derives_effective_types(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "bucket": "homeassistant_db", "token": "t", "org": "o"})
+    monkeypatch.setattr(app_mod, "_measurement_profile_build", lambda cfg, **kwargs: {
+        "entity_id": kwargs["entity_id"],
+        "ha": {"available": True, "entity_id": kwargs["entity_id"], "device_class": "energy", "state_class": "total_increasing", "unit_of_measurement": "Wh", "domain": "sensor"},
+        "yaml": {"found": True, "data": {}},
+        "influx": {"measurement": kwargs["measurement"], "field": kwargs["field"], "field_type": "float"},
+        "derived": {"internal_type": "counter_increasing", "confidence": "high"},
+        "quality": {"warnings": []},
+    })
+    monkeypatch.setattr(app_mod, "_outlier_strategy_load_store", lambda: {
+        "strategies": [
+            {
+                "id": "custom.counter_override",
+                "name": "Counter Override",
+                "description": "Override for counters",
+                "priority": 110,
+                "match": {"internal_types": ["counter_increasing"]},
+                "enable_types": ["counter", "counterreset", "decrease"],
+                "disable_types": ["bounds", "fault_phase", "gap", "null", "zero"],
+            }
+        ],
+        "overrides": {
+            "sensor.demo|Wh|value": {"manual_enable_types": ["gap"], "manual_disable_types": ["decrease"]}
+        },
+    })
+
+    client = app_mod.app.test_client()
+    r = client.get("/api/outlier_strategy?entity_id=sensor.demo&measurement=Wh&field=value&range=all")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["strategy"]["id"] == "custom.counter_override"
+    assert "counter" in j["effective_selected"]
+    assert "counterreset" in j["effective_selected"]
+    assert "gap" in j["effective_selected"]
+    assert "decrease" not in j["effective_selected"]
+
+
 def test_api_audit_aggregates_counts_and_backup_status(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
 
