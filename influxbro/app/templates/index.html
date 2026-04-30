@@ -593,11 +593,80 @@
       color: #4b5563;
       border: 1px solid #e5e7eb;
     }
+    .ib-profile-panel {
+      border-bottom: 1px solid #e5e7eb;
+      background: #fcfcfd;
+      padding: 16px 24px 18px;
+    }
+    .ib-profile-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .ib-profile-section {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      background: #fff;
+      padding: 12px 14px;
+      min-width: 0;
+    }
+    .ib-profile-section h4 {
+      margin: 0 0 8px 0;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #4b5563;
+    }
+    .ib-profile-table {
+      display: grid;
+      grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
+      gap: 6px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .ib-profile-k {
+      color: #6b7280;
+      font-weight: 500;
+    }
+    .ib-profile-v {
+      color: #111827;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .ib-profile-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+      background: #f7f8fa;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+    .ib-profile-warnings {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .ib-profile-warning {
+      border: 1px solid #fde68a;
+      background: #fffbeb;
+      color: #92400e;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .ib-profile-ok {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+      color: #166534;
+    }
     @media (max-width: 980px) {
       .ib-namepanel-header { flex-direction: column; }
       .ib-namepanel-summarybar { flex-direction: column; }
       .ib-namepanel-summary-stat { border-right: none; border-bottom: 1px solid #e5e7eb; }
       .ib-namepanel-summary-stat:last-child { border-bottom: none; }
+      .ib-profile-grid { grid-template-columns: 1fr; }
       .ib-namepanel-row {
         grid-template-columns: 1fr;
         gap: 8px;
@@ -790,9 +859,13 @@
   </details>
 
   <details id="name_timeline_panel" class="section" style="display:none; margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
-    <summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title" data-ib-pickkey="dashboard_selection.section_multi_name_title">Mehrere Messwertnamen</span></span></summary>
+    <summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title" data-ib-pickkey="dashboard_selection.section_multi_name_title">Messwertinfos von Homeassistant</span></span></summary>
+    <div class="ib_section_desc_row" id="measurement_profile_desc">Home-Assistant-, YAML- und Influx-Infos zum aktuell gewaehlten Messwert sowie historische Messwertnamen.</div>
     <div class="card_body">
       <div class="ib-namepanel">
+        <div id="measurement_profile_panel" class="ib-profile-panel" style="display:none;" data-ui="dashboard_selection.panel_measurement_profile" data-ib-pickkey="dashboard_selection.panel_measurement_profile">
+          <div id="measurement_profile_sections" class="ib-profile-grid"></div>
+        </div>
         <div class="ib-namepanel-header">
           <div class="ib-namepanel-header-text">
             <div class="ib-namepanel-header-title">Mehrere Messwertnamen</div>
@@ -1373,6 +1446,8 @@ const $nameTimelineSummary = document.getElementById('name_timeline_summary');
 const $nameTimelineAxis = document.getElementById('name_timeline_axis');
 const $nameTimelineRows = document.getElementById('name_timeline_rows');
 const $nameMergeLatestBtn = document.getElementById('name_merge_latest_btn');
+const $measurementProfilePanel = document.getElementById('measurement_profile_panel');
+const $measurementProfileSections = document.getElementById('measurement_profile_sections');
 
 // Row details (before/after list) are rendered inline under the selected row.
 
@@ -5037,6 +5112,8 @@ function hideNameTimelinePanel(){
     if($nameTimelineTitle) $nameTimelineTitle.textContent = '';
     if($nameTimelineSummary){ $nameTimelineSummary.innerHTML = ''; $nameTimelineSummary.style.display = 'none'; }
     if($nameTimelineAxis){ $nameTimelineAxis.innerHTML = ''; $nameTimelineAxis.style.display = 'none'; }
+    if($measurementProfileSections) $measurementProfileSections.innerHTML = '';
+    if($measurementProfilePanel) $measurementProfilePanel.style.display = 'none';
     if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = true;
   }catch(e){}
 }
@@ -5084,6 +5161,119 @@ function _nameTimelineHistoricClass(idx){
   if(idx === 1) return 'is-historic';
   if(idx === 2) return 'is-historic-2';
   return 'is-historic-3';
+}
+
+function _profileEsc(v){ return _escHtml(String(v == null ? '' : v)); }
+
+function _profileCode(v){ return `<code class="ib-profile-code">${_profileEsc(v)}</code>`; }
+
+function _profileRows(rows){
+  return rows.map(([k,v]) => `<div class="ib-profile-k">${_profileEsc(k)}</div><div class="ib-profile-v">${v == null || v === '' ? '—' : String(v)}</div>`).join('');
+}
+
+function _profileSection(title, rows, extraHtml){
+  return `<section class="ib-profile-section"><h4>${_profileEsc(title)}</h4><div class="ib-profile-table">${_profileRows(rows)}</div>${extraHtml || ''}</section>`;
+}
+
+function renderMeasurementProfilePanel(profile){
+  if(!$measurementProfilePanel || !$measurementProfileSections) return;
+  if(!profile || profile.ok === false){
+    $measurementProfileSections.innerHTML = `<section class="ib-profile-section"><h4>Profil</h4><div class="ib-profile-warnings"><div class="ib-profile-warning">${_profileEsc(profile && profile.error ? profile.error : 'Profil konnte nicht geladen werden.')}</div></div></section>`;
+    $measurementProfilePanel.style.display = 'block';
+    return;
+  }
+  const ha = profile.ha || {};
+  const yamlInfo = profile.yaml || {};
+  const influx = profile.influx || {};
+  const derived = profile.derived || {};
+  const quality = profile.quality || {};
+  const yamlRows = Object.entries(yamlInfo.data || {}).slice(0, 14).map(([k,v]) => [k, typeof v === 'string' ? _profileEsc(v) : _profileEsc(JSON.stringify(v))]);
+  const warnings = Array.isArray(quality.warnings) ? quality.warnings : [];
+  const warningsHtml = warnings.length
+    ? `<div class="ib-profile-warnings">${warnings.map(w => `<div class="ib-profile-warning">${_profileEsc(w)}</div>`).join('')}</div>`
+    : `<div class="ib-profile-warnings"><div class="ib-profile-warning ib-profile-ok">Keine Warnungen</div></div>`;
+  $measurementProfileSections.innerHTML = [
+    _profileSection('Grunddaten', [
+      ['entity_id', _profileCode(profile.entity_id || ha.entity_id || '')],
+      ['Friendly Name', _profileEsc(ha.friendly_name || '')],
+      ['Domain', _profileEsc(ha.domain || '')],
+      ['unique_id', ha.unique_id ? _profileCode(ha.unique_id) : '—'],
+      ['Gerät', _profileEsc(ha.device || '')],
+      ['Bereich', _profileEsc(ha.area || '')],
+      ['Integration', _profileEsc(ha.integration || '')],
+    ]),
+    _profileSection('Home Assistant', [
+      ['device_class', _profileEsc(ha.device_class || '')],
+      ['state_class', _profileEsc(ha.state_class || '')],
+      ['unit_of_measurement', _profileEsc(ha.unit_of_measurement || '')],
+      ['native_unit_of_measurement', _profileEsc(ha.native_unit_of_measurement || '')],
+      ['suggested_display_precision', _profileEsc(ha.suggested_display_precision || '')],
+      ['Icon', _profileEsc(ha.icon || '')],
+      ['Entity Category', _profileEsc(ha.entity_category || '')],
+      ['supported_features', _profileEsc(ha.supported_features || '')],
+    ]),
+    _profileSection('YAML / Konfiguration', [
+      ['Gefunden', yamlInfo.found ? 'ja' : 'nein'],
+      ['Datei', _profileEsc(yamlInfo.source_file || '')],
+      ['Typ', _profileEsc(yamlInfo.type || '')],
+      ['Pfad', _profileEsc(yamlInfo.path || '')],
+      ['Treffer', _profileEsc(yamlInfo.match_count || '')],
+      ...yamlRows,
+    ]),
+    _profileSection('InfluxDB', [
+      ['Bucket', _profileEsc(influx.bucket || '')],
+      ['Measurement', _profileCode(influx.measurement || '')],
+      ['Field', _profileCode(influx.field || '')],
+      ['Feldtyp', _profileEsc(influx.field_type || '')],
+      ['Datenpunkte', _profileEsc(influx.count || '')],
+      ['Erster Wert', _profileEsc(influx.first_value || '')],
+      ['Letzter Wert', _profileEsc(influx.last_value || '')],
+      ['Min', _profileEsc(influx.min || '')],
+      ['Max', _profileEsc(influx.max || '')],
+      ['Mittel', _profileEsc(influx.mean || '')],
+      ['Nachkommastellen', _profileEsc(influx.decimal_places_detected || '')],
+    ]),
+    _profileSection('Abgeleiteter Typ', [
+      ['internal_type', _profileEsc(derived.internal_type || '')],
+      ['expected_write_type', _profileEsc(derived.expected_write_type || '')],
+      ['allow_decrease', _profileEsc(derived.allow_decrease)],
+      ['allow_reset', _profileEsc(derived.allow_reset)],
+      ['correction_strategy', _profileEsc(derived.correction_strategy || '')],
+      ['confidence', _profileEsc(derived.confidence || '')],
+    ]),
+    _profileSection('Datenqualität', [
+      ['classification_complete', _profileEsc(quality.classification_complete)],
+      ['unit_consistent', _profileEsc(quality.unit_consistent)],
+      ['yaml_source_found', _profileEsc(quality.yaml_source_found)],
+      ['field_type_consistent', _profileEsc(quality.field_type_consistent)],
+    ], warningsHtml),
+  ].join('');
+  $measurementProfilePanel.style.display = 'block';
+}
+
+async function refreshMeasurementProfilePanel(){
+  try{
+    const measurement = String(($m && $m.value) || '').trim();
+    const field = String(($f && $f.value) || '').trim();
+    const entityId = String(($e && $e.value) || '').trim();
+    const friendlyName = String(($n && $n.value) || '').trim();
+    if(!measurement || !field || !entityId){
+      if($measurementProfileSections) $measurementProfileSections.innerHTML = '';
+      if($measurementProfilePanel) $measurementProfilePanel.style.display = 'none';
+      return;
+    }
+    const qp = new URLSearchParams({
+      measurement,
+      field,
+      entity_id: entityId,
+      friendly_name: friendlyName,
+      ...selectorQueryTimeParams(),
+    });
+    const j = await api('./api/measurement_profile?' + qp.toString(), null, { key: 'measurement_profile', status: 'Lade Messwertprofil...', silent: true });
+    renderMeasurementProfilePanel(j);
+  }catch(e){
+    renderMeasurementProfilePanel({ ok: false, error: e && e.message ? e.message : String(e) });
+  }
 }
 
 function _nameTimelinePickKey(row, idx){
@@ -5201,6 +5391,7 @@ async function refreshNameTimelinePanel(){
       hideNameTimelinePanel();
       return;
     }
+    try{ await refreshMeasurementProfilePanel(); }catch(e){}
     const rows = await loadComboRanges('friendly_name', { entity_id: entityId, friendly_name: null });
     renderNameTimeline(rows || []);
   }catch(e){

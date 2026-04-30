@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.497
+
+### Enhancement
+
+- Dashboard / Messwertinfos von Homeassistant: Die Section oberhalb der Mehrfachnamen-Ansicht zeigt jetzt ein professionell gegliedertes Messwertprofil aus Home-Assistant-Metadaten, YAML-Fundstellen und InfluxDB-Basisstatistiken. Dazu wurde der zentrale Endpoint `/api/measurement_profile` eingeführt; `#448` (Titel/Infofeld) wurde direkt im selben Paket miterledigt. ([#448](https://github.com/thomas682/HA-Addons/issues/448), [#449](https://github.com/thomas682/HA-Addons/issues/449))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.496
 
 ### Fix

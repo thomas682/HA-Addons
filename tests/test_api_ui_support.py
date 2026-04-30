@@ -506,6 +506,10 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert selection_close_idx < panel_idx < caching_idx
     assert '<details id="name_timeline_panel" class="section"' in body
     assert '<summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title"' in body
+    assert 'Messwertinfos von Homeassistant' in body
+    assert 'id="measurement_profile_desc"' in body
+    assert 'id="measurement_profile_panel"' in body
+    assert 'id="measurement_profile_sections"' in body
     assert 'id="name_merge_latest_btn"' in body
     assert 'Mehrere Messwertnamen' in body
     assert 'id="name_timeline_summary"' in body
@@ -517,6 +521,9 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert 'function _nameTimelineFmtTick(' in body
     assert 'function _nameTimelineFmtDateTime(' in body
     assert 'function _nameTimelinePickKey(' in body
+    assert 'function renderMeasurementProfilePanel(profile)' in body
+    assert 'async function refreshMeasurementProfilePanel()' in body
+    assert './api/measurement_profile?' in body or './api/measurement_profile' in body
     assert 'class="ib-namepanel"' in body
     assert 'class="ib-namepanel-header"' in body
     assert 'class="ib-namepanel-summarybar"' in body

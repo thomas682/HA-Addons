@@ -541,6 +541,179 @@ def _overlay_from_yaml_if_enabled(cfg_in: dict) -> dict:
     return merged
 
 
+MEASUREMENT_PROFILE_YAML_KEYS = {
+    "name",
+    "friendly_name",
+    "unique_id",
+    "entity_id",
+    "object_id",
+    "platform",
+    "device_class",
+    "state_class",
+    "unit_of_measurement",
+    "native_unit_of_measurement",
+    "suggested_display_precision",
+    "icon",
+    "entity_category",
+    "slave",
+    "address",
+    "input_type",
+    "data_type",
+    "scale",
+    "precision",
+    "source",
+    "state",
+    "state_topic",
+    "value_template",
+}
+
+
+def _yaml_safe_rel(path: Path) -> str:
+    try:
+        rp = path.resolve()
+        cfg_root = CONFIG_DIR.resolve()
+        if cfg_root in rp.parents:
+            return str(rp.relative_to(cfg_root))
+    except Exception:
+        pass
+    return str(path)
+
+
+def _yaml_load_any(path: Path) -> Any:
+    secrets = _load_secrets_for_config(path)
+
+    class _Loader(_HALoader):
+        pass
+
+    _Loader._ha_secrets = secrets
+    return yaml.load(path.read_text(encoding="utf-8"), Loader=_Loader)
+
+
+def _measurement_profile_iter_yaml_files(limit: int = 200) -> list[Path]:
+    cfg_root = CONFIG_DIR.resolve()
+    out: list[Path] = []
+    seen: set[str] = set()
+    for pattern in ("*.yaml", "*.yml"):
+        try:
+            for p in cfg_root.rglob(pattern):
+                try:
+                    rp = str(p.resolve())
+                except Exception:
+                    rp = str(p)
+                if rp in seen:
+                    continue
+                seen.add(rp)
+                name = str(p.name or "").lower()
+                if name == "secrets.yaml":
+                    continue
+                out.append(p)
+                if len(out) >= limit:
+                    return out
+        except Exception:
+            continue
+    return out
+
+
+def _measurement_profile_yaml_match(
+    node: Any,
+    *,
+    entity_id: str,
+    object_id: str,
+    unique_id: str,
+    friendly_name: str,
+) -> bool:
+    if not isinstance(node, dict):
+        return False
+    checks = [
+        ("entity_id", entity_id),
+        ("object_id", object_id),
+        ("unique_id", unique_id),
+        ("name", friendly_name),
+        ("friendly_name", friendly_name),
+    ]
+    for key, want in checks:
+        if not want:
+            continue
+        got = str(node.get(key) or "").strip()
+        if got and got == want:
+            return True
+    try:
+        for value in node.values():
+            if isinstance(value, str):
+                s = value.strip()
+                if entity_id and s == entity_id:
+                    return True
+                if unique_id and s == unique_id:
+                    return True
+    except Exception:
+        return False
+    return False
+
+
+def _measurement_profile_detect_yaml_type(path_keys: list[str], node: dict[str, Any]) -> str | None:
+    parts = [str(x or "").lower() for x in path_keys]
+    joined = "/".join(parts)
+    platform = str(node.get("platform") or "").strip().lower()
+    if "utility_meter" in parts or "utility_meter" in joined:
+        return "utility_meter"
+    if platform == "modbus" or any(k in node for k in ("slave", "address", "input_type", "data_type")):
+        return "modbus"
+    if platform == "template" or any(k in node for k in ("state", "value_template")):
+        return "template"
+    if platform:
+        return platform
+    return None
+
+
+def _measurement_profile_yaml_search(entity_id: str, friendly_name: str | None, unique_id: str | None) -> dict[str, Any]:
+    object_id = entity_id.split(".", 1)[1] if "." in entity_id else entity_id
+    found: list[dict[str, Any]] = []
+
+    def walk(node: Any, path_keys: list[str], file_path: Path) -> None:
+        if isinstance(node, dict):
+            if _measurement_profile_yaml_match(
+                node,
+                entity_id=entity_id,
+                object_id=object_id,
+                unique_id=str(unique_id or ""),
+                friendly_name=str(friendly_name or ""),
+            ):
+                data = {k: node.get(k) for k in MEASUREMENT_PROFILE_YAML_KEYS if k in node}
+                found.append(
+                    {
+                        "source_file": _yaml_safe_rel(file_path),
+                        "path": "/".join(path_keys),
+                        "type": _measurement_profile_detect_yaml_type(path_keys, node),
+                        "data": data,
+                    }
+                )
+            for key, value in node.items():
+                walk(value, [*path_keys, str(key)], file_path)
+        elif isinstance(node, list):
+            for idx, value in enumerate(node):
+                walk(value, [*path_keys, str(idx)], file_path)
+
+    for p in _measurement_profile_iter_yaml_files():
+        try:
+            loaded = _yaml_load_any(p)
+        except Exception:
+            continue
+        try:
+            walk(loaded, [], p)
+        except Exception:
+            continue
+
+    first = found[0] if found else None
+    return {
+        "found": bool(first),
+        "match_count": len(found),
+        "source_file": first.get("source_file") if first else None,
+        "type": first.get("type") if first else None,
+        "path": first.get("path") if first else None,
+        "data": first.get("data") if first else {},
+    }
+
+
 app = Flask(__name__, template_folder=str(APP_DIR / "templates"))
 RUNTIME_CFG_FILE = DATA_DIR / "influx_browser_config.json"
 
@@ -12229,6 +12402,412 @@ def api_ha_entity():
         return jsonify({"ok": True, "available": True, "entity": entity, "error": None})
     except Exception as e:
         return jsonify({"ok": True, "available": False, "error": str(e) or e.__class__.__name__, "entity": None})
+
+
+def _measurement_profile_ha(entity_id: str) -> dict[str, Any]:
+    meta = _dq_ha_meta(entity_id, {})
+    ent = (meta.get("entity") or {}) if isinstance(meta, dict) else {}
+    attrs = (ent.get("attributes") or {}) if isinstance(ent, dict) else {}
+    resolved = str(ent.get("resolved_entity_id") or entity_id or "").strip()
+    unique_id = str(attrs.get("unique_id") or "").strip() or None
+    return {
+        "available": bool(meta.get("available")),
+        "error": meta.get("error"),
+        "entity_id": resolved or entity_id,
+        "friendly_name": ent.get("friendly_name"),
+        "domain": resolved.split(".", 1)[0] if "." in resolved else None,
+        "unique_id": unique_id,
+        "device": attrs.get("device_name") or attrs.get("device") or None,
+        "device_id": attrs.get("device_id") or None,
+        "area": attrs.get("area_name") or None,
+        "area_id": attrs.get("area_id") or None,
+        "integration": attrs.get("integration") or attrs.get("platform") or attrs.get("attribution_str") or None,
+        "device_class": ent.get("device_class"),
+        "state_class": ent.get("state_class"),
+        "unit_of_measurement": ent.get("unit_of_measurement"),
+        "native_unit_of_measurement": attrs.get("native_unit_of_measurement"),
+        "suggested_display_precision": attrs.get("suggested_display_precision"),
+        "icon": ent.get("icon"),
+        "entity_category": attrs.get("entity_category"),
+        "supported_features": attrs.get("supported_features"),
+        "state": ent.get("state"),
+    }
+
+
+def _measurement_profile_decimal_places(values: list[Any]) -> int | None:
+    best: int | None = None
+    for value in values:
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int):
+            best = max(best or 0, 0)
+            continue
+        if isinstance(value, float):
+            txt = f"{value:.12f}".rstrip("0").rstrip(".")
+        elif isinstance(value, str) and re.match(r"^-?\d+(?:\.\d+)?$", value.strip()):
+            txt = value.strip()
+        else:
+            continue
+        if "." in txt:
+            dp = len(txt.split(".", 1)[1])
+        else:
+            dp = 0
+        best = dp if best is None else max(best, dp)
+    return best
+
+
+def _measurement_profile_field_type_from_value(value: Any) -> str | None:
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int) and not isinstance(value, bool):
+        return "integer"
+    if isinstance(value, float):
+        return "float"
+    if isinstance(value, str):
+        return "string"
+    return None
+
+
+def _measurement_profile_range(cfg: dict[str, Any], body: dict[str, Any]) -> tuple[str, datetime | None, datetime | None]:
+    range_key = body.get("range")
+    start_dt = None
+    stop_dt = None
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(body)
+    except Exception:
+        start_dt = None
+        stop_dt = None
+    selector_range = _selector_range_key(range_key, start_dt, stop_dt)
+    return selector_range, start_dt, stop_dt
+
+
+def _measurement_profile_influx_v2(
+    cfg: dict[str, Any],
+    *,
+    bucket: str,
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    selector_range: str,
+    start_dt: datetime | None,
+    stop_dt: datetime | None,
+) -> dict[str, Any]:
+    range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
+    conds = [f"r._measurement == {_flux_str(measurement)}", f"r._field == {_flux_str(field)}"]
+    if entity_id:
+        conds.append(f"r.entity_id == {_flux_str(entity_id)}")
+    if friendly_name:
+        conds.append(f"r.friendly_name == {_flux_str(friendly_name)}")
+    predicate = " and ".join(conds)
+    base = f'''
+from(bucket: "{bucket}")
+  {range_clause}
+  |> filter(fn: (r) => {predicate})
+  |> keep(columns: ["_time","_value","_measurement","_field","entity_id","friendly_name"])
+  |> sort(columns: ["_time"])
+'''
+    out: dict[str, Any] = {
+        "bucket": bucket,
+        "measurement": measurement,
+        "field": field,
+        "tags": {"entity_id": entity_id, "friendly_name": friendly_name},
+        "field_type": None,
+        "count": 0,
+        "first_value": None,
+        "last_value": None,
+        "oldest_time": None,
+        "newest_time": None,
+        "min": None,
+        "max": None,
+        "mean": None,
+        "decimal_places_detected": None,
+    }
+    sampled_values: list[Any] = []
+    with v2_client(cfg) as c:
+        qapi = c.query_api()
+        q_count = log_query("api.measurement_profile count (flux)", base + "  |> count()\n")
+        q_first = log_query("api.measurement_profile first (flux)", base + "  |> first()\n")
+        q_last = log_query("api.measurement_profile last (flux)", base + "  |> last()\n")
+        q_min = log_query("api.measurement_profile min (flux)", base + "  |> min()\n")
+        q_max = log_query("api.measurement_profile max (flux)", base + "  |> max()\n")
+        q_mean = log_query("api.measurement_profile mean (flux)", base + "  |> mean()\n")
+        for rec in qapi.query(q_count, org=cfg["org"]) or []:
+            try:
+                out["count"] = int(rec.get_value() or 0)
+            except Exception:
+                pass
+        for rec in qapi.query(q_first, org=cfg["org"]) or []:
+            out["oldest_time"] = _dt_to_rfc3339_utc_ms(rec.get_time()) if isinstance(rec.get_time(), datetime) else rec.get_time()
+            out["first_value"] = rec.get_value()
+            sampled_values.append(rec.get_value())
+            out["field_type"] = _measurement_profile_field_type_from_value(rec.get_value())
+            break
+        for rec in qapi.query(q_last, org=cfg["org"]) or []:
+            out["newest_time"] = _dt_to_rfc3339_utc_ms(rec.get_time()) if isinstance(rec.get_time(), datetime) else rec.get_time()
+            out["last_value"] = rec.get_value()
+            sampled_values.append(rec.get_value())
+            if not out.get("field_type"):
+                out["field_type"] = _measurement_profile_field_type_from_value(rec.get_value())
+            break
+        for rec in qapi.query(q_min, org=cfg["org"]) or []:
+            out["min"] = rec.get_value()
+            sampled_values.append(rec.get_value())
+            break
+        for rec in qapi.query(q_max, org=cfg["org"]) or []:
+            out["max"] = rec.get_value()
+            sampled_values.append(rec.get_value())
+            break
+        try:
+            for rec in qapi.query(q_mean, org=cfg["org"]) or []:
+                out["mean"] = rec.get_value()
+                sampled_values.append(rec.get_value())
+                break
+        except Exception:
+            pass
+    out["decimal_places_detected"] = _measurement_profile_decimal_places(sampled_values)
+    return out
+
+
+def _measurement_profile_influx_v1(
+    cfg: dict[str, Any],
+    *,
+    measurement: str,
+    field: str,
+    entity_id: str | None,
+    friendly_name: str | None,
+    selector_range: str,
+    start_dt: datetime | None,
+    stop_dt: datetime | None,
+) -> dict[str, Any]:
+    bucket = str(cfg.get("database") or "")
+    where = []
+    if start_dt:
+        where.append(f"time >= '{_dt_to_rfc3339_utc(start_dt)}'")
+    if stop_dt:
+        where.append(f"time <= '{_dt_to_rfc3339_utc(stop_dt)}'")
+    if entity_id:
+        where.append(f'"entity_id"=\'{_influxql_escape(entity_id)}\'')
+    if friendly_name:
+        where.append(f'"friendly_name"=\'{_influxql_escape(friendly_name)}\'')
+    where_sql = (" WHERE " + " AND ".join(where)) if where else ""
+    q_base = f'SELECT * FROM "{measurement}"{where_sql}'
+    out: dict[str, Any] = {
+        "bucket": bucket,
+        "measurement": measurement,
+        "field": field,
+        "tags": {"entity_id": entity_id, "friendly_name": friendly_name},
+        "field_type": None,
+        "count": 0,
+        "first_value": None,
+        "last_value": None,
+        "oldest_time": None,
+        "newest_time": None,
+        "min": None,
+        "max": None,
+        "mean": None,
+        "decimal_places_detected": None,
+    }
+    sampled_values: list[Any] = []
+    with get_client(cfg) as c:
+        try:
+            fres = c.query(f'SHOW FIELD KEYS FROM "{measurement}"')
+            for _, pts in (fres or {}).items():
+                for p in pts:
+                    if str(p.get("fieldKey") or "") == field:
+                        out["field_type"] = str(p.get("fieldType") or "") or None
+                        raise StopIteration
+        except StopIteration:
+            pass
+        except Exception:
+            pass
+        queries = {
+            "count": f'SELECT COUNT("{field}") FROM "{measurement}"{where_sql}',
+            "min": f'SELECT MIN("{field}") FROM "{measurement}"{where_sql}',
+            "max": f'SELECT MAX("{field}") FROM "{measurement}"{where_sql}',
+            "first": f'SELECT FIRST("{field}") FROM "{measurement}"{where_sql}',
+            "last": f'SELECT LAST("{field}") FROM "{measurement}"{where_sql}',
+            "mean": f'SELECT MEAN("{field}") FROM "{measurement}"{where_sql}',
+        }
+
+        def _first_point(res: Any) -> dict[str, Any] | None:
+            try:
+                for _, pts in (res or {}).items():
+                    if pts:
+                        return pts[0]
+            except Exception:
+                return None
+            return None
+
+        for label, query in queries.items():
+            try:
+                log_query(f"api.measurement_profile {label} (influxql)", query)
+                pt = _first_point(c.query(query))
+                if not pt:
+                    continue
+                if label == "count":
+                    out["count"] = int(next((v for k, v in pt.items() if k.startswith("count_")), 0) or 0)
+                elif label == "first":
+                    key = next((k for k in pt if k.startswith("first_")), None)
+                    out["first_value"] = pt.get(key) if key else None
+                    out["oldest_time"] = pt.get("time")
+                    sampled_values.append(out["first_value"])
+                elif label == "last":
+                    key = next((k for k in pt if k.startswith("last_")), None)
+                    out["last_value"] = pt.get(key) if key else None
+                    out["newest_time"] = pt.get("time")
+                    sampled_values.append(out["last_value"])
+                else:
+                    key = next((k for k in pt if k.startswith(label + "_")), None)
+                    if key:
+                        out[label] = pt.get(key)
+                        sampled_values.append(out[label])
+            except Exception:
+                continue
+    if not out.get("field_type"):
+        out["field_type"] = _measurement_profile_field_type_from_value(out.get("last_value"))
+    out["decimal_places_detected"] = _measurement_profile_decimal_places(sampled_values)
+    return out
+
+
+def _measurement_profile_derived(ha: dict[str, Any], influx: dict[str, Any], yaml_info: dict[str, Any]) -> dict[str, Any]:
+    domain = str(ha.get("domain") or "")
+    device_class = str(ha.get("device_class") or "")
+    state_class = str(ha.get("state_class") or "")
+    unit = str(ha.get("unit_of_measurement") or "")
+    field_type = str(influx.get("field_type") or "")
+    internal_type = "unknown_text"
+    allow_decrease = True
+    allow_reset = False
+    correction_strategy = "manual_review"
+    confidence = "low"
+    if state_class == "total_increasing":
+        internal_type = "counter_increasing"
+        allow_decrease = False
+        allow_reset = False
+        correction_strategy = "total_increasing_counter"
+        confidence = "high"
+    elif state_class == "total":
+        internal_type = "counter_resettable"
+        allow_decrease = True
+        allow_reset = True
+        correction_strategy = "resettable_counter"
+        confidence = "high"
+    elif domain == "binary_sensor" or field_type == "boolean":
+        internal_type = "binary"
+        allow_decrease = True
+        correction_strategy = "binary_state"
+        confidence = "high"
+    elif device_class in ("timestamp", "date"):
+        internal_type = device_class
+        correction_strategy = device_class
+        confidence = "medium"
+    elif field_type in ("float", "integer") or unit:
+        internal_type = "gauge_numeric"
+        correction_strategy = "gauge_numeric"
+        confidence = "medium"
+    elif field_type == "string":
+        internal_type = "enum_text"
+        correction_strategy = "enum_text"
+        confidence = "medium"
+    if yaml_info.get("found") and ha.get("available"):
+        confidence = "high" if confidence != "low" else "medium"
+    return {
+        "internal_type": internal_type,
+        "expected_write_type": field_type or None,
+        "allow_decrease": allow_decrease,
+        "allow_reset": allow_reset,
+        "correction_strategy": correction_strategy,
+        "confidence": confidence,
+    }
+
+
+def _measurement_profile_quality(ha: dict[str, Any], yaml_info: dict[str, Any], influx: dict[str, Any], derived: dict[str, Any]) -> dict[str, Any]:
+    warnings: list[str] = []
+    unit = str(ha.get("unit_of_measurement") or "").strip()
+    measurement = str(influx.get("measurement") or "").strip()
+    classification_complete = bool(ha.get("available")) and bool(ha.get("entity_id")) and bool(derived.get("internal_type"))
+    unit_consistent = True
+    if unit and measurement and unit != measurement:
+        unit_consistent = False
+        warnings.append(f"HA-Einheit `{unit}` weicht von Influx-Measurement `{measurement}` ab.")
+    if not yaml_info.get("found"):
+        warnings.append("Keine YAML-Fundstelle gefunden oder Messwert wird rein dynamisch erzeugt.")
+    if not ha.get("device_class"):
+        warnings.append("HA device_class fehlt.")
+    if not ha.get("state_class") and derived.get("internal_type") in ("counter_increasing", "counter_resettable"):
+        warnings.append("state_class fehlt, obwohl Zaehlerverhalten relevant ist.")
+    if not influx.get("field_type"):
+        warnings.append("Influx-Feldtyp konnte nicht sicher bestimmt werden.")
+    field_type_consistent = bool(influx.get("field_type"))
+    return {
+        "classification_complete": classification_complete,
+        "unit_consistent": unit_consistent,
+        "yaml_source_found": bool(yaml_info.get("found")),
+        "field_type_consistent": field_type_consistent,
+        "warnings": warnings,
+    }
+
+
+@app.get("/api/measurement_profile")
+def api_measurement_profile():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    entity_id = str(request.args.get("entity_id") or "").strip()
+    measurement = str(request.args.get("measurement") or "").strip()
+    field = str(request.args.get("field") or "").strip() or "value"
+    friendly_name = str(request.args.get("friendly_name") or "").strip() or None
+    bucket = str(request.args.get("bucket") or cfg.get("bucket") or cfg.get("database") or "").strip()
+    if not entity_id or not measurement or not field or not bucket:
+        return jsonify({"ok": False, "error": "entity_id, measurement, field and bucket required"}), 400
+
+    body = {
+        "range": request.args.get("range"),
+        "start": request.args.get("start"),
+        "stop": request.args.get("stop"),
+    }
+    selector_range, start_dt, stop_dt = _measurement_profile_range(cfg, body)
+
+    ha = _measurement_profile_ha(entity_id)
+    yaml_info = _measurement_profile_yaml_search(entity_id, ha.get("friendly_name"), ha.get("unique_id"))
+    try:
+        if int(cfg.get("influx_version", 2) or 2) == 2:
+            influx = _measurement_profile_influx_v2(
+                cfg,
+                bucket=bucket,
+                measurement=measurement,
+                field=field,
+                entity_id=entity_id,
+                friendly_name=friendly_name,
+                selector_range=selector_range,
+                start_dt=start_dt,
+                stop_dt=stop_dt,
+            )
+        else:
+            influx = _measurement_profile_influx_v1(
+                cfg,
+                measurement=measurement,
+                field=field,
+                entity_id=entity_id,
+                friendly_name=friendly_name,
+                selector_range=selector_range,
+                start_dt=start_dt,
+                stop_dt=stop_dt,
+            )
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+    derived = _measurement_profile_derived(ha, influx, yaml_info)
+    quality = _measurement_profile_quality(ha, yaml_info, influx, derived)
+    return jsonify(
+        {
+            "ok": True,
+            "entity_id": entity_id,
+            "ha": ha,
+            "yaml": yaml_info,
+            "influx": influx,
+            "derived": derived,
+            "quality": quality,
+        }
+    )
 
 
 @app.get("/api/ha_debug")

@@ -1098,6 +1098,65 @@ def test_friendly_name_merge_latest_creates_change_block(load_app_module, tmp_pa
     assert all(item["new_point"]["friendly_name"] == "Neu" for item in child_items[0])
 
 
+def test_api_measurement_profile_returns_grouped_payload(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "bucket": "homeassistant_db", "token": "t", "org": "o"})
+    monkeypatch.setattr(app_mod, "_measurement_profile_ha", lambda eid: {
+        "available": True,
+        "entity_id": eid,
+        "friendly_name": "Demo Sensor",
+        "domain": "sensor",
+        "unique_id": "demo_unique",
+        "device": "Demo Device",
+        "area": "Keller",
+        "integration": "modbus",
+        "device_class": "energy",
+        "state_class": "total_increasing",
+        "unit_of_measurement": "Wh",
+        "native_unit_of_measurement": "Wh",
+        "suggested_display_precision": 0,
+        "icon": "mdi:flash",
+        "entity_category": None,
+        "supported_features": 0,
+        "state": "123",
+    })
+    monkeypatch.setattr(app_mod, "_measurement_profile_yaml_search", lambda eid, fn, uid: {
+        "found": True,
+        "match_count": 1,
+        "source_file": "configuration.yaml",
+        "type": "modbus",
+        "path": "modbus/0/sensors/0",
+        "data": {"slave": 3, "address": 30581, "unit_of_measurement": "Wh"},
+    })
+    monkeypatch.setattr(app_mod, "_measurement_profile_influx_v2", lambda *args, **kwargs: {
+        "bucket": "homeassistant_db",
+        "measurement": "Wh",
+        "field": "value",
+        "tags": {"entity_id": "sensor.demo", "friendly_name": "Demo Sensor"},
+        "field_type": "float",
+        "count": 42,
+        "first_value": 1.0,
+        "last_value": 9.0,
+        "oldest_time": "2026-01-01T00:00:00.000Z",
+        "newest_time": "2026-01-02T00:00:00.000Z",
+        "min": 1.0,
+        "max": 9.0,
+        "mean": 5.0,
+        "decimal_places_detected": 0,
+    })
+
+    client = app_mod.app.test_client()
+    r = client.get("/api/measurement_profile?entity_id=sensor.demo&measurement=Wh&field=value&friendly_name=Demo%20Sensor&range=all")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["ha"]["friendly_name"] == "Demo Sensor"
+    assert j["yaml"]["found"] is True
+    assert j["influx"]["field_type"] == "float"
+    assert j["derived"]["internal_type"] == "counter_increasing"
+    assert isinstance(j["quality"]["warnings"], list)
+
+
 def test_api_audit_aggregates_counts_and_backup_status(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
 
