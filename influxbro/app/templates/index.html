@@ -858,7 +858,7 @@
 
   </details>
 
-  <details id="name_timeline_panel" class="section" style="display:none; margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
+  <details id="name_timeline_panel" class="section" open style="margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
     <summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title" data-ib-pickkey="dashboard_selection.section_multi_name_title">Messwertinfos von Homeassistant</span></span></summary>
     <div class="ib_section_desc_row" id="measurement_profile_desc">Home-Assistant-, YAML- und Influx-Infos zum aktuell gewaehlten Messwert sowie historische Messwertnamen.</div>
     <div class="card_body">
@@ -5104,16 +5104,12 @@ async function loadComboRanges(groupTag, fixed){
 function hideNameTimelinePanel(){
   try{
     LAST_NAME_TIMELINE_ROWS = [];
-    if($nameTimelinePanel){
-      $nameTimelinePanel.open = false;
-      $nameTimelinePanel.style.display = 'none';
-    }
+    if($nameTimelinePanel) $nameTimelinePanel.open = true;
     if($nameTimelineRows) $nameTimelineRows.innerHTML = '';
-    if($nameTimelineTitle) $nameTimelineTitle.textContent = '';
+    if($nameTimelineTitle) $nameTimelineTitle.innerHTML = 'Wähle einen Messwert mit <code>entity_id</code>, um Messwertinfos und historische Namen zu sehen.';
     if($nameTimelineSummary){ $nameTimelineSummary.innerHTML = ''; $nameTimelineSummary.style.display = 'none'; }
     if($nameTimelineAxis){ $nameTimelineAxis.innerHTML = ''; $nameTimelineAxis.style.display = 'none'; }
-    if($measurementProfileSections) $measurementProfileSections.innerHTML = '';
-    if($measurementProfilePanel) $measurementProfilePanel.style.display = 'none';
+    if($nameTimelineRows) $nameTimelineRows.innerHTML = '<div class="ib-namepanel-row"><div class="ib-namepanel-row-name"><div class="ib-namepanel-row-name-text">Keine historischen Messwertnamen geladen</div><div class="ib-namepanel-row-name-meta">Sobald `measurement`, `field` und `entity_id` vorliegen, wird die Historie hier eingeblendet.</div></div></div>';
     if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = true;
   }catch(e){}
 }
@@ -5177,7 +5173,12 @@ function _profileSection(title, rows, extraHtml){
 
 function renderMeasurementProfilePanel(profile){
   if(!$measurementProfilePanel || !$measurementProfileSections) return;
-  if(!profile || profile.ok === false){
+  if(!profile){
+    $measurementProfileSections.innerHTML = `<section class="ib-profile-section"><h4>Profil</h4><div class="ib-profile-warnings"><div class="ib-profile-warning ib-profile-ok">Wähle einen Messwert mit <code>measurement</code>, <code>field</code> und <code>entity_id</code>, um das Profil zu laden.</div></div></section>`;
+    $measurementProfilePanel.style.display = 'block';
+    return;
+  }
+  if(profile.ok === false){
     $measurementProfileSections.innerHTML = `<section class="ib-profile-section"><h4>Profil</h4><div class="ib-profile-warnings"><div class="ib-profile-warning">${_profileEsc(profile && profile.error ? profile.error : 'Profil konnte nicht geladen werden.')}</div></div></section>`;
     $measurementProfilePanel.style.display = 'block';
     return;
@@ -5258,8 +5259,7 @@ async function refreshMeasurementProfilePanel(){
     const entityId = String(($e && $e.value) || '').trim();
     const friendlyName = String(($n && $n.value) || '').trim();
     if(!measurement || !field || !entityId){
-      if($measurementProfileSections) $measurementProfileSections.innerHTML = '';
-      if($measurementProfilePanel) $measurementProfilePanel.style.display = 'none';
+      renderMeasurementProfilePanel(null);
       return;
     }
     const qp = new URLSearchParams({
@@ -5302,8 +5302,18 @@ function renderNameTimeline(rows){
     if(!$nameTimelinePanel || !$nameTimelineRows || !$nameTimelineTitle){
       return;
     }
-    if(rs.length <= 1){
-      hideNameTimelinePanel();
+    if(!rs.length){
+      if($nameTimelineTitle){
+        const entityId = String(($e && $e.value) || '').trim();
+        $nameTimelineTitle.innerHTML = entityId
+          ? `Keine historischen <code>friendly_name</code>-Werte für <code>${_escHtml(entityId)}</code> im aktuellen Zeitraum gefunden.`
+          : 'Keine historischen <code>friendly_name</code>-Werte im aktuellen Zeitraum gefunden.';
+      }
+      if($nameTimelineSummary){ $nameTimelineSummary.innerHTML = ''; $nameTimelineSummary.style.display = 'none'; }
+      if($nameTimelineAxis){ $nameTimelineAxis.innerHTML = ''; $nameTimelineAxis.style.display = 'none'; }
+      $nameTimelineRows.innerHTML = '<div class="ib-namepanel-row"><div class="ib-namepanel-row-name"><div class="ib-namepanel-row-name-text">Keine historischen Namenswechsel gefunden</div><div class="ib-namepanel-row-name-meta">Die Messwertinfos oben bleiben trotzdem vollständig sichtbar.</div></div></div>';
+      if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = true;
+      $nameTimelinePanel.open = true;
       return;
     }
     const latest = rs[0] || null;
@@ -5377,7 +5387,6 @@ function renderNameTimeline(rows){
       $nameTimelineRows.appendChild(card);
     });
     if($nameMergeLatestBtn) $nameMergeLatestBtn.disabled = !(latestName && rs.length > 1);
-    $nameTimelinePanel.style.display = 'block';
     $nameTimelinePanel.open = true;
   }catch(e){}
 }

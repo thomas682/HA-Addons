@@ -504,7 +504,7 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     panel_idx = body.index('<details id="name_timeline_panel" class="section"')
     caching_idx = body.index('<details id="caching_section" class="section"')
     assert selection_close_idx < panel_idx < caching_idx
-    assert '<details id="name_timeline_panel" class="section"' in body
+    assert '<details id="name_timeline_panel" class="section" open style="margin-top: 10px;"' in body
     assert '<summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title"' in body
     assert 'Messwertinfos von Homeassistant' in body
     assert 'id="measurement_profile_desc"' in body
@@ -524,6 +524,8 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert 'function renderMeasurementProfilePanel(profile)' in body
     assert 'async function refreshMeasurementProfilePanel()' in body
     assert './api/measurement_profile?' in body or './api/measurement_profile' in body
+    assert 'renderMeasurementProfilePanel(null);' in body
+    assert 'Die Messwertinfos oben bleiben trotzdem vollständig sichtbar.' in body
     assert 'class="ib-namepanel"' in body
     assert 'class="ib-namepanel-header"' in body
     assert 'class="ib-namepanel-summarybar"' in body
@@ -534,7 +536,6 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert "card.setAttribute('data-ib-pickkey', rowPick);" in body
     assert "card.setAttribute('data-ib-instancekey', rowPick);" in body
     assert '$nameTimelinePanel.open = true;' in body
-    assert '$nameTimelinePanel.open = false;' in body
     assert 'function mergeFriendlyNamesToLatest()' in body
     assert './api/friendly_name_merge_latest' in body
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.499
+
+### Fix
+
+- Dashboard / Messwertinfos von Homeassistant: Das Messwertprofil bleibt jetzt sichtbar und wird immer geladen, sobald `measurement`, `field` und `entity_id` vorliegen, auch wenn nur ein oder gar kein historischer `friendly_name` gefunden wird. Die Timeline wechselt in diesem Fall auf einen neutralen Einzel-/Leerzustand, statt die gesamte Section per `display:none` auszublenden. ([#451](https://github.com/thomas682/HA-Addons/issues/451))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.498
 
 ### Fix
