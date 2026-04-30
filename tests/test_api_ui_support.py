@@ -508,7 +508,7 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert '<summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title"' in body
     assert 'Messwertinfos von Homeassistant' in body
     assert 'id="measurement_profile_desc"' in body
-    assert 'id="measurement_profile_panel"' in body
+    assert 'id="measurement_profile_panel" class="ib-profile-panel" data-ui="dashboard_selection.panel_measurement_profile"' in body
     assert 'id="measurement_profile_sections"' in body
     assert 'id="name_merge_latest_btn"' in body
     assert 'Mehrere Messwertnamen' in body
@@ -538,6 +538,15 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert '$nameTimelinePanel.open = true;' in body
     assert 'function mergeFriendlyNamesToLatest()' in body
     assert './api/friendly_name_merge_latest' in body
+
+
+def test_analysis_log_modal_has_copy_button_and_error_highlight_and_no_superpicker():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="analysis_log_modal_copy"' in body
+    assert 'In Zwischenablage kopieren' in body
+    assert 'pk: analysis_log_modal.dialog | tpl: dialog_info_popup' in body
+    assert 'analysis_log_modal.btn_superpicker' not in body
+    assert "color:${isErr ? '#b00020' : 'inherit'}" in body
 
 
 def test_audit_page_and_nav_entry_exist():
@@ -923,7 +932,7 @@ def test_dialogs_expose_superpicker_and_footer_normalizer():
     assert 'window.InfluxBroOpenSuperpickerFromDialog = function(dialogRoot)' in topbar_body
     assert "btn.closest('[data-dialog-root=\"1\"], dialog, [role=\"dialog\"], .dlg_backdrop, .modal')" in topbar_body
     assert "_ensureDialogFooter('#ib_page_search_modal', '#ib_page_search_modal_close');" in topbar_body
-    assert "_ensureDialogFooter('#analysis_log_modal', '#analysis_log_modal_close'" in topbar_body
+    assert "_ensureDialogFooter('#analysis_log_modal', '#analysis_log_modal_close', { buttonClass: 'btn_sm ib_dialog_superpicker', superpicker: false })" in topbar_body
     assert 'data-ui="docs_modal.btn_superpicker"' in tooltips_body
     assert 'data-ui="issue_composer.btn_superpicker"' in tooltips_body
 
@@ -1450,7 +1459,7 @@ def test_api_ui_inventory_returns_items(load_app_module, tmp_path):
     assert "ib_page_search_modal.btn_close" in keys
     assert "ib_page_search_modal.btn_superpicker" in keys
     assert "analysis_log_modal.btn_close" in keys
-    assert "analysis_log_modal.btn_superpicker" in keys
+    assert "analysis_log_modal.btn_superpicker" not in keys
     assert "picker_multi.panel_bar" in keys
 
 
@@ -1480,6 +1489,8 @@ def test_readable_picker_fallback_uses_data_ui_and_explicit_dynamic_pickkeys():
     assert "close.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_close');" in index_body
     assert "refresh.setAttribute('data-ui', 'analysis_log_modal.btn_refresh');" in index_body
     assert "refresh.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_refresh');" in index_body
+    assert "copy.setAttribute('data-ui', 'analysis_log_modal.btn_copy');" in index_body
+    assert "copy.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_copy');" in index_body
     assert "el.setAttribute('data-ib-instancekey', _autoInstancekeyFor(el, pk));" in topbar_body
     assert "return basePk + '.auto.' + tag + '.' + h;" in topbar_body
     assert "el.setAttribute('data-ib-instancekey', _autoInstancekeyFor(el, pk, 'dedupe:' + idx));" in topbar_body

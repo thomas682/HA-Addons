@@ -23380,6 +23380,24 @@ def _query_payload(
     if not measurement or not field:
         raise _ApiError("measurement and field required", status=400)
 
+    # Best-effort runtime normalization. Prefer v2 when explicit v2 credentials exist
+    # and no usable v1 database is configured, to avoid confusing v1 fallback errors.
+    try:
+        influx_v = int(cfg.get("influx_version", 2) or 2)
+    except Exception:
+        influx_v = 2
+    if influx_v not in (1, 2):
+        influx_v = 2
+    try:
+        db = str(cfg.get("database") or "").strip()
+    except Exception:
+        db = ""
+    has_v2 = bool(cfg.get("token")) and bool(cfg.get("org")) and bool(cfg.get("bucket"))
+    if influx_v != 2 and (not db) and has_v2:
+        influx_v = 2
+    cfg = dict(cfg)
+    cfg["influx_version"] = influx_v
+
     def _count_points_v2(qapi, range_clause: str, extra: str) -> int | None:
         try:
             qcnt = f'''
@@ -23625,11 +23643,11 @@ from(bucket: "{cfg["bucket"]}")
                             rest_rows = rest_rows[::step]
                         rows_all = sorted(keep_rows + rest_rows, key=lambda r: str(r.get("time") or ""))
 
-                    return {
-                        "ok": True,
-                        "rows": rows_all,
-                        "query": q.strip(),
-                        "meta": {
+                return {
+                    "ok": True,
+                    "rows": rows_all,
+                    "query": q.strip(),
+                    "meta": {
                         "mode": "dynamic",
                         "coarse_mode": mode,
                         "every_ms": every_ms,
@@ -23637,15 +23655,15 @@ from(bucket: "{cfg["bucket"]}")
                         "returned": len(rows_all),
                         "refined": len(refine_points),
                         "jump_threshold": step_th,
-                            "jump_padding_intervals": pad_n,
-                            "jump_spans": jump_spans,
-                            "unit": unit,
-                            "total_points": total_points,
-                            "covered_start": _dt_to_rfc3339_utc(start_dt) if start_dt else (rows_all[0]["time"] if rows_all else None),
-                            "covered_stop": _dt_to_rfc3339_utc(stop_dt) if stop_dt else (rows_all[-1]["time"] if rows_all else None),
-                            "outlier_count": len(jump_spans),
-                        },
-                    }
+                        "jump_padding_intervals": pad_n,
+                        "jump_spans": jump_spans,
+                        "unit": unit,
+                        "total_points": total_points,
+                        "covered_start": _dt_to_rfc3339_utc(start_dt) if start_dt else (rows_all[0]["time"] if rows_all else None),
+                        "covered_stop": _dt_to_rfc3339_utc(stop_dt) if stop_dt else (rows_all[-1]["time"] if rows_all else None),
+                        "outlier_count": len(jump_spans),
+                    },
+                }
 
         # v1
         if not cfg.get("database"):

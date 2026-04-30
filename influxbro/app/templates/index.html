@@ -863,7 +863,7 @@
     <div class="ib_section_desc_row" id="measurement_profile_desc">Home-Assistant-, YAML- und Influx-Infos zum aktuell gewaehlten Messwert sowie historische Messwertnamen.</div>
     <div class="card_body">
       <div class="ib-namepanel">
-        <div id="measurement_profile_panel" class="ib-profile-panel" style="display:none;" data-ui="dashboard_selection.panel_measurement_profile" data-ib-pickkey="dashboard_selection.panel_measurement_profile">
+        <div id="measurement_profile_panel" class="ib-profile-panel" data-ui="dashboard_selection.panel_measurement_profile" data-ib-pickkey="dashboard_selection.panel_measurement_profile">
           <div id="measurement_profile_sections" class="ib-profile-grid"></div>
         </div>
         <div class="ib-namepanel-header">
@@ -1319,7 +1319,6 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
     </div>
     <template id="analysis_log_modal_inventory">
       <button type="button" data-ui="analysis_log_modal.btn_close" data-ib-pickkey="analysis_log_modal.btn_close" title="Gefiltertes Logging schliessen">Schliessen</button>
-      <button type="button" data-ui="analysis_log_modal.btn_superpicker" data-ib-pickkey="analysis_log_modal.btn_superpicker" title="Gefiltertes Logging S-Picker">S-Picker</button>
     </template>
 
     <!-- Bearbeitungsliste (dashboard_filterlist.section_root) wurde entfernt (Issue #330). -->
@@ -5404,6 +5403,7 @@ async function refreshNameTimelinePanel(){
     const rows = await loadComboRanges('friendly_name', { entity_id: entityId, friendly_name: null });
     renderNameTimeline(rows || []);
   }catch(e){
+    try{ await refreshMeasurementProfilePanel(); }catch(x){}
     hideNameTimelinePanel();
   }
 }
@@ -9973,7 +9973,19 @@ function _analysisEventToTextLine(row){
     const scope = String(r.scope || extra.scope || '');
     const action = String(r.action || extra.action || '');
     const traceId = String(r.trace_id || extra.trace_id || '');
-    const durMs = (extra.dur_ms !== undefined && extra.dur_ms !== null) ? String(extra.dur_ms) : '0';
+    let durMs = null;
+    if(extra.dur_ms !== undefined && extra.dur_ms !== null) durMs = Number(extra.dur_ms);
+    else if(r.dur_ms !== undefined && r.dur_ms !== null) durMs = Number(r.dur_ms);
+    else if(extra.dur !== undefined && extra.dur !== null) durMs = Number(extra.dur);
+    else if(r.dur !== undefined && r.dur !== null) durMs = Number(r.dur);
+    else {
+      try{
+        const a = Date.parse(String(r.at || ''));
+        const s = Date.parse(String(extra.started_at_source || r.started_at_source || extra.started_at_client || r.started_at_client || ''));
+        if(isFinite(a) && isFinite(s) && a >= s) durMs = Math.round(a - s);
+      }catch(e){}
+    }
+    if(!isFinite(Number(durMs))) durMs = 0;
     const kind = String(r.kind || '');
     const step = String(r.step || '');
     const status = String(r.status || '');
@@ -9983,7 +9995,7 @@ function _analysisEventToTextLine(row){
       scope,
       action,
       'trace_id=' + (traceId || '-'),
-      'dur_ms=' + (durMs || '0'),
+      'dur_ms=' + String(Math.max(0, Math.round(Number(durMs) || 0))),
       kind,
       step,
       status,
@@ -10001,10 +10013,11 @@ function _ensureFilteredLogModal(){
   dlg.id = 'analysis_log_modal';
   dlg.style.width = 'min(1200px, calc(100vw - 32px))';
   dlg.style.maxWidth = '1200px';
+  dlg.style.height = 'min(85vh, 900px)';
   dlg.style.border = '0';
   dlg.style.borderRadius = '12px';
   dlg.style.padding = '0';
-  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:70vh; max-height:85vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Gefiltertes Logging</div><button type="button" id="analysis_log_modal_close" class="btn_sm" style="width:auto;">Schliessen</button></div><div style="padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee;"><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Ausloeser</span><select id="analysis_log_filter_action" style="min-width:220px;"><option value="">Alle</option><option value="analysis_run_with_cache">Analyse mit Cache</option><option value="analysis_run_without_cache">Analyse ohne Cache</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Bereichsfilter</span><select id="analysis_log_filter_scope" style="min-width:220px;"><option value="">Alle</option><option value="dashboard_analysis">Dashboard Analyse</option><option value="dashboard_caching">Dashboard Cache</option><option value="dashboard_outliers">Dashboard Ausreisser</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Textsuche</span><input id="analysis_log_filter_text" type="text" placeholder="Volltextsuche in den Logzeilen" /></label><button type="button" id="analysis_log_filter_refresh" class="btn_sm" style="width:auto; align-self:end;">Refresh</button></div><div style="padding:12px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 auto;"><div id="analysis_log_filter_meta" class="muted" style="font-size:12px;"></div><pre id="analysis_log_filter_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45;"></pre></div></div>';
+  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:70vh; height:100%; max-height:85vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Gefiltertes Logging</div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="analysis_log_modal_copy" class="btn_sm" style="width:auto;">In Zwischenablage kopieren</button><button type="button" id="analysis_log_modal_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee;"><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Ausloeser</span><select id="analysis_log_filter_action" style="min-width:220px;"><option value="">Alle</option><option value="analysis_run_with_cache">Analyse mit Cache</option><option value="analysis_run_without_cache">Analyse ohne Cache</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Bereichsfilter</span><select id="analysis_log_filter_scope" style="min-width:220px;"><option value="">Alle</option><option value="dashboard_analysis">Dashboard Analyse</option><option value="dashboard_caching">Dashboard Cache</option><option value="dashboard_outliers">Dashboard Ausreisser</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Textsuche</span><input id="analysis_log_filter_text" type="text" placeholder="Volltextsuche in den Logzeilen" /></label><button type="button" id="analysis_log_filter_refresh" class="btn_sm" style="width:auto; align-self:end;">Refresh</button></div><div style="padding:12px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 auto;"><div id="analysis_log_filter_meta" class="muted" style="font-size:12px;"></div><div id="analysis_log_filter_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space:pre-wrap;"></div><div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: analysis_log_modal.dialog | tpl: dialog_info_popup</div></div></div>';
   document.body.appendChild(dlg);
   try{
     const panel = dlg.firstElementChild;
@@ -10027,10 +10040,15 @@ function _ensureFilteredLogModal(){
   }catch(e){}
 
   const close = document.getElementById('analysis_log_modal_close');
+  const copy = document.getElementById('analysis_log_modal_copy');
   try{
     if(close){
       close.setAttribute('data-ui', 'analysis_log_modal.btn_close');
       close.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_close');
+    }
+    if(copy){
+      copy.setAttribute('data-ui', 'analysis_log_modal.btn_copy');
+      copy.setAttribute('data-ib-pickkey', 'analysis_log_modal.btn_copy');
     }
     const refresh = document.getElementById('analysis_log_filter_refresh');
     if(refresh){
@@ -10039,6 +10057,13 @@ function _ensureFilteredLogModal(){
     }
   }catch(e){}
   if(close) close.addEventListener('click', ()=>{ try{ dlg.close(); }catch(e){ dlg.style.display='none'; } });
+  if(copy) copy.addEventListener('click', async ()=>{
+    try{
+      const el = document.getElementById('analysis_log_filter_pre');
+      const txt = String(el && (el.innerText || el.textContent) ? (el.innerText || el.textContent) : '').trim();
+      if(txt) await navigator.clipboard.writeText(txt);
+    }catch(e){}
+  });
   return dlg;
 }
 
@@ -10081,7 +10106,7 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
       const scopeVal = $scope ? String($scope.value || '').trim() : '';
       const actionVal = $action ? String($action.value || '').trim() : '';
       const textVal = $text ? String($text.value || '').trim().toLowerCase() : '';
-      const out = rows.filter((row) => {
+      const outRows = rows.filter((row) => {
         const extra = (row && row.extra && typeof row.extra === 'object') ? row.extra : {};
         const rowScope = String(row.scope || extra.scope || '');
         const rowAction = String(row.action || extra.action || '');
@@ -10090,12 +10115,21 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
         if(actionVal && rowAction !== actionVal) return false;
         if(textVal && !line.includes(textVal)) return false;
         return true;
-      }).map(_analysisEventToTextLine).filter(Boolean);
+      });
+      const out = outRows.map(_analysisEventToTextLine).filter(Boolean);
       if($meta) $meta.textContent = 'Eintraege: ' + out.length + ' | Bereich: ' + (scopeVal || 'alle') + ' | Ausloeser: ' + (actionVal || 'alle');
-      if($pre) $pre.textContent = out.length ? out.join('\n') : 'Keine passenden Logeintraege gefunden.';
+      if($pre){
+        $pre.innerHTML = outRows.length ? outRows.map((row)=>{
+          const status = String(row && row.status || '').toLowerCase();
+          const extra = (row && row.extra && typeof row.extra === 'object') ? row.extra : {};
+          const isErr = status === 'err' || !!extra.error || /fehlgeschlagen|error|exception/i.test(String(row && row.detail || ''));
+          const line = _escHtml(_analysisEventToTextLine(row));
+          return `<div style="padding:2px 0; color:${isErr ? '#b00020' : 'inherit'}; background:${isErr ? 'rgba(176,0,32,0.06)' : 'transparent'}; border-left:${isErr ? '3px solid #b00020' : '3px solid transparent'}; padding-left:8px;">${line}</div>`;
+        }).join('') : 'Keine passenden Logeintraege gefunden.';
+      }
     }catch(e){
       if($meta) $meta.textContent = 'Fehler beim Laden der Logs';
-      if($pre) $pre.textContent = String(e && e.message ? e.message : e);
+      if($pre) $pre.innerHTML = `<div style="color:#b00020; border-left:3px solid #b00020; background:rgba(176,0,32,0.06); padding:6px 8px;">${_escHtml(String(e && e.message ? e.message : e))}</div>`;
     }
   }
 
@@ -16943,6 +16977,8 @@ try{
 
     await loadDashboardFields(String(($mf && $mf.value) || '').trim(), {silent: true});
     await refreshDashboardSuggestions({silent: true});
+    try{ await refreshMeasurementProfilePanel(); }catch(e){}
+    try{ if(!$measurementProfileSections || !$measurementProfileSections.innerHTML) renderMeasurementProfilePanel(null); }catch(e){}
     saveState();
 
     // Table helpers are initialized after shared helpers are loaded.

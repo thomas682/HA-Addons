@@ -183,6 +183,10 @@ Zwischen `Messwertauswahl` und `Caching` erscheint die eigenstaendige, auf-/zukl
 
 Das Messwertprofil bleibt sichtbar, sobald `measurement`, `field` und `entity_id` bekannt sind. Wenn keine oder nur eine historische Namensvariante vorliegt, wird nicht mehr die gesamte Section ausgeblendet; stattdessen bleibt das Profil sichtbar und der Timeline-Unterbereich zeigt einen neutralen Leer-/Einzelzustand.
 
+Das gefilterte Analyse-Logging (`analysis_log_modal`) folgt jetzt enger dem bestehenden Dialogmuster: Such-/Refresh-Leiste wie gehabt, zusaetzlicher Button `In Zwischenablage kopieren`, Dialog-Meta rechts unten, kein S-Picker und visuelle Hervorhebung von Fehlerzeilen. Die Laufzeit `dur_ms` wird aus den vorhandenen Eventdaten robuster abgeleitet und nicht mehr pauschal als `0` angezeigt, wenn bessere Informationen verfuegbar sind.
+
+Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

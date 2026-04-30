@@ -1191,6 +1191,57 @@ def test_api_measurement_profile_returns_grouped_payload(load_app_module, tmp_pa
     assert isinstance(j["quality"]["warnings"], list)
 
 
+def test_query_payload_prefers_v2_when_v1_database_missing(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+
+    class _FakeRecord:
+        def __init__(self, value, time_iso):
+            self._value = value
+            self._time = datetime.fromisoformat(time_iso.replace("Z", "+00:00"))
+
+        def get_value(self):
+            return self._value
+
+        def get_time(self):
+            return self._time
+
+    class _FakeQueryAPI:
+        def query_stream(self, q: str, org: str | None = None):
+            if "count(column: \"_value\")" in q:
+                return iter([_FakeRecord(2, "2026-01-01T00:00:00Z")])
+            return iter([
+                _FakeRecord(1.0, "2026-01-01T00:00:00Z"),
+                _FakeRecord(2.0, "2026-01-02T00:00:00Z"),
+            ])
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    cfg = {
+        "influx_version": 1,
+        "database": "",
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+        "ui_query_max_points": 5000,
+        "ui_query_manual_max_points": 200000,
+    }
+    out = app_mod._query_payload(cfg, "MB/s", "value", "all", "sensor.demo", None, "MB/s", "dynamic", 100, None, None)
+    assert out["ok"] is True
+    assert len(out["rows"]) == 2
+    assert out["meta"]["mode"] == "dynamic"
+
+
 def test_api_audit_aggregates_counts_and_backup_status(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
 

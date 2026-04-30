@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.500
+
+### Fix
+
+- Analyse / Dashboard: Das Fenster `analysis_log_modal` nutzt jetzt das bestehende Dialogmuster konsistenter weiter: Copy-Button `In Zwischenablage kopieren`, Template-Meta rechts unten, kein S-Picker, rote Hervorhebung für Fehlereinträge und robustere `dur_ms`-Anzeige aus den Eventdaten. ([#452](https://github.com/thomas682/HA-Addons/issues/452))
+- Analyse mit Cache: `_query_payload(...)` bevorzugt v2 weiterhin defensiv und beendet den v2-Dynamic-Pfad jetzt auch im Normalfall korrekt mit `return`, statt bei bestimmten Ergebnismengen in den v1-Fehlerpfad (`InfluxDB v1 requires database`) durchzufallen. ([#452](https://github.com/thomas682/HA-Addons/issues/452))
+- Messwertinfos von Homeassistant: Das Profilpanel bleibt sichtbar und wird weiter geladen, auch wenn keine oder nur eine historische `friendly_name`-Variante gefunden wird. Die Timeline zeigt dann einen neutralen Leer-/Einzelzustand, statt die gesamte Section auszublenden. ([#452](https://github.com/thomas682/HA-Addons/issues/452))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.499
 
 ### Fix
