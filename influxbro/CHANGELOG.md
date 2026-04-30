@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.502
+
+### Enhancement
+
+- Dashboard / Ausreißerstrategie: Die Strategiesteuerung sitzt jetzt direkt im Bereich `Messwertinfos von Homeassistant` statt erst im Ausreißer-Tabellenbereich. Alle Typen werden als bekannte Chip-Auswahl dargestellt; dazu kommen die Modi `Automatikwahl`, `alle ein` und `alle aus`. Pro aktivem Typ erscheinen nun direkt messwertspezifische Parameter- und Korrekturfelder, die serverseitig als Overrides gespeichert werden. ([#454](https://github.com/thomas682/HA-Addons/issues/454))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.501
 
 ### Enhancement

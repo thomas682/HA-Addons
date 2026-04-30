@@ -196,6 +196,8 @@ Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus 
 
 Die serverseitige Auswahl bleibt deterministisch: hoechste Prioritaet gewinnt, danach Spezifitaet, danach ID. Manuelle Overrides werden danach additiv auf die Basisstrategie angewendet.
 
+Die Strategiesteuerung befindet sich jetzt direkt im Profilbereich `Messwertinfos von Homeassistant`: alle Typen werden dort als Chips angezeigt. Die Buttons `Automatikwahl`, `alle ein` und `alle aus` schalten zwischen Basisstrategie, Vollaktivierung und kompletter Deaktivierung um. Unterhalb der Typen erscheinen fuer aktive Strategien direkt die zugehoerigen Parameter- und Korrektureinstellungen. Diese Overrides werden messwertspezifisch serverseitig gespeichert.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

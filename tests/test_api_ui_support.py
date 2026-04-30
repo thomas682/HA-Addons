@@ -553,11 +553,17 @@ def test_dashboard_outlier_strategy_ui_exists():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'id="analysis_strategy_info"' in body
     assert 'id="analysis_strategy_open"' in body
-    assert 'Strategiewahl' in body
+    assert 'Strategieinfo' in body
+    assert 'id="analysis_strategy_auto"' in body
+    assert 'id="analysis_strategy_all_on"' in body
+    assert 'id="analysis_strategy_all_off"' in body
     assert 'id="analysis_strategy_dialog"' in body
     assert 'id="analysis_strategy_dialog_json"' in body
     assert 'function refreshOutlierStrategyPanel()' in body
     assert 'function saveOutlierStrategyOverride()' in body
+    assert 'function renderOutlierStrategyParamCards()' in body
+    assert 'function _outlierStrategySetMode(mode)' in body
+    assert 'id="analysis_strategy_params"' in body
     assert './api/outlier_strategy?' in body or './api/outlier_strategy' in body
     assert './api/outlier_strategy/config' in body
     assert './api/outlier_strategy/override' in body

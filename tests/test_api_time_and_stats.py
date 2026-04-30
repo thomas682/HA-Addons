@@ -1282,6 +1282,27 @@ def test_api_outlier_strategy_derives_effective_types(load_app_module, tmp_path,
     assert "decrease" not in j["effective_selected"]
 
 
+def test_api_outlier_strategy_override_modes(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    client = app_mod.app.test_client()
+
+    r = client.post(
+        "/api/outlier_strategy/override",
+        json={
+            "entity_id": "sensor.demo",
+            "measurement": "Wh",
+            "field": "value",
+            "mode": "all_off",
+        },
+    )
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["override"]["mode"] == "all_off"
+    assert j["override"]["manual_enable_types"] == []
+    assert j["override"]["manual_disable_types"] == []
+
+
 def test_api_audit_aggregates_counts_and_backup_status(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
 

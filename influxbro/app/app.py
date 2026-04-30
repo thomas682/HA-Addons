@@ -12782,6 +12782,22 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "match": {"internal_types": ["counter_increasing"]},
         "enable_types": ["counter", "counterreset", "decrease", "gap", "null", "zero"],
         "disable_types": ["bounds", "fault_phase"],
+        "params": {
+            "counter": {"max_rate_per_second": 0.25, "stale_gap_seconds": 3600, "after_gap_mode": "rate_based"},
+            "counterreset": {"reset_detection_threshold": 0.8, "allow_reset_to_zero": True, "post_reset_validation_points": 2},
+            "decrease": {"allow_small_negative_noise": 0.0, "drop_threshold": 0.0},
+            "gap": {"gap_seconds": 300},
+            "null": {},
+            "zero": {"zero_only_if_prev_nonzero": True, "zero_min_run_points": 1},
+        },
+        "corrections": {
+            "counter": {"action": "mark_only"},
+            "counterreset": {"action": "mark_only"},
+            "decrease": {"action": "mark_only"},
+            "gap": {"action": "mark_only"},
+            "null": {"action": "mark_only"},
+            "zero": {"action": "mark_only"},
+        },
     },
     {
         "id": "builtin.counter_resettable",
@@ -12791,6 +12807,18 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "match": {"internal_types": ["counter_resettable"]},
         "enable_types": ["counterreset", "gap", "null", "zero"],
         "disable_types": ["counter", "decrease", "bounds"],
+        "params": {
+            "counterreset": {"max_rate_per_second": 0.25, "stale_gap_seconds": 3600, "reset_detection_threshold": 0.8, "allow_reset_to_zero": True, "post_reset_validation_points": 2},
+            "gap": {"gap_seconds": 300},
+            "null": {},
+            "zero": {"zero_only_if_prev_nonzero": True, "zero_min_run_points": 1},
+        },
+        "corrections": {
+            "counterreset": {"action": "mark_only"},
+            "gap": {"action": "mark_only"},
+            "null": {"action": "mark_only"},
+            "zero": {"action": "mark_only"},
+        },
     },
     {
         "id": "builtin.gauge_numeric",
@@ -12800,6 +12828,20 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "match": {"internal_types": ["gauge_numeric", "unknown_numeric"]},
         "enable_types": ["bounds", "gap", "fault_phase", "null", "zero"],
         "disable_types": ["counter", "counterreset", "decrease"],
+        "params": {
+            "bounds": {"min": None, "max": None},
+            "gap": {"gap_seconds": 300},
+            "fault_phase": {"recovery_streak": 2, "fault_min_points": 2},
+            "null": {},
+            "zero": {"zero_only_if_prev_nonzero": True, "zero_min_run_points": 1},
+        },
+        "corrections": {
+            "bounds": {"below_min_action": "mark_only", "above_max_action": "mark_only", "below_min_value": None, "above_max_value": None},
+            "gap": {"action": "mark_only"},
+            "fault_phase": {"action": "mark_only"},
+            "null": {"action": "mark_only"},
+            "zero": {"action": "mark_only"},
+        },
     },
     {
         "id": "builtin.binary",
@@ -12809,6 +12851,8 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "match": {"internal_types": ["binary"]},
         "enable_types": ["gap", "null"],
         "disable_types": ["counter", "counterreset", "decrease", "bounds", "fault_phase", "zero"],
+        "params": {"gap": {"gap_seconds": 300}, "null": {}},
+        "corrections": {"gap": {"action": "mark_only"}, "null": {"action": "mark_only"}},
     },
     {
         "id": "builtin.enum_text",
@@ -12818,8 +12862,108 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "match": {"internal_types": ["enum_text", "unknown_text", "timestamp", "date"]},
         "enable_types": ["gap", "null"],
         "disable_types": ["counter", "counterreset", "decrease", "bounds", "fault_phase", "zero"],
+        "params": {"gap": {"gap_seconds": 300}, "null": {}},
+        "corrections": {"gap": {"action": "mark_only"}, "null": {"action": "mark_only"}},
     },
 ]
+
+OUTLIER_STRATEGY_MODES = {"auto", "manual", "all_on", "all_off"}
+
+OUTLIER_STRATEGY_TYPE_DEFS: dict[str, dict[str, Any]] = {
+    "bounds": {
+        "label": "Grenzverletzung",
+        "description": "Prüft Werte außerhalb einer Unter-/Obergrenze.",
+        "params": [
+            {"key": "min", "label": "Untergrenze", "type": "number"},
+            {"key": "max", "label": "Obergrenze", "type": "number"},
+        ],
+        "corrections": [
+            {"key": "below_min_action", "label": "Unterhalb Min", "type": "select", "options": ["mark_only", "clamp_to_min", "set_fixed_value", "delete_value", "interpolate"]},
+            {"key": "below_min_value", "label": "Ersatzwert unter Min", "type": "number"},
+            {"key": "above_max_action", "label": "Oberhalb Max", "type": "select", "options": ["mark_only", "clamp_to_max", "set_fixed_value", "delete_value", "interpolate"]},
+            {"key": "above_max_value", "label": "Ersatzwert über Max", "type": "number"},
+        ],
+    },
+    "counter": {
+        "label": "Counter-Sprung pro Zeit",
+        "description": "Bewertet Sprünge relativ zur verstrichenen Zeit.",
+        "params": [
+            {"key": "max_rate_per_second", "label": "Max Rate / s", "type": "number"},
+            {"key": "stale_gap_seconds", "label": "Lücken-Schwelle (s)", "type": "number"},
+            {"key": "after_gap_mode", "label": "Nach Lücke", "type": "select", "options": ["rate_based", "lenient_first_point", "mark_only"]},
+        ],
+        "corrections": [
+            {"key": "action", "label": "Bei unplausiblem Sprung", "type": "select", "options": ["mark_only", "carry_forward", "interpolate", "delete_value"]},
+        ],
+    },
+    "counterreset": {
+        "label": "Counter-Reset",
+        "description": "Prüft, ob ein negativer Sprung plausibel als Reset erklärbar ist.",
+        "params": [
+            {"key": "max_rate_per_second", "label": "Max Rate / s", "type": "number"},
+            {"key": "stale_gap_seconds", "label": "Lücken-Schwelle (s)", "type": "number"},
+            {"key": "reset_detection_threshold", "label": "Reset-Schwelle", "type": "number"},
+            {"key": "allow_reset_to_zero", "label": "Reset auf 0 erlauben", "type": "bool"},
+            {"key": "post_reset_validation_points", "label": "Validierungspunkte nach Reset", "type": "number"},
+        ],
+        "corrections": [
+            {"key": "action", "label": "Bei Reset", "type": "select", "options": ["mark_only", "carry_forward", "delete_value"]},
+        ],
+    },
+    "decrease": {
+        "label": "Negativer Sprung",
+        "description": "Prüft unplausible Abfälle bei nicht-resettable Countern.",
+        "params": [
+            {"key": "drop_threshold", "label": "Abfall-Schwelle", "type": "number"},
+            {"key": "allow_small_negative_noise", "label": "Negatives Rauschen erlauben", "type": "number"},
+        ],
+        "corrections": [
+            {"key": "action", "label": "Bei Abfall", "type": "select", "options": ["mark_only", "carry_forward", "delete_value"]},
+        ],
+    },
+    "gap": {
+        "label": "Zeitlücke",
+        "description": "Prüft zu große Abstände zwischen Messpunkten.",
+        "params": [
+            {"key": "gap_seconds", "label": "Max Abstand (s)", "type": "number"},
+        ],
+        "corrections": [
+            {"key": "action", "label": "Bei Lücke", "type": "select", "options": ["mark_only", "interpolate", "carry_forward", "delete_value"]},
+        ],
+    },
+    "fault_phase": {
+        "label": "Störphase",
+        "description": "Erkennt zusammenhängende fehlerhafte Phasen statt Einzelpunkte.",
+        "params": [
+            {"key": "recovery_streak", "label": "Recovery-Streak", "type": "number"},
+            {"key": "fault_min_points", "label": "Minimale Fehlerpunkte", "type": "number"},
+        ],
+        "corrections": [
+            {"key": "action", "label": "Bei Störphase", "type": "select", "options": ["mark_only", "interpolate_phase", "delete_value"]},
+        ],
+    },
+    "null": {
+        "label": "NULL-Wert",
+        "description": "Erkennt fehlende bzw. NULL-Werte.",
+        "params": [],
+        "corrections": [
+            {"key": "action", "label": "Bei NULL", "type": "select", "options": ["mark_only", "interpolate", "carry_forward", "set_fixed_value", "delete_value"]},
+            {"key": "fixed_value", "label": "Fester Ersatzwert", "type": "number"},
+        ],
+    },
+    "zero": {
+        "label": "Unplausibler 0-Wert",
+        "description": "Prüft Nullwerte dort, wo 0 fachlich unplausibel ist.",
+        "params": [
+            {"key": "zero_only_if_prev_nonzero", "label": "Nur nach Nicht-0 prüfen", "type": "bool"},
+            {"key": "zero_min_run_points", "label": "0-Burst ab x Punkten", "type": "number"},
+        ],
+        "corrections": [
+            {"key": "action", "label": "Bei 0-Wert", "type": "select", "options": ["mark_only", "interpolate", "carry_forward", "set_fixed_value", "delete_value"]},
+            {"key": "fixed_value", "label": "Fester Ersatzwert", "type": "number"},
+        ],
+    },
+}
 
 
 def _measurement_profile_build(
@@ -12907,6 +13051,28 @@ def _outlier_strategy_types_norm(values: Any) -> list[str]:
     return out
 
 
+def _outlier_strategy_mode_norm(value: Any) -> str:
+    mode = str(value or "auto").strip().lower() or "auto"
+    return mode if mode in OUTLIER_STRATEGY_MODES else "auto"
+
+
+def _outlier_strategy_params_norm(raw: Any) -> dict[str, dict[str, Any]]:
+    src = raw if isinstance(raw, dict) else {}
+    out: dict[str, dict[str, Any]] = {}
+    for key, value in src.items():
+        t = str(key or "").strip()
+        if t not in OUTLIER_STRATEGY_ALLOWED_TYPES:
+            continue
+        if not isinstance(value, dict):
+            continue
+        out[t] = dict(value)
+    return out
+
+
+def _outlier_strategy_corrections_norm(raw: Any) -> dict[str, dict[str, Any]]:
+    return _outlier_strategy_params_norm(raw)
+
+
 def _outlier_strategy_match_norm(match: Any) -> dict[str, Any]:
     m = match if isinstance(match, dict) else {}
     return {
@@ -12943,6 +13109,8 @@ def _outlier_strategy_normalize_item(item: dict[str, Any]) -> dict[str, Any]:
         "match": match,
         "enable_types": enable_types,
         "disable_types": disable_types,
+        "params": _outlier_strategy_params_norm(item.get("params")),
+        "corrections": _outlier_strategy_corrections_norm(item.get("corrections")),
     }
 
 
@@ -13022,25 +13190,45 @@ def _outlier_strategy_effective(profile: dict[str, Any], strategy: dict[str, Any
     order = [t for t in OUTLIER_STRATEGY_ALLOWED_TYPES if t != "ignored"]
     recommended_selected = [t for t in order if t in _outlier_strategy_types_norm(strategy.get("enable_types")) and t not in _outlier_strategy_types_norm(strategy.get("disable_types"))]
     recommended_unselected = [t for t in order if t not in recommended_selected]
+    mode = _outlier_strategy_mode_norm(override.get("mode"))
     manual_enable = _outlier_strategy_types_norm(override.get("manual_enable_types"))
     manual_disable = _outlier_strategy_types_norm(override.get("manual_disable_types"))
-    effective = []
-    for t in order:
-        active = t in recommended_selected
-        if t in manual_enable:
-            active = True
-        if t in manual_disable:
-            active = False
-        if active:
-            effective.append(t)
+    if mode == "all_on":
+        effective = order[:]
+    elif mode == "all_off":
+        effective = []
+    else:
+        effective = []
+        for t in order:
+            active = t in recommended_selected
+            if t in manual_enable:
+                active = True
+            if t in manual_disable:
+                active = False
+            if active:
+                effective.append(t)
     effective_unselected = [t for t in order if t not in effective]
+    strategy_params = _outlier_strategy_params_norm(strategy.get("params"))
+    strategy_corrections = _outlier_strategy_corrections_norm(strategy.get("corrections"))
+    param_overrides = _outlier_strategy_params_norm(override.get("param_overrides"))
+    correction_overrides = _outlier_strategy_corrections_norm(override.get("correction_overrides"))
+    effective_params = {t: dict(strategy_params.get(t) or {}) for t in effective}
+    effective_corrections = {t: dict(strategy_corrections.get(t) or {}) for t in effective}
+    for t in effective:
+        effective_params[t].update(param_overrides.get(t) or {})
+        effective_corrections[t].update(correction_overrides.get(t) or {})
     return {
+        "mode": mode,
         "recommended_selected": recommended_selected,
         "recommended_unselected": recommended_unselected,
         "manual_enable_types": manual_enable,
         "manual_disable_types": manual_disable,
         "effective_selected": effective,
         "effective_unselected": effective_unselected,
+        "param_overrides": param_overrides,
+        "correction_overrides": correction_overrides,
+        "effective_params": effective_params,
+        "effective_corrections": effective_corrections,
     }
 
 
@@ -13093,6 +13281,7 @@ def api_outlier_strategy_get():
         "matched": picked["matched"],
         "reason_log": picked["reason_log"],
         "available_types": OUTLIER_STRATEGY_ALLOWED_TYPES,
+        "type_definitions": OUTLIER_STRATEGY_TYPE_DEFS,
         "custom_strategies": custom_strategies,
         **eff,
     })
@@ -13107,19 +13296,29 @@ def api_outlier_strategy_override_set():
     if not entity_id or not measurement or not field:
         return jsonify({"ok": False, "error": "entity_id, measurement and field required"}), 400
     key = _outlier_strategy_measurement_key(entity_id, measurement, field)
+    mode = _outlier_strategy_mode_norm(body.get("mode"))
     manual_enable = _outlier_strategy_types_norm(body.get("manual_enable_types"))
     manual_disable = _outlier_strategy_types_norm(body.get("manual_disable_types"))
     if set(manual_enable) & set(manual_disable):
         return jsonify({"ok": False, "error": "manual enable/disable overlap"}), 400
+    param_overrides = _outlier_strategy_params_norm(body.get("param_overrides"))
+    correction_overrides = _outlier_strategy_corrections_norm(body.get("correction_overrides"))
     store = _outlier_strategy_load_store()
     overrides = store.get("overrides") if isinstance(store.get("overrides"), dict) else {}
-    if not manual_enable and not manual_disable:
+    if mode == "auto" and not manual_enable and not manual_disable and not param_overrides and not correction_overrides:
         overrides.pop(key, None)
     else:
-        overrides[key] = {"manual_enable_types": manual_enable, "manual_disable_types": manual_disable}
+        overrides[key] = {
+            "mode": mode,
+            "manual_enable_types": manual_enable if mode == "manual" else [],
+            "manual_disable_types": manual_disable if mode == "manual" else [],
+            "param_overrides": param_overrides,
+            "correction_overrides": correction_overrides,
+            "updated_at": _utc_now_iso_ms(),
+        }
     store["overrides"] = overrides
     _outlier_strategy_save_store(store)
-    return jsonify({"ok": True, "override": overrides.get(key) if key in overrides else {"manual_enable_types": [], "manual_disable_types": []}})
+    return jsonify({"ok": True, "override": overrides.get(key) if key in overrides else {"mode": "auto", "manual_enable_types": [], "manual_disable_types": [], "param_overrides": {}, "correction_overrides": {}}})
 
 
 @app.get("/api/outlier_strategy/config")
@@ -13133,7 +13332,7 @@ def api_outlier_strategy_config_get():
             custom_strategies.append(_outlier_strategy_normalize_item(item))
         except Exception:
             continue
-    return jsonify({"ok": True, "available_types": OUTLIER_STRATEGY_ALLOWED_TYPES, "builtin_strategies": OUTLIER_STRATEGY_BUILTINS, "custom_strategies": custom_strategies})
+    return jsonify({"ok": True, "available_types": OUTLIER_STRATEGY_ALLOWED_TYPES, "type_definitions": OUTLIER_STRATEGY_TYPE_DEFS, "builtin_strategies": OUTLIER_STRATEGY_BUILTINS, "custom_strategies": custom_strategies})
 
 
 @app.post("/api/outlier_strategy/config")
