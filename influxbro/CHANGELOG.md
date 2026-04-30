@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.498
+
+### Fix
+
+- Dashboard / Messwertinfos von Homeassistant: `/api/measurement_profile` verarbeitet InfluxDB-v2-Ergebnisse jetzt korrekt ueber `FluxTable.records`, statt `query_api().query(...)` wie direkte Records zu behandeln. Dadurch verschwindet der 500er `FluxTable object has no attribute get_time` und das Profilfeld laedt wieder sauber. ([#450](https://github.com/thomas682/HA-Addons/issues/450))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.497
 
 ### Enhancement

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from io import BytesIO
 from contextlib import contextmanager
 from pathlib import Path
@@ -1128,22 +1129,50 @@ def test_api_measurement_profile_returns_grouped_payload(load_app_module, tmp_pa
         "path": "modbus/0/sensors/0",
         "data": {"slave": 3, "address": 30581, "unit_of_measurement": "Wh"},
     })
-    monkeypatch.setattr(app_mod, "_measurement_profile_influx_v2", lambda *args, **kwargs: {
-        "bucket": "homeassistant_db",
-        "measurement": "Wh",
-        "field": "value",
-        "tags": {"entity_id": "sensor.demo", "friendly_name": "Demo Sensor"},
-        "field_type": "float",
-        "count": 42,
-        "first_value": 1.0,
-        "last_value": 9.0,
-        "oldest_time": "2026-01-01T00:00:00.000Z",
-        "newest_time": "2026-01-02T00:00:00.000Z",
-        "min": 1.0,
-        "max": 9.0,
-        "mean": 5.0,
-        "decimal_places_detected": 0,
-    })
+
+    class _FakeRecord:
+        def __init__(self, value, time_iso=None):
+            self._value = value
+            self._time = None if time_iso is None else datetime.fromisoformat(time_iso.replace("Z", "+00:00"))
+
+        def get_value(self):
+            return self._value
+
+        def get_time(self):
+            return self._time
+
+    class _FakeTable:
+        def __init__(self, records):
+            self.records = records
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            if "|> count()" in q:
+                return [_FakeTable([_FakeRecord(42)])]
+            if "|> first()" in q:
+                return [_FakeTable([_FakeRecord(1.0, "2026-01-01T00:00:00Z")])]
+            if "|> last()" in q:
+                return [_FakeTable([_FakeRecord(9.0, "2026-01-02T00:00:00Z")])]
+            if "|> min()" in q:
+                return [_FakeTable([_FakeRecord(1.0)])]
+            if "|> max()" in q:
+                return [_FakeTable([_FakeRecord(9.0)])]
+            if "|> mean()" in q:
+                return [_FakeTable([_FakeRecord(5.0)])]
+            return []
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
 
     client = app_mod.app.test_client()
     r = client.get("/api/measurement_profile?entity_id=sensor.demo&measurement=Wh&field=value&friendly_name=Demo%20Sensor&range=all")
@@ -1153,6 +1182,11 @@ def test_api_measurement_profile_returns_grouped_payload(load_app_module, tmp_pa
     assert j["ha"]["friendly_name"] == "Demo Sensor"
     assert j["yaml"]["found"] is True
     assert j["influx"]["field_type"] == "float"
+    assert j["influx"]["count"] == 42
+    assert j["influx"]["first_value"] == 1.0
+    assert j["influx"]["last_value"] == 9.0
+    assert j["influx"]["oldest_time"] == "2026-01-01T00:00:00.000Z"
+    assert j["influx"]["newest_time"] == "2026-01-02T00:00:00.000Z"
     assert j["derived"]["internal_type"] == "counter_increasing"
     assert isinstance(j["quality"]["warnings"], list)
 

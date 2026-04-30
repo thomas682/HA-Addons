@@ -181,6 +181,8 @@ Gespeicherte Dashboard-Selectorwerte werden beim Seitenstart jetzt vor dem erste
 
 Zwischen `Messwertauswahl` und `Caching` erscheint die eigenstaendige, auf-/zuklappbare Section `Messwertinfos von Homeassistant`. Direkt unter dem Titel steht ein Infofeld zur Einordnung. Im oberen Profilbereich werden Home-Assistant-Metadaten, YAML-Fundstellen, InfluxDB-Basisstatistiken, der abgeleitete interne Messwerttyp sowie Qualitaetshinweise gruppiert angezeigt. Darunter folgt weiterhin die professionelle Mehrfachnamen-Ansicht `Mehrere Messwertnamen` mit Panel-Header, Summary-Bar, oberer Vergleichsachse sowie Listenzeilen mit Index, Name, Zeitraum, Punkte und Status. Mit `Auf letzten Namen vereinigen` werden aeltere Namensbereiche direkt auf den neuesten Namen umgeschrieben; die Aktion erzeugt einen Change-Block und bleibt dadurch in Verlauf/Undo sichtbar.
 
+Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
+
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.
 
 Die Felder `Feld`, `Name` und `Grund Filter` besitzen jetzt jeweils einen dauerhaft sichtbaren Button `Feld leeren` direkt neben dem Eingabefeld.

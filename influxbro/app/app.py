@@ -12493,6 +12493,15 @@ def _measurement_profile_influx_v2(
     start_dt: datetime | None,
     stop_dt: datetime | None,
 ) -> dict[str, Any]:
+    def _first_record_from_tables(tables: Any) -> Any:
+        try:
+            for table in tables or []:
+                for rec in getattr(table, "records", []) or []:
+                    return rec
+        except Exception:
+            return None
+        return None
+
     range_clause = _flux_range_clause(selector_range, start_dt, stop_dt)
     conds = [f"r._measurement == {_flux_str(measurement)}", f"r._field == {_flux_str(field)}"]
     if entity_id:
@@ -12532,37 +12541,39 @@ from(bucket: "{bucket}")
         q_min = log_query("api.measurement_profile min (flux)", base + "  |> min()\n")
         q_max = log_query("api.measurement_profile max (flux)", base + "  |> max()\n")
         q_mean = log_query("api.measurement_profile mean (flux)", base + "  |> mean()\n")
-        for rec in qapi.query(q_count, org=cfg["org"]) or []:
+        rec = _first_record_from_tables(qapi.query(q_count, org=cfg["org"]))
+        if rec is not None:
             try:
                 out["count"] = int(rec.get_value() or 0)
             except Exception:
                 pass
-        for rec in qapi.query(q_first, org=cfg["org"]) or []:
+        rec = _first_record_from_tables(qapi.query(q_first, org=cfg["org"]))
+        if rec is not None:
             out["oldest_time"] = _dt_to_rfc3339_utc_ms(rec.get_time()) if isinstance(rec.get_time(), datetime) else rec.get_time()
             out["first_value"] = rec.get_value()
             sampled_values.append(rec.get_value())
             out["field_type"] = _measurement_profile_field_type_from_value(rec.get_value())
-            break
-        for rec in qapi.query(q_last, org=cfg["org"]) or []:
+        rec = _first_record_from_tables(qapi.query(q_last, org=cfg["org"]))
+        if rec is not None:
             out["newest_time"] = _dt_to_rfc3339_utc_ms(rec.get_time()) if isinstance(rec.get_time(), datetime) else rec.get_time()
             out["last_value"] = rec.get_value()
             sampled_values.append(rec.get_value())
             if not out.get("field_type"):
                 out["field_type"] = _measurement_profile_field_type_from_value(rec.get_value())
-            break
-        for rec in qapi.query(q_min, org=cfg["org"]) or []:
+        rec = _first_record_from_tables(qapi.query(q_min, org=cfg["org"]))
+        if rec is not None:
             out["min"] = rec.get_value()
             sampled_values.append(rec.get_value())
-            break
-        for rec in qapi.query(q_max, org=cfg["org"]) or []:
+        rec = _first_record_from_tables(qapi.query(q_max, org=cfg["org"]))
+        if rec is not None:
             out["max"] = rec.get_value()
             sampled_values.append(rec.get_value())
-            break
+        rec = None
         try:
-            for rec in qapi.query(q_mean, org=cfg["org"]) or []:
+            rec = _first_record_from_tables(qapi.query(q_mean, org=cfg["org"]))
+            if rec is not None:
                 out["mean"] = rec.get_value()
                 sampled_values.append(rec.get_value())
-                break
         except Exception:
             pass
     out["decimal_places_detected"] = _measurement_profile_decimal_places(sampled_values)
