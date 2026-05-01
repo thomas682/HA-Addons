@@ -581,6 +581,23 @@ def test_dashboard_outlier_strategy_ui_exists():
     assert './api/outlier_strategy/override' in body
 
 
+def test_analysis_type_chips_use_professional_tooltips_with_docs():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'const OUTLIER_TYPE_META = {' in body
+    assert 'function _ensureOutlierChipTooltip()' in body
+    assert 'role="tooltip"' in body or "setAttribute('role', 'tooltip')" in body
+    assert 'function _renderOutlierChipTooltip(target)' in body
+    assert 'function _showOutlierChipTooltip(target, pinned)' in body
+    assert 'function _closePinnedOutlierChipTooltip()' in body
+    assert "data-doc=\"" in body or "data-doc=\'" in body or "data-doc=\"'" not in body
+    assert "window.open(_outlierChipDocUrl(docKey), '_blank', 'noopener')" in body
+    assert "setTimeout(()=>{ _showOutlierChipTooltip(el, false); }, 350);" in body
+    assert "_hideOutlierChipTooltip(200);" in body
+    assert "key === 'Enter' || key === ' '" in body
+    assert "key === 'Escape'" in body
+    assert "key === '?' || key === '/'" in body
+
+
 def test_audit_page_and_nav_entry_exist():
     audit = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "audit.html").read_text()
     nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()

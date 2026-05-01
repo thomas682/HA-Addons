@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.506
+
+### Enhancement
+
+- Dashboard / Ausreißerstrategie: Die Analysetyp-Chips im Strategiebereich besitzen jetzt professionelle Tooltips mit Severity-Farbpunkt, technischer Kennung, Beschreibung, Meta-Grid, Beispielbedingung und Doku-Link. Sie reagieren auf Hover, Fokus, Klick/Touch (Pin-Modus), `Enter`/`Space`, `Esc` und den `?`-Shortcut für die Dokumentation. ([#458](https://github.com/thomas682/HA-Addons/issues/458))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.505
 
 ### Enhancement

@@ -743,6 +743,50 @@
     .ib-chip.ib-chip-inactive .ib-chip-dot { background:#999; }
     .ib-chip-label { position:relative; z-index:1; font-family:inherit; }
     .ib-chip-strike .ib-chip-label { text-decoration: line-through; }
+    .ib-chip-info { position:relative; z-index:1; display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:999px; border:1px solid rgba(0,0,0,0.18); background:#fff; color:#111; font-size:11px; font-weight:700; line-height:1; cursor:pointer; flex:0 0 auto; }
+    .ib-chip:focus-visible, .ib-chip-info:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+    .ib-chip-tooltip {
+      position: fixed;
+      z-index: 100050;
+      width: min(360px, calc(100vw - 24px));
+      background: #1f2937;
+      color: #f3f4f6;
+      border: 1px solid #374151;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.14), 0 12px 24px rgba(0,0,0,0.18), 0 24px 40px rgba(0,0,0,0.22);
+      padding: 12px 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+    }
+    .ib-chip-tooltip.is-open { opacity: 1; }
+    .ib-chip-tooltip.is-pinned { pointer-events: auto; border-color:#60a5fa; }
+    .ib-chip-tooltip::after {
+      content:'';
+      position:absolute;
+      width:12px; height:12px;
+      background:#1f2937;
+      border-left:1px solid #374151;
+      border-top:1px solid #374151;
+      transform:rotate(45deg);
+      top:-7px; left:24px;
+    }
+    .ib-chip-tooltip-head { display:flex; gap:10px; align-items:flex-start; margin-bottom:10px; }
+    .ib-chip-tooltip-icon { width:18px; height:18px; border-radius:999px; flex:0 0 auto; margin-top:1px; }
+    .ib-chip-tooltip-title { font-weight:700; font-size:14px; color:#f9fafb; }
+    .ib-chip-tooltip-key { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; color:#9ca3af; margin-top:2px; }
+    .ib-chip-tooltip-desc { font-size:12px; line-height:1.55; color:#e5e7eb; margin-bottom:10px; }
+    .ib-chip-tooltip-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
+    .ib-chip-tooltip-meta-item { border:1px solid #374151; border-radius:8px; background:rgba(255,255,255,0.03); padding:8px 9px; }
+    .ib-chip-tooltip-meta-label { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:#9ca3af; margin-bottom:3px; }
+    .ib-chip-tooltip-meta-value { font-size:12px; color:#f3f4f6; }
+    .ib-chip-tooltip-meta-value .sev-dot { display:inline-block; width:8px; height:8px; border-radius:999px; margin-right:6px; vertical-align:middle; }
+    .ib-chip-tooltip-example { border:1px solid #374151; border-radius:8px; background:#111827; padding:10px 11px; margin-bottom:10px; }
+    .ib-chip-tooltip-example-label { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:#9ca3af; margin-bottom:5px; }
+    .ib-chip-tooltip-example code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; color:#d1fae5; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .ib-chip-tooltip-foot { display:flex; justify-content:space-between; gap:12px; align-items:center; font-size:11px; color:#9ca3af; }
+    .ib-chip-tooltip-foot a { color:#93c5fd; text-decoration:none; }
+    .ib-chip-tooltip-foot a:hover { color:#bfdbfe; text-decoration:underline; }
 
     /* Outlier markers in cache timeline */
     .ib-ol-marker:hover { opacity:1 !important; width:6px !important; margin-left:-3px !important; z-index:2; }
@@ -6643,6 +6687,76 @@ function normalizeOutlierRows(rows){
 }
 
 const OUTLIER_TYPE_LABELS = Object.fromEntries(ALL_OUTLIER_TYPES.map(t => [t.value, t.label]));
+const OUTLIER_TYPE_META = {
+  rate_jump: {
+    severity: 'medium',
+    description: 'Prüft, ob ein Zähler in zu kurzer Zeit unplausibel stark ansteigt. Entscheidend ist der Sprung pro Zeit, nicht der absolute Delta-Wert allein.',
+    source: 'Messwertprofil / Strategie',
+    example: 'delta / seconds > max_rate_per_second',
+    doc: 'rate-jump'
+  },
+  reset_event: {
+    severity: 'medium',
+    description: 'Prüft, ob ein negativer Sprung plausibel als legitimer Reset eines Zählers interpretiert werden kann.',
+    source: 'Messwertprofil / Strategie',
+    example: 'value drops near zero AND reset_detection_threshold matched',
+    doc: 'reset-event'
+  },
+  negative_jump: {
+    severity: 'high',
+    description: 'Erkennt unplausible Abfälle bei eigentlich monotonen Zählern. Für nicht resettable Counter ist das meist ein echter Fehler.',
+    source: 'Messwertprofil / Strategie',
+    example: 'delta < -drop_threshold WHERE counter must increase',
+    doc: 'negative-jump'
+  },
+  range_violation: {
+    severity: 'medium',
+    description: 'Prüft Werte außerhalb einer definierten Unter- oder Obergrenze und markiert fachlich unplausible Bereiche.',
+    source: 'Messwertprofil / Strategie',
+    example: 'value < min OR value > max',
+    doc: 'range-violation'
+  },
+  time_gap: {
+    severity: 'low',
+    description: 'Prüft, ob zwischen zwei Messpunkten eine zu große Zeitlücke liegt, die auf fehlende Daten oder Verbindungsprobleme hindeutet.',
+    source: 'Messwertprofil / Strategie',
+    example: 'time_diff_seconds > gap_seconds',
+    doc: 'time-gap'
+  },
+  fault_cluster: {
+    severity: 'high',
+    description: 'Erkennt zusammenhängende Störphasen statt einzelner Ausreißerpunkte und bewertet die Rückkehr in den Normalzustand separat.',
+    source: 'Messwertprofil / Strategie',
+    example: 'multiple adjacent faults until recovery_streak valid points',
+    doc: 'fault-cluster'
+  },
+  null_value: {
+    severity: 'medium',
+    description: 'Erfasst fehlende oder NULL-Werte, die auf Schreibfehler, Importlücken oder fehlerhafte Quellen hindeuten können.',
+    source: 'Messwertprofil / Strategie',
+    example: 'value == NULL OR no point for expected sample',
+    doc: 'null-value'
+  },
+  zero_value: {
+    severity: 'low',
+    description: 'Markiert 0-Werte dort, wo der Messwert fachlich normalerweise nicht 0 sein sollte oder nur nach Nicht-0-Vorgängern verdächtig ist.',
+    source: 'Messwertprofil / Strategie',
+    example: 'value == 0 WHERE expected > 0',
+    doc: 'zero-value'
+  },
+  ignored: {
+    severity: 'low',
+    description: 'Zeigt bewusst vom Nutzer ignorierte Treffer an. Dieser Status ist kein eigener Suchtyp, sondern ein Arbeitsstatus für Ausreißer.',
+    source: 'Benutzeraktion',
+    example: 'row manually marked as ignored',
+    doc: 'ignored'
+  }
+};
+let OUTLIER_CHIP_TOOLTIP = null;
+let OUTLIER_CHIP_TOOLTIP_PINNED = false;
+let OUTLIER_CHIP_TOOLTIP_TARGET = null;
+let OUTLIER_CHIP_TOOLTIP_SHOW_TIMER = null;
+let OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null;
 
 let ANALYSIS_SELECTED_TYPES = ['rate_jump', 'negative_jump', 'reset_event', 'range_violation', 'time_gap', 'fault_cluster', 'null_value', 'zero_value'];
 let ANALYSIS_UNSELECTED_TYPES = [];
@@ -8436,6 +8550,122 @@ function updateAnalysisUI(){
   }catch(e){}
 }
 
+function _outlierChipSeverityColor(severity){
+  if(severity === 'high') return '#dc2626';
+  if(severity === 'medium') return '#ea580c';
+  return '#6b7280';
+}
+
+function _outlierChipDocUrl(docKey){
+  return '/docs/' + encodeURIComponent(String(docKey || ''));
+}
+
+function _ensureOutlierChipTooltip(){
+  if(OUTLIER_CHIP_TOOLTIP) return OUTLIER_CHIP_TOOLTIP;
+  const root = document.createElement('div');
+  root.id = 'analysis_chip_tooltip';
+  root.className = 'ib-chip-tooltip';
+  root.setAttribute('role', 'tooltip');
+  root.setAttribute('aria-hidden', 'true');
+  root.innerHTML = '<div id="analysis_chip_tooltip_content"></div>';
+  root.addEventListener('mouseenter', ()=>{
+    if(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER); OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null; }
+  });
+  root.addEventListener('mouseleave', ()=>{
+    if(OUTLIER_CHIP_TOOLTIP_PINNED) return;
+    _hideOutlierChipTooltip(180);
+  });
+  document.body.appendChild(root);
+  OUTLIER_CHIP_TOOLTIP = root;
+  return root;
+}
+
+function _positionOutlierChipTooltip(target){
+  const tip = _ensureOutlierChipTooltip();
+  const rect = target.getBoundingClientRect();
+  const w = tip.offsetWidth || 360;
+  const h = tip.offsetHeight || 220;
+  const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+  const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+  let left = rect.left;
+  let top = rect.bottom + 10;
+  if(left + w > vw - 12) left = Math.max(12, vw - w - 12);
+  if(top + h > vh - 12) top = Math.max(12, rect.top - h - 14);
+  tip.style.left = Math.round(left) + 'px';
+  tip.style.top = Math.round(top) + 'px';
+}
+
+function _renderOutlierChipTooltip(target){
+  const type = normalizeOutlierTypeKey(target && target.getAttribute('data-type'));
+  const active = String(target && target.getAttribute('data-active') || '') === '1';
+  const meta = OUTLIER_TYPE_META[type] || {};
+  const count = Number((ANALYSIS_STATE && ANALYSIS_STATE.foundByType && ANALYSIS_STATE.foundByType[type]) || 0) || 0;
+  const sev = String(meta.severity || 'low');
+  const sevColor = _outlierChipSeverityColor(sev);
+  const title = _escHtml(_outlierStrategyTypeLabel(type));
+  const ident = _escHtml('dashboard_analysis.chip_type.' + type);
+  const desc = _escHtml(String(meta.description || 'Keine Beschreibung vorhanden.'));
+  const source = _escHtml(String(meta.source || 'Strategie'));
+  const example = _escHtml(String(meta.example || '—'));
+  const status = active ? 'Aktiv' : 'Deaktiviert';
+  const docUrl = _outlierChipDocUrl(meta.doc || type);
+  const html = `
+    <div class="ib-chip-tooltip-head">
+      <div class="ib-chip-tooltip-icon" style="background:${sevColor};"></div>
+      <div>
+        <div class="ib-chip-tooltip-title">${title}</div>
+        <div class="ib-chip-tooltip-key">${ident}</div>
+      </div>
+    </div>
+    <div class="ib-chip-tooltip-desc">${desc}</div>
+    <div class="ib-chip-tooltip-meta">
+      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Schweregrad</div><div class="ib-chip-tooltip-meta-value"><span class="sev-dot" style="background:${sevColor};"></span>${_escHtml(sev === 'high' ? 'Hoch' : sev === 'medium' ? 'Mittel' : 'Niedrig')}</div></div>
+      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Datenquelle</div><div class="ib-chip-tooltip-meta-value">${source}</div></div>
+      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Status</div><div class="ib-chip-tooltip-meta-value">${_escHtml(status)}</div></div>
+      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Treffer</div><div class="ib-chip-tooltip-meta-value">${String(count)}</div></div>
+    </div>
+    <div class="ib-chip-tooltip-example"><div class="ib-chip-tooltip-example-label">Beispiel</div><code>${example}</code></div>
+    <div class="ib-chip-tooltip-foot"><a href="${_escAttr(docUrl)}" target="_blank" rel="noopener noreferrer" data-doc-link="1">Dokumentation öffnen</a><span>? öffnet Doku · Esc schließt</span></div>
+  `;
+  const tip = _ensureOutlierChipTooltip();
+  const content = tip.querySelector('#analysis_chip_tooltip_content');
+  if(content) content.innerHTML = html;
+  tip.classList.toggle('is-pinned', OUTLIER_CHIP_TOOLTIP_PINNED);
+  tip.classList.add('is-open');
+  tip.setAttribute('aria-hidden', 'false');
+  target.setAttribute('aria-describedby', 'analysis_chip_tooltip');
+  _positionOutlierChipTooltip(target);
+}
+
+function _showOutlierChipTooltip(target, pinned){
+  if(!target) return;
+  if(OUTLIER_CHIP_TOOLTIP_SHOW_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_SHOW_TIMER); OUTLIER_CHIP_TOOLTIP_SHOW_TIMER = null; }
+  if(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER); OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null; }
+  OUTLIER_CHIP_TOOLTIP_PINNED = !!pinned;
+  OUTLIER_CHIP_TOOLTIP_TARGET = target;
+  _renderOutlierChipTooltip(target);
+}
+
+function _hideOutlierChipTooltip(delay){
+  if(OUTLIER_CHIP_TOOLTIP_PINNED) return;
+  const tip = _ensureOutlierChipTooltip();
+  if(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER); OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null; }
+  OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = setTimeout(()=>{
+    tip.classList.remove('is-open', 'is-pinned');
+    tip.setAttribute('aria-hidden', 'true');
+    OUTLIER_CHIP_TOOLTIP_TARGET = null;
+  }, Math.max(0, Number(delay || 0)));
+}
+
+function _closePinnedOutlierChipTooltip(){
+  OUTLIER_CHIP_TOOLTIP_PINNED = false;
+  const tip = _ensureOutlierChipTooltip();
+  tip.classList.remove('is-pinned', 'is-open');
+  tip.setAttribute('aria-hidden', 'true');
+  try{ if(OUTLIER_CHIP_TOOLTIP_TARGET) OUTLIER_CHIP_TOOLTIP_TARGET.focus(); }catch(e){}
+  OUTLIER_CHIP_TOOLTIP_TARGET = null;
+}
+
 function renderAnalysisTypeLists(){
   try{
       const $selected = document.getElementById('analysis_types_selected');
@@ -8445,9 +8675,10 @@ function renderAnalysisTypeLists(){
       function _chipHtml(t, label, active){
         const color = _chipColors[t] || '#5ea56a';
         const cls = active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive ib-chip-strike';
-        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-ui="dashboard_analysis.chip_type.' + t + '" data-ib-pickkey="dashboard_analysis.chip_type.' + t + '" data-type="' + t + '" data-active="' + (active ? '1' : '0') + '" title="Klicken zum ' + (active ? 'Abwaehlen' : 'Auswaehlen') + '">'
+        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-ui="dashboard_analysis.chip_type.' + t + '" data-ib-pickkey="dashboard_analysis.chip_type.' + t + '" data-type="' + t + '" data-active="' + (active ? '1' : '0') + '" data-doc="' + _escAttr(String((OUTLIER_TYPE_META[t]||{}).doc || t)) + '" tabindex="0" role="button" aria-label="' + _escAttr(label + ' – ' + (active ? 'aktiv' : 'deaktiviert')) + '" title="Klicken zum ' + (active ? 'Abwaehlen' : 'Auswaehlen') + '">'
           + '<div class="ib-chip-dot"></div>'
           + '<span class="ib-chip-label">' + label + '</span>'
+          + '<button type="button" class="ib-chip-info" data-chip-info="1" aria-label="Info zu ' + _escAttr(label) + '">ⓘ</button>'
           + '</div>';
       }
 
@@ -8464,6 +8695,44 @@ function renderAnalysisTypeLists(){
 
       // Add click handlers (toggle active/unselected in one panel)
       $selected.querySelectorAll('[data-type]').forEach(el => {
+        let showTimer = null;
+        el.addEventListener('mouseenter', ()=>{
+          if(showTimer) clearTimeout(showTimer);
+          showTimer = setTimeout(()=>{ _showOutlierChipTooltip(el, false); }, 350);
+        });
+        el.addEventListener('mouseleave', ()=>{
+          if(showTimer) clearTimeout(showTimer);
+          _hideOutlierChipTooltip(200);
+        });
+        el.addEventListener('focus', ()=>{ _showOutlierChipTooltip(el, false); });
+        el.addEventListener('blur', ()=>{ if(!OUTLIER_CHIP_TOOLTIP_PINNED) _hideOutlierChipTooltip(120); });
+        el.addEventListener('keydown', (ev)=>{
+          const key = String(ev.key || '');
+          if(key === '?' || key === '/'){
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            const docKey = String(el.getAttribute('data-doc') || '').trim();
+            if(docKey) window.open(_outlierChipDocUrl(docKey), '_blank', 'noopener');
+            return;
+          }
+          if(key === 'Escape'){
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            _closePinnedOutlierChipTooltip();
+            return;
+          }
+          if(key === 'Enter' || key === ' '){
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            _showOutlierChipTooltip(el, true);
+            return;
+          }
+        });
+        const infoBtn = el.querySelector('[data-chip-info]');
+        if(infoBtn){
+          infoBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _showOutlierChipTooltip(el, true); });
+          infoBtn.addEventListener('keydown', (ev)=>{
+            const key = String(ev.key || '');
+            if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _showOutlierChipTooltip(el, true); }
+          });
+        }
         el.addEventListener('click', ()=>{
           const type = String(el.getAttribute('data-type') || '').trim();
           if(!type) return;
@@ -17345,6 +17614,21 @@ if($analysisStrategyJsonHelpClose) $analysisStrategyJsonHelpClose.addEventListen
 if($analysisStrategyJsonHelpSearch) $analysisStrategyJsonHelpSearch.addEventListener('input', ()=>{ _analysisStrategyJsonHelpRender(); });
 if($analysisStrategyJsonHelpCopyAll) $analysisStrategyJsonHelpCopyAll.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(ANALYSIS_STRATEGY_JSON_HELP_EXAMPLES.map(_analysisStrategyJsonHelpText).join('\n\n------------------------------\n\n')); }catch(e){} });
 if($nameMergeLatestBtn) $nameMergeLatestBtn.addEventListener("click", (ev)=>{ _stop(ev); mergeFriendlyNamesToLatest().catch(displayError); });
+document.addEventListener('keydown', (ev)=>{
+  const key = String(ev.key || '');
+  if(key === 'Escape' && OUTLIER_CHIP_TOOLTIP_PINNED){
+    try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+    _closePinnedOutlierChipTooltip();
+  }
+});
+document.addEventListener('mousedown', (ev)=>{
+  if(!OUTLIER_CHIP_TOOLTIP_PINNED) return;
+  const tip = _ensureOutlierChipTooltip();
+  const target = OUTLIER_CHIP_TOOLTIP_TARGET;
+  const t = ev.target;
+  if((tip && tip.contains(t)) || (target && target.contains && target.contains(t))) return;
+  _closePinnedOutlierChipTooltip();
+});
 
 // Analysis confirm dialog event listeners
 try{
