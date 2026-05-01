@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.504
+
+### Enhancement
+
+- Analyse / Strategien: Interne Ausreißerregel-Keys wurden auf klarere technische Namen migriert (`counter` -> `rate_jump`, `counterreset` -> `reset_event`, `decrease` -> `negative_jump`, `bounds` -> `range_violation`, `gap` -> `time_gap`, `fault_phase` -> `fault_cluster`, `null` -> `null_value`, `zero` -> `zero_value`). Alte gespeicherte Werte werden weiterhin gelesen und beim Speichern auf die neuen Keys normalisiert. Dadurch bleiben Strategien, Overrides und Dashboard-Zustände kompatibel, waehrend neue Daten nur noch die neuen Schluessel schreiben. ([#455](https://github.com/thomas682/HA-Addons/issues/455))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.503
 
 ### Enhancement

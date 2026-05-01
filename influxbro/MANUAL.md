@@ -200,6 +200,8 @@ Die Strategiesteuerung befindet sich jetzt direkt im Profilbereich `Messwertinfo
 
 Die Strategieinfo beschreibt den abgeleiteten Messwerttyp jetzt ausfuehrlicher. Das Profil liefert dafuer zusaetzlich `unit_group`, `type_unit_consistency`, `counter_semantics` und eine mehrzeilige `strategy_explanation`. Bei Typ/Einheit-Konflikten wird nur gewarnt; es erfolgt keine automatische Umklassifizierung. Pro aktivem Typ koennen im Profilbereich jetzt direkt Erkennungsparameter (z. B. Grenzen, Rate pro Zeit, Gap-Schwelle) und Korrekturreaktionen (z. B. `mark_only`, `interpolate`, `delete_value`, `clamp_to_min/max`) messwertspezifisch gespeichert werden.
 
+Intern verwendet die Strategie- und Typenauswahl jetzt klarere technische Regel-Keys (`rate_jump`, `reset_event`, `negative_jump`, `range_violation`, `time_gap`, `fault_cluster`, `null_value`, `zero_value`). Aeltere gespeicherte Dashboard-/Strategie-Daten mit den frueheren Schluesseln werden beim Laden weiterhin akzeptiert und automatisch auf die neuen Namen normalisiert.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

@@ -1261,12 +1261,12 @@ def test_api_outlier_strategy_derives_effective_types(load_app_module, tmp_path,
                 "description": "Override for counters",
                 "priority": 110,
                 "match": {"internal_types": ["counter_increasing"]},
-                "enable_types": ["counter", "counterreset", "decrease"],
-                "disable_types": ["bounds", "fault_phase", "gap", "null", "zero"],
+                "enable_types": ["rate_jump", "reset_event", "negative_jump"],
+                "disable_types": ["range_violation", "fault_cluster", "time_gap", "null_value", "zero_value"],
             }
         ],
         "overrides": {
-            "sensor.demo|Wh|value": {"manual_enable_types": ["gap"], "manual_disable_types": ["decrease"]}
+            "sensor.demo|Wh|value": {"manual_enable_types": ["time_gap"], "manual_disable_types": ["negative_jump"]}
         },
     })
 
@@ -1276,10 +1276,10 @@ def test_api_outlier_strategy_derives_effective_types(load_app_module, tmp_path,
     j = r.get_json()
     assert j["ok"] is True
     assert j["strategy"]["id"] == "custom.counter_override"
-    assert "counter" in j["effective_selected"]
-    assert "counterreset" in j["effective_selected"]
-    assert "gap" in j["effective_selected"]
-    assert "decrease" not in j["effective_selected"]
+    assert "rate_jump" in j["effective_selected"]
+    assert "reset_event" in j["effective_selected"]
+    assert "time_gap" in j["effective_selected"]
+    assert "negative_jump" not in j["effective_selected"]
     assert j["profile"]["derived"]["internal_type"] == "counter_increasing"
 
 
@@ -1302,6 +1302,98 @@ def test_api_outlier_strategy_override_modes(load_app_module, tmp_path):
     assert j["override"]["mode"] == "all_off"
     assert j["override"]["manual_enable_types"] == []
     assert j["override"]["manual_disable_types"] == []
+
+
+def test_api_outlier_strategy_reads_legacy_keys_and_returns_new_keys(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "bucket": "homeassistant_db", "token": "t", "org": "o"})
+    monkeypatch.setattr(app_mod, "_measurement_profile_build", lambda cfg, **kwargs: {
+        "entity_id": kwargs["entity_id"],
+        "ha": {"available": True, "entity_id": kwargs["entity_id"], "device_class": "energy", "state_class": "total_increasing", "unit_of_measurement": "Wh", "domain": "sensor"},
+        "yaml": {"found": True, "data": {}},
+        "influx": {"measurement": kwargs["measurement"], "field": kwargs["field"], "field_type": "float"},
+        "derived": {"internal_type": "counter_increasing", "confidence": "high"},
+        "quality": {"warnings": []},
+    })
+    monkeypatch.setattr(app_mod, "_outlier_strategy_load_store", lambda: {
+        "strategies": [
+            {
+                "id": "legacy.counter_override",
+                "name": "Legacy Counter Override",
+                "description": "Legacy keys",
+                "priority": 100,
+                "match": {"internal_types": ["counter_increasing"]},
+                "enable_types": ["counter", "counterreset", "decrease"],
+                "disable_types": ["bounds", "fault_phase", "gap", "null", "zero"],
+            }
+        ],
+        "overrides": {
+            "sensor.demo|Wh|value": {"manual_enable_types": ["gap"], "manual_disable_types": ["decrease"]}
+        },
+    })
+    client = app_mod.app.test_client()
+    r = client.get("/api/outlier_strategy?entity_id=sensor.demo&measurement=Wh&field=value&range=all")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert "rate_jump" in j["strategy"]["enable_types"]
+    assert "reset_event" in j["strategy"]["enable_types"]
+    assert "time_gap" in j["effective_selected"]
+
+
+def test_api_outliers_accepts_new_search_type_names(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+
+    class _FakeRecord:
+        def __init__(self, time_iso: str, value: float):
+            self._time = datetime.fromisoformat(time_iso.replace("Z", "+00:00"))
+            self._value = value
+
+        def get_time(self):
+            return self._time
+
+        def get_value(self):
+            return self._value
+
+    class _FakeQueryAPI:
+        def query_stream(self, q: str, org: str | None = None):
+            return iter([
+                _FakeRecord("2026-01-01T00:00:00Z", 10.0),
+                _FakeRecord("2026-01-01T00:10:00Z", 9999.0),
+            ])
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.post(
+        "/api/outliers",
+        json={
+            "measurement": "Wh",
+            "field": "value",
+            "entity_id": "sensor.demo",
+            "start": "2026-01-01T00:00:00Z",
+            "stop": "2026-01-01T00:20:00Z",
+            "search_types": ["range_violation"],
+            "min": "",
+            "max": "100",
+        },
+    )
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert any("range_violation" in (row.get("types") or []) for row in j.get("rows", []))
 
 
 def test_measurement_profile_derived_includes_strategy_explanation_fields(load_app_module):

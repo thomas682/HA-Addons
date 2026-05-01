@@ -3068,7 +3068,7 @@ function cacheRestoreIfAvailable(){
       try{ _normalizeDerivToggles(null); }catch(e){}
     }catch(e){}
     OUTLIER_ACTIVE = !!j.outlier_active;
-    if(Array.isArray(j.outlier_rows)) OUTLIER_ROWS = j.outlier_rows;
+    if(Array.isArray(j.outlier_rows)) OUTLIER_ROWS = normalizeOutlierRows(j.outlier_rows);
     try{ TABLE_REASON_FILTER = $reasonFilter ? String($reasonFilter.value || "") : (j.dashboard_graph.select_grund_filter ? String(j.dashboard_graph.select_grund_filter) : ""); }catch(e){ TABLE_REASON_FILTER = ""; }
     try{ TABLE_CLASS_FILTER = $classFilter ? String($classFilter.value || "all") : (j.class_filter ? String(j.class_filter) : "all"); }catch(e){ TABLE_CLASS_FILTER = "all"; }
     FILTER_TABLE_CLEARED = false;
@@ -6549,18 +6549,76 @@ let RAW_OUTLIER_VISIBLE_ROWS = 15;
 let RAW_OUTLIER_MARKED_TYPE = '';
 
 const ALL_OUTLIER_TYPES = [
-  {value: 'counter', label: 'Counter'},
-  {value: 'decrease', label: 'Counter Abfall'},
-  {value: 'counterreset', label: 'Counterreset'},
-  {value: 'bounds', label: 'Grenzen'},
-  {value: 'gap', label: 'Messwertlücke'},
-  {value: 'fault_phase', label: 'Stoerphase'},
-  {value: 'null', label: 'NULL'},
-  {value: 'zero', label: '0-Werte'},
+  {value: 'rate_jump', label: 'Counter-Sprung pro Zeit'},
+  {value: 'negative_jump', label: 'Negativer Sprung'},
+  {value: 'reset_event', label: 'Counter-Reset'},
+  {value: 'range_violation', label: 'Grenzverletzung'},
+  {value: 'time_gap', label: 'Zeitlücke'},
+  {value: 'fault_cluster', label: 'Störphase'},
+  {value: 'null_value', label: 'NULL-Wert'},
+  {value: 'zero_value', label: 'Unplausibler 0-Wert'},
   {value: 'ignored', label: 'Ignoriert'},
 ];
 
-let ANALYSIS_SELECTED_TYPES = ['counter', 'decrease', 'counterreset', 'bounds', 'gap', 'fault_phase', 'null', 'zero'];
+const OUTLIER_TYPE_LEGACY_TO_NEW = {
+  counter: 'rate_jump',
+  counterreset: 'reset_event',
+  decrease: 'negative_jump',
+  bounds: 'range_violation',
+  gap: 'time_gap',
+  fault_phase: 'fault_cluster',
+  null: 'null_value',
+  zero: 'zero_value',
+  ignored: 'ignored',
+};
+const OUTLIER_TYPE_NEW_TO_LEGACY = Object.fromEntries(Object.entries(OUTLIER_TYPE_LEGACY_TO_NEW).map(([k,v]) => [v,k]));
+
+function normalizeOutlierTypeKey(v){
+  const s = String(v || '').trim();
+  if(!s) return '';
+  return OUTLIER_TYPE_LEGACY_TO_NEW[s] || s;
+}
+
+function denormalizeOutlierTypeKey(v){
+  const s = String(v || '').trim();
+  if(!s) return '';
+  return OUTLIER_TYPE_NEW_TO_LEGACY[s] || s;
+}
+
+function normalizeOutlierTypeKeys(xs){
+  const arr = Array.isArray(xs) ? xs : [];
+  const out = [];
+  arr.forEach((x)=>{
+    const s = normalizeOutlierTypeKey(x);
+    if(s && !out.includes(s)) out.push(s);
+  });
+  return out;
+}
+
+function denormalizeOutlierTypeKeys(xs){
+  const arr = Array.isArray(xs) ? xs : [];
+  const out = [];
+  arr.forEach((x)=>{
+    const s = denormalizeOutlierTypeKey(x);
+    if(s && !out.includes(s)) out.push(s);
+  });
+  return out;
+}
+
+function normalizeOutlierRows(rows){
+  const xs = Array.isArray(rows) ? rows : [];
+  return xs.map((row)=>{
+    if(!row || typeof row !== 'object') return row;
+    const item = {...row};
+    if(Array.isArray(item.types)) item.types = normalizeOutlierTypeKeys(item.types);
+    if(item.detected_outlier_type) item.detected_outlier_type = normalizeOutlierTypeKey(item.detected_outlier_type);
+    return item;
+  });
+}
+
+const OUTLIER_TYPE_LABELS = Object.fromEntries(ALL_OUTLIER_TYPES.map(t => [t.value, t.label]));
+
+let ANALYSIS_SELECTED_TYPES = ['rate_jump', 'negative_jump', 'reset_event', 'range_violation', 'time_gap', 'fault_cluster', 'null_value', 'zero_value'];
 let ANALYSIS_UNSELECTED_TYPES = [];
 let ANALYSIS_SHOW_IGNORED = false;
 let LAST_OUTLIER_STRATEGY = null;
@@ -6571,8 +6629,8 @@ try{
   const saved = localStorage.getItem('analysis_types');
   if(saved){
     const parsed = JSON.parse(saved);
-    ANALYSIS_SELECTED_TYPES = parsed.selected || ANALYSIS_SELECTED_TYPES;
-    ANALYSIS_UNSELECTED_TYPES = parsed.unselected || [];
+    ANALYSIS_SELECTED_TYPES = normalizeOutlierTypeKeys(parsed.selected || ANALYSIS_SELECTED_TYPES);
+    ANALYSIS_UNSELECTED_TYPES = normalizeOutlierTypeKeys(parsed.unselected || []);
     ANALYSIS_SHOW_IGNORED = !!parsed.show_ignored;
   }
 }catch(e){}
@@ -7566,7 +7624,7 @@ function getDisplayedOutliers(){
     if($hint){
       const exceededKeys = Object.keys(exceededTypes);
       if(exceededKeys.length){
-        const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
+        const typeLabels = OUTLIER_TYPE_LABELS;
         const parts = exceededKeys.map(k => (typeLabels[k] || k) + ': ' + exceededTypes[k] + ' gefunden, ' + limit + ' angezeigt');
         $hint.textContent = 'Hinweis: ' + parts.join(' | ') + '. Grenze kann in den Einstellungen unter ui_raw_outlier_display_limit_per_type angepasst werden.';
         $hint.style.display = 'block';
@@ -8135,7 +8193,7 @@ async function resolveEffectiveAnalysisWindow(){
 function updateAnalysisUI(){
   try{
     const s = ANALYSIS_STATE;
-    const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+    const typeLabels = OUTLIER_TYPE_LABELS;
     const typeNames = (s.types || []).map(t => typeLabels[t] || t).join(', ');
 
     // 1. Quellinfos + Gesamtzeitraum + aktueller Zeitraum
@@ -8202,7 +8260,7 @@ function renderAnalysisTypeLists(){
       const $selected = document.getElementById('analysis_types_selected');
       if(!$selected) return;
 
-      const _chipColors = {counter:'#5ea56a',decrease:'#d47d57',counterreset:'#2563eb',bounds:'#5d86d6',gap:'#8b66d1',fault_phase:'#d7a545',null:'#4da790',zero:'#d46a6a',ignored:'#999'};
+      const _chipColors = {rate_jump:'#5ea56a',negative_jump:'#d47d57',reset_event:'#2563eb',range_violation:'#5d86d6',time_gap:'#8b66d1',fault_cluster:'#d7a545',null_value:'#4da790',zero_value:'#d46a6a',ignored:'#999'};
       function _chipHtml(t, label, active){
         const color = _chipColors[t] || '#5ea56a';
         const cls = active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive ib-chip-strike';
@@ -8252,8 +8310,8 @@ function renderAnalysisTypeLists(){
 function saveAnalysisTypes(){
   try{
     localStorage.setItem('analysis_types', JSON.stringify({
-      selected: ANALYSIS_SELECTED_TYPES,
-      unselected: ANALYSIS_UNSELECTED_TYPES,
+      selected: normalizeOutlierTypeKeys(ANALYSIS_SELECTED_TYPES),
+      unselected: normalizeOutlierTypeKeys(ANALYSIS_UNSELECTED_TYPES),
     }));
   }catch(e){}
   try{ saveGlobalDashboardSelection().catch(()=>{}); }catch(e){}
@@ -8516,13 +8574,13 @@ function isIgnoredOutlier(row){
 function getRawOutlierFilterTypes(){
   // UI checkbox for ignored was removed (Issue #362). Keep ignored rows visible
   // so users can still unignore them.
-  const out = ANALYSIS_SELECTED_TYPES.slice();
+  const out = normalizeOutlierTypeKeys(ANALYSIS_SELECTED_TYPES.slice());
   if(!out.includes('ignored')) out.push('ignored');
   return out;
 }
 
 function getAnalysisCacheTypes(){
-  return ['bounds', 'counter', 'decrease', 'counterreset', 'fault_phase', 'null', 'zero'];
+  return ['range_violation', 'rate_jump', 'negative_jump', 'reset_event', 'fault_cluster', 'null_value', 'zero_value'];
 }
 
 function _logAnalysis(step, data){
@@ -8898,8 +8956,7 @@ async function runAnalysis(){
   }
   _setStep('window', 'ok', {sub: fmtTs(win.start) + ' bis ' + fmtTs(win.stop)});
 
-  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
-  const typeNames = types.map(t => typeLabels[t] || t).join(', ');
+  const typeNames = types.map(t => OUTLIER_TYPE_LABELS[t] || t).join(', ');
   _logAnalysis('types', {types: types});
   _setStep('types', types.length > 0 ? 'ok' : 'err', {sub: typeNames || 'Keine Typen aktiv.'});
   _setStep('prepare', 'ok', {sub: 'Analysezustand vorbereitet und UI aktualisiert.'});
@@ -9829,23 +9886,23 @@ function _cacheTimelineOutlierTypeKey(plan){
 }
 
 function _cacheTimelineOutlierTypes(){
-  return ['counter','decrease','counterreset','bounds','gap','fault_phase','null','zero','ignored'];
+  return ['rate_jump','negative_jump','reset_event','range_violation','time_gap','fault_cluster','null_value','zero_value','ignored'];
 }
 
 function _cacheTimelineOutlierTypeLabels(){
-  return {counter:'Counter',decrease:'Counter Abfall',counterreset:'Counterreset',bounds:'Grenzen',gap:'Messwertluecke',fault_phase:'Stoerphase',null:'NULL',zero:'0-Werte',ignored:'Ignoriert'};
+  return OUTLIER_TYPE_LABELS;
 }
 
 function _cacheTimelineOutlierTypeColor(t){
-  const type = String(t || '').trim();
+  const type = normalizeOutlierTypeKey(t);
   const map = {
-    counter: '#2563eb',
-    decrease: '#7c3aed',
-    bounds: '#dc2626',
-    gap: '#f59e0b',
-    fault_phase: '#b45309',
-    null: '#6b7280',
-    zero: '#10b981',
+    rate_jump: '#2563eb',
+    negative_jump: '#7c3aed',
+    range_violation: '#dc2626',
+    time_gap: '#f59e0b',
+    fault_cluster: '#b45309',
+    null_value: '#6b7280',
+    zero_value: '#10b981',
     ignored: '#9ca3af',
   };
   return map[type] || '#6b7280';
@@ -10574,7 +10631,7 @@ async function _showAnalysisHistory(){
     return;
   }
 
-  const typeLabels = {counter: 'Counter', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphase', null: 'NULL', zero: '0-Werte'};
+  const typeLabels = OUTLIER_TYPE_LABELS;
 
   let text = '';
   if(events.length){
@@ -12567,9 +12624,9 @@ try{
       // Detect outlier type for the selected raw row (Issue #390)
       const selOut = _findOutlierInfoByTime(rowTimeFull(cur) || String(cur && cur.time ? cur.time : ''));
       const selTypes = (selOut && Array.isArray(selOut.types))
-        ? selOut.types.map(x=>String(x||'').trim()).filter(Boolean)
+        ? normalizeOutlierTypeKeys(selOut.types)
         : [];
-      const typePrio = ['counterreset','counter','decrease','bounds','gap','fault_phase','null','zero'];
+      const typePrio = ['reset_event','rate_jump','negative_jump','range_violation','time_gap','fault_cluster','null_value','zero_value'];
       let outType = '';
       for(const t of typePrio){ if(selTypes.includes(t)){ outType = t; break; } }
       if(!outType && selTypes.length) outType = String(selTypes[0] || '');
@@ -12594,7 +12651,7 @@ try{
       let meta = null;
       let promptRow = { time: String(cur.time || key), old_value: toFiniteNumber(cur.value), new_value: null };
 
-      if(outType === 'counterreset'){
+      if(outType === 'reset_event'){
         const beginTime = selOut && selOut.counterreset_begin_time ? String(selOut.counterreset_begin_time || '').trim() : '';
         let beforeVal = (selOut && selOut.counterreset_before_value !== undefined) ? toFiniteNumber(selOut.counterreset_before_value) : null;
         if(beforeVal === null) beforeVal = prev ? prev.v : null;
@@ -12649,7 +12706,7 @@ try{
           trigger_action: 'automatic_correction',
           trigger_button: 'raw_auto_correct',
           source_action: 'automatic_correction',
-          detected_outlier_type: 'counterreset',
+          detected_outlier_type: 'reset_event',
           strategy_id: 'counterreset_cleanup_prefault',
           strategy_description: 'Counterreset erkannt: Reset bleibt erhalten. Unplausible Zwischenwerte/Spikes vor dem Reset werden auf den letzten plausiblen Wert vor dem Fehler gesetzt.',
         };
@@ -14742,7 +14799,7 @@ function _rawVisibleWindowSummary(){
 function _repairReasonForPreset(preset){
   const p = String(preset || '').trim();
   if(p === 'repair_duplicate_timestamp') return 'repair_duplicate_timestamp';
-  if(p === 'repair_counterreset') return 'repair_counter_rollover';
+      if(p === 'repair_counterreset') return 'repair_counter_rollover';
   if(p === 'repair_counter') return 'repair_counter_rollover';
   if(p === 'repair_decrease') return 'repair_counter_rollover';
   if(p === 'repair_bounds') return 'repair_bounds';
@@ -14758,15 +14815,15 @@ function _repairStrategyMeta(preset){
   const p = String(preset || '').trim();
   const outTypeMap = {
     repair_duplicate_timestamp: 'duplicate_timestamp',
-    repair_counterreset: 'counterreset',
-    repair_counter: 'counter',
-    repair_decrease: 'decrease',
-    repair_bounds: 'bounds',
-    repair_fault_phase: 'fault_phase',
-    repair_null: 'null',
-    repair_zero: 'zero',
+    repair_counterreset: 'reset_event',
+    repair_counter: 'rate_jump',
+    repair_decrease: 'negative_jump',
+    repair_bounds: 'range_violation',
+    repair_fault_phase: 'fault_cluster',
+    repair_null: 'null_value',
+    repair_zero: 'zero_value',
     repair_flatline: 'flatline',
-    repair_gap: 'gap',
+    repair_gap: 'time_gap',
   };
   const descMap = {
     repair_duplicate_timestamp: 'Erkennt mehrere Raw-Werte mit gleichem (ms) Zeitstempel und schlaegt vor, einen davon zu loeschen (nur sichtbares Raw-Fenster).',
@@ -14937,7 +14994,7 @@ function _buildRepairPlan(presetRaw){
   }
 
   if(preset === 'auto'){
-    const prio = ['counterreset','counter','decrease','bounds','fault_phase','null','zero','gap'];
+    const prio = ['reset_event','rate_jump','negative_jump','range_violation','fault_cluster','null_value','zero_value','time_gap'];
     let found = '';
     for(const r of rows){
       const o0 = _findOutlierInfoByTime(String(r && r.time ? r.time : ''));
@@ -14946,11 +15003,11 @@ function _buildRepairPlan(presetRaw){
       if(found) break;
     }
     const map = {
-      counterreset: 'repair_counterreset',
+      reset_event: 'repair_counterreset',
       counter: 'repair_counter',
       decrease: 'repair_decrease',
       bounds: 'repair_bounds',
-      fault_phase: 'repair_fault_phase',
+      fault_cluster: 'repair_fault_phase',
       null: 'repair_null',
       zero: 'repair_zero',
       gap: 'repair_gap',
@@ -15104,12 +15161,12 @@ function _buildRepairPlan(presetRaw){
   }else{
     // Generic: for the selected outlier type, interpolate per row.
     const typeMap = {
-      repair_counter: 'counter',
-      repair_decrease: 'decrease',
-      repair_bounds: 'bounds',
-      repair_fault_phase: 'fault_phase',
-      repair_null: 'null',
-      repair_zero: 'zero',
+      repair_counter: 'rate_jump',
+      repair_decrease: 'negative_jump',
+      repair_bounds: 'range_violation',
+      repair_fault_phase: 'fault_cluster',
+      repair_null: 'null_value',
+      repair_zero: 'zero_value',
     };
     const wantType = typeMap[effPreset] || '';
     for(let idx=0; idx<rows.length; idx++){
@@ -15934,7 +15991,7 @@ async function refreshCachingSection(){
   const $deleteBtn = document.getElementById('analysis_cache_delete_series');
 
   const types = getRawOutlierFilterTypes();
-  const typeLabels = {counter: 'Counter Ausreisser', decrease: 'Counter Abfall', counterreset: 'Counterreset', bounds: 'Grenzen', gap: 'Messwertlücke', fault_phase: 'Stoerphasensuche', null: 'NULL Werte', zero: '0-Werte'};
+  const typeLabels = OUTLIER_TYPE_LABELS;
   const typeNames = types.map(t => typeLabels[t] || t).join(', ');
   const range = base.range || '24h';
   const entityInfo = base.entity_id ? ('Entity ID: ' + base.entity_id) : (base.friendly_name ? ('Friendly Name: ' + base.friendly_name) : '');
@@ -15995,14 +16052,14 @@ async function refreshCachingSection(){
         const gaps = analysisGaps;
         const dirty = analysisDirty;
         const typeCounts = analysisPlan.cached_outlier_type_counts || {};
-        const foundTxt = 'Gefunden: Counter: ' + String(typeCounts.counter || 0)
-          + ' | Counter Abfall: ' + String(typeCounts.decrease || 0)
-          + ' | Counterreset: ' + String(typeCounts.counterreset || 0)
-          + ' | Grenzen: ' + String(typeCounts.bounds || 0)
-          + ' | Messwertlücke: ' + String(typeCounts.gap || 0)
-          + ' | Stoerphase: ' + String(typeCounts.fault_phase || 0)
-          + ' | NULL: ' + String(typeCounts.null || 0)
-          + ' | 0-Werte: ' + String(typeCounts.zero || 0)
+        const foundTxt = 'Gefunden: Counter-Sprung pro Zeit: ' + String(typeCounts.rate_jump || 0)
+          + ' | Negativer Sprung: ' + String(typeCounts.negative_jump || 0)
+          + ' | Counter-Reset: ' + String(typeCounts.reset_event || 0)
+          + ' | Grenzverletzung: ' + String(typeCounts.range_violation || 0)
+          + ' | Zeitlücke: ' + String(typeCounts.time_gap || 0)
+          + ' | Störphase: ' + String(typeCounts.fault_cluster || 0)
+          + ' | NULL-Wert: ' + String(typeCounts.null_value || 0)
+          + ' | Unplausibler 0-Wert: ' + String(typeCounts.zero_value || 0)
           + ' | Ignoriert: ' + String(typeCounts.ignored || 0);
         _saveAnalysisEventOnce({
           at: new Date().toISOString(),
@@ -16957,7 +17014,7 @@ async function runOutlierScan(){
       counterBase = (pj.counter_base_value !== undefined && pj.counter_base_value !== null && String(pj.counter_base_value).trim() !== "") ? pj.counter_base_value : counterBase;
       scanState = (pj.scan_state && typeof pj.scan_state === 'object') ? pj.scan_state : scanState;
 
-      const got = (pj.rows || []).map(r => ({ time: r.time, value: r.value, reason: r.reason || "", class: r.class || "primary" }));
+      const got = normalizeOutlierRows((pj.rows || []).map(r => ({ ...r, time: r.time, value: r.value, reason: r.reason || "", class: r.class || "primary" })));
       OUTLIER_ROWS = OUTLIER_ROWS.concat(got);
       try{ OUTLIER_SCANNED_TOTAL = scannedTotal; OUTLIER_FOUND_TOTAL = (OUTLIER_ROWS||[]).length; _updateAnalysisInfo(); }catch(e){}
       if(OUTLIER_ROWS.length >= UI_RAW_OUTLIER_SEARCH_LIMIT){
@@ -17267,7 +17324,7 @@ try{
       try{ const box = document.getElementById('raw_outlier_overview'); if(box) box.style.setProperty('--max-rows', String(RAW_OUTLIER_VISIBLE_ROWS)); }catch(e){}
 
       // Restore selected analysis types (prefer global selection state if present)
-      const savedTypes = (globalSel.raw_outlier_types && Array.isArray(globalSel.raw_outlier_types)) ? globalSel.raw_outlier_types : (st.raw_outlier_types && Array.isArray(st.raw_outlier_types) ? st.raw_outlier_types : null);
+      const savedTypes = (globalSel.raw_outlier_types && Array.isArray(globalSel.raw_outlier_types)) ? normalizeOutlierTypeKeys(globalSel.raw_outlier_types) : (st.raw_outlier_types && Array.isArray(st.raw_outlier_types) ? normalizeOutlierTypeKeys(st.raw_outlier_types) : null);
       if(savedTypes){
         ANALYSIS_SELECTED_TYPES = savedTypes.slice();
         ANALYSIS_UNSELECTED_TYPES = ALL_OUTLIER_TYPES.map(t=>t.value).filter(v => !ANALYSIS_SELECTED_TYPES.includes(v));

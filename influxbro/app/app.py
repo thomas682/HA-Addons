@@ -178,6 +178,57 @@ APP_STATE_PATH = DATA_DIR / "influxbro_app_state.json"
 OUTLIER_STRATEGY_LOCK = threading.RLock()
 OUTLIER_STRATEGY_PATH = DATA_DIR / "influxbro_outlier_strategies.json"
 
+OUTLIER_TYPE_LEGACY_TO_NEW = {
+    "counter": "rate_jump",
+    "counterreset": "reset_event",
+    "decrease": "negative_jump",
+    "bounds": "range_violation",
+    "gap": "time_gap",
+    "fault_phase": "fault_cluster",
+    "null": "null_value",
+    "zero": "zero_value",
+    "ignored": "ignored",
+}
+OUTLIER_TYPE_NEW_TO_LEGACY = {v: k for k, v in OUTLIER_TYPE_LEGACY_TO_NEW.items()}
+
+
+def _outlier_type_to_new(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    if not raw:
+        return ""
+    if raw in OUTLIER_TYPE_NEW_TO_LEGACY:
+        return raw
+    return OUTLIER_TYPE_LEGACY_TO_NEW.get(raw, raw)
+
+
+def _outlier_type_to_legacy(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    if not raw:
+        return ""
+    if raw in OUTLIER_TYPE_LEGACY_TO_NEW:
+        return raw
+    return OUTLIER_TYPE_NEW_TO_LEGACY.get(raw, raw)
+
+
+def _outlier_types_to_new(values: Any) -> list[str]:
+    xs = values if isinstance(values, list) else []
+    out: list[str] = []
+    for v in xs:
+        s = _outlier_type_to_new(v)
+        if s and s not in out:
+            out.append(s)
+    return out
+
+
+def _outlier_types_to_legacy(values: Any) -> list[str]:
+    xs = values if isinstance(values, list) else []
+    out: list[str] = []
+    for v in xs:
+        s = _outlier_type_to_legacy(v)
+        if s and s not in out:
+            out.append(s)
+    return out
+
 # UI profiles (file-based; global active profile)
 UI_PROFILES_LOCK = threading.RLock()
 UI_PROFILES_DIR = DATA_DIR / "ui_profiles"
@@ -5134,7 +5185,7 @@ def _analysis_cache_key(
         "friendly_name": str(friendly_name or "").strip() or None,
         "start": str(start_iso or "").strip(),
         "stop": str(stop_iso or "").strip(),
-        "search_types": ["bounds", "counter", "decrease", "counterreset", "fault_phase", "null", "zero"],
+        "search_types": ["range_violation", "rate_jump", "negative_jump", "reset_event", "fault_cluster", "null_value", "zero_value"],
     }
 
 
@@ -12849,14 +12900,14 @@ def _measurement_profile_quality(ha: dict[str, Any], yaml_info: dict[str, Any], 
 
 
 OUTLIER_STRATEGY_ALLOWED_TYPES = [
-    "counter",
-    "decrease",
-    "counterreset",
-    "bounds",
-    "gap",
-    "fault_phase",
-    "null",
-    "zero",
+    "rate_jump",
+    "negative_jump",
+    "reset_event",
+    "range_violation",
+    "time_gap",
+    "fault_cluster",
+    "null_value",
+    "zero_value",
 ]
 
 OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
@@ -12866,23 +12917,23 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "description": "Zaehler mit total_increasing: Counter-, Reset- und Abfallpruefungen aktiv.",
         "priority": 100,
         "match": {"internal_types": ["counter_increasing"]},
-        "enable_types": ["counter", "counterreset", "decrease", "gap", "null", "zero"],
-        "disable_types": ["bounds", "fault_phase"],
+        "enable_types": ["rate_jump", "reset_event", "negative_jump", "time_gap", "null_value", "zero_value"],
+        "disable_types": ["range_violation", "fault_cluster"],
         "params": {
-            "counter": {"max_rate_per_second": 0.25, "stale_gap_seconds": 3600, "after_gap_mode": "rate_based"},
-            "counterreset": {"reset_detection_threshold": 0.8, "allow_reset_to_zero": True, "post_reset_validation_points": 2},
-            "decrease": {"allow_small_negative_noise": 0.0, "drop_threshold": 0.0},
-            "gap": {"gap_seconds": 300},
-            "null": {},
-            "zero": {"zero_only_if_prev_nonzero": True, "zero_min_run_points": 1},
+            "rate_jump": {"max_rate_per_second": 0.25, "stale_gap_seconds": 3600, "after_gap_mode": "rate_based"},
+            "reset_event": {"reset_detection_threshold": 0.8, "allow_reset_to_zero": True, "post_reset_validation_points": 2},
+            "negative_jump": {"allow_small_negative_noise": 0.0, "drop_threshold": 0.0},
+            "time_gap": {"gap_seconds": 300},
+            "null_value": {},
+            "zero_value": {"zero_only_if_prev_nonzero": True, "zero_min_run_points": 1},
         },
         "corrections": {
-            "counter": {"action": "mark_only"},
-            "counterreset": {"action": "mark_only"},
-            "decrease": {"action": "mark_only"},
-            "gap": {"action": "mark_only"},
-            "null": {"action": "mark_only"},
-            "zero": {"action": "mark_only"},
+            "rate_jump": {"action": "mark_only"},
+            "reset_event": {"action": "mark_only"},
+            "negative_jump": {"action": "mark_only"},
+            "time_gap": {"action": "mark_only"},
+            "null_value": {"action": "mark_only"},
+            "zero_value": {"action": "mark_only"},
         },
     },
     {
@@ -12891,19 +12942,19 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "description": "Ruecksetzbare Zaehler: Reset und Luecken im Fokus, Counter-Abfall konservativer.",
         "priority": 90,
         "match": {"internal_types": ["counter_resettable"]},
-        "enable_types": ["counterreset", "gap", "null", "zero"],
-        "disable_types": ["counter", "decrease", "bounds"],
+        "enable_types": ["reset_event", "time_gap", "null_value", "zero_value"],
+        "disable_types": ["rate_jump", "negative_jump", "range_violation"],
         "params": {
-            "counterreset": {"max_rate_per_second": 0.25, "stale_gap_seconds": 3600, "reset_detection_threshold": 0.8, "allow_reset_to_zero": True, "post_reset_validation_points": 2},
-            "gap": {"gap_seconds": 300},
-            "null": {},
-            "zero": {"zero_only_if_prev_nonzero": True, "zero_min_run_points": 1},
+            "reset_event": {"max_rate_per_second": 0.25, "stale_gap_seconds": 3600, "reset_detection_threshold": 0.8, "allow_reset_to_zero": True, "post_reset_validation_points": 2},
+            "time_gap": {"gap_seconds": 300},
+            "null_value": {},
+            "zero_value": {"zero_only_if_prev_nonzero": True, "zero_min_run_points": 1},
         },
         "corrections": {
-            "counterreset": {"action": "mark_only"},
-            "gap": {"action": "mark_only"},
-            "null": {"action": "mark_only"},
-            "zero": {"action": "mark_only"},
+            "reset_event": {"action": "mark_only"},
+            "time_gap": {"action": "mark_only"},
+            "null_value": {"action": "mark_only"},
+            "zero_value": {"action": "mark_only"},
         },
     },
     {
@@ -12912,21 +12963,21 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "description": "Normale numerische Messwerte: Grenzen, Luecken und Stoerphasen aktiv.",
         "priority": 80,
         "match": {"internal_types": ["gauge_numeric", "unknown_numeric"]},
-        "enable_types": ["bounds", "gap", "fault_phase", "null", "zero"],
-        "disable_types": ["counter", "counterreset", "decrease"],
+        "enable_types": ["range_violation", "time_gap", "fault_cluster", "null_value", "zero_value"],
+        "disable_types": ["rate_jump", "reset_event", "negative_jump"],
         "params": {
-            "bounds": {"min": None, "max": None},
-            "gap": {"gap_seconds": 300},
-            "fault_phase": {"recovery_streak": 2, "fault_min_points": 2},
-            "null": {},
-            "zero": {"zero_only_if_prev_nonzero": True, "zero_min_run_points": 1},
+            "range_violation": {"min": None, "max": None},
+            "time_gap": {"gap_seconds": 300},
+            "fault_cluster": {"recovery_streak": 2, "fault_min_points": 2},
+            "null_value": {},
+            "zero_value": {"zero_only_if_prev_nonzero": True, "zero_min_run_points": 1},
         },
         "corrections": {
-            "bounds": {"below_min_action": "mark_only", "above_max_action": "mark_only", "below_min_value": None, "above_max_value": None},
-            "gap": {"action": "mark_only"},
-            "fault_phase": {"action": "mark_only"},
-            "null": {"action": "mark_only"},
-            "zero": {"action": "mark_only"},
+            "range_violation": {"below_min_action": "mark_only", "above_max_action": "mark_only", "below_min_value": None, "above_max_value": None},
+            "time_gap": {"action": "mark_only"},
+            "fault_cluster": {"action": "mark_only"},
+            "null_value": {"action": "mark_only"},
+            "zero_value": {"action": "mark_only"},
         },
     },
     {
@@ -12935,10 +12986,10 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "description": "Binaere Messwerte: nur Null-/Lueckenpruefung, keine numerischen Ausreissertypen.",
         "priority": 70,
         "match": {"internal_types": ["binary"]},
-        "enable_types": ["gap", "null"],
-        "disable_types": ["counter", "counterreset", "decrease", "bounds", "fault_phase", "zero"],
-        "params": {"gap": {"gap_seconds": 300}, "null": {}},
-        "corrections": {"gap": {"action": "mark_only"}, "null": {"action": "mark_only"}},
+        "enable_types": ["time_gap", "null_value"],
+        "disable_types": ["rate_jump", "reset_event", "negative_jump", "range_violation", "fault_cluster", "zero_value"],
+        "params": {"time_gap": {"gap_seconds": 300}, "null_value": {}},
+        "corrections": {"time_gap": {"action": "mark_only"}, "null_value": {"action": "mark_only"}},
     },
     {
         "id": "builtin.enum_text",
@@ -12946,17 +12997,17 @@ OUTLIER_STRATEGY_BUILTINS: list[dict[str, Any]] = [
         "description": "Textuelle Zustandswerte: nur Luecken-/NULL-Pruefung.",
         "priority": 60,
         "match": {"internal_types": ["enum_text", "unknown_text", "timestamp", "date"]},
-        "enable_types": ["gap", "null"],
-        "disable_types": ["counter", "counterreset", "decrease", "bounds", "fault_phase", "zero"],
-        "params": {"gap": {"gap_seconds": 300}, "null": {}},
-        "corrections": {"gap": {"action": "mark_only"}, "null": {"action": "mark_only"}},
+        "enable_types": ["time_gap", "null_value"],
+        "disable_types": ["rate_jump", "reset_event", "negative_jump", "range_violation", "fault_cluster", "zero_value"],
+        "params": {"time_gap": {"gap_seconds": 300}, "null_value": {}},
+        "corrections": {"time_gap": {"action": "mark_only"}, "null_value": {"action": "mark_only"}},
     },
 ]
 
 OUTLIER_STRATEGY_MODES = {"auto", "manual", "all_on", "all_off"}
 
 OUTLIER_STRATEGY_TYPE_DEFS: dict[str, dict[str, Any]] = {
-    "bounds": {
+    "range_violation": {
         "label": "Grenzverletzung",
         "description": "Prüft Werte außerhalb einer Unter-/Obergrenze.",
         "params": [
@@ -12970,7 +13021,7 @@ OUTLIER_STRATEGY_TYPE_DEFS: dict[str, dict[str, Any]] = {
             {"key": "above_max_value", "label": "Ersatzwert über Max", "type": "number"},
         ],
     },
-    "counter": {
+    "rate_jump": {
         "label": "Counter-Sprung pro Zeit",
         "description": "Bewertet Sprünge relativ zur verstrichenen Zeit.",
         "params": [
@@ -12982,7 +13033,7 @@ OUTLIER_STRATEGY_TYPE_DEFS: dict[str, dict[str, Any]] = {
             {"key": "action", "label": "Bei unplausiblem Sprung", "type": "select", "options": ["mark_only", "carry_forward", "interpolate", "delete_value"]},
         ],
     },
-    "counterreset": {
+    "reset_event": {
         "label": "Counter-Reset",
         "description": "Prüft, ob ein negativer Sprung plausibel als Reset erklärbar ist.",
         "params": [
@@ -12996,7 +13047,7 @@ OUTLIER_STRATEGY_TYPE_DEFS: dict[str, dict[str, Any]] = {
             {"key": "action", "label": "Bei Reset", "type": "select", "options": ["mark_only", "carry_forward", "delete_value"]},
         ],
     },
-    "decrease": {
+    "negative_jump": {
         "label": "Negativer Sprung",
         "description": "Prüft unplausible Abfälle bei nicht-resettable Countern.",
         "params": [
@@ -13007,7 +13058,7 @@ OUTLIER_STRATEGY_TYPE_DEFS: dict[str, dict[str, Any]] = {
             {"key": "action", "label": "Bei Abfall", "type": "select", "options": ["mark_only", "carry_forward", "delete_value"]},
         ],
     },
-    "gap": {
+    "time_gap": {
         "label": "Zeitlücke",
         "description": "Prüft zu große Abstände zwischen Messpunkten.",
         "params": [
@@ -13017,7 +13068,7 @@ OUTLIER_STRATEGY_TYPE_DEFS: dict[str, dict[str, Any]] = {
             {"key": "action", "label": "Bei Lücke", "type": "select", "options": ["mark_only", "interpolate", "carry_forward", "delete_value"]},
         ],
     },
-    "fault_phase": {
+    "fault_cluster": {
         "label": "Störphase",
         "description": "Erkennt zusammenhängende fehlerhafte Phasen statt Einzelpunkte.",
         "params": [
@@ -13028,7 +13079,7 @@ OUTLIER_STRATEGY_TYPE_DEFS: dict[str, dict[str, Any]] = {
             {"key": "action", "label": "Bei Störphase", "type": "select", "options": ["mark_only", "interpolate_phase", "delete_value"]},
         ],
     },
-    "null": {
+    "null_value": {
         "label": "NULL-Wert",
         "description": "Erkennt fehlende bzw. NULL-Werte.",
         "params": [],
@@ -13037,7 +13088,7 @@ OUTLIER_STRATEGY_TYPE_DEFS: dict[str, dict[str, Any]] = {
             {"key": "fixed_value", "label": "Fester Ersatzwert", "type": "number"},
         ],
     },
-    "zero": {
+    "zero_value": {
         "label": "Unplausibler 0-Wert",
         "description": "Prüft Nullwerte dort, wo 0 fachlich unplausibel ist.",
         "params": [
@@ -13131,7 +13182,7 @@ def _outlier_strategy_types_norm(values: Any) -> list[str]:
     xs = values if isinstance(values, list) else []
     out: list[str] = []
     for v in xs:
-        s = str(v or "").strip().lower()
+        s = _outlier_type_to_new(v)
         if s and s in OUTLIER_STRATEGY_ALLOWED_TYPES and s not in out:
             out.append(s)
     return out
@@ -13146,7 +13197,7 @@ def _outlier_strategy_params_norm(raw: Any) -> dict[str, dict[str, Any]]:
     src = raw if isinstance(raw, dict) else {}
     out: dict[str, dict[str, Any]] = {}
     for key, value in src.items():
-        t = str(key or "").strip()
+        t = _outlier_type_to_new(key)
         if t not in OUTLIER_STRATEGY_ALLOWED_TYPES:
             continue
         if not isinstance(value, dict):
@@ -13255,8 +13306,8 @@ def _outlier_strategy_pick(profile: dict[str, Any], custom_strategies: list[dict
             "name": "Fallback",
             "description": "Konservative Standardstrategie bei unklarer Klassifikation.",
             "priority": -1,
-            "enable_types": ["bounds", "gap", "null"],
-            "disable_types": ["counter", "counterreset", "decrease", "fault_phase", "zero"],
+            "enable_types": ["range_violation", "time_gap", "null_value"],
+            "disable_types": ["rate_jump", "reset_event", "negative_jump", "fault_cluster", "zero_value"],
             "match": {},
         }
         return {"selected": fallback, "reason_log": ["fallback_strategy"], "matched": []}
@@ -32724,22 +32775,23 @@ def api_outliers():
     search_types = body.get("search_types") or []
     if isinstance(search_types, str):
         search_types = [t.strip() for t in search_types.split(",") if t.strip()]
+    search_types = _outlier_types_to_new(search_types)
 
-    include_null = "null" in search_types or bool(body.get("include_null", False))
-    include_zero = "zero" in search_types or bool(body.get("include_zero", False))
-    include_gap = "gap" in search_types or bool(body.get("include_gap", False))
-    bounds_enabled = "bounds" in search_types or bool(body.get("bounds_enabled", False))
+    include_null = "null_value" in search_types or bool(body.get("include_null", False))
+    include_zero = "zero_value" in search_types or bool(body.get("include_zero", False))
+    include_gap = "time_gap" in search_types or bool(body.get("include_gap", False))
+    bounds_enabled = "range_violation" in search_types or bool(body.get("bounds_enabled", False))
     min_v = body.get("min")
     max_v = body.get("max")
     counter_enabled = (
-        ("counter" in search_types)
-        or ("decrease" in search_types)
-        or ("counterreset" in search_types)
+        ("rate_jump" in search_types)
+        or ("negative_jump" in search_types)
+        or ("reset_event" in search_types)
         or bool(body.get("counter_enabled", False))
     )
-    counter_decrease = ("decrease" in search_types) or ("counterreset" in search_types) or bool(body.get("counter_decrease", True))
-    counter_max_step = "counter" in search_types or bool(body.get("counter_max_step", True))
-    fault_phase_enabled = "fault_phase" in search_types or bool(body.get("fault_phase_enabled", False))
+    counter_decrease = ("negative_jump" in search_types) or ("reset_event" in search_types) or bool(body.get("counter_decrease", True))
+    counter_max_step = "rate_jump" in search_types or bool(body.get("counter_max_step", True))
+    fault_phase_enabled = "fault_cluster" in search_types or bool(body.get("fault_phase_enabled", False))
 
     # Optional value filter mode (e.g. free filter on the dashboard).
     value_filter_enabled = bool(body.get("value_filter_enabled", False))
@@ -33527,9 +33579,19 @@ from(bucket: "{cfg["bucket"]}")
         except Exception:
             pass
 
+        rows_out = []
+        for row in rows:
+            if not isinstance(row, dict):
+                rows_out.append(row)
+                continue
+            item = dict(row)
+            if isinstance(item.get("types"), list):
+                item["types"] = _outlier_types_to_new(item.get("types"))
+            rows_out.append(item)
+
         return jsonify({
             "ok": True,
-            "rows": rows,
+            "rows": rows_out,
             "scanned": scanned,
             "start": start,
             "stop": stop,
