@@ -202,6 +202,8 @@ Die Strategieinfo beschreibt den abgeleiteten Messwerttyp jetzt ausfuehrlicher. 
 
 Intern verwendet die Strategie- und Typenauswahl jetzt klarere technische Regel-Keys (`rate_jump`, `reset_event`, `negative_jump`, `range_violation`, `time_gap`, `fault_cluster`, `null_value`, `zero_value`). Aeltere gespeicherte Dashboard-/Strategie-Daten mit den frueheren Schluesseln werden beim Laden weiterhin akzeptiert und automatisch auf die neuen Namen normalisiert.
 
+Im Dialog `Strategieinfo` steht jetzt zusaetzlich der Button `JSON Aufbau und Beispiele` zur Verfuegung. Der Hilfedialog erklaert den Zweck des JSON-Feldes (wann JSON sinnvoll ist und wann nicht), beschreibt den Aufbau von Strategien und enthaelt mehrere direkt nutzbare Beispiele mit Copy-Funktion. Beim Schliessen springt die UI wieder in den zuvor geoeffneten `Strategieinfo`-Dialog zurueck.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

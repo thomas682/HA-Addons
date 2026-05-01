@@ -1322,6 +1322,9 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px; grid-column:1 / -1;">
             <div style="font-weight:700;">Benutzerdefinierte Strategien (JSON)</div>
             <div class="muted" style="font-size:12px; line-height:1.45;">Optional zusaetzliche serverseitige Strategien. Es gilt immer die hoechste Prioritaet, danach Spezifitaet, danach ID. IDs muessen eindeutig sein.</div>
+            <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
+              <button class="btn_sm" id="analysis_strategy_dialog_json_help" type="button" data-ui="dialog_analysis_strategy.btn_json_help" data-ib-pickkey="dialog_analysis_strategy.btn_json_help">JSON Aufbau und Beispiele</button>
+            </div>
             <textarea id="analysis_strategy_dialog_json" style="width:100%; min-height:220px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:12px;"></textarea>
           </div>
         </div>
@@ -1329,6 +1332,23 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <button class="btn_sm" id="analysis_strategy_dialog_close" type="button" data-ui="dialog_analysis_strategy.btn_close" data-ib-pickkey="dialog_analysis_strategy.btn_close">Schliessen</button>
           <button class="btn_sm" id="analysis_strategy_dialog_save" type="button" data-ui="dialog_analysis_strategy.btn_save" data-ib-pickkey="dialog_analysis_strategy.btn_save">Speichern</button>
         </div>
+      </div>
+    </div>
+
+    <div id="analysis_strategy_json_help_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+      <div style="background:#fff; border-radius:16px; padding:16px; max-width:1080px; width:min(1080px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28); resize:both; overflow: auto; min-width:720px; min-height:520px;">
+        <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
+          <div>
+            <div style="font-weight:900; font-size:16px;">JSON Aufbau und Beispiele</div>
+            <div class="muted" id="analysis_strategy_json_help_meta" style="margin-top:4px; font-size:12px; line-height:1.4;">pk: dialog_analysis_strategy_json_help.root | tpl: dialog_info_popup</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:12px;">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Suche</span><input id="analysis_strategy_json_help_search" type="text" placeholder="Suche in Erklärung und Beispielen" /></label>
+          <button type="button" id="analysis_strategy_json_help_copy_all" class="btn_sm" style="width:auto; align-self:end;">Alle Beispiele kopieren</button>
+          <button type="button" id="analysis_strategy_json_help_close" class="btn_sm" style="width:auto; align-self:end;">Schliessen</button>
+        </div>
+        <div id="analysis_strategy_json_help_content" style="display:flex; flex-direction:column; gap:14px;"></div>
       </div>
     </div>
 
@@ -1511,6 +1531,12 @@ const $analysisStrategyDialogEffective = document.getElementById('analysis_strat
 const $analysisStrategyDialogJson = document.getElementById('analysis_strategy_dialog_json');
 const $analysisStrategyDialogClose = document.getElementById('analysis_strategy_dialog_close');
 const $analysisStrategyDialogSave = document.getElementById('analysis_strategy_dialog_save');
+const $analysisStrategyDialogJsonHelp = document.getElementById('analysis_strategy_dialog_json_help');
+const $analysisStrategyJsonHelpDialog = document.getElementById('analysis_strategy_json_help_dialog');
+const $analysisStrategyJsonHelpSearch = document.getElementById('analysis_strategy_json_help_search');
+const $analysisStrategyJsonHelpContent = document.getElementById('analysis_strategy_json_help_content');
+const $analysisStrategyJsonHelpClose = document.getElementById('analysis_strategy_json_help_close');
+const $analysisStrategyJsonHelpCopyAll = document.getElementById('analysis_strategy_json_help_copy_all');
 const $btnCancelLoad = document.getElementById('cancel_load');
 const $loadStatus = document.getElementById('load_status');
 const $loadProgressFill = document.getElementById('load_progress_fill');
@@ -6622,6 +6648,161 @@ let ANALYSIS_SELECTED_TYPES = ['rate_jump', 'negative_jump', 'reset_event', 'ran
 let ANALYSIS_UNSELECTED_TYPES = [];
 let ANALYSIS_SHOW_IGNORED = false;
 let LAST_OUTLIER_STRATEGY = null;
+let ANALYSIS_STRATEGY_JSON_HELP_PARENT_VISIBLE = false;
+
+const ANALYSIS_STRATEGY_JSON_HELP_INTRO = [
+  'In diesem JSON-Feld definierst du benutzerdefinierte serverseitige Strategien für die automatische Auswahl von Ausreißertypen.',
+  'Diese Strategien ergänzen die eingebauten Standardstrategien und können über `priority` gezielt bevorzugt werden.',
+  'Das Feld ist nicht für die normale manuelle Messwert-Anpassung gedacht; dafür dienen direkt im Profilbereich die Typen-Chips, `Automatikwahl`, `alle ein`, `alle aus` sowie die Parameter- und Korrekturfelder.',
+  'Verwende JSON immer dann, wenn eine Regel für viele ähnliche Messwerte gelten soll, zum Beispiel für alle Temperaturfühler in `°C` oder alle Energiezähler mit `state_class=total_increasing`.',
+  'Verwende kein JSON, wenn du nur einen einzelnen Messwert anpassen willst; dann ist die direkte Bedienung im Profilbereich der richtige Weg.',
+  'Eine Strategie beschreibt, wann sie greift (`match`), welche Typen standardmäßig aktiv oder deaktiviert werden (`enable_types`, `disable_types`) und optional welche Parameter/Korrekturen vorbelegt werden (`params`, `corrections`).',
+  'Pro Messwert wird serverseitig immer genau eine Basisstrategie ausgewählt: höchste Priorität gewinnt, danach höchste Spezifität, danach ID.',
+  'Manuelle Änderungen im Dashboard werden erst nach dieser Basisauswahl als messwertspezifische Overrides angewendet.',
+].join('\n\n');
+
+const ANALYSIS_STRATEGY_JSON_HELP_EXAMPLES = [
+  {
+    title: 'Beispiel 1: Temperatursensor in °C',
+    text: 'Wann JSON? Wenn alle Temperatursensoren in `°C` dieselben Grenzwerte und dieselbe Standardstrategie erhalten sollen. Wann kein JSON? Wenn nur ein einzelner Temperatursensor lokal andere Grenzwerte braucht; dann direkt im Profilbereich anpassen.',
+    json: {
+      id: 'custom.temperature_celsius_standard',
+      name: 'Temperatur in Celsius',
+      description: 'Standardstrategie für Temperatursensoren in °C.',
+      priority: 120,
+      match: { internal_types: ['gauge_numeric'], device_classes: ['temperature'], units: ['°C'] },
+      enable_types: ['range_violation', 'time_gap', 'fault_cluster', 'null_value'],
+      disable_types: ['rate_jump', 'reset_event', 'negative_jump', 'zero_value'],
+      params: {
+        range_violation: { min: -30, max: 40 },
+        time_gap: { gap_seconds: 600 },
+        fault_cluster: { recovery_streak: 2, fault_min_points: 2 }
+      },
+      corrections: {
+        range_violation: { below_min_action: 'clamp_to_min', above_max_action: 'clamp_to_max', below_min_value: null, above_max_value: null },
+        time_gap: { action: 'interpolate' },
+        fault_cluster: { action: 'mark_only' },
+        null_value: { action: 'interpolate', fixed_value: null }
+      }
+    }
+  },
+  {
+    title: 'Beispiel 2: Energiezähler Wh/kWh',
+    text: 'Wann JSON? Wenn alle Energiezähler mit `Wh` oder `kWh` dieselbe automatische Counter-Strategie erhalten sollen. Wann kein JSON? Wenn nur ein einzelner Zähler abweichende Grenzwerte für Sprünge oder Resets haben soll.',
+    json: {
+      id: 'custom.energy_counter_wh',
+      name: 'Energiezähler Wh',
+      description: 'Strategie für monoton steigende Energiezähler mit Wh oder kWh.',
+      priority: 120,
+      match: { internal_types: ['counter_increasing'], units: ['Wh', 'kWh'], state_classes: ['total_increasing'] },
+      enable_types: ['rate_jump', 'reset_event', 'negative_jump', 'time_gap', 'null_value', 'zero_value'],
+      disable_types: ['range_violation', 'fault_cluster'],
+      params: {
+        rate_jump: { max_rate_per_second: 5.0, stale_gap_seconds: 3600, after_gap_mode: 'rate_based' },
+        reset_event: { reset_detection_threshold: 0.8, allow_reset_to_zero: true, post_reset_validation_points: 2 },
+        negative_jump: { allow_small_negative_noise: 0.0, drop_threshold: 0.0 },
+        time_gap: { gap_seconds: 300 }
+      },
+      corrections: {
+        rate_jump: { action: 'mark_only' },
+        reset_event: { action: 'mark_only' },
+        negative_jump: { action: 'mark_only' },
+        time_gap: { action: 'mark_only' },
+        null_value: { action: 'mark_only' },
+        zero_value: { action: 'mark_only' }
+      }
+    }
+  },
+  {
+    title: 'Beispiel 3: Resetbarer Wasserzähler',
+    text: 'Wann JSON? Wenn alle Volumen- oder Wasserzähler mit legitimem Resetverhalten gleich behandelt werden sollen. Wann kein JSON? Wenn nur ein einzelner Zähler eine andere Reset-Schwelle oder Nachlaufprüfung bekommen soll.',
+    json: {
+      id: 'custom.resettable_water_meter',
+      name: 'Resetbarer Wasserzähler',
+      description: 'Strategie für Summenzähler mit legitimen Resets.',
+      priority: 110,
+      match: { internal_types: ['counter_resettable'], units: ['m3', 'l'], state_classes: ['total'] },
+      enable_types: ['reset_event', 'time_gap', 'null_value', 'zero_value'],
+      disable_types: ['rate_jump', 'negative_jump', 'range_violation'],
+      params: {
+        reset_event: { max_rate_per_second: 3.0, stale_gap_seconds: 3600, reset_detection_threshold: 0.8, allow_reset_to_zero: true, post_reset_validation_points: 3 },
+        time_gap: { gap_seconds: 600 }
+      },
+      corrections: {
+        reset_event: { action: 'mark_only' },
+        time_gap: { action: 'mark_only' },
+        null_value: { action: 'mark_only' },
+        zero_value: { action: 'mark_only' }
+      }
+    }
+  },
+  {
+    title: 'Beispiel 4: Leistungssensor in W / kW',
+    text: 'Wann JSON? Wenn alle Leistungssensoren standardmäßig dieselben Grenzen und dieselbe Fehlerlogik nutzen sollen. Wann kein JSON? Wenn nur eine einzelne Anlage lokal höhere Leistungsgrenzen oder andere Nullwertregeln braucht.',
+    json: {
+      id: 'custom.power_sensor_standard',
+      name: 'Leistungssensor',
+      description: 'Strategie für momentane Leistung in W oder kW.',
+      priority: 95,
+      match: { internal_types: ['gauge_numeric'], units: ['W', 'kW'], domains: ['sensor'] },
+      enable_types: ['range_violation', 'time_gap', 'fault_cluster', 'null_value', 'zero_value'],
+      disable_types: ['rate_jump', 'reset_event', 'negative_jump'],
+      params: {
+        range_violation: { min: 0, max: 30000 },
+        time_gap: { gap_seconds: 300 },
+        fault_cluster: { recovery_streak: 2, fault_min_points: 2 },
+        zero_value: { zero_only_if_prev_nonzero: true, zero_min_run_points: 2 }
+      },
+      corrections: {
+        range_violation: { below_min_action: 'mark_only', above_max_action: 'mark_only', below_min_value: null, above_max_value: null },
+        time_gap: { action: 'mark_only' },
+        fault_cluster: { action: 'mark_only' },
+        null_value: { action: 'mark_only', fixed_value: null },
+        zero_value: { action: 'mark_only', fixed_value: null }
+      }
+    }
+  },
+  {
+    title: 'Beispiel 5: Binärsensor / Zustandswert',
+    text: 'Wann JSON? Wenn alle Binärsensoren oder Zustandswerte dieselbe minimalistische Ausreißerstrategie bekommen sollen. Wann kein JSON? Wenn nur ein einzelner Statussensor lokal anders behandelt werden soll.',
+    json: {
+      id: 'custom.binary_sensor_standard',
+      name: 'Binärsensor',
+      description: 'Strategie für Binär- und Zustandswerte ohne numerische Ausreißerlogik.',
+      priority: 90,
+      match: { internal_types: ['binary'], domains: ['binary_sensor'] },
+      enable_types: ['time_gap', 'null_value'],
+      disable_types: ['rate_jump', 'reset_event', 'negative_jump', 'range_violation', 'fault_cluster', 'zero_value'],
+      params: { time_gap: { gap_seconds: 900 } },
+      corrections: { time_gap: { action: 'mark_only' }, null_value: { action: 'mark_only', fixed_value: null } }
+    }
+  },
+  {
+    title: 'Beispiel 6: Gerätegruppe per entity_id_regex',
+    text: 'Wann JSON? Wenn eine Gruppe ähnlicher Geräte über ein Namensmuster erkannt werden soll, zum Beispiel alle SMA-Zähler eines Standorts. Wann kein JSON? Wenn du nur einen einzelnen Messwert manuell überschreiben willst; dafür ist das Profilpanel besser geeignet.',
+    json: {
+      id: 'custom.sma_garage_energy',
+      name: 'SMA Garage Energie',
+      description: 'Spezialstrategie für SMA-Energiemesswerte in der Garage.',
+      priority: 130,
+      match: { internal_types: ['counter_increasing'], units: ['Wh', 'kWh'], entity_id_regex: '^sma_.*garage.*$' },
+      enable_types: ['rate_jump', 'reset_event', 'negative_jump', 'time_gap', 'null_value'],
+      disable_types: ['range_violation', 'fault_cluster', 'zero_value'],
+      params: {
+        rate_jump: { max_rate_per_second: 8.0, stale_gap_seconds: 5400, after_gap_mode: 'lenient_first_point' },
+        reset_event: { reset_detection_threshold: 0.9, allow_reset_to_zero: true, post_reset_validation_points: 2 },
+        time_gap: { gap_seconds: 600 }
+      },
+      corrections: {
+        rate_jump: { action: 'mark_only' },
+        reset_event: { action: 'mark_only' },
+        negative_jump: { action: 'mark_only' },
+        time_gap: { action: 'mark_only' },
+        null_value: { action: 'mark_only' }
+      }
+    }
+  }
+];
 let IGNORED_OUTLIERS_STATE = {};
 let RAW_OUTLIER_DISPLAY_LIMIT_PER_TYPE = 100;
 
@@ -8517,6 +8698,44 @@ function _outlierStrategyOpenDialog(){
     $analysisStrategyDialogJson.value = JSON.stringify(data.custom_strategies || [], null, 2);
   }
   $analysisStrategyDialog.style.display = 'flex';
+}
+
+function _analysisStrategyJsonHelpText(example){
+  return `${String(example.title || '')}\n\n${String(example.text || '')}\n\n${JSON.stringify(example.json || {}, null, 2)}`.trim();
+}
+
+function _analysisStrategyJsonHelpRender(){
+  if(!$analysisStrategyJsonHelpContent) return;
+  const q = String($analysisStrategyJsonHelpSearch && $analysisStrategyJsonHelpSearch.value || '').trim().toLowerCase();
+  const xs = ANALYSIS_STRATEGY_JSON_HELP_EXAMPLES.filter((it)=>{
+    if(!q) return true;
+    const hay = [it.title, it.text, JSON.stringify(it.json || {})].join('\n').toLowerCase();
+    return hay.includes(q);
+  });
+  const introHtml = `<section class="ib-profile-section"><h4>Einordnung</h4><div class="muted" style="font-size:12px; line-height:1.55; white-space:pre-wrap;">${_escHtml(ANALYSIS_STRATEGY_JSON_HELP_INTRO)}</div></section>`;
+  const examplesHtml = xs.map((it, idx)=>`<section class="ib-profile-section"><div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;"><div><h4 style="margin-bottom:6px;">${_escHtml(it.title || '')}</h4><div class="muted" style="font-size:12px; line-height:1.55; white-space:pre-wrap;">${_escHtml(it.text || '')}</div></div><div style="display:flex; gap:8px;"><button type="button" class="btn_sm" data-json-help-copy="${idx}" style="width:auto;">Beispiel kopieren</button></div></div><pre style="margin:10px 0 0 0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; overflow:auto; font-size:11px; white-space:pre-wrap;">${_escHtml(JSON.stringify(it.json || {}, null, 2))}</pre></section>`).join('');
+  $analysisStrategyJsonHelpContent.innerHTML = introHtml + examplesHtml;
+  $analysisStrategyJsonHelpContent.querySelectorAll('[data-json-help-copy]').forEach((btn)=>{
+    btn.addEventListener('click', async ()=>{
+      const idx = Number(btn.getAttribute('data-json-help-copy') || -1);
+      const it = ANALYSIS_STRATEGY_JSON_HELP_EXAMPLES[idx];
+      if(!it) return;
+      try{ await navigator.clipboard.writeText(JSON.stringify(it.json || {}, null, 2)); }catch(e){}
+    });
+  });
+}
+
+function _analysisStrategyJsonHelpOpen(){
+  ANALYSIS_STRATEGY_JSON_HELP_PARENT_VISIBLE = !!($analysisStrategyDialog && $analysisStrategyDialog.style.display === 'flex');
+  if($analysisStrategyDialog) $analysisStrategyDialog.style.display = 'none';
+  if($analysisStrategyJsonHelpSearch) $analysisStrategyJsonHelpSearch.value = '';
+  _analysisStrategyJsonHelpRender();
+  if($analysisStrategyJsonHelpDialog) $analysisStrategyJsonHelpDialog.style.display = 'flex';
+}
+
+function _analysisStrategyJsonHelpClose(){
+  if($analysisStrategyJsonHelpDialog) $analysisStrategyJsonHelpDialog.style.display = 'none';
+  if(ANALYSIS_STRATEGY_JSON_HELP_PARENT_VISIBLE && $analysisStrategyDialog) $analysisStrategyDialog.style.display = 'flex';
 }
 
 async function _outlierStrategySaveDialog(){
@@ -17121,6 +17340,10 @@ if($analysisStrategyAllOn) $analysisStrategyAllOn.addEventListener('click', ()=>
 if($analysisStrategyAllOff) $analysisStrategyAllOff.addEventListener('click', ()=>{ _outlierStrategySetMode('all_off'); });
 if($analysisStrategyDialogClose) $analysisStrategyDialogClose.addEventListener('click', ()=>{ try{ if($analysisStrategyDialog) $analysisStrategyDialog.style.display = 'none'; }catch(e){}; });
 if($analysisStrategyDialogSave) $analysisStrategyDialogSave.addEventListener('click', ()=>{ _outlierStrategySaveDialog().catch(displayError); });
+if($analysisStrategyDialogJsonHelp) $analysisStrategyDialogJsonHelp.addEventListener('click', ()=>{ _analysisStrategyJsonHelpOpen(); });
+if($analysisStrategyJsonHelpClose) $analysisStrategyJsonHelpClose.addEventListener('click', ()=>{ _analysisStrategyJsonHelpClose(); });
+if($analysisStrategyJsonHelpSearch) $analysisStrategyJsonHelpSearch.addEventListener('input', ()=>{ _analysisStrategyJsonHelpRender(); });
+if($analysisStrategyJsonHelpCopyAll) $analysisStrategyJsonHelpCopyAll.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(ANALYSIS_STRATEGY_JSON_HELP_EXAMPLES.map(_analysisStrategyJsonHelpText).join('\n\n------------------------------\n\n')); }catch(e){} });
 if($nameMergeLatestBtn) $nameMergeLatestBtn.addEventListener("click", (ev)=>{ _stop(ev); mergeFriendlyNamesToLatest().catch(displayError); });
 
 // Analysis confirm dialog event listeners

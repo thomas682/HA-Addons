@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.505
+
+### Enhancement
+
+- Dashboard / Strategieinfo: Im Dialog fuer benutzerdefinierte Strategien gibt es jetzt den Button `JSON Aufbau und Beispiele`. Er oeffnet einen Hilfedialog im Stil der bestehenden Info-Dialoge mit Einleitung, Suchfeld, Copy-Buttons, mindestens 6 direkt nutzbaren JSON-Beispielen und Rueckkehrlogik zum vorher geoeffneten `Strategieinfo`-Dialog. ([#457](https://github.com/thomas682/HA-Addons/issues/457))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.504
 
 ### Enhancement

@@ -559,10 +559,18 @@ def test_dashboard_outlier_strategy_ui_exists():
     assert 'id="analysis_strategy_all_off"' in body
     assert 'id="analysis_strategy_dialog"' in body
     assert 'id="analysis_strategy_dialog_json"' in body
+    assert 'id="analysis_strategy_dialog_json_help"' in body
+    assert 'JSON Aufbau und Beispiele' in body
+    assert 'id="analysis_strategy_json_help_dialog"' in body
+    assert 'id="analysis_strategy_json_help_search"' in body
+    assert 'id="analysis_strategy_json_help_copy_all"' in body
     assert 'function refreshOutlierStrategyPanel()' in body
     assert 'function saveOutlierStrategyOverride()' in body
     assert 'function renderOutlierStrategyParamCards()' in body
     assert 'function _outlierStrategySetMode(mode)' in body
+    assert 'function _analysisStrategyJsonHelpOpen()' in body
+    assert 'function _analysisStrategyJsonHelpClose()' in body
+    assert 'function _analysisStrategyJsonHelpRender()' in body
     assert 'id="analysis_strategy_params"' in body
     assert 'id="analysis_strategy_auto"' in body
     assert 'id="analysis_strategy_all_on"' in body
