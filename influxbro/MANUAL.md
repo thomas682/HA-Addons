@@ -208,6 +208,8 @@ Die Typ-Chips im Strategiebereich besitzen jetzt professionelle Tooltips mit Sev
 
 Die Tooltip-Logik wurde in `_tooltips.html` weiter zentralisiert. Fuer Dashboard-Elemente steht damit eine gemeinsame Rich-Tooltip-Familie zur Verfuegung, die auch Graphwerte und Kontextinformationen im selben visuellen Stil darstellen kann. Neue UI-Elemente koennen ueber `data-tooltip-*` / `data-doc` / bestehende Tooltip-Metadaten an dieselbe Engine angebunden werden, statt auf Browser-`title`-Tooltips zurueckzufallen.
 
+`Analyse mit Cache` verwendet jetzt fuer die eigentliche Ausreißersuche nur noch die aktuell aktivierten Typen aus der Typenauswahl. Diese tatsächlich geprüften Typen werden sowohl im Bereich `txt_found_info` als auch in der Cache-/Analyse-Zeitleiste explizit angezeigt. Das gefilterte Analyse-Logging besitzt zusaetzlich eine markierende Volltextsuche mit `Zurueck`/`Weiter` und einen Copy-Button direkt in der Actionleiste. Bei der Feldauswahl (`/api/fields`) wird fuer einfache All-Time-Faelle wieder `schema.measurementFieldKeys(...)` verwendet, um unnötig schwere Distinct-Scans zu vermeiden.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

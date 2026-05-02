@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.508
+
+### Fix
+
+- Analyse / Dashboard: Mehrere Laufzeitfehler rund um `Analyse mit Cache` und das gefilterte Analyse-Logging behoben. Dazu gehören der Frontend-Fehler `typeLabels is not defined`, die markierende Volltextsuche im `analysis_log_modal` (inkl. Prev/Next) und ein zusätzlicher Copy-Button in der Actionleiste. Gleichzeitig nutzt `/api/fields?measurement=...&range=all` bei reinem Measurement-Fall wieder den leichten `schema.measurementFieldKeys(...)`-Pfad, und abgelaufene Statistik-Job-IDs erzeugen im Statistikbereich keinen unnötigen 404-Abbruch mehr. In allen Analyseanzeigen werden jetzt außerdem die tatsächlich geprüften Ausreißertypen aus der aktuellen Typenauswahl ausgewiesen. ([#461](https://github.com/thomas682/HA-Addons/issues/461))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.507
 
 ### Enhancement

@@ -23557,16 +23557,22 @@ def fields():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
-                predicate_parts = ["exists r._field"]
-                if measurement:
-                    predicate_parts.append(f"r._measurement == {_flux_str(measurement)}")
-                if entity_id:
-                    predicate_parts.append(f"r.entity_id == {_flux_str(entity_id)}")
-                if friendly_name:
-                    predicate_parts.append(f"r.friendly_name == {_flux_str(friendly_name)}")
-                predicate = " and ".join(predicate_parts)
-                q = f'''
+                if measurement and not entity_id and not friendly_name and not selector_start_dt and not selector_stop_dt:
+                    q = (
+                        'import "influxdata/influxdb/schema"\n'
+                        f'schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: {_flux_str(measurement)})'
+                    )
+                else:
+                    range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
+                    predicate_parts = ["exists r._field"]
+                    if measurement:
+                        predicate_parts.append(f"r._measurement == {_flux_str(measurement)}")
+                    if entity_id:
+                        predicate_parts.append(f"r.entity_id == {_flux_str(entity_id)}")
+                    if friendly_name:
+                        predicate_parts.append(f"r.friendly_name == {_flux_str(friendly_name)}")
+                    predicate = " and ".join(predicate_parts)
+                    q = f'''
 from(bucket: "{cfg["bucket"]}")
   {range_clause}
   |> filter(fn: (r) => {predicate})

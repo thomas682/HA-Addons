@@ -1186,10 +1186,12 @@
                 clearLastJobIds();
                 console.log('[stats] Stored global_stats job expired, falling back to cache/snapshot');
                 setStatus(['Vorheriger Statistik-Job abgelaufen, Cache wird geladen.', '']);
+                j = null;
+              } else {
+                throw jobErr;
               }
-              throw jobErr;
             }
-            if(j.ready){
+            if(j && j.ready){
               try{ if(j.cache_id) setLastCacheId(j.cache_id); }catch(e){}
               try{ syncLoadedCols(j.columns || BASE_COLS); }catch(e){}
               const rows = j.rows || [];

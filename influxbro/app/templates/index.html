@@ -8580,7 +8580,8 @@ function updateAnalysisUI(){
         const count = (s.foundByType || {})[t.value] || 0;
         return t.label + ': ' + count;
       });
-      $found.innerHTML = '<div>Suchfilter: ' + filterParts.join(' | ') + '</div><div style="margin-top:4px;">Gefunden: ' + parts.join(' | ') + '</div>';
+      const selectedOnly = ALL_OUTLIER_TYPES.filter(t => ANALYSIS_SELECTED_TYPES.includes(t.value)).map(t => t.label);
+      $found.innerHTML = '<div>Geprüfte Typen: ' + _escHtml(selectedOnly.join(', ') || '—') + '</div><div style="margin-top:4px;">Suchfilter: ' + filterParts.join(' | ') + '</div><div style="margin-top:4px;">Gefunden: ' + parts.join(' | ') + '</div>';
     }
 
     // 5. Render type selection lists
@@ -9106,7 +9107,7 @@ function getRawOutlierFilterTypes(){
 }
 
 function getAnalysisCacheTypes(){
-  return ['range_violation', 'rate_jump', 'negative_jump', 'reset_event', 'fault_cluster', 'null_value', 'zero_value'];
+  return getRawOutlierFilterTypes().filter(t => t !== 'ignored');
 }
 
 function _logAnalysis(step, data){
@@ -9510,6 +9511,7 @@ async function runAnalysis(){
     _logAnalysis('search_done', {count: count, dur: dur});
 
     // Count by type
+    const typeLabels = OUTLIER_TYPE_LABELS;
     const typeCounts = {};
     filteredResults.forEach(r => {
       const typesForCount = isIgnoredOutlier(r) ? ['ignored'] : (r.types || []);
@@ -10923,7 +10925,7 @@ function _ensureFilteredLogModal(){
   dlg.style.border = '0';
   dlg.style.borderRadius = '12px';
   dlg.style.padding = '0';
-  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:70vh; height:100%; max-height:85vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Gefiltertes Logging</div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="analysis_log_modal_copy" class="btn_sm" style="width:auto;">In Zwischenablage kopieren</button><button type="button" id="analysis_log_modal_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee;"><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Ausloeser</span><select id="analysis_log_filter_action" style="min-width:220px;"><option value="">Alle</option><option value="analysis_run_with_cache">Analyse mit Cache</option><option value="analysis_run_without_cache">Analyse ohne Cache</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Bereichsfilter</span><select id="analysis_log_filter_scope" style="min-width:220px;"><option value="">Alle</option><option value="dashboard_analysis">Dashboard Analyse</option><option value="dashboard_caching">Dashboard Cache</option><option value="dashboard_outliers">Dashboard Ausreisser</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Textsuche</span><input id="analysis_log_filter_text" type="text" placeholder="Volltextsuche in den Logzeilen" /></label><button type="button" id="analysis_log_filter_refresh" class="btn_sm" style="width:auto; align-self:end;">Refresh</button></div><div style="padding:12px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 auto;"><div id="analysis_log_filter_meta" class="muted" style="font-size:12px;"></div><div id="analysis_log_filter_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space:pre-wrap;"></div><div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: analysis_log_modal.dialog | tpl: dialog_info_popup</div></div></div>';
+  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:70vh; height:100%; max-height:85vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Gefiltertes Logging</div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="analysis_log_modal_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee;"><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Ausloeser</span><select id="analysis_log_filter_action" style="min-width:220px;"><option value="">Alle</option><option value="analysis_run_with_cache">Analyse mit Cache</option><option value="analysis_run_without_cache">Analyse ohne Cache</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Bereichsfilter</span><select id="analysis_log_filter_scope" style="min-width:220px;"><option value="">Alle</option><option value="dashboard_analysis">Dashboard Analyse</option><option value="dashboard_caching">Dashboard Cache</option><option value="dashboard_outliers">Dashboard Ausreisser</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 220px;"><span>Textsuche</span><input id="analysis_log_filter_text" type="text" placeholder="Volltextsuche in den Logzeilen" /></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 220px;"><span>Markieren</span><div class="ib_clear_row"><input id="analysis_log_filter_mark" type="text" placeholder="Text markieren..." /><button id="analysis_log_filter_mark_prev" type="button" class="btn_sm" style="width:auto;">Zurueck</button><button id="analysis_log_filter_mark_next" type="button" class="btn_sm" style="width:auto;">Weiter</button></div></label><button type="button" id="analysis_log_filter_refresh" class="btn_sm" style="width:auto; align-self:end;">Refresh</button></div><div style="padding:12px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 auto;"><div id="analysis_log_filter_meta" class="muted" style="font-size:12px;"></div><div id="analysis_log_filter_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space:pre-wrap;"></div><div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: analysis_log_modal.dialog | tpl: dialog_info_popup</div></div></div>';
   document.body.appendChild(dlg);
   try{
     const panel = dlg.firstElementChild;
@@ -10943,10 +10945,23 @@ function _ensureFilteredLogModal(){
       b.textContent = 'Performance Analyse';
       $refresh.parentElement.insertBefore(b, $refresh.nextSibling);
     }
+    if($refresh && !document.getElementById('analysis_log_filter_copy')){
+      const b2 = document.createElement('button');
+      b2.type = 'button';
+      b2.id = 'analysis_log_filter_copy';
+      b2.className = 'btn_sm';
+      b2.style.width = 'auto';
+      b2.style.alignSelf = 'end';
+      b2.textContent = 'In Zwischenablage kopieren';
+      const perf = document.getElementById('analysis_log_filter_perf');
+      const ref = perf && perf.nextSibling ? perf.nextSibling : $refresh.nextSibling;
+      $refresh.parentElement.insertBefore(b2, ref);
+    }
   }catch(e){}
 
   const close = document.getElementById('analysis_log_modal_close');
   const copy = document.getElementById('analysis_log_modal_copy');
+  const copyInline = document.getElementById('analysis_log_filter_copy');
   try{
     if(close){
       close.setAttribute('data-ui', 'analysis_log_modal.btn_close');
@@ -10970,6 +10985,13 @@ function _ensureFilteredLogModal(){
       if(txt) await navigator.clipboard.writeText(txt);
     }catch(e){}
   });
+  if(copyInline) copyInline.addEventListener('click', async ()=>{
+    try{
+      const el = document.getElementById('analysis_log_filter_pre');
+      const txt = String(el && (el.innerText || el.textContent) ? (el.innerText || el.textContent) : '').trim();
+      if(txt) await navigator.clipboard.writeText(txt);
+    }catch(e){}
+  });
   return dlg;
 }
 
@@ -10982,6 +11004,9 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
   const $pre = document.getElementById('analysis_log_filter_pre');
   const $refresh = document.getElementById('analysis_log_filter_refresh');
   const $perf = document.getElementById('analysis_log_filter_perf');
+  const $mark = document.getElementById('analysis_log_filter_mark');
+  const $markPrev = document.getElementById('analysis_log_filter_mark_prev');
+  const $markNext = document.getElementById('analysis_log_filter_mark_next');
   if($scope && defaultScope !== undefined) $scope.value = String(defaultScope || '');
   if($action && defaultAction !== undefined) $action.value = String(defaultAction || '');
 
@@ -11033,6 +11058,7 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
           return `<div style="padding:2px 0; color:${isErr ? '#b00020' : 'inherit'}; background:${isErr ? 'rgba(176,0,32,0.06)' : 'transparent'}; border-left:${isErr ? '3px solid #b00020' : '3px solid transparent'}; padding-left:8px;">${line}</div>`;
         }).join('') : 'Keine passenden Logeintraege gefunden.';
       }
+      try{ _analysisLogApplyMarkSearch(); }catch(e){}
     }catch(e){
       if($meta) $meta.textContent = 'Fehler beim Laden der Logs';
       if($pre) $pre.innerHTML = `<div style="color:#b00020; border-left:3px solid #b00020; background:rgba(176,0,32,0.06); padding:6px 8px;">${_escHtml(String(e && e.message ? e.message : e))}</div>`;
@@ -11043,6 +11069,7 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
     try{ if($scope) $scope['on' + evt] = renderLogs; }catch(e){}
     try{ if($action) $action['on' + evt] = renderLogs; }catch(e){}
     try{ if($text) $text['on' + evt] = renderLogs; }catch(e){}
+    try{ if($mark) $mark['on' + evt] = _analysisLogApplyMarkSearch; }catch(e){}
   });
   if($refresh) $refresh.onclick = renderLogs;
   if($perf) $perf.onclick = ()=>{
@@ -11056,6 +11083,51 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
       location.href = './performance?trace_id=' + encodeURIComponent(String(id));
     }catch(e){}
   };
+
+  function _analysisLogApplyMarkSearch(){
+    try{
+      if(!$pre) return;
+      Array.from($pre.querySelectorAll('mark.ib_search_mark')).forEach(m=>{
+        const txt = document.createTextNode(m.textContent || '');
+        m.replaceWith(txt);
+      });
+      const q = String($mark && $mark.value || '').trim();
+      if(!q) return;
+      const walker = document.createTreeWalker($pre, NodeFilter.SHOW_TEXT, null);
+      const nodes = [];
+      let n;
+      while((n = walker.nextNode())) nodes.push(n);
+      const lower = q.toLowerCase();
+      nodes.forEach((node)=>{
+        const txt = String(node.nodeValue || '');
+        const idx = txt.toLowerCase().indexOf(lower);
+        if(idx < 0) return;
+        const frag = document.createDocumentFragment();
+        frag.appendChild(document.createTextNode(txt.slice(0, idx)));
+        const mark = document.createElement('mark');
+        mark.className = 'ib_search_mark';
+        mark.textContent = txt.slice(idx, idx + q.length);
+        frag.appendChild(mark);
+        frag.appendChild(document.createTextNode(txt.slice(idx + q.length)));
+        node.parentNode.replaceChild(frag, node);
+      });
+    }catch(e){}
+  }
+
+  function _analysisLogJumpMarked(dir){
+    try{
+      const xs = Array.from(document.querySelectorAll('#analysis_log_filter_pre mark.ib_search_mark'));
+      if(!xs.length) return;
+      const current = xs.findIndex(x => x.classList.contains('ib_search_mark_current'));
+      xs.forEach(x => x.classList.remove('ib_search_mark_current'));
+      const next = current < 0 ? (dir > 0 ? 0 : xs.length - 1) : ((current + dir + xs.length) % xs.length);
+      xs[next].classList.add('ib_search_mark_current');
+      xs[next].scrollIntoView({block:'center', behavior:'smooth'});
+    }catch(e){}
+  }
+
+  if($markPrev) $markPrev.onclick = ()=>_analysisLogJumpMarked(-1);
+  if($markNext) $markNext.onclick = ()=>_analysisLogJumpMarked(1);
   await renderLogs();
   try{ if(typeof dlg.showModal === 'function') dlg.showModal(); else dlg.style.display = 'block'; }catch(e){ dlg.style.display = 'block'; }
 }
@@ -16578,7 +16650,7 @@ async function refreshCachingSection(){
         const gaps = analysisGaps;
         const dirty = analysisDirty;
         const typeCounts = analysisPlan.cached_outlier_type_counts || {};
-        const foundTxt = 'Gefunden: Counter-Sprung pro Zeit: ' + String(typeCounts.rate_jump || 0)
+        const foundTxt = 'Geprüfte Typen: ' + typeNames + ' | Gefunden: Counter-Sprung pro Zeit: ' + String(typeCounts.rate_jump || 0)
           + ' | Negativer Sprung: ' + String(typeCounts.negative_jump || 0)
           + ' | Counter-Reset: ' + String(typeCounts.reset_event || 0)
           + ' | Grenzverletzung: ' + String(typeCounts.range_violation || 0)

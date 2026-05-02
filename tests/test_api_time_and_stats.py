@@ -1396,6 +1396,46 @@ def test_api_outliers_accepts_new_search_type_names(load_app_module, tmp_path, m
     assert any("range_violation" in (row.get("types") or []) for row in j.get("rows", []))
 
 
+def test_fields_all_time_uses_schema_measurement_field_keys(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    captured = {"q": None}
+
+    class _FakeRecord:
+        def get_value(self):
+            return "value"
+
+    class _FakeTable:
+        def __init__(self):
+            self.records = [_FakeRecord()]
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured["q"] = q
+            return [_FakeTable()]
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.get("/api/fields?measurement=%C2%B0C&range=all")
+    assert r.status_code == 200
+    q = captured["q"]
+    assert isinstance(q, str)
+    assert 'schema.measurementFieldKeys(bucket: "b", measurement: "°C")' in q
+    assert 'distinct(column: "_field")' not in q
+
+
 def test_measurement_profile_derived_includes_strategy_explanation_fields(load_app_module):
     app_mod = load_app_module()
     derived = app_mod._measurement_profile_derived(

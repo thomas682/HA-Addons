@@ -542,11 +542,16 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
 
 def test_analysis_log_modal_has_copy_button_and_error_highlight_and_no_superpicker():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    assert 'id="analysis_log_modal_copy"' in body
+    assert "b2.id = 'analysis_log_filter_copy';" in body
     assert 'In Zwischenablage kopieren' in body
     assert 'pk: analysis_log_modal.dialog | tpl: dialog_info_popup' in body
     assert 'analysis_log_modal.btn_superpicker' not in body
     assert "color:${isErr ? '#b00020' : 'inherit'}" in body
+    assert 'id="analysis_log_filter_mark"' in body
+    assert 'id="analysis_log_filter_mark_prev"' in body
+    assert 'id="analysis_log_filter_mark_next"' in body
+    assert 'function _analysisLogApplyMarkSearch()' in body
+    assert 'function _analysisLogJumpMarked(dir)' in body
 
 
 def test_dashboard_outlier_strategy_ui_exists():
@@ -579,6 +584,13 @@ def test_dashboard_outlier_strategy_ui_exists():
     assert './api/outlier_strategy?' in body or './api/outlier_strategy' in body
     assert './api/outlier_strategy/config' in body
     assert './api/outlier_strategy/override' in body
+
+
+def test_analysis_uses_selected_types_for_cache_and_status():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "return getRawOutlierFilterTypes().filter(t => t !== 'ignored');" in body
+    assert 'Geprüfte Typen:' in body
+    assert 'const typeLabels = OUTLIER_TYPE_LABELS;' in body
 
 
 def test_analysis_type_chips_use_professional_tooltips_with_docs():
