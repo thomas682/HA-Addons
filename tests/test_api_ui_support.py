@@ -598,6 +598,19 @@ def test_analysis_type_chips_use_professional_tooltips_with_docs():
     assert "key === '?' || key === '/'" in body
 
 
+def test_unified_tooltip_engine_and_graph_adapter_exist():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    index = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'window.InfluxBroUnifiedTooltip = {' in tooltips
+    assert 'function _severityColor(sev)' in tooltips
+    assert 'function _metaFor(el, title, desc)' in tooltips
+    assert 'Dokumentation öffnen' in tooltips
+    assert "key === '?' || key === '/'" in tooltips
+    assert 'function _graphTooltipShowFromPoint(pt, extra)' in index
+    assert "$graphCtxPlot.on('plotly_hover'" in index
+    assert "$plotly.on('plotly_hover'" in index
+
+
 def test_audit_page_and_nav_entry_exist():
     audit = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "audit.html").read_text()
     nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.507
+
+### Enhancement
+
+- UI / Tooltips: Die bisherige gemischte Tooltip-Landschaft wurde um eine zentrale `InfluxBroUnifiedTooltip`-Engine in `_tooltips.html` erweitert. Sie liefert fuer Dashboard-Elemente denselben professionellen Rich-Tooltip-Stil (Header, technische Kennung, Beschreibung, Meta-Grid, Beispiel, Doku-Link) und unterstuetzt Pinning, Tastatur-Shortcuts sowie die Einbindung von Graphwerten/Graphkontext im selben Tooltip-Familienstil. ([#460](https://github.com/thomas682/HA-Addons/issues/460))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.506
 
 ### Enhancement

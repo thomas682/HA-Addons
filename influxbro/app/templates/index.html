@@ -2586,6 +2586,23 @@ function _graphCtxHoverText(point, aggName){
   }
 }
 
+function _graphTooltipShowFromPoint(pt, extra){
+  try{
+    if(!(window.InfluxBroUnifiedTooltip && window.InfluxBroUnifiedTooltip.show)) return;
+    const meta = {
+      title: (extra && extra.title) || String(pt && pt.data && pt.data.name ? pt.data.name : 'Graphwert'),
+      desc: (extra && extra.desc) || 'Werte an der aktuellen Graphposition.',
+      severity: 'low',
+      source: 'Graph',
+      active: 'Hover',
+      example: (extra && extra.example) || (`Zeit: ${String(pt && pt.x || '')}\nWert: ${String(pt && pt.y || '')}`),
+      doc: (extra && extra.doc) || 'graph-values'
+    };
+    const rect = { left: Number(pt && pt.event && pt.event.clientX || 20), bottom: Number(pt && pt.event && pt.event.clientY || 20) };
+    window.InfluxBroUnifiedTooltip.show(meta, rect);
+  }catch(e){}
+}
+
 function _ctxWindowFromRaw(bounds, centerMs){
   try{
     if(!bounds) return null;
@@ -2766,6 +2783,14 @@ async function refreshGraphContext(opts){
         try{ window.Plotly.purge($graphCtxPlot); }catch(e){}
       }
       window.Plotly.react($graphCtxPlot, traces, layout, {displayModeBar:false, responsive:true, staticPlot:true});
+      try{
+        $graphCtxPlot.on('plotly_hover', (ev)=>{
+          const pt = ev && ev.points && ev.points[0] ? ev.points[0] : null;
+          if(!pt) return;
+          _graphTooltipShowFromPoint(pt, { title: 'Kontext-Graph', desc: 'Kontextwerte an der aktuellen Cursorposition.', example: String(pt.text || '') });
+        });
+        $graphCtxPlot.on('plotly_unhover', ()=>{ try{ if(window.InfluxBroUnifiedTooltip) window.InfluxBroUnifiedTooltip.hide(); }catch(e){} });
+      }catch(e){}
       try{
         if($graphCtxInfo){
           const s = fmtTs(startIso);
@@ -4502,6 +4527,19 @@ function drawPlotly(rows){
 
   if(!_PLOTLY_EVENTS_BOUND && $plotly && typeof $plotly.on === "function"){
     _PLOTLY_EVENTS_BOUND = true;
+
+    try{
+      $plotly.on('plotly_hover', (ev)=>{
+        const pt = ev && ev.points && ev.points[0] ? ev.points[0] : null;
+        if(!pt) return;
+        const lines = [];
+        if(pt.x) lines.push('Zeit: ' + String(pt.x));
+        if(pt.data && pt.data.name) lines.push('Serie: ' + String(pt.data.name));
+        if(pt.y !== undefined) lines.push('Wert: ' + String(pt.y));
+        _graphTooltipShowFromPoint(pt, { title: 'Graphwert', desc: 'Werte an der aktuellen Cursorposition im Hauptgraphen.', example: lines.join('\n') });
+      });
+      $plotly.on('plotly_unhover', ()=>{ try{ if(window.InfluxBroUnifiedTooltip) window.InfluxBroUnifiedTooltip.hide(); }catch(e){} });
+    }catch(e){}
 
     $plotly.on("plotly_relayout", (ev) => {
       try{

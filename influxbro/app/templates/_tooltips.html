@@ -745,6 +745,12 @@
     let lastEl = null;
     let lastTitle = '';
     let showT = null;
+    let hideT = null;
+    let pinned = false;
+    let lastMeta = null;
+    let hideT = null;
+    let pinned = false;
+    let lastMeta = null;
 
     // Hard-disable native browser tooltips: move title -> data-ib-title and remove title attr.
     function _stealTitle(el){
@@ -779,17 +785,17 @@
       tip.style.position = 'fixed';
       tip.style.zIndex = '2147483647';
       tip.style.maxWidth = '420px';
-      tip.style.padding = '8px 10px';
-      tip.style.borderRadius = '10px';
-      tip.style.background = 'rgba(17,17,17,0.96)';
-      tip.style.color = '#fff';
+      tip.style.padding = '12px 14px';
+      tip.style.borderRadius = '12px';
+      tip.style.background = '#1f2937';
+      tip.style.color = '#f3f4f6';
       tip.style.fontSize = '12px';
-      tip.style.lineHeight = '1.35';
-      tip.style.boxShadow = '0 10px 26px rgba(0,0,0,0.28)';
-      // Only clickable while visible; otherwise it may block underlying UI.
+      tip.style.lineHeight = '1.45';
+      tip.style.border = '1px solid #374151';
+      tip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.14), 0 12px 24px rgba(0,0,0,0.18), 0 24px 40px rgba(0,0,0,0.22)';
       tip.style.pointerEvents = 'none';
       tip.style.opacity = '0';
-      tip.style.transition = 'opacity 0.08s ease';
+      tip.style.transition = 'opacity 0.12s ease';
       document.body.appendChild(tip);
 
       // Doc button click.
@@ -866,12 +872,42 @@
       try{ window.open(href, '_blank', 'noopener'); }catch(e){}
     }
 
-    function _hide(){
+    function _severityColor(sev){
+      const s = String(sev || '').toLowerCase();
+      if(s === 'high' || s === 'hoch') return '#dc2626';
+      if(s === 'medium' || s === 'mittel') return '#ea580c';
+      return '#6b7280';
+    }
+
+    function _metaFor(el, title, desc){
+      const doc = _norm(el && (el.getAttribute('data-tooltip-doc') || el.getAttribute('data-doc') || ''));
+      const severity = _norm(el && (el.getAttribute('data-tooltip-severity') || 'low')) || 'low';
+      const example = _norm(el && (el.getAttribute('data-tooltip-example') || ''));
+      const source = _norm(el && (el.getAttribute('data-tooltip-source') || 'UI')) || 'UI';
+      const active = _norm(el && (el.getAttribute('data-tooltip-status') || ((el.getAttribute('data-active') === '1') ? 'Aktiv' : 'Bereit')));
+      return {
+        title: _norm(title) || _norm(_keyFromEl(el)) || 'Info',
+        desc: _norm(desc),
+        key: _norm(_keyFromEl(el)),
+        severity,
+        source,
+        active,
+        example,
+        doc,
+      };
+    }
+
+    function _hide(force){
+      if(pinned && !force) return;
       try{ if(showT) clearTimeout(showT); }catch(e){}
+      try{ if(hideT) clearTimeout(hideT); }catch(e){}
       showT = null;
-      try{ if(tip){ tip.style.opacity = '0'; tip.style.pointerEvents = 'none'; } }catch(e){}
+      hideT = null;
+      try{ if(tip){ tip.style.opacity = '0'; tip.style.pointerEvents = 'none'; tip.style.borderColor = '#374151'; } }catch(e){}
       lastEl = null;
       lastTitle = '';
+      pinned = false;
+      lastMeta = null;
     }
 
     const DOC_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 5.5H9C10.1046 5.5 11 6.39543 11 7.5V16.5C11 17.0523 10.5523 17.5 10 17.5H4C3.44772 17.5 3 17.0523 3 16.5V6.5C3 5.94772 3.44772 5.5 4 5.5ZM14 19.5C13.6494 19.5 13.3128 19.4398 13 19.3293V19.5C13 20.0523 12.5523 20.5 12 20.5C11.4477 20.5 11 20.0523 11 19.5V19.3293C10.6872 19.4398 10.3506 19.5 10 19.5H4C2.34315 19.5 1 18.1569 1 16.5V6.5C1 4.84315 2.34315 3.5 4 3.5H9C10.1947 3.5 11.2671 4.02376 12 4.85418C12.7329 4.02376 13.8053 3.5 15 3.5H20C21.6569 3.5 23 4.84315 23 6.5V16.5C23 18.1569 21.6569 19.5 20 19.5H14ZM13 7.5V16.5C13 17.0523 13.4477 17.5 14 17.5H20C20.5523 17.5 21 17.0523 21 16.5V6.5C21 5.94772 20.5523 5.5 20 5.5H15C13.8954 5.5 13 6.39543 13 7.5ZM5 7.5H9V9.5H5V7.5ZM15 7.5H19V9.5H15V7.5ZM19 10.5H15V12.5H19V10.5ZM5 10.5H9V12.5H5V10.5ZM19 13.5H15V15.5H19V13.5ZM5 13.5H9V15.5H5V13.5Z" fill="currentColor"></path></svg>';
@@ -879,7 +915,8 @@
     function _render(text){
       const s = String(text || '').trim();
       if(!s) return '';
-      const lines = s.split(/\n/).map(x=>String(x||'').trim()).filter(x=>x !== '');
+      const lines = s.split(/
+/).map(x=>String(x||'').trim()).filter(x=>x !== '');
       if(!lines.length) return _esc(s);
 
       let keyLine = '';
@@ -890,16 +927,22 @@
       }else{
         desc = lines.join(' ');
       }
-      desc = _esc(desc);
       const keyRaw = keyLine ? keyLine.replace(/^<|>$/g, '') : '';
-
-      const docBtn = keyRaw
-        ? (`<button type=\"button\" data-ib-doc-key=\"${_esc(keyRaw)}\" style=\"display:inline-flex;align-items:center;justify-content:center;gap:0;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:#fff;border-radius:10px;padding:6px 7px;cursor:pointer;\" aria-label=\"Dokumentation\">${DOC_SVG}</button>`)
-        : '';
-
-      const top = `<div style=\"display:flex; align-items:flex-start; gap:8px;\"><div style=\"font-weight:700; flex:1 1 auto;\">${desc}</div>${docBtn}</div>`;
-      const bot = keyLine ? (`<div style=\"margin-top:4px; font-size:11px; opacity:0.75;\">${_esc(keyLine)}</div>`) : '';
-      return top + bot;
+      const m = lastMeta || {};
+      const sevColor = _severityColor(m.severity);
+      const docKey = _esc(String(m.doc || keyRaw || ''));
+      const docBtn = docKey ? '<a href="' + _esc(_docHrefFor(docKey)) + '" target="_blank" rel="noopener noreferrer" data-ib-doc-key="' + docKey + '" style="color:#93c5fd;text-decoration:none;">Dokumentation öffnen</a>' : '';
+      const head = '<div style="display:flex; gap:10px; align-items:flex-start; margin-bottom:10px;"><span style="display:inline-block;width:18px;height:18px;border-radius:999px;background:' + sevColor + ';flex:0 0 auto;margin-top:1px;"></span><div><div style="font-weight:700;font-size:14px;color:#f9fafb;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#9ca3af;margin-top:2px;">' + _esc(keyRaw ? '<' + keyRaw + '>' : (m.key || '')) + '</div></div></div>';
+      const descHtml = '<div style="font-size:12px; line-height:1.55; color:#e5e7eb; margin-bottom:10px;">' + _esc(String(m.desc || desc || '')) + '</div>';
+      const metaGrid = '<div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px;">'
+        + '<div style="border:1px solid #374151; border-radius:8px; background:rgba(255,255,255,0.03); padding:8px 9px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;margin-bottom:3px;">Schweregrad</div><div style="font-size:12px;color:#f3f4f6;"><span style="display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:6px;vertical-align:middle;background:' + sevColor + ';"></span>' + _esc(String(m.severity || 'low')) + '</div></div>'
+        + '<div style="border:1px solid #374151; border-radius:8px; background:rgba(255,255,255,0.03); padding:8px 9px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;margin-bottom:3px;">Datenquelle</div><div style="font-size:12px;color:#f3f4f6;">' + _esc(String(m.source || 'UI')) + '</div></div>'
+        + '<div style="border:1px solid #374151; border-radius:8px; background:rgba(255,255,255,0.03); padding:8px 9px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;margin-bottom:3px;">Status</div><div style="font-size:12px;color:#f3f4f6;">' + _esc(String(m.active || 'Bereit')) + '</div></div>'
+        + '<div style="border:1px solid #374151; border-radius:8px; background:rgba(255,255,255,0.03); padding:8px 9px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;margin-bottom:3px;">Dokumentation</div><div style="font-size:12px;color:#f3f4f6;">' + (docBtn ? 'Verfügbar' : 'Nicht hinterlegt') + '</div></div>'
+        + '</div>';
+      const exampleHtml = m.example ? '<div style="border:1px solid #374151; border-radius:8px; background:#111827; padding:10px 11px; margin-bottom:10px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;margin-bottom:5px;">Beispiel</div><code style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#d1fae5;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
+      const foot = '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:11px;color:#9ca3af;">' + docBtn + '<span>? öffnet Doku · Esc schließt</span></div>';
+      return head + descHtml + metaGrid + exampleHtml + foot;
     }
 
     function _pos(ev){
@@ -983,6 +1026,7 @@
           _hide();
           lastEl = el;
           lastTitle = title;
+          lastMeta = _metaFor(el, title.split('\n')[0], title);
           showT = setTimeout(()=>{
             try{
               if(!lastEl) return;
@@ -992,7 +1036,7 @@
               box.innerHTML = _render(s);
               _pos(ev);
               box.style.opacity = '1';
-              box.style.pointerEvents = 'auto';
+              box.style.pointerEvents = pinned ? 'auto' : 'none';
             }catch(e){}
           }, 220);
         }
@@ -1003,8 +1047,38 @@
     }, true);
 
     document.addEventListener('mouseleave', ()=>{ _hide(); }, true);
-    document.addEventListener('mousedown', ()=>{ _hide(); }, true);
+    document.addEventListener('mousedown', (ev)=>{
+      try{
+        const el = _targetFrom(ev);
+        if(el && el === lastEl){ pinned = true; if(tip){ tip.style.pointerEvents = 'auto'; tip.style.borderColor = '#60a5fa'; } return; }
+      }catch(e){}
+      _hide();
+    }, true);
+    document.addEventListener('keydown', (ev)=>{
+      const key = String(ev.key || '');
+      if(key === 'Escape'){ _hide(true); return; }
+      const el = document.activeElement;
+      if(!el || !el.getAttribute) return;
+      const title = _storedTitle(el) || _stealTitle(el);
+      if(!title) return;
+      if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.opacity='1'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
+      if(key === '?' || key === '/'){ const doc = _norm(el.getAttribute('data-tooltip-doc') || el.getAttribute('data-doc')); if(doc){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _openDoc(doc); } }
+    }, true);
     document.addEventListener('scroll', ()=>{ _hide(); }, true);
+    window.InfluxBroUnifiedTooltip = {
+      show(meta, anchorRect){
+        const box = _ensure();
+        pinned = false;
+        lastMeta = meta || {};
+        lastTitle = String((meta && (meta.title || meta.desc)) || '');
+        box.innerHTML = _render(lastTitle || '', meta || {});
+        const ev = { clientX: anchorRect ? anchorRect.left : 20, clientY: anchorRect ? anchorRect.bottom : 20 };
+        _pos(ev);
+        box.style.opacity = '1';
+        box.style.pointerEvents = 'none';
+      },
+      hide(){ _hide(true); }
+    };
   }catch(e){}
 })();
 
