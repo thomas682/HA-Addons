@@ -172,6 +172,23 @@ def test_bugreport_flow_offers_bug_or_enhancement_with_labels():
     assert 'issue_addFile.png' in body
 
 
+def test_smart_bug_assistant_dialog_exists_and_reuses_bugreport_flow():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "influxbro_popup_smart_bug" in tooltips
+    assert "Fehler melden (Smart Assist)" in tooltips
+    assert "smart.id = 'influxbro_smart_bug';" in tooltips
+    assert "id=\"influxbro_sba_mode\"" in tooltips
+    assert "id=\"influxbro_sba_steps\"" in tooltips
+    assert "id=\"influxbro_sba_snapshot\"" in tooltips
+    assert "id=\"influxbro_sba_submit\"" in tooltips
+    assert "./api/support_bundle/snapshot/create" in tooltips
+    assert "function _smartBugRun(msgOverride)" in tooltips
+    assert "window.InfluxBroSmartBugAssistant = { run: (msg)=>_smartBugRun(msg) }" in tooltips
+    assert 'id="ib_error_smart_bug"' in topbar
+    assert "window.InfluxBroSmartBugAssistant && window.InfluxBroSmartBugAssistant.run" in topbar
+
+
 def test_raw_center_range_uses_minutes_in_ui():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'Zeitfenster um den selektierten Messwert herum in Minuten.' in body

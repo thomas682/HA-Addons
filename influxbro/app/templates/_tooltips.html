@@ -1724,6 +1724,14 @@
     bugBtn.style.padding = '8px 10px';
     bugBtn.style.height = '34px';
 
+    const smartBugBtn = document.createElement('button');
+    smartBugBtn.id = 'influxbro_popup_smart_bug';
+    smartBugBtn.type = 'button';
+    smartBugBtn.textContent = 'Fehler melden (Smart Assist)';
+    smartBugBtn.style.cursor = 'pointer';
+    smartBugBtn.style.padding = '8px 10px';
+    smartBugBtn.style.height = '34px';
+
     const bugHint = document.createElement('span');
     bugHint.id = 'influxbro_popup_bug_hint';
     bugHint.textContent = '';
@@ -1757,6 +1765,7 @@
     settingsBtn.style.display = 'none';
 
     right.appendChild(bugBtn);
+    right.appendChild(smartBugBtn);
     right.appendChild(bugHint);
     right.appendChild(logsBtn);
     right.appendChild(jumpLogsBtn);
@@ -1994,6 +2003,81 @@
     `;
     composer.appendChild(composerCard);
     document.body.appendChild(composer);
+
+    const smart = document.createElement('div');
+    smart.id = 'influxbro_smart_bug';
+    smart.style.position = 'fixed';
+    smart.style.inset = '0';
+    smart.style.zIndex = '10070';
+    smart.style.display = 'none';
+    smart.style.background = 'rgba(0,0,0,0.50)';
+    smart.style.padding = '8vh 12px 12px 12px';
+    smart.style.boxSizing = 'border-box';
+    smart.style.overflow = 'auto';
+
+    const smartCard = document.createElement('div');
+    smartCard.setAttribute('data-dialog-root', '1');
+    smartCard.style.maxWidth = '920px';
+    smartCard.style.margin = '0 auto 12px auto';
+    smartCard.style.maxHeight = 'calc(100vh - 16vh - 24px)';
+    smartCard.style.background = '#fff';
+    smartCard.style.borderRadius = '16px';
+    smartCard.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
+    smartCard.style.padding = '14px';
+    smartCard.style.display = 'flex';
+    smartCard.style.flexDirection = 'column';
+    smartCard.style.gap = '12px';
+    smartCard.style.overflow = 'hidden';
+    smartCard.innerHTML = `
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <div style="font-weight:800; font-size:16px;">Fehler melden (Smart Assist)</div>
+      </div>
+      <div id="influxbro_smart_bug_scroll" style="display:flex; flex-direction:column; gap:12px; overflow:auto; min-height:0; padding-right:2px;">
+        <div class="muted" style="font-size:12px; line-height:1.45;">Geführte Fehleraufnahme mit Kontext, rekonstruierten Schritten und Übergabe an den bestehenden Bugreport-Flow.</div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; align-items:end;">
+          <div>
+            <label for="influxbro_sba_mode" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Erkennung</label>
+            <select id="influxbro_sba_mode" style="width:100%; height:40px; padding:10px 12px; box-sizing:border-box;">
+              <option value="auto">Fehler automatisch erkannt</option>
+              <option value="manual">Fehler manuell melden</option>
+            </select>
+          </div>
+          <div>
+            <label for="influxbro_sba_where" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Wo ist der Fehler aufgetreten?</label>
+            <input id="influxbro_sba_where" type="text" style="width:100%; height:40px; padding:10px 12px; box-sizing:border-box;" />
+          </div>
+          <div>
+            <label for="influxbro_sba_when" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Wann ist der Fehler aufgetreten?</label>
+            <input id="influxbro_sba_when" type="text" style="width:100%; height:40px; padding:10px 12px; box-sizing:border-box;" />
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:start;">
+          <div>
+            <label for="influxbro_sba_expected" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Was wurde erwartet?</label>
+            <textarea id="influxbro_sba_expected" style="width:100%; min-height:100px; padding:10px 12px; box-sizing:border-box; border:1px solid #ddd; border-radius:12px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;"></textarea>
+          </div>
+          <div>
+            <label for="influxbro_sba_actual" style="display:block; font-size:12px; opacity:0.85; margin-bottom:4px;">Was ist tatsächlich passiert?</label>
+            <textarea id="influxbro_sba_actual" style="width:100%; min-height:100px; padding:10px 12px; box-sizing:border-box; border:1px solid #ddd; border-radius:12px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;"></textarea>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:6px;">
+            <div style="font-weight:700;">Erkannte Schritte</div>
+            <div class="muted" id="influxbro_sba_steps_hint" style="font-size:12px;">Letzte UI-Aktionen und Analyse-/Worklog-Einträge</div>
+          </div>
+          <textarea id="influxbro_sba_steps" style="width:100%; min-height:220px; padding:10px 12px; box-sizing:border-box; border:1px solid #ddd; border-radius:12px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;"></textarea>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; border-top:1px solid #eee; padding-top:10px; margin-top:4px;">
+        <button type="button" id="influxbro_sba_cancel" style="cursor:pointer; padding:10px 12px;">Schliessen</button>
+        <button type="button" id="influxbro_sba_snapshot" style="cursor:pointer; padding:10px 12px;">Snapshot erzeugen</button>
+        <button type="button" id="influxbro_sba_submit" style="cursor:pointer; padding:10px 12px;">An Bugreport übergeben</button>
+        <span id="influxbro_sba_status" style="font-size:12px; opacity:0.75;"></span>
+      </div>
+    `;
+    smart.appendChild(smartCard);
+    document.body.appendChild(smart);
     document.body.appendChild(root);
 
     function _clampPopupSize(){
@@ -2629,14 +2713,14 @@
       const msg = String(opts && opts.msg ? opts.msg : '').trim();
       const meta = opts && opts.meta ? opts.meta : null;
       const baseUrl = meta && meta.github_new_issue_url ? String(meta.github_new_issue_url) : '';
-      const defaultBugText = 'siehe automatisch angehaengtes Logging / Bei Bedarf hier eigene Fehlerbeschreibung einfuegen....';
-      const textState = { bug: '', enhancement: '' };
+      const defaultBugText = String(opts && opts.prefillText ? opts.prefillText : 'siehe automatisch angehaengtes Logging / Bei Bedarf hier eigene Fehlerbeschreibung einfuegen....');
+      const textState = { bug: defaultBugText, enhancement: '' };
 
       function close(){ composer.style.display = 'none'; statusEl.textContent = ''; }
       function sync(){
         const kind = String(kindEl.value || 'bug');
         const titlePrefix = (kind === 'enhancement') ? '[Enhancement]: ' : '[Bug]: ';
-        const fallbackTitle = (kind === 'enhancement') ? 'Neue Erweiterung' : _safeTitleFromMsg(msg);
+          const fallbackTitle = (kind === 'enhancement') ? 'Neue Erweiterung' : (String(opts && opts.prefillTitle ? opts.prefillTitle : _safeTitleFromMsg(msg)).replace(/^\[Bug\]:\s*/, ''));
         if(!String(titleEl.value || '').trim() || titleEl.dataset.autofill === '1'){
           titleEl.value = titlePrefix + fallbackTitle;
           titleEl.dataset.autofill = '1';
@@ -2658,7 +2742,7 @@
       }
 
       kindEl.value = 'bug';
-      functionEl.value = '';
+      functionEl.value = String(opts && opts.prefillFunction ? opts.prefillFunction : '');
       titleEl.dataset.autofill = '1';
       titleEl.oninput = ()=>{ titleEl.dataset.autofill = '0'; };
       kindEl.onchange = ()=>{
@@ -2741,7 +2825,87 @@
       _openIssueComposer({ msg, meta });
     }
 
+    async function _smartBugRun(msgOverride){
+      const smart = document.getElementById('influxbro_smart_bug');
+      const modeEl = document.getElementById('influxbro_sba_mode');
+      const whereEl = document.getElementById('influxbro_sba_where');
+      const whenEl = document.getElementById('influxbro_sba_when');
+      const expectedEl = document.getElementById('influxbro_sba_expected');
+      const actualEl = document.getElementById('influxbro_sba_actual');
+      const stepsEl = document.getElementById('influxbro_sba_steps');
+      const cancelEl = document.getElementById('influxbro_sba_cancel');
+      const snapEl = document.getElementById('influxbro_sba_snapshot');
+      const submitEl = document.getElementById('influxbro_sba_submit');
+      const statusEl = document.getElementById('influxbro_sba_status');
+      if(!smart || !modeEl || !whereEl || !whenEl || !expectedEl || !actualEl || !stepsEl || !cancelEl || !snapEl || !submitEl || !statusEl) return;
+
+      let meta = null;
+      let analysisRows = [];
+      let snapshotId = '';
+      const msg = String((msgOverride !== undefined && msgOverride !== null) ? msgOverride : (CURRENT_POPUP_VISIBLE_TEXT || '')).trim();
+      try{
+        const r = await fetch('./api/bugreport_meta');
+        meta = await r.json().catch(()=>null);
+      }catch(e){ meta = null; }
+      try{
+        const r = await fetch('./api/analysis_history?limit=50');
+        const j = await r.json().catch(()=>null);
+        analysisRows = Array.isArray(j && j.rows) ? j.rows : [];
+      }catch(e){ analysisRows = []; }
+      const recent = Array.isArray(meta && meta.recent_actions) ? meta.recent_actions : [];
+      const lines = [];
+      recent.slice(-10).forEach((it, idx)=>{
+        lines.push(`#UI ${idx+1} | ${String(it && it.at || '')} | ${String(it && it.page || '')} | ${String(it && it.ui || '')} | ${String(it && it.text || '')}`);
+      });
+      analysisRows.slice(-20).forEach((it, idx)=>{
+        lines.push(`#LOG ${idx+1} | ${String(it && it.at || '')} | ${String(it && it.kind || '')} / ${String(it && it.step || '')} | ${String(it && it.status || '')} | ${String(it && it.detail || '')}`);
+      });
+      modeEl.value = 'auto';
+      whereEl.value = '';
+      whenEl.value = new Date().toISOString();
+      expectedEl.value = '';
+      actualEl.value = msg || '';
+      stepsEl.value = lines.join('\n');
+      statusEl.textContent = '';
+      smart.style.display = 'block';
+      setTimeout(()=>{ try{ whereEl.focus(); }catch(e){} }, 0);
+
+      cancelEl.onclick = ()=>{ smart.style.display = 'none'; statusEl.textContent = ''; };
+      snapEl.onclick = async ()=>{
+        statusEl.textContent = 'Snapshot wird erzeugt...';
+        try{
+          const r = await fetch('./api/support_bundle/snapshot/create', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+          const j = await r.json().catch(()=>null);
+          if(!j || !j.ok) throw new Error(j && j.error ? j.error : 'Snapshot fehlgeschlagen');
+          snapshotId = String(j.row && j.row.id || '');
+          statusEl.textContent = snapshotId ? ('Snapshot: ' + snapshotId) : 'Snapshot erzeugt';
+        }catch(e){ statusEl.textContent = String(e && e.message ? e.message : e); }
+      };
+      submitEl.onclick = async ()=>{
+        const userText = [
+          'Smart Bug Assistant',
+          '',
+          'Erkennung: ' + String(modeEl.value || ''),
+          'Ort: ' + String(whereEl.value || ''),
+          'Zeitpunkt: ' + String(whenEl.value || ''),
+          '',
+          'Erwartet:',
+          String(expectedEl.value || ''),
+          '',
+          'Tatsächlich:',
+          String(actualEl.value || ''),
+          '',
+          'Rekonstruierte Schritte:',
+          String(stepsEl.value || ''),
+          snapshotId ? ('\n\nSupport Snapshot ID: ' + snapshotId) : ''
+        ].join('\n');
+        smart.style.display = 'none';
+        _openIssueComposer({ msg: msg || String(actualEl.value || ''), meta, prefillText: userText, prefillTitle: '[Bug]: ' + (String(whereEl.value || '').trim() || 'Smart Bug Assistant'), prefillFunction: String(whereEl.value || '').trim() || '' });
+      };
+    }
+
     bugBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _bugreportRun(null).then(()=>{ close(); }).catch(()=>{ close(); }); });
+    try{ smartBugBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _smartBugRun(null).then(()=>{ close(); }).catch(()=>{ close(); }); }); }catch(e){}
 
     try{
       logsBtn.addEventListener('click', async (ev)=>{
@@ -2792,6 +2956,7 @@
 
     // Expose the bugreport action for other UI elements (e.g. bottom status bar)
     try{ window.InfluxBroBugreport = { run: (msg)=>_bugreportRun(msg) }; }catch(e){}
+    try{ window.InfluxBroSmartBugAssistant = { run: (msg)=>_smartBugRun(msg) }; }catch(e){}
 
     POPUP_REFS = { root, title, pre, meta, metaFooter: popupMetaFooter, copyBtn, settingsBtn, logsBtn, split, historyBox };
 

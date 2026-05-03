@@ -214,6 +214,8 @@ Im Messwertprofil enthaelt die Kachel `InfluxDB` jetzt auch die Zeitpunkte von `
 
 Im Bereich `Backup` gibt es jetzt den neuen Dialog `Backup verifizieren`. Der MVP unterstuetzt zwei Modi: `Messwert-Backup verifizieren` und `Fullbackup verifizieren`. Die Verifikation erfolgt ueber einen temporären Verify-Bucket und vergleicht im ersten Schritt Punktanzahl, Measurement-Liste und Zeitbereiche. Originaldaten bleiben unverändert; der Prüf-Bucket kann optional automatisch gelöscht werden. Der Dialog zeigt Jobstatus, Schritt, Fortschritt, Verify-Bucket und einen kompakten Ergebnisbericht direkt in `backup.html` an.
 
+Fuer die strukturierte Fehleraufnahme gibt es jetzt den Einstieg `Fehler melden (Smart Assist)`. Der Assistent fuehrt durch grundlegende Fragen (`Wo`, `Wann`, `Was wurde erwartet`, `Was ist tatsächlich passiert`) und zeigt zusaetzlich rekonstruierte Schritte aus den vorhandenen UI-Aktionen und Analyse-/Worklog-Daten an. Optional kann direkt ein serverseitiger Support-Snapshot erzeugt werden; anschließend wird das Ergebnis in den bestehenden Bugreport-/Issue-Composer übergeben.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

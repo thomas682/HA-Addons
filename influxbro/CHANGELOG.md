@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.511
+
+### Enhancement
+
+- Bugreport / Support: Neuer `Fehler melden (Smart Assist)`-MVP auf Basis des vorhandenen Bugreport- und Snapshot-Systems. Der Assistent fuehrt durch eine strukturierte Fehleraufnahme (Ort, Zeitpunkt, erwartet, tatsächlich), zeigt rekonstruierte UI-/Analyse-Schritte aus vorhandenen Recent-Actions-/Worklog-Daten, kann serverseitig einen Support-Snapshot erzeugen und übergibt das Ergebnis direkt an den bestehenden Issue-Composer. ([#465](https://github.com/thomas682/HA-Addons/issues/465))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.510
 
 ### Enhancement
