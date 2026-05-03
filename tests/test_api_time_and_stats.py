@@ -1129,6 +1129,10 @@ def test_api_measurement_profile_returns_grouped_payload(load_app_module, tmp_pa
         "path": "modbus/0/sensors/0",
         "data": {"slave": 3, "address": 30581, "unit_of_measurement": "Wh"},
     })
+    monkeypatch.setattr(app_mod, "_measurement_profile_references", lambda *args, **kwargs: {
+        "count": 1,
+        "items": [{"kind": "automation", "source_file": "automations.yaml", "line": 12, "match": "sensor.demo", "snippet": "entity_id: sensor.demo", "open_target": "/config/automation/dashboard"}],
+    })
 
     class _FakeRecord:
         def __init__(self, value, time_iso=None):
@@ -1181,12 +1185,15 @@ def test_api_measurement_profile_returns_grouped_payload(load_app_module, tmp_pa
     assert j["ok"] is True
     assert j["ha"]["friendly_name"] == "Demo Sensor"
     assert j["yaml"]["found"] is True
+    assert j["references"]["count"] == 1
     assert j["influx"]["field_type"] == "float"
     assert j["influx"]["count"] == 42
     assert j["influx"]["first_value"] == 1.0
     assert j["influx"]["last_value"] == 9.0
     assert j["influx"]["oldest_time"] == "2026-01-01T00:00:00.000Z"
     assert j["influx"]["newest_time"] == "2026-01-02T00:00:00.000Z"
+    assert "min_time" in j["influx"]
+    assert "max_time" in j["influx"]
     assert j["derived"]["internal_type"] == "counter_increasing"
     assert isinstance(j["quality"]["warnings"], list)
 

@@ -210,6 +210,8 @@ Die Tooltip-Logik wurde in `_tooltips.html` weiter zentralisiert. Fuer Dashboard
 
 `Analyse mit Cache` verwendet jetzt fuer die eigentliche Ausreißersuche nur noch die aktuell aktivierten Typen aus der Typenauswahl. Diese tatsächlich geprüften Typen werden sowohl im Bereich `txt_found_info` als auch in der Cache-/Analyse-Zeitleiste explizit angezeigt. Das gefilterte Analyse-Logging besitzt zusaetzlich eine markierende Volltextsuche mit `Zurueck`/`Weiter` und einen Copy-Button direkt in der Actionleiste. Bei der Feldauswahl (`/api/fields`) wird fuer einfache All-Time-Faelle wieder `schema.measurementFieldKeys(...)` verwendet, um unnötig schwere Distinct-Scans zu vermeiden.
 
+Im Messwertprofil enthaelt die Kachel `InfluxDB` jetzt auch die Zeitpunkte von `Erster Wert`, `Letzter Wert`, `Min` und `Max`. Darunter gibt es neu die Kachel `Referenzierung`, die weitere YAML-/JSON-Fundstellen des aktuellen Messwerts auflistet. Wo moeglich werden dazu Direktlinks (z. B. zu Dashboards, Automationen oder Skripten) angeboten; ansonsten bleibt die Fundstelle als Datei-/Zeilenhinweis sichtbar. Die Strategiekarten im Profilbereich werden zusaetzlich farblich an die zugehoerigen Typ-Chips angelehnt.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

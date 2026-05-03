@@ -5380,6 +5380,13 @@ function _profileSection(title, rows, extraHtml){
   return `<section class="ib-profile-section"><h4>${_profileEsc(title)}</h4><div class="ib-profile-table">${_profileRows(rows)}</div>${extraHtml || ''}</section>`;
 }
 
+function _profileValueWithTime(value, time){
+  const v = _profileEsc(value == null ? '' : value);
+  const t = _profileEsc(time == null ? '' : time);
+  if(!v) return '—';
+  return t ? `${v} <span class="muted" style="font-size:11px;">@ ${t}</span>` : v;
+}
+
 function renderMeasurementProfilePanel(profile){
   if(!$measurementProfilePanel || !$measurementProfileSections) return;
   if(!profile){
@@ -5397,8 +5404,16 @@ function renderMeasurementProfilePanel(profile){
   const influx = profile.influx || {};
   const derived = profile.derived || {};
   const quality = profile.quality || {};
+  const references = profile.references || {};
   const yamlRows = Object.entries(yamlInfo.data || {}).slice(0, 14).map(([k,v]) => [k, typeof v === 'string' ? _profileEsc(v) : _profileEsc(JSON.stringify(v))]);
   const warnings = Array.isArray(quality.warnings) ? quality.warnings : [];
+  const refItems = Array.isArray(references.items) ? references.items : [];
+  const refHtml = refItems.length
+    ? `<div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">${refItems.map((it)=>{
+        const open = it.open_target ? `<a href="${_escHtml(String(it.open_target || ''))}" target="_blank" rel="noopener noreferrer">Öffnen</a>` : `<span class="muted">kein Direktlink</span>`;
+        return `<div style="border:1px solid #eee; border-radius:8px; padding:8px 10px; background:#fff;"><div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div><div style="font-weight:700;">${_profileEsc(it.kind || 'Referenz')}</div><div class="muted" style="font-size:11px;">${_profileEsc(it.source_file || '')}:${_profileEsc(it.line || '')}</div></div><div>${open}</div></div><div style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; margin-top:6px; overflow-wrap:anywhere;">${_profileEsc(it.snippet || '')}</div></div>`;
+      }).join('')}</div>`
+    : `<div class="ib-profile-warnings"><div class="ib-profile-warning ib-profile-ok">Keine weiteren Referenzierungen gefunden.</div></div>`;
   const warningsHtml = warnings.length
     ? `<div class="ib-profile-warnings">${warnings.map(w => `<div class="ib-profile-warning">${_profileEsc(w)}</div>`).join('')}</div>`
     : `<div class="ib-profile-warnings"><div class="ib-profile-warning ib-profile-ok">Keine Warnungen</div></div>`;
@@ -5430,16 +5445,19 @@ function renderMeasurementProfilePanel(profile){
       ['Treffer', _profileEsc(yamlInfo.match_count || '')],
       ...yamlRows,
     ]),
+    _profileSection('Referenzierung', [
+      ['Gefundene Verwendungen', _profileEsc(references.count || 0)],
+    ], refHtml),
     _profileSection('InfluxDB', [
       ['Bucket', _profileEsc(influx.bucket || '')],
       ['Measurement', _profileCode(influx.measurement || '')],
       ['Field', _profileCode(influx.field || '')],
       ['Feldtyp', _profileEsc(influx.field_type || '')],
       ['Datenpunkte', _profileEsc(influx.count || '')],
-      ['Erster Wert', _profileEsc(influx.first_value || '')],
-      ['Letzter Wert', _profileEsc(influx.last_value || '')],
-      ['Min', _profileEsc(influx.min || '')],
-      ['Max', _profileEsc(influx.max || '')],
+      ['Erster Wert', _profileValueWithTime(influx.first_value, influx.oldest_time)],
+      ['Letzter Wert', _profileValueWithTime(influx.last_value, influx.newest_time)],
+      ['Min', _profileValueWithTime(influx.min, influx.min_time)],
+      ['Max', _profileValueWithTime(influx.max, influx.max_time)],
       ['Mittel', _profileEsc(influx.mean || '')],
       ['Nachkommastellen', _profileEsc(influx.decimal_places_detected || '')],
     ]),
@@ -8869,7 +8887,9 @@ function renderOutlierStrategyParamCards(){
     const def = defs[type] || { label: _outlierStrategyTypeLabel(type), description: '', params: [], corrections: [] };
     const params = _outlierStrategyDefaultParamsForType(data, type);
     const corrections = _outlierStrategyDefaultCorrectionsForType(data, type);
-    return `<section class="ib-strategy-card" data-ui="dashboard_analysis.panel_strategy_type.${_escAttr(type)}" data-ib-pickkey="dashboard_analysis.panel_strategy_type.${_escAttr(type)}"><h4>${_escHtml(def.label || type)}</h4><div class="muted">${_escHtml(def.description || '')}</div><div class="ib-form-grid">${(Array.isArray(def.params)?def.params:[]).map((f)=>_outlierStrategyRenderParamField(type, f, params[f.key], 'param')).join('')}</div><div class="ib-form-grid">${(Array.isArray(def.corrections)?def.corrections:[]).map((f)=>_outlierStrategyRenderParamField(type, f, corrections[f.key], 'correction')).join('')}</div></section>`;
+    const color = String((((OUTLIER_TYPE_META[type]||{}).severity === 'high') ? '#dc2626' : (((OUTLIER_TYPE_META[type]||{}).severity === 'medium') ? '#ea580c' : '#6b7280')));
+    const bg = color === '#dc2626' ? 'rgba(220,38,38,0.08)' : (color === '#ea580c' ? 'rgba(234,88,12,0.08)' : 'rgba(107,114,128,0.08)');
+    return `<section class="ib-strategy-card" style="border-color:${_escAttr(color)}; background:${_escAttr(bg)};" data-ui="dashboard_analysis.panel_strategy_type.${_escAttr(type)}" data-ib-pickkey="dashboard_analysis.panel_strategy_type.${_escAttr(type)}"><h4>${_escHtml(def.label || type)}</h4><div class="muted">${_escHtml(def.description || '')}</div><div class="ib-form-grid">${(Array.isArray(def.params)?def.params:[]).map((f)=>_outlierStrategyRenderParamField(type, f, params[f.key], 'param')).join('')}</div><div class="ib-form-grid">${(Array.isArray(def.corrections)?def.corrections:[]).map((f)=>_outlierStrategyRenderParamField(type, f, corrections[f.key], 'correction')).join('')}</div></section>`;
   }).join('');
   $analysisStrategyParams.querySelectorAll('input, select').forEach((el)=>{
     el.addEventListener('change', ()=>{ saveOutlierStrategyOverride().catch(()=>{}); });

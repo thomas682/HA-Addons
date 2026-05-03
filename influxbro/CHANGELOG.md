@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.509
+
+### Enhancement
+
+- Dashboard / Messwertprofil: Die InfluxDB-Kachel zeigt jetzt bei `Erster Wert`, `Letzter Wert`, `Min` und `Max` den jeweiligen Zeitpunkt direkt neben dem Wert an. Zusätzlich gibt es die neue Kachel `Referenzierung`, die weitere Verwendungen des Messwerts in YAML-/JSON-Dateien auflistet und – wo sinnvoll – einen Direktlink (z. B. zu Dashboards/Automationen) anbietet. Die Strategiekarten im Profilbereich verwenden nun eine Hintergrundfarbe, die sich an der Typ-/Chipfarbe orientiert. ([#462](https://github.com/thomas682/HA-Addons/issues/462))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.508
 
 ### Fix

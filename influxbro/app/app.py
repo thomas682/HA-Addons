@@ -767,6 +767,65 @@ def _measurement_profile_yaml_search(entity_id: str, friendly_name: str | None, 
     }
 
 
+def _measurement_profile_reference_kind(path: Path) -> str:
+    parts = [str(x or "").lower() for x in path.parts]
+    path_s = "/".join(parts)
+    if ".storage" in parts and "lovelace" in path_s:
+        return "dashboard"
+    if path.name.lower() in ("automations.yaml", "automation.yaml"):
+        return "automation"
+    if path.name.lower() in ("scripts.yaml", "script.yaml"):
+        return "script"
+    if "template" in path_s:
+        return "template"
+    if "dashboard" in path_s or "lovelace" in path_s:
+        return "dashboard"
+    return "config"
+
+
+def _measurement_profile_reference_link(kind: str) -> str | None:
+    if kind == "dashboard":
+        return "/lovelace/0"
+    if kind == "automation":
+        return "/config/automation/dashboard"
+    if kind == "script":
+        return "/config/script/dashboard"
+    return None
+
+
+def _measurement_profile_references(entity_id: str, friendly_name: str | None, measurement: str | None, unique_id: str | None) -> dict[str, Any]:
+    terms = [str(entity_id or "").strip(), str(friendly_name or "").strip(), str(measurement or "").strip(), str(unique_id or "").strip()]
+    terms = [t for t in terms if t]
+    if not terms:
+        return {"count": 0, "items": []}
+    found: list[dict[str, Any]] = []
+    for p in _measurement_profile_iter_yaml_files(limit=400):
+        try:
+            raw = p.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            continue
+        lines = raw.splitlines()
+        for idx, line in enumerate(lines, start=1):
+            low = line.lower()
+            hit = next((term for term in terms if term and term.lower() in low), None)
+            if not hit:
+                continue
+            kind = _measurement_profile_reference_kind(p)
+            found.append(
+                {
+                    "kind": kind,
+                    "source_file": _yaml_safe_rel(p),
+                    "line": idx,
+                    "match": hit,
+                    "snippet": line.strip()[:300],
+                    "open_target": _measurement_profile_reference_link(kind),
+                }
+            )
+            if len(found) >= 60:
+                return {"count": len(found), "items": found}
+    return {"count": len(found), "items": found}
+
+
 app = Flask(__name__, template_folder=str(APP_DIR / "templates"))
 RUNTIME_CFG_FILE = DATA_DIR / "influx_browser_config.json"
 
@@ -12657,7 +12716,9 @@ from(bucket: "{bucket}")
         "oldest_time": None,
         "newest_time": None,
         "min": None,
+        "min_time": None,
         "max": None,
+        "max_time": None,
         "mean": None,
         "decimal_places_detected": None,
     }
@@ -12692,10 +12753,12 @@ from(bucket: "{bucket}")
         rec = _first_record_from_tables(qapi.query(q_min, org=cfg["org"]))
         if rec is not None:
             out["min"] = rec.get_value()
+            out["min_time"] = _dt_to_rfc3339_utc_ms(rec.get_time()) if isinstance(rec.get_time(), datetime) else rec.get_time()
             sampled_values.append(rec.get_value())
         rec = _first_record_from_tables(qapi.query(q_max, org=cfg["org"]))
         if rec is not None:
             out["max"] = rec.get_value()
+            out["max_time"] = _dt_to_rfc3339_utc_ms(rec.get_time()) if isinstance(rec.get_time(), datetime) else rec.get_time()
             sampled_values.append(rec.get_value())
         rec = None
         try:
@@ -12744,7 +12807,9 @@ def _measurement_profile_influx_v1(
         "oldest_time": None,
         "newest_time": None,
         "min": None,
+        "min_time": None,
         "max": None,
+        "max_time": None,
         "mean": None,
         "decimal_places_detected": None,
     }
@@ -12801,6 +12866,10 @@ def _measurement_profile_influx_v1(
                     key = next((k for k in pt if k.startswith(label + "_")), None)
                     if key:
                         out[label] = pt.get(key)
+                        if label == "min":
+                            out["min_time"] = pt.get("time")
+                        if label == "max":
+                            out["max_time"] = pt.get("time")
                         sampled_values.append(out[label])
             except Exception:
                 continue
@@ -13116,6 +13185,7 @@ def _measurement_profile_build(
     selector_range, start_dt, stop_dt = _measurement_profile_range(cfg, body)
     ha = _measurement_profile_ha(entity_id)
     yaml_info = _measurement_profile_yaml_search(entity_id, ha.get("friendly_name"), ha.get("unique_id"))
+    references = _measurement_profile_references(entity_id, ha.get("friendly_name"), measurement, ha.get("unique_id"))
     if int(cfg.get("influx_version", 2) or 2) == 2:
         influx = _measurement_profile_influx_v2(
             cfg,
@@ -13145,6 +13215,7 @@ def _measurement_profile_build(
         "entity_id": entity_id,
         "ha": ha,
         "yaml": yaml_info,
+        "references": references,
         "influx": influx,
         "derived": derived,
         "quality": quality,
@@ -13540,12 +13611,14 @@ def api_measurement_profile():
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
     derived = _measurement_profile_derived(ha, influx, yaml_info)
     quality = _measurement_profile_quality(ha, yaml_info, influx, derived)
+    references = _measurement_profile_references(entity_id, ha.get("friendly_name"), measurement, ha.get("unique_id"))
     return jsonify(
         {
             "ok": True,
             "entity_id": entity_id,
             "ha": ha,
             "yaml": yaml_info,
+            "references": references,
             "influx": influx,
             "derived": derived,
             "quality": quality,

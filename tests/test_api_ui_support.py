@@ -510,6 +510,8 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert 'id="measurement_profile_desc"' in body
     assert 'id="measurement_profile_panel" class="ib-profile-panel" data-ui="dashboard_selection.panel_measurement_profile"' in body
     assert 'id="measurement_profile_sections"' in body
+    assert 'Referenzierung' in body
+    assert '_profileValueWithTime(' in body
     assert 'id="name_merge_latest_btn"' in body
     assert 'Mehrere Messwertnamen' in body
     assert 'id="name_timeline_summary"' in body
@@ -581,6 +583,7 @@ def test_dashboard_outlier_strategy_ui_exists():
     assert 'id="analysis_strategy_all_on"' in body
     assert 'id="analysis_strategy_all_off"' in body
     assert 'data-ui="dashboard_selection.panel_analysis_strategy"' in body
+    assert 'style="border-color:${_escAttr(color)}; background:${_escAttr(bg)};"' in body
     assert './api/outlier_strategy?' in body or './api/outlier_strategy' in body
     assert './api/outlier_strategy/config' in body
     assert './api/outlier_strategy/override' in body
