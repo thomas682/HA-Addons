@@ -1443,6 +1443,32 @@ def test_fields_all_time_uses_schema_measurement_field_keys(load_app_module, tmp
     assert 'distinct(column: "_field")' not in q
 
 
+def test_verify_measurement_start_returns_job_id(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})
+    monkeypatch.setattr(app_mod.threading, "Thread", lambda target, args=(), daemon=None: type("T", (), {"start": lambda self: None})())
+    client = app_mod.app.test_client()
+    r = client.post("/api/verify/measurement", json={"entity_id": "sensor.demo", "measurement": "Wh", "field": "value", "backup_mode": "existing", "backup_id": "demo_backup", "profile": "fast"})
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["mode"] == "measurement"
+    assert str(j["job_id"]).startswith("verify_measurement_")
+
+
+def test_verify_fullbackup_start_returns_job_id(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})
+    monkeypatch.setattr(app_mod.threading, "Thread", lambda target, args=(), daemon=None: type("T", (), {"start": lambda self: None})())
+    client = app_mod.app.test_client()
+    r = client.post("/api/verify/fullbackup", json={"bucket": "b", "backup_mode": "existing", "backup_id": "demo_fullbackup", "profile": "fast"})
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["mode"] == "fullbackup"
+    assert str(j["job_id"]).startswith("verify_full_")
+
+
 def test_measurement_profile_derived_includes_strategy_explanation_fields(load_app_module):
     app_mod = load_app_module()
     derived = app_mod._measurement_profile_derived(

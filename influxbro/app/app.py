@@ -29,7 +29,7 @@ import zipfile
 from datetime import datetime, timedelta, timezone
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, abort, g, jsonify, make_response, render_template, request, send_file
@@ -177,6 +177,9 @@ APP_STATE_LOCK = threading.RLock()
 APP_STATE_PATH = DATA_DIR / "influxbro_app_state.json"
 OUTLIER_STRATEGY_LOCK = threading.RLock()
 OUTLIER_STRATEGY_PATH = DATA_DIR / "influxbro_outlier_strategies.json"
+VERIFY_JOBS_LOCK = threading.RLock()
+VERIFY_JOBS: dict[str, dict[str, Any]] = {}
+VERIFY_RESULTS_DIR = DATA_DIR / "verify_results"
 
 OUTLIER_TYPE_LEGACY_TO_NEW = {
     "counter": "rate_jump",
@@ -3377,6 +3380,232 @@ def _backup_require_free_space(cfg: dict[str, Any], dir_path: Path) -> tuple[boo
         return True, None
     free_mb = int(free / 1024 / 1024)
     return False, f"Nicht genug freier Speicher fuer Backup. Frei: {free_mb} MB; erforderlich: {min_mb} MB"
+
+
+def _verify_result_path(job_id: str) -> Path:
+    return VERIFY_RESULTS_DIR / f"{str(job_id or '').strip()}.json"
+
+
+def _verify_save_result(job_id: str, payload: dict[str, Any]) -> None:
+    VERIFY_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    _verify_result_path(job_id).write_text(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _verify_load_result(job_id: str) -> dict[str, Any] | None:
+    p = _verify_result_path(job_id)
+    if not p.exists():
+        return None
+    try:
+        val = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+        return val if isinstance(val, dict) else None
+    except Exception:
+        return None
+
+
+def _verify_tmp_bucket_name(kind: str) -> str:
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    base = "verify_tmp_measurement" if kind == "measurement" else "verify_tmp_full"
+    return _backup_safe(f"{base}_{ts}_{uuid.uuid4().hex[:8]}")
+
+
+def _verify_create_bucket_v2(cfg: dict[str, Any], name: str) -> None:
+    with v2_admin_client(cfg, timeout_seconds_override=min(20, int(cfg.get("timeout_seconds") or 10))) as c:
+        try:
+            orgs = c.organizations_api().find_organizations(org=str(cfg.get("org") or ""))  # type: ignore[attr-defined]
+            orgs_list = getattr(orgs, "orgs", None) or []
+            org_id = str(getattr(orgs_list[0], "id", "") or "") if orgs_list else ""
+        except Exception:
+            org_id = ""
+        kwargs = {"bucket_name": name, "retention_rules": []}
+        if org_id:
+            kwargs["org_id"] = org_id
+        else:
+            kwargs["org"] = str(cfg.get("org") or "")
+        c.buckets_api().create_bucket(**kwargs)
+
+
+def _verify_delete_bucket_v2(cfg: dict[str, Any], name: str) -> bool:
+    try:
+        with v2_admin_client(cfg, timeout_seconds_override=min(20, int(cfg.get("timeout_seconds") or 10))) as c:
+            b = c.buckets_api().find_buckets(org=str(cfg.get("org") or ""))
+            buckets = getattr(b, "buckets", None) or []
+            for buck in buckets:
+                try:
+                    if str(getattr(buck, "name", "") or "") == name:
+                        c.buckets_api().delete_bucket(buck)
+                        return True
+                except Exception:
+                    continue
+    except Exception:
+        return False
+    return False
+
+
+def _verify_storage_precheck(cfg: dict[str, Any], dir_path: Path) -> tuple[bool, str | None]:
+    ok, msg = _backup_require_free_space(cfg, dir_path)
+    if not ok:
+        return ok, msg
+    return True, None
+
+
+def _verify_write_lp_to_bucket_v2(cfg: dict[str, Any], verify_bucket: str, lines: Iterable[str]) -> int:
+    count = 0
+    with v2_client(cfg) as c:
+        wapi = c.write_api(write_options=SYNCHRONOUS)
+        batch: list[Point] = []
+        for raw in lines:
+            pts = _lp_parse_points_from_line(raw)
+            if not pts:
+                continue
+            for p in pts:
+                ts = str(p.get("_time") or "").strip()
+                meas = str(p.get("_measurement") or "").strip()
+                fld = str(p.get("_field") or "").strip()
+                if not ts or not meas or not fld:
+                    continue
+                val = p.get("_value")
+                if val is None:
+                    continue
+                dt = _parse_iso_datetime(ts)
+                if not dt:
+                    continue
+                pt = Point(meas)
+                for k, v in p.items():
+                    if not k or str(k).startswith("_") or v is None:
+                        continue
+                    pt = pt.tag(str(k), str(v))
+                pt = pt.field(fld, val).time(dt, WritePrecision.NS)
+                batch.append(pt)
+                count += 1
+                if len(batch) >= 2000:
+                    wapi.write(bucket=verify_bucket, org=str(cfg.get("org") or ""), record=batch, write_precision=WritePrecision.NS)
+                    batch = []
+        if batch:
+            wapi.write(bucket=verify_bucket, org=str(cfg.get("org") or ""), record=batch, write_precision=WritePrecision.NS)
+    return count
+
+
+def _verify_measurement_compare_v2(cfg: dict[str, Any], *, source_bucket: str, verify_bucket: str, measurement: str, field: str, entity_id: str | None, friendly_name: str | None, start_dt: datetime | None, stop_dt: datetime | None) -> dict[str, Any]:
+    selector_range = _selector_range_key("custom" if start_dt and stop_dt else "all", start_dt, stop_dt)
+    src = _measurement_profile_influx_v2(cfg, bucket=source_bucket, measurement=measurement, field=field, entity_id=entity_id, friendly_name=friendly_name, selector_range=selector_range, start_dt=start_dt, stop_dt=stop_dt)
+    dst = _measurement_profile_influx_v2(cfg, bucket=verify_bucket, measurement=measurement, field=field, entity_id=entity_id, friendly_name=friendly_name, selector_range=selector_range, start_dt=start_dt, stop_dt=stop_dt)
+    src_count = int(src.get("count") or 0)
+    dst_count = int(dst.get("count") or 0)
+    delta = dst_count - src_count
+    delta_pct = (abs(delta) / src_count * 100.0) if src_count else (0.0 if dst_count == 0 else 100.0)
+    return {
+        "selection": {
+            "entity_id": entity_id,
+            "measurement": measurement,
+            "field": field,
+            "friendly_name": friendly_name,
+            "range": selector_range,
+            "start": _dt_to_rfc3339_utc_full(start_dt) if start_dt else None,
+            "stop": _dt_to_rfc3339_utc_full(stop_dt) if stop_dt else None,
+        },
+        "points": {"src": src_count, "dst": dst_count, "delta": delta, "delta_pct": delta_pct},
+        "time_ranges": {"src_start": src.get("oldest_time"), "src_stop": src.get("newest_time"), "dst_start": dst.get("oldest_time"), "dst_stop": dst.get("newest_time")},
+        "measurements": {"src_count": 1 if src_count else 0, "dst_count": 1 if dst_count else 0, "missing": [measurement] if src_count and not dst_count else [], "additional": []},
+        "cardinality": {"src": 1 if src_count else 0, "dst": 1 if dst_count else 0, "drift": bool(src_count != dst_count and delta_pct > 0)},
+        "top_series_diff": [],
+        "src_profile": src,
+        "dst_profile": dst,
+    }
+
+
+def _verify_measurements_for_bucket_v2(cfg: dict[str, Any], bucket: str) -> list[str]:
+    q = f'import "influxdata/influxdb/schema"\nschema.measurements(bucket: "{bucket}")'
+    out: list[str] = []
+    with v2_client(cfg) as c:
+        for table in c.query_api().query(q, org=cfg["org"]) or []:
+            for rec in getattr(table, "records", []) or []:
+                v = str(rec.get_value() or "").strip()
+                if v and v not in out:
+                    out.append(v)
+    return out
+
+
+def _verify_count_for_measurement_v2(cfg: dict[str, Any], bucket: str, measurement: str) -> dict[str, Any]:
+    q = f'''
+from(bucket: "{bucket}")
+  |> range(start: time(v: "1970-01-01T00:00:00Z"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)})
+  |> keep(columns: ["_time", "_value"])
+  |> count(column: "_value")
+  |> group()
+  |> sum(column: "_value")
+'''
+    count = 0
+    with v2_client(cfg) as c:
+        for table in c.query_api().query(q, org=cfg["org"]) or []:
+            for rec in getattr(table, "records", []) or []:
+                try:
+                    count = int(rec.get_value() or 0)
+                except Exception:
+                    pass
+                break
+    q2 = f'''
+from(bucket: "{bucket}")
+  |> range(start: time(v: "1970-01-01T00:00:00Z"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)})
+  |> keep(columns: ["_time"])
+  |> first()
+'''
+    q3 = f'''
+from(bucket: "{bucket}")
+  |> range(start: time(v: "1970-01-01T00:00:00Z"))
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)})
+  |> keep(columns: ["_time"])
+  |> last()
+'''
+    start_iso = None
+    stop_iso = None
+    with v2_client(cfg) as c:
+        res1 = c.query_api().query(q2, org=cfg["org"]) or []
+        for table in res1:
+            for rec in getattr(table, "records", []) or []:
+                t = rec.get_time()
+                start_iso = _dt_to_rfc3339_utc_ms(t) if isinstance(t, datetime) else t
+                break
+        res2 = c.query_api().query(q3, org=cfg["org"]) or []
+        for table in res2:
+            for rec in getattr(table, "records", []) or []:
+                t = rec.get_time()
+                stop_iso = _dt_to_rfc3339_utc_ms(t) if isinstance(t, datetime) else t
+                break
+    return {"count": count, "start": start_iso, "stop": stop_iso}
+
+
+def _verify_full_compare_v2(cfg: dict[str, Any], *, source_bucket: str, verify_bucket: str) -> dict[str, Any]:
+    src_ms = _verify_measurements_for_bucket_v2(cfg, source_bucket)
+    dst_ms = _verify_measurements_for_bucket_v2(cfg, verify_bucket)
+    missing = [m for m in src_ms if m not in dst_ms]
+    additional = [m for m in dst_ms if m not in src_ms]
+    src_total = 0
+    dst_total = 0
+    top: list[dict[str, Any]] = []
+    src_ranges: dict[str, Any] = {}
+    dst_ranges: dict[str, Any] = {}
+    for m in src_ms[:200]:
+        s = _verify_count_for_measurement_v2(cfg, source_bucket, m)
+        d = _verify_count_for_measurement_v2(cfg, verify_bucket, m)
+        src_total += int(s.get("count") or 0)
+        dst_total += int(d.get("count") or 0)
+        src_ranges[m] = {"start": s.get("start"), "stop": s.get("stop")}
+        dst_ranges[m] = {"start": d.get("start"), "stop": d.get("stop")}
+        if int(s.get("count") or 0) != int(d.get("count") or 0):
+            delta = int(d.get("count") or 0) - int(s.get("count") or 0)
+            pct = (abs(delta) / int(s.get("count") or 1) * 100.0) if int(s.get("count") or 0) else 100.0
+            top.append({"series": m, "src": int(s.get("count") or 0), "dst": int(d.get("count") or 0), "delta": delta, "delta_pct": pct})
+    delta = dst_total - src_total
+    delta_pct = (abs(delta) / src_total * 100.0) if src_total else (0.0 if dst_total == 0 else 100.0)
+    return {
+        "points": {"src": src_total, "dst": dst_total, "delta": delta, "delta_pct": delta_pct},
+        "measurements": {"src_count": len(src_ms), "dst_count": len(dst_ms), "missing": missing, "additional": additional},
+        "time_ranges": {"src": src_ranges, "dst": dst_ranges},
+        "cardinality": {"src": len(src_ms), "dst": len(dst_ms), "drift": bool(missing or additional)},
+        "top_series_diff": top[:20],
+    }
 
 
 # Configure logging early from persisted config.
@@ -19300,6 +19529,237 @@ def api_restore_job_cancel():
     except Exception:
         pass
     return jsonify({"ok": True})
+
+
+def _verify_job_public(job: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "job_id": job.get("id"),
+        "mode": job.get("mode"),
+        "status": job.get("state"),
+        "progress": int(job.get("progress") or 0),
+        "step": job.get("step"),
+        "started_at": job.get("started_at"),
+        "finished_at": job.get("finished_at"),
+        "source_bucket": job.get("source_bucket"),
+        "verify_bucket": job.get("verify_bucket"),
+        "cleanup_requested": bool(job.get("cleanup_requested")),
+        "error": job.get("error"),
+        "message": job.get("message"),
+    }
+
+
+def _verify_set(job_id: str, **kw: Any) -> None:
+    with VERIFY_JOBS_LOCK:
+        if job_id not in VERIFY_JOBS:
+            return
+        VERIFY_JOBS[job_id].update(kw)
+
+
+def _verify_run_thread(job_id: str, cfg: dict[str, Any], payload: dict[str, Any]) -> None:
+    def set_state(state: str, message: str, *, progress: int | None = None, step: str | None = None, error: str | None = None) -> None:
+        upd: dict[str, Any] = {"state": state, "message": message}
+        if progress is not None:
+            upd["progress"] = progress
+        if step is not None:
+            upd["step"] = step
+        if error is not None:
+            upd["error"] = error
+        if state in ("done", "warning", "failed"):
+            upd["finished_at"] = _utc_now_iso_ms()
+        _verify_set(job_id, **upd)
+
+    try:
+        mode = str(payload.get("mode") or "measurement")
+        cleanup_requested = bool(payload.get("cleanup_verify_bucket", True))
+        verify_bucket = _verify_tmp_bucket_name(mode)
+        set_state("running", "Preflight", progress=5, step="precheck")
+
+        bdir = backup_dir_for_target(cfg, payload.get("target"))
+        ok_free, msg = _verify_storage_precheck(cfg, bdir)
+        if not ok_free:
+            set_state("failed", "Speichercheck fehlgeschlagen", progress=100, step="precheck", error=msg)
+            return
+        if int(cfg.get("influx_version", 2) or 2) != 2:
+            set_state("failed", "Nicht unterstützt", progress=100, step="precheck", error="Verify MVP unterstützt aktuell InfluxDB v2")
+            return
+        if not (cfg.get("token") and cfg.get("org") and cfg.get("bucket")):
+            set_state("failed", "Konfiguration fehlt", progress=100, step="precheck", error="InfluxDB v2 requires token, org, bucket")
+            return
+
+        backup_id = str(payload.get("backup_id") or "").strip()
+        source_bucket = str(payload.get("bucket") or cfg.get("bucket") or "").strip()
+        if mode == "measurement":
+            source_bucket = str(cfg.get("bucket") or "").strip()
+            if str(payload.get("backup_mode") or "") == "create_new":
+                set_state("running", "Neues Messwert-Backup wird erstellt", progress=15, step="backup_create")
+                measurement = str(payload.get("measurement") or "").strip()
+                field = str(payload.get("field") or "").strip() or "value"
+                entity_id = str(payload.get("entity_id") or "").strip() or None
+                friendly_name = str(payload.get("friendly_name") or "").strip() or None
+                selector_range, start_dt, stop_dt = _measurement_profile_range(cfg, payload)
+                if not start_dt or not stop_dt:
+                    start_dt = datetime(1970, 1, 1, tzinfo=timezone.utc)
+                    stop_dt = datetime.now(timezone.utc)
+                backup_id = _backup_create_range(cfg, measurement=measurement, field=field, entity_id=entity_id, friendly_name=friendly_name, start_dt=start_dt, stop_dt=stop_dt, display_name=friendly_name or entity_id or measurement)
+            if not backup_id:
+                set_state("failed", "Backup fehlt", progress=100, step="backup_select", error="backup_id required")
+                return
+            set_state("running", "Temporären Prüf-Bucket erstellen", progress=25, step="restore_temp_bucket")
+            _verify_create_bucket_v2(cfg, verify_bucket)
+            bdir = backup_dir_for_target(cfg, payload.get("target"))
+            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=False) as f:
+                _verify_write_lp_to_bucket_v2(cfg, verify_bucket, f)
+            set_state("running", "Original und Restore vergleichen", progress=70, step="compare_points")
+            start_dt = _parse_iso_datetime(str(payload.get("start") or "")) if payload.get("start") else None
+            stop_dt = _parse_iso_datetime(str(payload.get("stop") or "")) if payload.get("stop") else None
+            result = _verify_measurement_compare_v2(
+                cfg,
+                source_bucket=source_bucket,
+                verify_bucket=verify_bucket,
+                measurement=str(payload.get("measurement") or ""),
+                field=str(payload.get("field") or "value"),
+                entity_id=str(payload.get("entity_id") or "").strip() or None,
+                friendly_name=str(payload.get("friendly_name") or "").strip() or None,
+                start_dt=start_dt,
+                stop_dt=stop_dt,
+            )
+        else:
+            if str(payload.get("backup_mode") or "") == "create_new":
+                set_state("running", "Neues Fullbackup wird erstellt", progress=15, step="backup_create")
+                ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                backup_id = f"fullbackup__db_full__v2__verify__{ts}"
+                meta_path, lp_path = _fullbackup_files(bdir, backup_id)
+                if _backup_zip_path(bdir, backup_id).exists() or meta_path.exists() or lp_path.exists():
+                    raise RuntimeError("backup id collision")
+                count = 0
+                oldest = None
+                newest = None
+                q = f'''\
+from(bucket: "{cfg["bucket"]}")
+  |> range(start: time(v: "1970-01-01T00:00:00Z"))
+  |> sort(columns: ["_time"])
+'''
+                with v2_client(cfg) as c:
+                    qapi = c.query_api()
+                    with lp_path.open("w", encoding="utf-8") as f:
+                        for rec in qapi.query_stream(q, org=cfg["org"]):
+                            t = rec.get_time(); v = rec.get_value(); m = rec.values.get("_measurement"); fld = rec.values.get("_field")
+                            if v is None or not m or not fld:
+                                continue
+                            p = Point(str(m))
+                            for k, tv in (rec.values or {}).items():
+                                if k in ("result", "table") or str(k).startswith("_") or tv is None:
+                                    continue
+                                p = p.tag(str(k), str(tv))
+                            p = p.field(str(fld), v)
+                            if isinstance(t, datetime):
+                                p = p.time(t, WritePrecision.NS)
+                            lp = p.to_line_protocol()
+                            if lp:
+                                f.write(lp + "\n")
+                                count += 1
+                                if isinstance(t, datetime):
+                                    oldest = t if oldest is None or t < oldest else oldest
+                                    newest = t if newest is None or t > newest else newest
+                meta = {"id": backup_id, "created_at": _utc_now_iso_ms(), "kind": "db_full", "format": "lp", "influx_version": 2, "bucket": cfg.get("bucket"), "point_count": count, "bytes": int(lp_path.stat().st_size) if lp_path.exists() else 0, "oldest_time": _dt_to_rfc3339_utc(oldest) if oldest else None, "newest_time": _dt_to_rfc3339_utc(newest) if newest else None, "start": _dt_to_rfc3339_utc(oldest) if oldest else None, "stop": _dt_to_rfc3339_utc(newest) if newest else None}
+                meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
+                _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+            if not backup_id:
+                set_state("failed", "Backup fehlt", progress=100, step="backup_select", error="backup_id required")
+                return
+            meta = _read_backup_meta(bdir, backup_id) or {}
+            if str(meta.get("format") or "lp") == "native_v2":
+                set_state("failed", "Nicht unterstützt", progress=100, step="backup_select", error="Native v2 Verify ist im MVP noch nicht unterstützt")
+                return
+            set_state("running", "Temporären Prüf-Bucket erstellen", progress=25, step="restore_temp_bucket")
+            _verify_create_bucket_v2(cfg, verify_bucket)
+            with _open_backup_lp_text(bdir, backup_id, is_fullbackup=True) as f:
+                _verify_write_lp_to_bucket_v2(cfg, verify_bucket, f)
+            set_state("running", "Original und Restore vergleichen", progress=70, step="compare_measurements")
+            result = _verify_full_compare_v2(cfg, source_bucket=source_bucket, verify_bucket=verify_bucket)
+
+        status = "done"
+        allowed = float(payload.get("allowed_delta_pct") or 0.1)
+        if float((result.get("points") or {}).get("delta_pct") or 0.0) > allowed or (result.get("measurements") or {}).get("missing") or (result.get("measurements") or {}).get("additional"):
+            status = "failed"
+        elif bool((result.get("cardinality") or {}).get("drift")):
+            status = "warning"
+        result.update({"job_id": job_id, "status": status.upper(), "mode": mode, "profile": str(payload.get("profile") or "fast"), "source_bucket": source_bucket, "verify_bucket": verify_bucket, "cleanup_requested": cleanup_requested})
+        cleanup_done = False
+        if cleanup_requested:
+            set_state("running", "Temporären Prüf-Bucket löschen", progress=90, step="cleanup")
+            cleanup_done = _verify_delete_bucket_v2(cfg, verify_bucket)
+        result["cleanup_done"] = cleanup_done
+        _verify_save_result(job_id, result)
+        set_state(status, "Verifikation abgeschlossen", progress=100, step="finished")
+    except Exception as e:
+        _verify_set(job_id, state="failed", message="Verifikation fehlgeschlagen", progress=100, step="finished", error=_short_influx_error(e), finished_at=_utc_now_iso_ms())
+
+
+@app.post("/api/verify/measurement")
+def api_verify_measurement_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    if not str(body.get("entity_id") or "").strip() or not str(body.get("measurement") or "").strip() or not str(body.get("field") or "").strip():
+        return jsonify({"ok": False, "error": "entity_id, measurement and field required"}), 400
+    if str(body.get("backup_mode") or "existing") == "existing" and not str(body.get("backup_id") or "").strip():
+        return jsonify({"ok": False, "error": "backup_id required for backup_mode=existing"}), 400
+    job_id = "verify_measurement_" + uuid.uuid4().hex
+    with VERIFY_JOBS_LOCK:
+        VERIFY_JOBS[job_id] = {"id": job_id, "mode": "measurement", "state": "queued", "progress": 0, "step": "queued", "started_at": _utc_now_iso_ms(), "cleanup_requested": bool(body.get("cleanup_verify_bucket", True)), "source_bucket": str(cfg.get("bucket") or "")}
+    payload = dict(body); payload["mode"] = "measurement"
+    threading.Thread(target=_verify_run_thread, args=(job_id, dict(cfg), payload), daemon=True).start()
+    return jsonify({"ok": True, "job_id": job_id, "mode": "measurement", "status": "queued"})
+
+
+@app.post("/api/verify/fullbackup")
+def api_verify_fullbackup_start():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    bucket = str(body.get("bucket") or cfg.get("bucket") or "").strip()
+    if not bucket:
+        return jsonify({"ok": False, "error": "bucket required"}), 400
+    if str(body.get("backup_mode") or "existing") == "existing" and not str(body.get("backup_id") or "").strip():
+        return jsonify({"ok": False, "error": "backup_id required for backup_mode=existing"}), 400
+    job_id = "verify_full_" + uuid.uuid4().hex
+    with VERIFY_JOBS_LOCK:
+        VERIFY_JOBS[job_id] = {"id": job_id, "mode": "fullbackup", "state": "queued", "progress": 0, "step": "queued", "started_at": _utc_now_iso_ms(), "cleanup_requested": bool(body.get("cleanup_verify_bucket", True)), "source_bucket": bucket}
+    payload = dict(body); payload["mode"] = "fullbackup"; payload["bucket"] = bucket
+    threading.Thread(target=_verify_run_thread, args=(job_id, dict(cfg), payload), daemon=True).start()
+    return jsonify({"ok": True, "job_id": job_id, "mode": "fullbackup", "status": "queued"})
+
+
+@app.get("/api/verify/status/<job_id>")
+def api_verify_status(job_id: str):
+    with VERIFY_JOBS_LOCK:
+        job = VERIFY_JOBS.get(str(job_id or "").strip())
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    return jsonify({"ok": True, "job": _verify_job_public(job)})
+
+
+@app.get("/api/verify/result/<job_id>")
+def api_verify_result(job_id: str):
+    with VERIFY_JOBS_LOCK:
+        job = VERIFY_JOBS.get(str(job_id or "").strip())
+    if not job:
+        return jsonify({"ok": False, "error": "job not found"}), 404
+    if str(job.get("state") or "") not in ("done", "warning", "failed"):
+        return jsonify({"ok": True, "ready": False, "state": job.get("state"), "error": job.get("error")})
+    res = _verify_load_result(job_id) or {}
+    return jsonify({"ok": True, "ready": True, "result": res})
+
+
+@app.delete("/api/verify/temp/<job_id>")
+def api_verify_temp_delete(job_id: str):
+    with VERIFY_JOBS_LOCK:
+        job = VERIFY_JOBS.get(str(job_id or "").strip()) or {}
+    vb = str(job.get("verify_bucket") or "").strip()
+    if not vb:
+        return jsonify({"ok": False, "error": "verify bucket not found"}), 404
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    deleted = _verify_delete_bucket_v2(cfg, vb)
+    return jsonify({"ok": True, "job_id": job_id, "verify_bucket": vb, "deleted": bool(deleted)})
 
 
 def _combine_job_public(job: dict[str, Any]) -> dict[str, Any]:

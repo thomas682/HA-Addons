@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.510
+
+### Enhancement
+
+- Backup / Restore: Neuer MVP für `Backup verifizieren` direkt in `backup.html`. Er enthält einen Verify-Dialog für Messwert- und Fullbackup-Prüfungen, jobbasierte Status- und Result-Endpoints, Restore in temporäre Verify-Buckets (v2) sowie einen ersten Vergleich von Punktanzahl, Measurements und Zeitbereichen. Originaldaten werden dabei nicht verändert; der temporäre Prüf-Bucket kann optional automatisch gelöscht werden. ([#464](https://github.com/thomas682/HA-Addons/issues/464))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.509
 
 ### Enhancement

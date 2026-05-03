@@ -212,6 +212,8 @@ Die Tooltip-Logik wurde in `_tooltips.html` weiter zentralisiert. Fuer Dashboard
 
 Im Messwertprofil enthaelt die Kachel `InfluxDB` jetzt auch die Zeitpunkte von `Erster Wert`, `Letzter Wert`, `Min` und `Max`. Darunter gibt es neu die Kachel `Referenzierung`, die weitere YAML-/JSON-Fundstellen des aktuellen Messwerts auflistet. Wo moeglich werden dazu Direktlinks (z. B. zu Dashboards, Automationen oder Skripten) angeboten; ansonsten bleibt die Fundstelle als Datei-/Zeilenhinweis sichtbar. Die Strategiekarten im Profilbereich werden zusaetzlich farblich an die zugehoerigen Typ-Chips angelehnt.
 
+Im Bereich `Backup` gibt es jetzt den neuen Dialog `Backup verifizieren`. Der MVP unterstuetzt zwei Modi: `Messwert-Backup verifizieren` und `Fullbackup verifizieren`. Die Verifikation erfolgt ueber einen temporären Verify-Bucket und vergleicht im ersten Schritt Punktanzahl, Measurement-Liste und Zeitbereiche. Originaldaten bleiben unverändert; der Prüf-Bucket kann optional automatisch gelöscht werden. Der Dialog zeigt Jobstatus, Schritt, Fortschritt, Verify-Bucket und einen kompakten Ergebnisbericht direkt in `backup.html` an.
+
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
 Die dynamischen Zeilen in `Mehrere Messwertnamen` besitzen jetzt pro historischer Variante einen eigenen stabilen Pickkey/Instancekey. Dadurch bleibt die Section auch fuer S-Picker und Console-Validierung kollisionsfrei.

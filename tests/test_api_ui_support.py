@@ -1744,6 +1744,26 @@ def test_destructive_flows_use_confirm_dialog_api():
     assert "pickerKey: 'dialog_restore_confirm.root'" in restore_body
 
 
+def test_backup_page_has_verify_dialog_controls():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "backup.html").read_text()
+    assert 'id="verify_open"' in body
+    assert 'id="verify_dialog"' in body
+    assert 'Messwert-Backup verifizieren' in body
+    assert 'Fullbackup verifizieren' in body
+    assert 'id="verify_existing_backup"' in body
+    assert 'id="verify_profile"' in body
+    assert 'id="verify_cleanup"' in body
+    assert 'id="verify_compare_series"' in body
+    assert 'id="verify_compare_sizes"' in body
+    assert 'id="verify_start"' in body
+    assert 'id="verify_status_box"' in body
+    assert 'id="verify_result_box"' in body
+    assert 'function _verifyPoll()' in body
+    assert './api/verify/measurement' in body
+    assert './api/verify/fullbackup' in body
+    assert './api/verify/status/' in body
+
+
 def test_pick_registry_skips_template_blueprints_and_static_duplicate_keys_are_bounded():
     topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert "function _isInertPickNode(el)" in topbar_body
