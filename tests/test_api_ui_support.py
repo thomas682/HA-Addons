@@ -182,6 +182,8 @@ def test_smart_bug_assistant_dialog_exists_and_reuses_bugreport_flow():
     assert "id=\"influxbro_sba_steps\"" in tooltips
     assert "id=\"influxbro_sba_snapshot\"" in tooltips
     assert "id=\"influxbro_sba_submit\"" in tooltips
+    assert "font-size:11px;" in tooltips
+    assert "pk: unknown | tpl: dialog_info_popup" in tooltips
     assert "./api/support_bundle/snapshot/create" in tooltips
     assert "function _smartBugRun(msgOverride)" in tooltips
     assert "window.InfluxBroSmartBugAssistant = { run: (msg)=>_smartBugRun(msg) }" in tooltips

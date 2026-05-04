@@ -1403,6 +1403,49 @@ def test_api_outliers_accepts_new_search_type_names(load_app_module, tmp_path, m
     assert any("range_violation" in (row.get("types") or []) for row in j.get("rows", []))
 
 
+def test_tag_combo_ranges_prefetches_names_for_friendly_name_entity_all(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    captured = []
+
+    class _FakeRecord:
+        def __init__(self, value=None, values=None):
+            self._value = value
+            self.values = values or {}
+        def get_value(self):
+            return self._value
+
+    class _FakeTable:
+        def __init__(self, records):
+            self.records = records
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured.append(q)
+            if 'schema.tagValues' in q:
+                return [_FakeTable([_FakeRecord('Name A'), _FakeRecord('Name B')])]
+            return [_FakeTable([_FakeRecord(values={"friendly_name": "Name A", "oldest_time": "2026-01-01T00:00:00Z", "newest_time": "2026-01-02T00:00:00Z", "count": 12})])]
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.post("/api/tag_combo_ranges", json={"measurement": "°C", "field": "value", "group_tag": "friendly_name", "entity_id": "sensor.demo", "friendly_name": None, "limit": 80, "range": "all"})
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert any('schema.tagValues' in q for q in captured)
+
+
 def test_fields_all_time_uses_schema_measurement_field_keys(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured = {"q": None}

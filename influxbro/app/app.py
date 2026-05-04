@@ -24388,6 +24388,7 @@ def api_tag_combo_ranges():
 
     bucket = str(cfg["bucket"])
     range_clause = _flux_range_clause(selector_range, selector_start_dt, selector_stop_dt)
+    use_name_prefetch = bool(group_tag == "friendly_name" and entity_id and not friendly_name)
     q = f'''
 base = from(bucket: "{bucket}")
   {range_clause}
@@ -24419,19 +24420,58 @@ base
     out_rows: list[dict[str, Any]] = []
     try:
         with v2_client(cfg) as c:
-            tables = c.query_api().query(q, org=cfg["org"])
-            for t in tables or []:
-                for rec in getattr(t, "records", []) or []:
-                    vals = getattr(rec, "values", {}) or {}
-                    v = vals.get(group_tag)
-                    if v is None:
-                        continue
-                    out_rows.append({
-                        "value": str(v),
-                        "count": int(vals.get("count") or 0),
-                        "oldest_time": _iso_any(vals.get("oldest_time")),
-                        "newest_time": _iso_any(vals.get("newest_time")),
-                    })
+            qapi = c.query_api()
+            if use_name_prefetch:
+                q_names = (
+                    'import "influxdata/influxdb/schema"\n'
+                    f'schema.tagValues(bucket: "{bucket}", tag: "friendly_name", predicate: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)} and r.entity_id == {_flux_str(entity_id)}, start: {range_to_flux(selector_range)})'
+                )
+                name_values: list[str] = []
+                for t in qapi.query(q_names, org=cfg["org"]) or []:
+                    for rec in getattr(t, "records", []) or []:
+                        val = str(rec.get_value() or "").strip()
+                        if val and val not in name_values:
+                            name_values.append(val)
+                name_values = name_values[:limit]
+                for val in name_values:
+                    q_one = f'''
+base = from(bucket: "{bucket}")
+  {range_clause}
+  |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)} and r.entity_id == {_flux_str(entity_id)} and r.friendly_name == {_flux_str(val)})
+  |> keep(columns: ["_time"])
+
+first_row = base |> first() |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, oldest_time: r._time}}))
+last_row = base |> last() |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, newest_time: r._time}}))
+count_row = base |> count(column: "_time") |> group() |> sum(column: "_time") |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, count: r._time}}))
+
+join(tables: {{a:first_row, b:last_row}}, on:["friendly_name"])
+  |> join(tables: {{x:count_row}}, on:["friendly_name"])
+  |> keep(columns: ["friendly_name", "oldest_time", "newest_time", "count"])
+'''
+                    for t in qapi.query(q_one, org=cfg["org"]) or []:
+                        for rec in getattr(t, "records", []) or []:
+                            vals = getattr(rec, "values", {}) or {}
+                            out_rows.append({
+                                "value": str(vals.get("friendly_name") or val),
+                                "count": int(vals.get("count") or 0),
+                                "oldest_time": _iso_any(vals.get("oldest_time")),
+                                "newest_time": _iso_any(vals.get("newest_time")),
+                            })
+                            break
+            else:
+                tables = qapi.query(q, org=cfg["org"])
+                for t in tables or []:
+                    for rec in getattr(t, "records", []) or []:
+                        vals = getattr(rec, "values", {}) or {}
+                        v = vals.get(group_tag)
+                        if v is None:
+                            continue
+                        out_rows.append({
+                            "value": str(v),
+                            "count": int(vals.get("count") or 0),
+                            "oldest_time": _iso_any(vals.get("oldest_time")),
+                            "newest_time": _iso_any(vals.get("newest_time")),
+                        })
         return jsonify({"ok": True, "rows": out_rows})
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500

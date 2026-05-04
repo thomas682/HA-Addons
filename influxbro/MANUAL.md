@@ -204,6 +204,8 @@ Intern verwendet die Strategie- und Typenauswahl jetzt klarere technische Regel-
 
 Im Dialog `Strategieinfo` steht jetzt zusaetzlich der Button `JSON Aufbau und Beispiele` zur Verfuegung. Der Hilfedialog erklaert den Zweck des JSON-Feldes (wann JSON sinnvoll ist und wann nicht), beschreibt den Aufbau von Strategien und enthaelt mehrere direkt nutzbare Beispiele mit Copy-Funktion. Beim Schliessen springt die UI wieder in den zuvor geoeffneten `Strategieinfo`-Dialog zurueck.
 
+Fuer den Fall `friendly_name` + gesetzte `entity_id` + `range=all` verwendet die Bereichsanalyse jetzt einen spezialisierteren Namens-Lookup, bevor die Zeitbereiche je Name geladen werden. Der Smart-Bug-Dialog besitzt zusaetzlich kleinere technische Textfelder und denselben kleinen Meta-Footer unten rechts wie die übrigen `dialog_info_popup`-artigen Dialoge.
+
 Die Typ-Chips im Strategiebereich besitzen jetzt professionelle Tooltips mit Severity-Farbpunkt, technischer Kennung, Beschreibung, Meta-Grid, Beispielbedingung und Doku-Link. Hover/Fokus oeffnen den Tooltip kurzzeitig; Klick oder Touch pinnen ihn, damit der Dokumentationslink erreichbar bleibt. `Esc` schliesst einen gepinnten Tooltip, `?` auf einem fokussierten Chip oeffnet die zugehoerige Doku direkt in einem neuen Tab.
 
 Die Tooltip-Logik wurde in `_tooltips.html` weiter zentralisiert. Fuer Dashboard-Elemente steht damit eine gemeinsame Rich-Tooltip-Familie zur Verfuegung, die auch Graphwerte und Kontextinformationen im selben visuellen Stil darstellen kann. Neue UI-Elemente koennen ueber `data-tooltip-*` / `data-doc` / bestehende Tooltip-Metadaten an dieselbe Engine angebunden werden, statt auf Browser-`title`-Tooltips zurueckzufallen.

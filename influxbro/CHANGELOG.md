@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.514
+
+### Fix
+
+- Dashboard / Smart Assist: Zwei Nachfixe. Erstens nutzt `tag_combo_ranges` bei `friendly_name` + gesetzter `entity_id` im All-Time-Fall jetzt einen Spezialpfad mit vorgelagerter Namensermittlung per `schema.tagValues(...)`, bevor die Zeitbereiche je Name geladen werden. Das reduziert die Timeout-Anfälligkeit für diesen Fall. Zweitens wurde der Dialog `Fehler melden (Smart Assist)` an die übrigen Dialoge angenähert: kleinere Textarea-Schrift für `Was wurde erwartet?`, `Was ist tatsächlich passiert?` und `Erkannte Schritte` sowie ein Meta-Footer unten rechts (`pk: unknown | tpl: dialog_info_popup`). ([#471](https://github.com/thomas682/HA-Addons/issues/471))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.513
 
 ### Enhancement
