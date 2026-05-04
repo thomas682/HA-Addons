@@ -912,8 +912,7 @@
     function _render(text){
       const s = String(text || '').trim();
       if(!s) return '';
-      const lines = s.split(/
-/).map(x=>String(x||'').trim()).filter(x=>x !== '');
+      const lines = s.split(/\r?\n/).map(x=>String(x||'').trim()).filter(x=>x !== '');
       if(!lines.length) return _esc(s);
 
       let keyLine = '';

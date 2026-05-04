@@ -5415,8 +5415,9 @@ function _groupReferences(items){
     const kind = String(it && it.kind || '').trim();
     const file = String(it && it.source_file || '').trim();
     if(!(kind && file)) return;
-    const key = kind + '|' + file;
-    if(!map.has(key)) map.set(key, { kind, source_file: file, name: String(it && it.name || '').trim(), open_target: String(it && it.open_target || '').trim() || null, first_line: Number(it && it.line || 1) || 1, count: 0, items: [] });
+    const nm = String(it && it.name || '').trim();
+    const key = (kind === 'automation' || kind === 'script') ? (kind + '|' + file + '|' + nm) : (kind + '|' + file);
+    if(!map.has(key)) map.set(key, { kind, source_file: file, name: nm, open_target: String(it && it.open_target || '').trim() || null, first_line: Number(it && it.line || 1) || 1, count: 0, items: [] });
     const row = map.get(key);
     row.count += 1;
     row.items.push(it);
