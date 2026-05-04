@@ -201,7 +201,9 @@ window.InfluxBroTableInfoSpec['timer_tbl'] = {
     'Abbruch: request cancellation of the currently running job (if any).'
   ]
 };
+
 ```
+
 - Row counters above the table.
   - Show row counts as `filtered / total`.
   - Must update when filters are applied.
