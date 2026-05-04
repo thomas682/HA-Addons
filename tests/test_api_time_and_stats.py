@@ -1482,6 +1482,7 @@ def test_measurement_profile_derived_includes_strategy_explanation_fields(load_a
     assert derived["counter_semantics"] == "monotonic_expected"
     assert isinstance(derived["strategy_explanation"], list)
     assert len(derived["strategy_explanation"]) >= 2
+    assert any("keine Störphase" in line or "Störphase" in line for line in derived["strategy_explanation"])
 
 
 def test_api_audit_aggregates_counts_and_backup_status(load_app_module, tmp_path, monkeypatch):

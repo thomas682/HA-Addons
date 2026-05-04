@@ -529,6 +529,12 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert 'id="measurement_profile_sections"' in body
     assert 'Referenzierung' in body
     assert '_profileValueWithTime(' in body
+    assert 'id="measurement_profile_references_detail"' in body
+    assert 'id="reference_detail_dialog"' in body
+    assert 'id="reference_detail_search"' in body
+    assert 'function _groupReferences(items)' in body
+    assert 'function _openReferenceDetail(groupOrItem, allItems)' in body
+    assert 'function _referenceDetailApplySearch()' in body
     assert 'id="name_merge_latest_btn"' in body
     assert 'Mehrere Messwertnamen' in body
     assert 'id="name_timeline_summary"' in body
@@ -604,6 +610,7 @@ def test_dashboard_outlier_strategy_ui_exists():
     assert './api/outlier_strategy?' in body or './api/outlier_strategy' in body
     assert './api/outlier_strategy/config' in body
     assert './api/outlier_strategy/override' in body
+    assert 'fault_cluster' in body
 
 
 def test_analysis_uses_selected_types_for_cache_and_status():

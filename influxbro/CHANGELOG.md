@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.512
+
+### Fix
+
+- UI / Referenzierung / Strategieinfo: Mehrere Nachfixe für den neuen Profil-/Tooltip-Bereich. Der doppelte `hideT`-Syntaxfehler in `_tooltips.html` ist entfernt. Der Super Picker kopiert bei Fallback-Panels jetzt zusätzlich den vollständigen Tooltip-/Infotext statt nur des Fallback-Selectors. Die Kachel `Referenzierung` zeigt die Verwendungen kompakt dedupliziert (eine Zeile pro Automation/Script/Datei) und bietet eine neue `Detailliste` mit Dateiinhalt, Volltextsuche, Vor/Zurück-Sprung und direktem Öffnen derselben Referenzdatei/Zeile im Dialog. Außerdem erläutert die Strategieinfo nun ausdrücklich, dass `fault_cluster`/Störphase nur als Folge zuvor aktiver Primärtypen entstehen kann. ([#467](https://github.com/thomas682/HA-Addons/issues/467))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.511
 
 ### Enhancement

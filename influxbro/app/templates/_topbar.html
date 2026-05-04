@@ -2469,6 +2469,21 @@
         return '';
       }
 
+      function _bestLongInfo(node){
+        try{
+          if(!node) return '';
+          const xs = [
+            node.getAttribute ? (node.getAttribute('data-ib-title') || '') : '',
+            node.getAttribute ? (node.getAttribute('data-help') || '') : '',
+            node.getAttribute ? (node.getAttribute('data-info-body') || '') : '',
+            node.getAttribute ? (node.getAttribute('data-tooltip-body') || '') : '',
+            node.getAttribute ? (node.getAttribute('data-tooltip-description') || '') : '',
+          ].map(v => String(v || '').trim()).filter(Boolean);
+          return xs.join('\n\n');
+        }catch(e){}
+        return '';
+      }
+
       const page = (window.currentPageLabel ? window.currentPageLabel() : 'Seite');
        const pickkey = _normLine(el.getAttribute ? (el.getAttribute('data-ib-pickkey') || '') : '');
        const instkey = _normLine(el.getAttribute ? (el.getAttribute('data-ib-instancekey') || '') : '');
@@ -2492,6 +2507,8 @@
          if(olType) parts.push(olType);
          text = '<' + parts.join(',') + '>';
        }
+      const extraInfo = _bestLongInfo(el);
+      if(extraInfo) text = text + '\n\n' + extraInfo;
       const ok = await copyText(text);
       try{
         if(window.InfluxBroPopup && window.InfluxBroPopup.show){

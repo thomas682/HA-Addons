@@ -796,6 +796,31 @@ def _measurement_profile_reference_link(kind: str) -> str | None:
     return None
 
 
+def _measurement_profile_reference_name(lines: list[str], idx: int, kind: str) -> str | None:
+    try:
+        start = max(0, idx - 25)
+        end = min(len(lines), idx + 25)
+        for pos in range(idx - 1, start - 1, -1):
+            line = str(lines[pos] or "").strip()
+            if not line:
+                continue
+            if kind in ("automation", "script"):
+                m = re.match(r"^(?:alias|name)\s*:\s*(.+)$", line)
+                if m:
+                    return str(m.group(1) or "").strip().strip('"\'')
+            if line.endswith(":") and not line.startswith("-"):
+                return line[:-1].strip()
+        for pos in range(idx, end):
+            line = str(lines[pos] or "").strip()
+            if kind in ("automation", "script"):
+                m = re.match(r"^(?:alias|name)\s*:\s*(.+)$", line)
+                if m:
+                    return str(m.group(1) or "").strip().strip('"\'')
+    except Exception:
+        return None
+    return None
+
+
 def _measurement_profile_references(entity_id: str, friendly_name: str | None, measurement: str | None, unique_id: str | None) -> dict[str, Any]:
     terms = [str(entity_id or "").strip(), str(friendly_name or "").strip(), str(measurement or "").strip(), str(unique_id or "").strip()]
     terms = [t for t in terms if t]
@@ -820,6 +845,7 @@ def _measurement_profile_references(entity_id: str, friendly_name: str | None, m
                     "source_file": _yaml_safe_rel(p),
                     "line": idx,
                     "match": hit,
+                    "name": _measurement_profile_reference_name(lines, idx, kind),
                     "snippet": line.strip()[:300],
                     "open_target": _measurement_profile_reference_link(kind),
                 }
@@ -896,6 +922,22 @@ def _csrf_gate_api_requests():
     except Exception:
         # Fail open on unexpected errors to avoid breaking the UI.
         return None
+
+
+@app.get("/api/reference_source")
+def api_reference_source():
+    rel = str(request.args.get("path") or "").strip()
+    line = int(request.args.get("line", "1") or 1)
+    if not rel:
+        return jsonify({"ok": False, "error": "path required"}), 400
+    try:
+        p = _resolve_cfg_path(rel)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    if not p.exists() or not p.is_file():
+        return jsonify({"ok": False, "error": "file not found"}), 404
+    txt = p.read_text(encoding="utf-8", errors="replace")
+    return jsonify({"ok": True, "path": rel, "line": max(1, line), "text": txt})
 
 
 def log_details(msg: str, *args: object) -> None:
@@ -12882,6 +12924,7 @@ def _measurement_profile_strategy_explanation(
         lines.append(f"Als Grundlage dienen field_type={field_type or '∅'}, unit={unit or '∅'} und die HA-Klassifikation state_class={state_class or '∅'}.")
     if consistency != "consistent":
         lines.append("Die Kombination aus Messwerttyp und Einheit ist nicht vollständig plausibel; die Strategie bleibt aktiv, erzeugt aber eine Warnung statt einer automatischen Umklassifizierung.")
+    lines.append("Eine Störphase (`fault_cluster`) entsteht nur als Folge zuvor aktiver Primärtypen wie Grenzverletzung, Zeitsprung/Lücke oder negativem Sprung. Ist der auslösende Primärtyp deaktiviert, kann daraus auch keine Störphase gebildet werden.")
     return lines[:5]
 
 

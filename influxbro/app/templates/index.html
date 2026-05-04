@@ -661,6 +661,8 @@
       background: #f0fdf4;
       color: #166534;
     }
+    .ib-ref-list { max-height: 300px; overflow:auto; display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+    .ib-ref-item { border:1px solid #eee; border-radius:8px; padding:8px 10px; background:#fff; }
     .ib-strategy-panel {
       border-top: 1px solid #e5e7eb;
       background: #fafafa;
@@ -1379,6 +1381,18 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </div>
 
+    <div id="reference_detail_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+      <div style="background:#fff; border-radius:16px; padding:20px; max-width:1100px; width:min(1100px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;"><div><h3 style="margin:0 0 6px 0;">Referenzierung – Detailliste</h3><div id="reference_detail_meta" class="muted" style="font-size:12px; line-height:1.45;">Alle Einträge mit Dateiinhalt und Suche.</div></div><button id="reference_detail_close" class="btn_sm" type="button" style="width:auto;">Schliessen</button></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Suche</span><input id="reference_detail_search" type="text" placeholder="Volltextsuche in Dateiinhalt/Referenzen" /></label>
+          <button id="reference_detail_prev" class="btn_sm" type="button" style="width:auto; align-self:end;">Zurück</button>
+          <button id="reference_detail_next" class="btn_sm" type="button" style="width:auto; align-self:end;">Weiter</button>
+        </div>
+        <div id="reference_detail_list" style="display:flex; flex-direction:column; gap:12px;"></div>
+      </div>
+    </div>
+
     <div id="analysis_strategy_json_help_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
       <div style="background:#fff; border-radius:16px; padding:16px; max-width:1080px; width:min(1080px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28); resize:both; overflow: auto; min-width:720px; min-height:520px;">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
@@ -1581,6 +1595,13 @@ const $analysisStrategyJsonHelpSearch = document.getElementById('analysis_strate
 const $analysisStrategyJsonHelpContent = document.getElementById('analysis_strategy_json_help_content');
 const $analysisStrategyJsonHelpClose = document.getElementById('analysis_strategy_json_help_close');
 const $analysisStrategyJsonHelpCopyAll = document.getElementById('analysis_strategy_json_help_copy_all');
+const $referenceDetailDialog = document.getElementById('reference_detail_dialog');
+const $referenceDetailMeta = document.getElementById('reference_detail_meta');
+const $referenceDetailClose = document.getElementById('reference_detail_close');
+const $referenceDetailSearch = document.getElementById('reference_detail_search');
+const $referenceDetailPrev = document.getElementById('reference_detail_prev');
+const $referenceDetailNext = document.getElementById('reference_detail_next');
+const $referenceDetailList = document.getElementById('reference_detail_list');
 const $btnCancelLoad = document.getElementById('cancel_load');
 const $loadStatus = document.getElementById('load_status');
 const $loadProgressFill = document.getElementById('load_progress_fill');
@@ -5387,6 +5408,95 @@ function _profileValueWithTime(value, time){
   return t ? `${v} <span class="muted" style="font-size:11px;">@ ${t}</span>` : v;
 }
 
+function _groupReferences(items){
+  const xs = Array.isArray(items) ? items : [];
+  const map = new Map();
+  xs.forEach((it)=>{
+    const kind = String(it && it.kind || '').trim();
+    const file = String(it && it.source_file || '').trim();
+    if(!(kind && file)) return;
+    const key = kind + '|' + file;
+    if(!map.has(key)) map.set(key, { kind, source_file: file, name: String(it && it.name || '').trim(), open_target: String(it && it.open_target || '').trim() || null, first_line: Number(it && it.line || 1) || 1, count: 0, items: [] });
+    const row = map.get(key);
+    row.count += 1;
+    row.items.push(it);
+    if(!row.name && it && it.name) row.name = String(it.name || '').trim();
+    if(Number(it && it.line || 1) < row.first_line) row.first_line = Number(it.line || 1) || 1;
+  });
+  return Array.from(map.values());
+}
+
+async function _openReferenceDetail(groupOrItem, allItems){
+  if(!$referenceDetailDialog || !$referenceDetailList) return;
+  const rows = Array.isArray(allItems) ? allItems : [];
+  const group = groupOrItem || {};
+  const relPath = String(group.source_file || '').trim();
+  const line = Number(group.first_line || group.line || 1) || 1;
+  let source = null;
+  try{ source = await api('./api/reference_source?path=' + encodeURIComponent(relPath) + '&line=' + encodeURIComponent(String(line)), null, { silent:true }); }catch(e){ source = { ok:false, error: e && e.message ? e.message : String(e) }; }
+  if($referenceDetailMeta) $referenceDetailMeta.textContent = relPath ? (relPath + ':' + String(line)) : 'Keine Datei';
+  const fileText = String(source && source.text ? source.text : '');
+  const fileLines = fileText ? fileText.split(/\r?\n/) : [];
+  const excerptStart = Math.max(0, line - 6);
+  const excerptEnd = Math.min(fileLines.length, line + 10);
+  const excerpt = fileLines.slice(excerptStart, excerptEnd).map((ln, idx)=>`${String(excerptStart + idx + 1).padStart(4,' ')}: ${ln}`).join('\n');
+  const refs = rows.length ? rows : (group.items || []);
+  $referenceDetailList.innerHTML = [
+    `<section class="ib-profile-section"><h4>Dateiinhalt</h4><pre id="reference_detail_file_pre" style="margin:0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; overflow:auto; white-space:pre-wrap;">${_escHtml(excerpt || (source && source.error ? source.error : 'Kein Inhalt verfügbar'))}</pre></section>`,
+    `<section class="ib-profile-section"><h4>Einträge</h4><div class="ib-ref-list">${refs.map((it)=>`<div class="ib-ref-item"><div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div><div style="font-weight:700;">${_profileEsc(it.name || it.kind || 'Referenz')}</div><div class="muted" style="font-size:11px;">${_profileEsc(it.source_file || '')}:${_profileEsc(it.line || '')}</div></div><button type="button" class="btn_sm" data-ref-open="${_escHtml(String(it.source_file || ''))}" data-ref-line="${_escHtml(String(it.line || 1))}" style="width:auto;">Öffnen</button></div><div style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; margin-top:6px; overflow-wrap:anywhere;">${_profileEsc(it.snippet || '')}</div></div>`).join('')}</div></section>`
+  ].join('');
+  $referenceDetailDialog.style.display = 'flex';
+  try{
+    $referenceDetailList.querySelectorAll('[data-ref-open]').forEach((btn)=>{
+      btn.addEventListener('click', async ()=>{
+        const p = String(btn.getAttribute('data-ref-open') || '');
+        const ln = Number(btn.getAttribute('data-ref-line') || 1) || 1;
+        await _openReferenceDetail({ source_file: p, line: ln, first_line: ln }, refs.filter(x => String(x && x.source_file || '') === p));
+      });
+    });
+  }catch(e){}
+  _referenceDetailApplySearch();
+}
+
+function _referenceDetailApplySearch(){
+  try{
+    if(!$referenceDetailList) return;
+    Array.from($referenceDetailList.querySelectorAll('mark.ib_ref_mark')).forEach(m=>{ const txt = document.createTextNode(m.textContent || ''); m.replaceWith(txt); });
+    LAST_REFERENCE_DETAIL_MARKS = [];
+    LAST_REFERENCE_DETAIL_MARK_IDX = -1;
+    const q = String($referenceDetailSearch && $referenceDetailSearch.value || '').trim();
+    if(!q) return;
+    const walker = document.createTreeWalker($referenceDetailList, NodeFilter.SHOW_TEXT, null);
+    const nodes = []; let n;
+    while((n = walker.nextNode())) nodes.push(n);
+    const lower = q.toLowerCase();
+    nodes.forEach((node)=>{
+      const txt = String(node.nodeValue || '');
+      const idx = txt.toLowerCase().indexOf(lower);
+      if(idx < 0) return;
+      const frag = document.createDocumentFragment();
+      frag.appendChild(document.createTextNode(txt.slice(0, idx)));
+      const mark = document.createElement('mark');
+      mark.className = 'ib_ref_mark';
+      mark.textContent = txt.slice(idx, idx + q.length);
+      frag.appendChild(mark);
+      frag.appendChild(document.createTextNode(txt.slice(idx + q.length)));
+      node.parentNode.replaceChild(frag, node);
+    });
+    LAST_REFERENCE_DETAIL_MARKS = Array.from($referenceDetailList.querySelectorAll('mark.ib_ref_mark'));
+    if(LAST_REFERENCE_DETAIL_MARKS.length){ LAST_REFERENCE_DETAIL_MARK_IDX = 0; LAST_REFERENCE_DETAIL_MARKS[0].scrollIntoView({block:'center'}); }
+  }catch(e){}
+}
+
+function _referenceDetailJump(delta){
+  try{
+    const xs = LAST_REFERENCE_DETAIL_MARKS || [];
+    if(!xs.length) return;
+    LAST_REFERENCE_DETAIL_MARK_IDX = (LAST_REFERENCE_DETAIL_MARK_IDX + delta + xs.length) % xs.length;
+    xs[LAST_REFERENCE_DETAIL_MARK_IDX].scrollIntoView({block:'center', behavior:'smooth'});
+  }catch(e){}
+}
+
 function renderMeasurementProfilePanel(profile){
   if(!$measurementProfilePanel || !$measurementProfileSections) return;
   if(!profile){
@@ -5408,11 +5518,12 @@ function renderMeasurementProfilePanel(profile){
   const yamlRows = Object.entries(yamlInfo.data || {}).slice(0, 14).map(([k,v]) => [k, typeof v === 'string' ? _profileEsc(v) : _profileEsc(JSON.stringify(v))]);
   const warnings = Array.isArray(quality.warnings) ? quality.warnings : [];
   const refItems = Array.isArray(references.items) ? references.items : [];
-  const refHtml = refItems.length
-    ? `<div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">${refItems.map((it)=>{
-        const open = it.open_target ? `<a href="${_escHtml(String(it.open_target || ''))}" target="_blank" rel="noopener noreferrer">Öffnen</a>` : `<span class="muted">kein Direktlink</span>`;
-        return `<div style="border:1px solid #eee; border-radius:8px; padding:8px 10px; background:#fff;"><div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div><div style="font-weight:700;">${_profileEsc(it.kind || 'Referenz')}</div><div class="muted" style="font-size:11px;">${_profileEsc(it.source_file || '')}:${_profileEsc(it.line || '')}</div></div><div>${open}</div></div><div style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; margin-top:6px; overflow-wrap:anywhere;">${_profileEsc(it.snippet || '')}</div></div>`;
-      }).join('')}</div>`
+  const refGroups = _groupReferences(refItems);
+  const refHtml = refGroups.length
+    ? `<div><div class="ib-ref-list">${refGroups.map((it, idx)=>{
+        const title = _profileEsc(it.name || it.kind || 'Referenz');
+        return `<div class="ib-ref-item"><div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div><div style="font-weight:700;">${title}</div><div class="muted" style="font-size:11px;">${_profileEsc(it.source_file || '')}:${_profileEsc(it.first_line || '')} · ${_profileEsc(it.count || 0)} Treffer</div></div><button type="button" class="btn_sm" data-ref-group-open="${idx}" style="width:auto;">Öffnen</button></div><div style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; margin-top:6px; overflow-wrap:anywhere;">${_profileEsc((it.items && it.items[0] && it.items[0].snippet) || '')}</div></div>`;
+      }).join('')}</div><div style="display:flex; justify-content:flex-end; margin-top:8px;"><button type="button" id="measurement_profile_references_detail" class="btn_sm" style="width:auto;">Detailliste</button></div></div>`
     : `<div class="ib-profile-warnings"><div class="ib-profile-warning ib-profile-ok">Keine weiteren Referenzierungen gefunden.</div></div>`;
   const warningsHtml = warnings.length
     ? `<div class="ib-profile-warnings">${warnings.map(w => `<div class="ib-profile-warning">${_profileEsc(w)}</div>`).join('')}</div>`
@@ -5476,6 +5587,17 @@ function renderMeasurementProfilePanel(profile){
       ['field_type_consistent', _profileEsc(quality.field_type_consistent)],
     ], warningsHtml),
   ].join('');
+  try{
+    const btn = document.getElementById('measurement_profile_references_detail');
+    if(btn) btn.onclick = ()=>_openReferenceDetail({ source_file: (refGroups[0] || {}).source_file, first_line: (refGroups[0] || {}).first_line, items: refItems }, refItems);
+    Array.from(document.querySelectorAll('[data-ref-group-open]')).forEach((el)=>{
+      el.addEventListener('click', ()=>{
+        const idx = Number(el.getAttribute('data-ref-group-open') || -1);
+        const row = refGroups[idx];
+        if(row) _openReferenceDetail(row, row.items || []);
+      });
+    });
+  }catch(e){}
   $measurementProfilePanel.style.display = 'block';
 }
 
@@ -6819,6 +6941,8 @@ let ANALYSIS_UNSELECTED_TYPES = [];
 let ANALYSIS_SHOW_IGNORED = false;
 let LAST_OUTLIER_STRATEGY = null;
 let ANALYSIS_STRATEGY_JSON_HELP_PARENT_VISIBLE = false;
+let LAST_REFERENCE_DETAIL_MARKS = [];
+let LAST_REFERENCE_DETAIL_MARK_IDX = -1;
 
 const ANALYSIS_STRATEGY_JSON_HELP_INTRO = [
   'In diesem JSON-Feld definierst du benutzerdefinierte serverseitige Strategien für die automatische Auswahl von Ausreißertypen.',
@@ -17743,6 +17867,10 @@ if($analysisStrategyDialogJsonHelp) $analysisStrategyDialogJsonHelp.addEventList
 if($analysisStrategyJsonHelpClose) $analysisStrategyJsonHelpClose.addEventListener('click', ()=>{ _analysisStrategyJsonHelpClose(); });
 if($analysisStrategyJsonHelpSearch) $analysisStrategyJsonHelpSearch.addEventListener('input', ()=>{ _analysisStrategyJsonHelpRender(); });
 if($analysisStrategyJsonHelpCopyAll) $analysisStrategyJsonHelpCopyAll.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(ANALYSIS_STRATEGY_JSON_HELP_EXAMPLES.map(_analysisStrategyJsonHelpText).join('\n\n------------------------------\n\n')); }catch(e){} });
+if($referenceDetailClose) $referenceDetailClose.addEventListener('click', ()=>{ try{ if($referenceDetailDialog) $referenceDetailDialog.style.display = 'none'; }catch(e){}; });
+if($referenceDetailSearch) $referenceDetailSearch.addEventListener('input', ()=>{ _referenceDetailApplySearch(); });
+if($referenceDetailPrev) $referenceDetailPrev.addEventListener('click', ()=>{ _referenceDetailJump(-1); });
+if($referenceDetailNext) $referenceDetailNext.addEventListener('click', ()=>{ _referenceDetailJump(1); });
 if($nameMergeLatestBtn) $nameMergeLatestBtn.addEventListener("click", (ev)=>{ _stop(ev); mergeFriendlyNamesToLatest().catch(displayError); });
 document.addEventListener('keydown', (ev)=>{
   const key = String(ev.key || '');
