@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.515
+
+### Fix
+
+- Fehler-UI / Statusleiste: Client- und Fetch-Fehler werden jetzt zuverlässiger in den sichtbaren Fehlerpuffer (`InfluxBroErrors`) gespiegelt. Dadurch tauchen relevante `Failed to fetch`-/`api/influx_ping`-Fehler nicht nur im Server-/Client-Log, sondern auch als letzter Fehler in Statusleiste und Fehlerdialog auf. ([#473](https://github.com/thomas682/HA-Addons/issues/473))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.514
 
 ### Fix

@@ -4377,6 +4377,7 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
       extra: extra || null,
     };
     _push(entry);
+    try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add(entry.message, entry.extra || null); }catch(e){}
     _send(entry);
   }
 

@@ -2917,6 +2917,7 @@
         $influx.className = 'chip err';
         $influx.textContent = 'ERR';
         $influx.title = 'Influx Verbindung: Fehler: ' + msg;
+        try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add('Influx Verbindung: Fehler: ' + msg, { kind:'influx_ping', url:'./api/influx_ping' }); }catch(e){}
         return;
       }
       const c = (j.connected === true) ? true : ((j.connected === false) ? false : null);
@@ -2929,6 +2930,7 @@
         $influx.className = 'chip err';
         $influx.textContent = 'ERR';
         $influx.title = 'Influx Verbindung: ' + msg;
+        try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add('Influx Verbindung: ' + msg, { kind:'influx_ping', url:'./api/influx_ping' }); }catch(e){}
       }else{
         const msg = String(j.message || 'unbekannt');
         $influx.className = 'chip unk';
@@ -2941,6 +2943,7 @@
         $influx.className = 'chip err';
         $influx.textContent = 'ERR';
         $influx.title = 'Influx Verbindung: Failed to fetch';
+        try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add('Influx Verbindung: Failed to fetch', { kind:'influx_ping', url:'./api/influx_ping' }); }catch(y){}
       }catch(x){}
     }
   }

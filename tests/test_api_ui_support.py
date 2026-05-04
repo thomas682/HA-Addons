@@ -191,6 +191,14 @@ def test_smart_bug_assistant_dialog_exists_and_reuses_bugreport_flow():
     assert "window.InfluxBroSmartBugAssistant && window.InfluxBroSmartBugAssistant.run" in topbar
 
 
+def test_client_errors_are_mirrored_into_visible_error_store():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add(entry.message, entry.extra || null);" in tooltips
+    assert "Influx Verbindung: Failed to fetch" in topbar
+    assert "window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add('Influx Verbindung: Failed to fetch'" in topbar
+
+
 def test_raw_center_range_uses_minutes_in_ui():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'Zeitfenster um den selektierten Messwert herum in Minuten.' in body
