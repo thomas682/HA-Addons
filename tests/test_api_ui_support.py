@@ -855,6 +855,15 @@ def test_import_analyze_shows_success_and_error_popups():
     assert 'function updateImportActionState()' in body
 
 
+def test_import_sections_expose_running_status_panels():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "import.html").read_text()
+    assert 'id="import_analyze_status"' in body
+    assert 'id="import_run_status"' in body
+    assert "window.InfluxBroStatus.start(statusKey, 'Analyse laeuft...')" in body
+    assert "window.InfluxBroStatus.start(statusKey, 'Transformation wird geprueft...')" in body
+    assert "window.InfluxBroStatus.start('import.run', 'Import laeuft...')" in body
+
+
 def test_logs_page_has_collapsible_title_and_short_button_texts():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
     assert 'data-ui="logs_page.section_root"' in body
@@ -1024,6 +1033,14 @@ def test_dialog_actions_use_bottom_right_footer_and_explicit_pickkeys():
     assert 'data-ui="export_target.btn_close" data-ib-pickkey="export_target.btn_close"' in export_body
     assert 'data-ui="export_target.btn_cancel" data-ib-pickkey="export_target.btn_cancel"' in export_body
     assert 'data-ui="export_target.btn_ok" data-ib-pickkey="export_target.btn_ok"' in export_body
+
+
+def test_export_actions_expose_running_status_panel():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
+    assert 'id="export_run_status"' in body
+    assert 'id="export_run_spinner"' in body
+    assert "window.InfluxBroStatus.start('export.run', 'Export laeuft...')" in body
+    assert "setRunStatusText('Abbruch angefordert...')" in body
 
 
 def test_dialogs_expose_superpicker_and_footer_normalizer():

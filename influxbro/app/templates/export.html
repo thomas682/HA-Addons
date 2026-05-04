@@ -32,6 +32,10 @@
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
+    .ib_run_status { display:none; margin-top: 8px; font-size: 12px; opacity: 0.88; align-items:center; gap: 8px; flex-wrap: wrap; }
+    .ib_run_status_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: ib_run_spin 0.9s linear infinite; }
+    .ib_run_status_time { opacity: 0.85; white-space: nowrap; }
+    @keyframes ib_run_spin { to { transform: rotate(360deg); } }
 
     textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit; }
     textarea.resizable { resize: vertical; min-height: 140px; }
@@ -224,6 +228,11 @@
             <div class="muted" id="hint" style="padding-top: 10px;"></div>
           </div>
         <div class="muted" id="status" style="margin-top: 6px;"></div>
+        <div id="export_run_status" class="ib_run_status" data-ui="export_main.panel_run_status" data-ib-pickkey="export_main.panel_run_status" title="export.run_status">
+          <span id="export_run_spinner" class="ib_run_status_spinner" aria-hidden="true"></span>
+          <span id="export_run_status_txt">Export laeuft...</span>
+          <span id="export_run_status_time" class="ib_run_status_time"></span>
+        </div>
         <div id="err" class="err"></div>
         <div id="ok" class="ok"></div>
       </div>
@@ -288,6 +297,10 @@
       const $ok = document.getElementById('ok');
       const $hint = document.getElementById('hint');
       const $status = document.getElementById('status');
+      const $runStatus = document.getElementById('export_run_status');
+      const $runSpinner = document.getElementById('export_run_spinner');
+      const $runStatusTxt = document.getElementById('export_run_status_txt');
+      const $runStatusTime = document.getElementById('export_run_status_time');
 
       const $targetModal = document.getElementById('target_modal');
       const $targetDir = document.getElementById('target_dir');
@@ -306,6 +319,8 @@
 
       let JOB_ID = null;
       let POLL_T = null;
+      let RUN_T0 = 0;
+      let RUN_TIMER = null;
       let LAST_DOWNLOAD_URL = null;
       let AUTO_DL_DONE = false;
 
@@ -533,6 +548,50 @@
 
       function setStatus(s){ try{ if($status) $status.textContent = String(s||""); }catch(e){} }
       function setSeriesInfo(txt){ try{ if($seriesInfo) $seriesInfo.textContent = String(txt||""); }catch(e){} }
+
+      function _fmtRuntime(ms){
+        const n = Math.max(0, Number(ms || 0));
+        if(!isFinite(n)) return '';
+        const sec = Math.floor(n / 1000);
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        const mm = String(m).padStart(2, '0');
+        const ss = String(s).padStart(2, '0');
+        return h > 0 ? (h + ':' + mm + ':' + ss) : (m + ':' + ss);
+      }
+
+      function setRunStatusText(text){
+        try{ if($runStatusTxt) $runStatusTxt.textContent = String(text || ''); }catch(e){}
+      }
+
+      function startRunUi(text){
+        try{
+          if($runStatus) $runStatus.style.display = 'flex';
+          if($runSpinner) $runSpinner.style.display = 'inline-block';
+          setRunStatusText(text || 'Export laeuft...');
+          if($runStatusTime) $runStatusTime.textContent = '';
+        }catch(e){}
+        RUN_T0 = Date.now();
+        try{ if(RUN_TIMER) clearInterval(RUN_TIMER); }catch(e){}
+        RUN_TIMER = setInterval(()=>{
+          try{
+            if($runStatusTime && RUN_T0) $runStatusTime.textContent = _fmtRuntime(Date.now() - RUN_T0);
+          }catch(e){}
+        }, 250);
+      }
+
+      function stopRunUi(text){
+        try{ if(RUN_TIMER) clearInterval(RUN_TIMER); }catch(e){}
+        RUN_TIMER = null;
+        const dur = RUN_T0 ? (Date.now() - RUN_T0) : 0;
+        RUN_T0 = 0;
+        try{
+          if(text) setRunStatusText(text);
+          if($runSpinner) $runSpinner.style.display = 'none';
+          if($runStatusTime) $runStatusTime.textContent = dur > 0 ? _fmtRuntime(dur) : '';
+        }catch(e){}
+      }
 
       function stopPolling(){ try{ if(POLL_T) clearInterval(POLL_T); }catch(e){}; POLL_T = null; }
 
@@ -845,6 +904,7 @@
 
         async function runExport(wantSaveAs){
           err(''); ok('');
+          startRunUi(wantSaveAs ? 'Export wird vorbereitet...' : 'Download wird vorbereitet...');
           try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('export.run', 'Export laeuft...'); }catch(e){}
           try{
             SAVE_HANDLE = null;
@@ -886,6 +946,7 @@
           };
           if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt. Bitte Auswahl setzen.');
           setStatus('Starte Export Job...');
+          setRunStatusText('Export Job wird gestartet...');
            if($run) $run.disabled = true;
            try{ if($exportSave) $exportSave.disabled = true; }catch(e){}
            if($cancel) $cancel.disabled = false;
@@ -908,6 +969,7 @@
            try{ if($cancel) $cancel.disabled = true; }catch(x){}
           try{ if($download) $download.style.display = 'none'; }catch(x){}
           setStatus('');
+          stopRunUi(s);
         }
       }
 
@@ -919,6 +981,7 @@
         const msg = String(st.message || '');
         const rows = Number(st.rows_written || 0);
         setStatus(`Status: ${state} | ${msg} | Zeilen: ${rows}`);
+        setRunStatusText((msg || ('Status: ' + state)) + (rows ? (' | Zeilen: ' + rows) : ''));
         if($hint) $hint.textContent = rows ? (`Zeilen: ${rows}`) : '';
         try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('export.run', `Status: ${state} | Zeilen: ${rows}`); }catch(e){}
 
@@ -929,6 +992,7 @@
            stopPolling();
            ok('Export fertig.');
            try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', `Export fertig. Zeilen: ${rows}`); }catch(e){}
+           stopRunUi(`Export fertig. Zeilen: ${rows}`);
             if($cancel) $cancel.disabled = true;
             if($run) $run.disabled = false;
             try{ if($exportSave) $exportSave.disabled = false; }catch(e){}
@@ -964,6 +1028,7 @@
           const ee = String(st.error || 'Fehler');
           err(ee);
           try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('export.run', ee); }catch(e){}
+          stopRunUi(ee);
            if($cancel) $cancel.disabled = true;
            if($run) $run.disabled = false;
            try{ if($exportSave) $exportSave.disabled = false; }catch(e){}
@@ -972,6 +1037,7 @@
           stopPolling();
           ok('Abgebrochen.');
           try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('export.run', 'Abgebrochen.'); }catch(e){}
+          stopRunUi('Abgebrochen.');
            if($cancel) $cancel.disabled = true;
            if($run) $run.disabled = false;
            try{ if($exportSave) $exportSave.disabled = false; }catch(e){}
@@ -981,6 +1047,7 @@
       async function cancelJob(){
         if(!JOB_ID) return;
         try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('export.run', 'Abbruch angefordert...'); }catch(e){}
+        setRunStatusText('Abbruch angefordert...');
         try{
           await api('./api/export_job/cancel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({job_id: JOB_ID})});
           setStatus('Abbruch angefordert...');

@@ -34,6 +34,10 @@
     .ok { color: #0a7a28; margin-top: 8px; white-space: pre-wrap; }
     .status { border: 1px dashed #ddd; border-radius: 12px; padding: 10px 12px; background: #fafafa; font-size: 12px; white-space: pre-wrap; margin-top: 8px; }
     code { background:#f6f6f6; padding:2px 6px; border-radius:6px; }
+    .ib_run_status { display:none; margin-top: 8px; font-size: 12px; opacity: 0.88; align-items:center; gap: 8px; flex-wrap: wrap; }
+    .ib_run_status_spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.18); border-top-color: rgba(0,0,0,0.75); animation: ib_run_spin 0.9s linear infinite; }
+    .ib_run_status_time { opacity: 0.85; white-space: nowrap; }
+    @keyframes ib_run_spin { to { transform: rotate(360deg); } }
 
     /* Selection fields (master template) */
     .ib_sel_label { font-size: var(--ib-sel-label-font); opacity: 0.9; }
@@ -92,6 +96,11 @@
           <div class="row">
             <div style="min-width: 220px;"><button id="analyze" data-ui="import_main.btn_analyze" data-ib-pickkey="import_main.btn_analyze" title="import.analyze">Analysieren</button></div>
             <div class="muted" id="analyze_hint" style="padding-top: 10px;"></div>
+          </div>
+          <div id="import_analyze_status" class="ib_run_status" data-ui="import_main.panel_analyze_status" data-ib-pickkey="import_main.panel_analyze_status" title="import.analyze_status">
+            <span id="import_analyze_spinner" class="ib_run_status_spinner" aria-hidden="true"></span>
+            <span id="import_analyze_status_txt">Analyse laeuft...</span>
+            <span id="import_analyze_status_time" class="ib_run_status_time"></span>
           </div>
           <div class="status" id="analysis" style="display:none;" data-ui="import_main.panel_analysis" data-ib-pickkey="import_main.panel_analysis" title="import.analysis"></div>
         </div>
@@ -185,6 +194,11 @@
         </div>
         <div class="status" id="transform_status" style="display:none;" data-ui="import_main.panel_transform_status" data-ib-pickkey="import_main.panel_transform_status" title="import.transform_status"></div>
         <div class="status" id="transform_preview" style="display:none;" data-ui="import_main.panel_transform_preview" data-ib-pickkey="import_main.panel_transform_preview" title="import.transform_preview"></div>
+        <div id="import_run_status" class="ib_run_status" data-ui="import_main.panel_run_status" data-ib-pickkey="import_main.panel_run_status" title="import.run_status">
+          <span id="import_run_spinner" class="ib_run_status_spinner" aria-hidden="true"></span>
+          <span id="import_run_status_txt">Import laeuft...</span>
+          <span id="import_run_status_time" class="ib_run_status_time"></span>
+        </div>
         <div class="row" style="margin-top:0;">
           <div style="min-width: 220px;"><button id="run" data-ui="import_main.btn_run" data-ib-pickkey="import_main.btn_run" title="import.run">Import starten</button></div>
           <div class="muted" id="run_hint" style="padding-top: 10px;"></div>
@@ -204,6 +218,10 @@
       const $analyze = document.getElementById('analyze');
       const $analysis = document.getElementById('analysis');
       const $analyzeHint = document.getElementById('analyze_hint');
+      const $analyzeStatus = document.getElementById('import_analyze_status');
+      const $analyzeSpinner = document.getElementById('import_analyze_spinner');
+      const $analyzeStatusTxt = document.getElementById('import_analyze_status_txt');
+      const $analyzeStatusTime = document.getElementById('import_analyze_status_time');
 
       const $mf = document.getElementById('src_measurement');
       const $mfList = document.getElementById('measurement_list');
@@ -228,6 +246,10 @@
       const $previewHint = document.getElementById('preview_hint');
       const $transformStatus = document.getElementById('transform_status');
       const $transformPreview = document.getElementById('transform_preview');
+      const $runStatus = document.getElementById('import_run_status');
+      const $runSpinner = document.getElementById('import_run_spinner');
+      const $runStatusTxt = document.getElementById('import_run_status_txt');
+      const $runStatusTime = document.getElementById('import_run_status_time');
       const $err = document.getElementById('err');
       const $ok = document.getElementById('ok');
 
@@ -235,6 +257,10 @@
       let IMPORT_DELIM = ';';
       let IMPORT_RANGE = { oldest_utc: null, newest_utc: null, oldest_local: null, newest_local: null, count: null };
       let IMPORT_ANALYSIS = null;
+      let ANALYZE_T0 = 0;
+      let ANALYZE_TIMER = null;
+      let RUN_T0 = 0;
+      let RUN_TIMER = null;
 
       function updateImportActionState(){
         try{
@@ -341,6 +367,70 @@
 
       const err = (s)=>{ $err.textContent = String(s||""); $ok.textContent=""; if(s){ try{ if(window.InfluxBroPopup && window.InfluxBroPopup.error) window.InfluxBroPopup.error(String(s)); else alert(String(s)); }catch(e){} } };
       const ok = (s)=>{ $ok.textContent = String(s||""); $err.textContent=""; };
+
+      function _fmtRuntime(ms){
+        const n = Math.max(0, Number(ms || 0));
+        if(!isFinite(n)) return '';
+        const sec = Math.floor(n / 1000);
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        const mm = String(m).padStart(2, '0');
+        const ss = String(s).padStart(2, '0');
+        return h > 0 ? (h + ':' + mm + ':' + ss) : (m + ':' + ss);
+      }
+
+      function startAnalyzeUi(text){
+        try{
+          if($analyzeStatus) $analyzeStatus.style.display = 'flex';
+          if($analyzeSpinner) $analyzeSpinner.style.display = 'inline-block';
+          if($analyzeStatusTxt) $analyzeStatusTxt.textContent = String(text || 'Analyse laeuft...');
+          if($analyzeStatusTime) $analyzeStatusTime.textContent = '';
+        }catch(e){}
+        ANALYZE_T0 = Date.now();
+        try{ if(ANALYZE_TIMER) clearInterval(ANALYZE_TIMER); }catch(e){}
+        ANALYZE_TIMER = setInterval(()=>{
+          try{ if($analyzeStatusTime && ANALYZE_T0) $analyzeStatusTime.textContent = _fmtRuntime(Date.now() - ANALYZE_T0); }catch(e){}
+        }, 250);
+      }
+
+      function stopAnalyzeUi(text){
+        try{ if(ANALYZE_TIMER) clearInterval(ANALYZE_TIMER); }catch(e){}
+        ANALYZE_TIMER = null;
+        const dur = ANALYZE_T0 ? (Date.now() - ANALYZE_T0) : 0;
+        ANALYZE_T0 = 0;
+        try{
+          if($analyzeStatusTxt && text) $analyzeStatusTxt.textContent = String(text);
+          if($analyzeSpinner) $analyzeSpinner.style.display = 'none';
+          if($analyzeStatusTime) $analyzeStatusTime.textContent = dur > 0 ? _fmtRuntime(dur) : '';
+        }catch(e){}
+      }
+
+      function startRunUi(text){
+        try{
+          if($runStatus) $runStatus.style.display = 'flex';
+          if($runSpinner) $runSpinner.style.display = 'inline-block';
+          if($runStatusTxt) $runStatusTxt.textContent = String(text || 'Import laeuft...');
+          if($runStatusTime) $runStatusTime.textContent = '';
+        }catch(e){}
+        RUN_T0 = Date.now();
+        try{ if(RUN_TIMER) clearInterval(RUN_TIMER); }catch(e){}
+        RUN_TIMER = setInterval(()=>{
+          try{ if($runStatusTime && RUN_T0) $runStatusTime.textContent = _fmtRuntime(Date.now() - RUN_T0); }catch(e){}
+        }, 250);
+      }
+
+      function stopRunUi(text){
+        try{ if(RUN_TIMER) clearInterval(RUN_TIMER); }catch(e){}
+        RUN_TIMER = null;
+        const dur = RUN_T0 ? (Date.now() - RUN_T0) : 0;
+        RUN_T0 = 0;
+        try{
+          if($runStatusTxt && text) $runStatusTxt.textContent = String(text);
+          if($runSpinner) $runSpinner.style.display = 'none';
+          if($runStatusTime) $runStatusTime.textContent = dur > 0 ? _fmtRuntime(dur) : '';
+        }catch(e){}
+      }
 
       async function api(url, opts){
         let r;
@@ -466,6 +556,8 @@
 
       async function analyze(){
         err(''); ok('');
+        const statusKey = 'import.analyze';
+        startAnalyzeUi('Datei wird analysiert...');
         IMPORT_FILE_ID = null;
         IMPORT_ANALYSIS = null;
         if(!$file.files || !$file.files.length) throw new Error('Bitte Datei waehlen.');
@@ -476,7 +568,7 @@
         const tz = clientTz();
         if(tz.tz_name) fd.append('tz_name', tz.tz_name);
         if(tz.tz_offset_minutes !== null && tz.tz_offset_minutes !== undefined) fd.append('tz_offset_minutes', String(tz.tz_offset_minutes));
-        try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('import.run', 'Analyse laeuft...'); }catch(e){}
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'Analyse laeuft...'); }catch(e){}
         const j = await api('./api/import_analyze', { method:'POST', body: fd });
         IMPORT_FILE_ID = j.file_id;
         IMPORT_ANALYSIS = j;
@@ -533,7 +625,8 @@
             window.InfluxBroPopup.show('Import Analyse erfolgreich', msg);
           }
         }catch(e){}
-        try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('import.run', 'Analyse fertig.'); }catch(e){}
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'Analyse fertig.'); }catch(e){}
+        stopAnalyzeUi('Analyse fertig.');
       }
 
       function _renderTransformChecks(checks){
@@ -553,6 +646,9 @@
 
       async function previewTransform(){
         err(''); ok('');
+        const statusKey = 'import.preview';
+        startRunUi('Transformation wird geprueft...');
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'Transformation wird geprueft...'); }catch(e){}
         if(!IMPORT_FILE_ID) throw new Error('Bitte zuerst Analysieren.');
         await resolveSignal();
         await loadFields();
@@ -579,10 +675,13 @@
         }
         if($previewHint) $previewHint.textContent = (j.compatible ? 'Transformation pruefbar.' : 'Transformation nicht kompatibel.');
         updateImportActionState();
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, j.compatible ? 'Transformation pruefbar.' : 'Transformation nicht kompatibel.'); }catch(e){}
+        stopRunUi(j.compatible ? 'Transformation pruefbar.' : 'Transformation nicht kompatibel.');
       }
 
       async function runImport(){
         err(''); ok('');
+        startRunUi('Import wird vorbereitet...');
         if(!IMPORT_FILE_ID) throw new Error('Bitte zuerst Analysieren.');
         await resolveSignal();
         await loadFields();
@@ -601,7 +700,10 @@
         };
         if(!payload.measurement || !payload.field) throw new Error('measurement/field fehlt.');
         if(payload.backup_before && !(payload.entity_id || payload.friendly_name)) throw new Error('Fuer Backup bitte entity_id oder friendly_name setzen.');
-        if(payload.delete_first && !confirm('Zielbereich vor dem Import wirklich loeschen?')) return;
+        if(payload.delete_first && !confirm('Zielbereich vor dem Import wirklich loeschen?')){
+          stopRunUi('Abgebrochen.');
+          return;
+        }
         try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start('import.run', 'Import laeuft...'); }catch(e){}
         try{
           const j = await api('./api/import_start', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
@@ -609,9 +711,11 @@
           $runHint.textContent = `Importiert: ${j.imported}` + (bid ? ` | ChangeBlock: ${bid}` : '');
           ok((j.message || 'Import fertig.') + (bid ? `\nChangeBlock: ${bid}` : ''));
           try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('import.run', j.message || 'Import fertig.'); }catch(e){}
+          stopRunUi(j.message || 'Import fertig.');
         }catch(e){
           const s = String(e && e.message ? e.message : e);
           try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('import.run', s); }catch(ex){}
+          stopRunUi(s);
           throw e;
         }
       }
@@ -651,6 +755,8 @@
           $analyze.addEventListener('click', (ev)=>{
             try{ ev.preventDefault(); }catch(e){}
             analyze().catch(e=>{
+              stopAnalyzeUi(e && e.message ? e.message : String(e || 'Unbekannter Fehler'));
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('import.analyze', e && e.message ? e.message : String(e || 'Unbekannter Fehler')); }catch(ex){}
               const msg = e && e.message ? e.message : String(e || 'Unbekannter Fehler');
               IMPORT_FILE_ID = null;
               IMPORT_ANALYSIS = null;
@@ -665,8 +771,8 @@
               }catch(x){}
             });
           });
-          $previewTransform.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; previewTransform().catch(e=>err(e && e.message ? e.message : e)); });
-          $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runImport().catch(e=>err(e && e.message ? e.message : e)); });
+          $previewTransform.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; previewTransform().catch(e=>{ try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail('import.preview', e && e.message ? e.message : String(e)); }catch(ex){}; stopRunUi(e && e.message ? e.message : String(e)); err(e && e.message ? e.message : e); }); });
+          $run.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); }catch(e){}; runImport().catch(e=>{ stopRunUi(e && e.message ? e.message : String(e)); err(e && e.message ? e.message : e); }); });
         }catch(e){ err(e && e.message ? e.message : e); }
       })();
       </script>

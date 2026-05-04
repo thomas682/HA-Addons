@@ -595,6 +595,7 @@ Timer Jobs:
 - Neu: `Speicherort` (Dropdown) schaltet zwischen konfigurierten Zielen (z.B. Lokal und `/share/...`). Nicht erreichbare Ziele sind ausgegraut.
 - Alle Aktionen auf der Backup-Seite (Liste, Erstellen, Download, Loeschen, FullBackup) beziehen sich immer auf den aktuell gewaehlten Speicherort.
 - Die Erstellung laeuft als Background-Job: du siehst Laufzeit und Groesse waehrend des Exports, und kannst per `Abbruch` stoppen.
+- Direkt bei den Backup-Aktionen gibt es genau einen sichtbaren Laufstatusbereich mit Spinner, Klartext und Laufzeit; derselbe Lauf erscheint parallel im globalen Sidebar-Statuspanel.
 - In der Backup-Liste siehst du:
   - Name des Messwertes
   - Zeitpunkt des Backups
@@ -614,6 +615,7 @@ Neu: FullBackup (InfluxDB komplett)
 - FullBackup sichert nicht nur einen einzelnen Messwert, sondern exportiert (best-effort) die komplette InfluxDB (v1: alle Measurements; v2: kompletter Bucket).
 - FullBackups werden in einer separaten Liste angezeigt (unabhaengig von den normalen Signal-Backups).
 - Aktionen: `FullBackup starten`, `Abbruch`, `Liste aktualisieren`, `Download` (ZIP), `Loeschen`.
+- Auch FullBackup nutzt denselben lokalen Laufstatusbereich direkt neben der Aktionssektion und spiegelt den aktuellen Stand in die globale Statusleiste.
 - Hinweis: `Liste aktualisieren` steht direkt ueber der FullBackupliste.
 - Modus:
   - In der UI heisst das Feld `Backupmodus`.
@@ -635,6 +637,7 @@ Neu: FullBackup (InfluxDB komplett)
 - Download: `Download` laedt das selektierte Backup als ZIP herunter (Meta + Line Protocol).
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
 - Restore fragt bei destruktiven Aktionen nur noch per Browser-Dialog nach Bestaetigung.
+- Restore und FullRestore zeigen waehrend laufender Aktionen jeweils einen abschnittsnahen Statusbereich mit Spinner, Klartext und Laufzeit; parallel bleibt der Lauf im globalen Sidebar-Statuspanel sichtbar.
 - Die Bereiche `Quelle (Backup)` und `Ziel (Messwert)` sind jetzt einklappbar.
 - Die Sektion `Ziel (Messwert)` bleibt strukturell sauber geschlossen; nachfolgende Restore- und FullRestore-Bereiche bleiben dadurch korrekt im Restore-Layout eingebettet.
 - Die Auswahlfelder in `Ziel (Messwert)` inklusive Zeitfilter besitzen jetzt dauerhaft sichtbare Buttons `Feld leeren`.
@@ -857,6 +860,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Seite `Export`: Auswahl wie im Dashboard; Measurement/Field wird best-effort aus friendly_name/entity_id aufgeloest.
 - Die `_field`-Liste wird dabei mit `_measurement`, `friendly_name`, `entity_id` und Zeitraum gemeinsam gefiltert. `value` wird nur noch dann automatisch gesetzt, wenn dieses Field in der gefilterten Auswahl wirklich existiert.
 - Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden.
+- Direkt unter den Export-Buttons zeigt ein eigener Laufstatusbereich mit Spinner, Klartext und Laufzeit, was gerade laeuft; derselbe Job bleibt parallel im globalen Sidebar-Statuspanel sichtbar.
 - Der Button `Export` oeffnet in Chromium-basierten Browsern einen klickbaren Client-Ordnerbrowser. Du waehlt zuerst einen lokalen Root-Ordner und kannst danach Unterordner direkt im Dialog mit der Maus auswaehlen. Die fertige Datei wird clientseitig dorthin geschrieben.
 - Buttons:
   - `Download`: startet den Export-Job und laedt die Datei herunter.
@@ -871,6 +875,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Seite `Import`: Datei via Browser-Upload.
 - Button `Analysieren`: zeigt Zeilenanzahl, Zeitraum, Quell-Measurements, Quell-Fields und die ersten drei Datenzeilen; bei Problemen zusaetzlich eine kurze Diagnose + Beispielzeilen. Nach erfolgreicher Analyse erscheint zusaetzlich ein Popup mit Kurzfassung; bei Fehlern wird ein Fehler-Popup angezeigt.
+- Sowohl `Analysieren` als auch die Aktionssektion (`Transformation testen`, `Import starten`) besitzen je einen eigenen Laufstatusbereich mit Spinner, Klartext und Laufzeit direkt bei den ausloesenden Buttons.
 - Die Analyse listet jetzt auch Quellwerte und Leerzaehler fuer `entity_id` und `friendly_name` auf.
 - Bei eindeutiger Analyse werden `_measurement`, `_field`, `entity_id` und `friendly_name` automatisch in die Zielauswahl uebernommen.
 - Zielauswahl: wie Dashboard (Measurement/Field + optionale Tags).

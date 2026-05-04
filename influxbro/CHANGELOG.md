@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.516
+
+### Enhancement
+
+- UI / Backup / Restore / Export / Import: Laufende Aktionen zeigen jetzt abschnittsnahe Statusbereiche mit Spinner, Klartext und Laufzeit direkt bei den ausloesenden Buttons. Gleichzeitig werden FullBackup- und FullRestore-Laeufe zusaetzlich in die globale Statusleiste gespiegelt, damit laufende Vordergrund- und Hintergrundaktionen konsistenter sichtbar bleiben. ([#476](https://github.com/thomas682/HA-Addons/issues/476))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.515
 
 ### Fix

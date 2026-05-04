@@ -1033,6 +1033,7 @@
 
       async function startFullBackup(){
         err(''); ok('');
+        const statusKey = 'backup.fullbackup';
         _startFullBackupUi('FullBackup laeuft...');
         try{
           try{
@@ -1047,6 +1048,7 @@
           });
           FULL_JOB_ID = String(started.job_id || '');
           if(!FULL_JOB_ID) throw new Error('fullbackup job_id missing');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'FullBackup laeuft...'); }catch(e){}
 
           try{
             const qs = new URLSearchParams();
@@ -1068,24 +1070,28 @@
             const sz = String(st.written_human || '');
             const detail = [msg, (pc ? ('Punkte: ' + pc) : ''), (sz ? ('Groesse: ' + sz) : '')].filter(Boolean).join(' | ');
             _setFullBackupStatus(detail || msg);
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, detail || msg); }catch(e){}
 
             const state = String(st.state || '');
             if(state === 'done'){
               ok('FullBackup erstellt: ' + String(st.backup_id || started.backup_id || ''));
               await loadFullBackupList().catch(()=>{});
               _stopFullBackupUi(true, 'Fertig.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'FullBackup fertig.'); }catch(e){}
               return;
             }
             if(state === 'cancelled'){
               ok('Abgebrochen.');
               await loadFullBackupList().catch(()=>{});
               _stopFullBackupUi(true, 'Abgebrochen.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'FullBackup abgebrochen.'); }catch(e){}
               return;
             }
             if(state === 'error'){
               const em = String(st.error || st.message || 'Fehler');
               err(em);
               _stopFullBackupUi(false, 'Fehler.');
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, 'FullBackup Fehler: ' + em); }catch(e){}
               throw new Error(em);
             }
 
@@ -1093,6 +1099,7 @@
           }
         }catch(e){
           _stopFullBackupUi(false, 'Fehler.');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, String(e && e.message ? e.message : e)); }catch(ex){}
           throw e;
         }
       }
@@ -1102,6 +1109,7 @@
           if(!FULL_JOB_ID) return;
           err('');
           _setFullBackupStatus('Abbruch angefordert...');
+          try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('backup.fullbackup', 'Abbruch angefordert...'); }catch(e){}
           await api('./api/fullbackup_job/cancel', {
             method:'POST',
             headers:{'Content-Type':'application/json'},

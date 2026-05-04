@@ -1018,6 +1018,7 @@
 
         async function runFullRestore(){
           err(''); ok('');
+          const statusKey = 'restore.fullrestore';
           const b = selFullBackup();
           if(!b) throw new Error('Bitte ein FullBackup auswaehlen.');
           const fmt = String(b.format || '');
@@ -1034,6 +1035,7 @@
           }else if(!confirm(msg)) return;
 
          startFullRestoreUi('FullRestore wird gestartet...');
+         try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'FullRestore wird gestartet...'); }catch(e){}
          try{
               const started = await api('./api/fullrestore_job/start', {
                 method:'POST',
@@ -1058,37 +1060,43 @@
               const bid = String(st.change_block_id || '').trim();
               const detail = [msg, (read ? ('Zeilen: ' + read) : ''), (applied ? ('applied: ' + applied) : '')].filter(Boolean).join(' | ');
               try{ if($fullRestoreStatusTxt) $fullRestoreStatusTxt.textContent = detail; }catch(e){}
+              try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, detail || msg); }catch(e){}
 
              const state = String(st.state || '');
               if(state === 'done'){
                 ok('FullRestore fertig. applied=' + String(st.applied || 0) + (bid ? ('\nChangeBlock: ' + bid) : ''));
                 stopFullRestoreUi(true, 'Fertig.');
+                try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'FullRestore fertig.'); }catch(e){}
                 return;
               }
              if(state === 'cancelled'){
                ok('Abgebrochen.');
                stopFullRestoreUi(true, 'Abgebrochen.');
-               return;
-             }
+               try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'FullRestore abgebrochen.'); }catch(e){}
+                return;
+              }
              if(state === 'error'){
                const em = String(st.error || st.message || 'Fehler');
                err(em);
                stopFullRestoreUi(false, 'Fehler.');
-               throw new Error(em);
-             }
+               try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, 'FullRestore Fehler: ' + em); }catch(e){}
+                throw new Error(em);
+              }
 
              await new Promise(r=>setTimeout(r, 650));
            }
-         }catch(e){
-           stopFullRestoreUi(false, 'Fehler.');
-           throw e;
-         }
-       }
+          }catch(e){
+            stopFullRestoreUi(false, 'Fehler.');
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, String(e && e.message ? e.message : e)); }catch(ex){}
+            throw e;
+          }
+        }
 
-       async function cancelFullRestore(){
-         try{
-           if(!FULLRESTORE_JOB_ID) return;
-           await api('./api/fullrestore_job/cancel', {
+        async function cancelFullRestore(){
+          try{
+            if(!FULLRESTORE_JOB_ID) return;
+            try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('restore.fullrestore', 'Abbruch angefordert...'); }catch(e){}
+            await api('./api/fullrestore_job/cancel', {
              method:'POST',
              headers:{'Content-Type':'application/json'},
              body: JSON.stringify({ job_id: FULLRESTORE_JOB_ID })
