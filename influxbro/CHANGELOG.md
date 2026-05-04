@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.513
+
+### Enhancement
+
+- Release-Refresh: Neue Add-on-Version erzeugt, damit der aktuelle Frontend-/Backend-Stand sicher als frisches Update ausgeliefert wird. ([#469](https://github.com/thomas682/HA-Addons/issues/469))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.512
 
 ### Fix
