@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.518
+
+### Fix
+
+- Dashboard / Logging: Interne Performance-Endpunkte (`/api/perf_event`, `/api/perf_stats`, Client-Log/Error und Trace-Span-POSTs) werden nicht mehr selbst als Langlauf-HTTP-Events instrumentiert. Dadurch entfaellt die fehlerhafte `perf_event`-Schleife, die den Start der GUI verlangsamen und die Logs mit Selbsttreffern fuellen konnte. ([#478](https://github.com/thomas682/HA-Addons/issues/478))
+- Dashboard / Caching: Die Outlier-Typleiste im Cache-Zeitstrahl spiegelt jetzt nur noch die fuer den aktuellen Messwert effektiv aktiven Strategietypen wider. Typen wie `Counter-Sprung pro Zeit` erscheinen bei Messwerten ohne Counter-Semantik korrekt inaktiv statt nur als lokale Sichtbarkeits-Toggles aktiv zu wirken. ([#478](https://github.com/thomas682/HA-Addons/issues/478))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.517
 
 ### Enhancement

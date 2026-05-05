@@ -33520,6 +33520,8 @@ def api_perf_event():
     event_key = str(body.get("event_key") or "").strip()[:200]
     if not event_key:
         return jsonify({"ok": False, "error": "event_key required"}), 400
+    if any(p in event_key for p in ("/api/perf_event", "/api/perf_stats", "/api/client_error", "/api/client_log", "/api/trace/client_span")):
+        return jsonify({"ok": True, "skipped": True, "reason": "internal_event"})
     cfg = load_cfg()
     is_error = bool(body.get("is_error")) or str(body.get("status") or "") == "err"
     if not _slow_event_key_enabled(event_key, cfg, is_error=is_error):

@@ -3335,6 +3335,7 @@ function cacheRestoreIfAvailable(){
 
                 $timeline.querySelectorAll('[data-cache-oltype]').forEach((btn)=>{
                   btn.addEventListener('click', ()=>{
+                    if(btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;
                     const t = String(btn.getAttribute('data-cache-oltype') || '');
                     if(!t) return;
                     _cacheTimelineToggleHiddenOutlierType(plan, t);
@@ -10639,6 +10640,14 @@ function _cacheTimelineOutlierTypeLabels(){
   return OUTLIER_TYPE_LABELS;
 }
 
+function _cacheTimelineEffectiveOutlierTypeSet(){
+  try{
+    return new Set(getRawOutlierFilterTypes().map((t)=>String(t || '').trim()).filter(Boolean));
+  }catch(e){
+    return new Set();
+  }
+}
+
 function _cacheTimelineOutlierTypeColor(t){
   const type = normalizeOutlierTypeKey(t);
   const map = {
@@ -10695,17 +10704,20 @@ function _analysisCacheTimelineHtml(plan){
   const labels = [];
   const vis = _loadAnalysisCacheUiState(plan);
   const hiddenOlTypes = _cacheTimelineLoadHiddenOutlierTypes(plan);
+  const activeOlTypes = _cacheTimelineEffectiveOutlierTypeSet();
   const typeLabels = _cacheTimelineOutlierTypeLabels();
 
   // UI-only: outlier type visibility for the timeline markers.
   const typeBtns = _cacheTimelineOutlierTypes().map((t)=>{
-    const off = hiddenOlTypes.has(t);
+    const unavailable = !activeOlTypes.has(t);
+    const off = unavailable || hiddenOlTypes.has(t);
     const col = _cacheTimelineOutlierTypeColor(t);
     const lab = typeLabels[t] || t;
     const cls = off ? 'ib-chip ib-chip-inactive ib-chip-strike' : 'ib-chip ib-chip-active';
     return '<button type="button" class="' + cls + '" data-cache-oltype="' + _escAttr(t) + '" data-ui="cache_timeline.btn_oltype.' + _escAttr(t) + '" data-ib-pickkey="cache_timeline.btn_oltype.' + _escAttr(t) + '"'
       + ' style="--ib-chip-color:' + col + ';width:auto;padding:4px 12px 4px 10px;"'
-      + ' title="Outlier-Typ im Zeitstrahl ' + (off ? 'einblenden' : 'ausblenden') + '">'
+      + (unavailable ? ' disabled aria-disabled="true"' : '')
+      + ' title="' + (unavailable ? 'Outlier-Typ ist fuer den aktuellen Messwert nicht aktiv' : ('Outlier-Typ im Zeitstrahl ' + (off ? 'einblenden' : 'ausblenden'))) + '">'
       + '<span class="ib-chip-dot"></span>'
       + '<span class="ib-chip-label">' + _escHtml(lab) + '</span>'
       + '</button>';
@@ -10729,10 +10741,16 @@ function _analysisCacheTimelineHtml(plan){
         if(!(isFinite(ms) && stopMs > startMs)) return;
 
         const typesArr = Array.isArray(item.types) ? item.types : [];
-        const enabledByType = typesArr.length ? typesArr.some((t)=>!hiddenOlTypes.has(String(t||'').trim())) : true;
+        const enabledByType = typesArr.length ? typesArr.some((t)=>{
+          const type = String(t || '').trim();
+          return activeOlTypes.has(type) && !hiddenOlTypes.has(type);
+        }) : true;
         if(!enabledByType) return;
 
-        const primary = (typesArr.find((t)=>!hiddenOlTypes.has(String(t||'').trim())) || typesArr[0] || '').toString();
+        const primary = (typesArr.find((t)=>{
+          const type = String(t || '').trim();
+          return activeOlTypes.has(type) && !hiddenOlTypes.has(type);
+        }) || typesArr.find((t)=>activeOlTypes.has(String(t || '').trim())) || typesArr[0] || '').toString();
         const typeColor = _cacheTimelineOutlierTypeColor(primary);
 
         const left = Math.max(0, Math.min(100, ((ms - startMs) / (stopMs - startMs)) * 100));
@@ -16951,6 +16969,7 @@ async function refreshCachingSection(){
 
           $timeline.querySelectorAll('[data-cache-oltype]').forEach((btn)=>{
             btn.addEventListener('click', ()=>{
+              if(btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;
               const t = String(btn.getAttribute('data-cache-oltype') || '');
               if(!t) return;
               _cacheTimelineToggleHiddenOutlierType(analysisPlan, t);

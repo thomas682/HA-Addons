@@ -792,10 +792,11 @@
             const m = meta && typeof meta === 'object' ? meta : {};
             const key = String(m.event_key || m.key || '');
             if(!key) return;
+            if(key.includes('/api/perf_event') || key.includes('/api/perf_stats') || key.includes('/api/client_error') || key.includes('/api/client_log') || key.includes('/api/trace/client_span')) return;
             if(!_longwaitEnabled(key, !!isError)) return;
             fetch('./api/perf_event', {
               method: 'POST',
-              headers: {'Content-Type': 'application/json', 'X-InfluxBro-Request': '1', 'X-Requested-With': 'InfluxBro'},
+              headers: {'Content-Type': 'application/json', 'X-InfluxBro-Request': '1', 'X-Requested-With': 'InfluxBro', 'X-InfluxBro-Internal': '1'},
               credentials: 'same-origin',
               body: JSON.stringify({
                 event_key: key,

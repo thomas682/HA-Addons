@@ -4131,6 +4131,18 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
     return true;
   }
 
+  function _shouldTrackLongWait(url, headers){
+    try{
+      const u = String(url || '');
+      if(!_shouldTrace(u)) return false;
+      const h = (headers && headers.get) ? headers : new Headers(headers || {});
+      if(String(h.get('X-InfluxBro-Internal') || '') === '1') return false;
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
   window.fetch = function(input, init){
     const u = _url(input);
     const o = init || {};
@@ -4167,7 +4179,7 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
     try{
       method = String(o.method || method || 'GET').toUpperCase();
       longwaitKey = 'client:http.client:' + method + ' ' + String(u || '').slice(0, 240);
-      if(window.InfluxBroLongWait && window.InfluxBroLongWait.begin){
+      if(window.InfluxBroLongWait && window.InfluxBroLongWait.begin && _shouldTrackLongWait(u, headers0)){
         window.InfluxBroLongWait.begin(longwaitKey, {
           key: longwaitKey,
           event_key: longwaitKey,

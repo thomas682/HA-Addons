@@ -145,6 +145,31 @@ def test_perf_stats_aggregates_traces_and_errors(load_app_module, tmp_path):
     assert "client:error:window.error" in keys
 
 
+def test_perf_event_skips_internal_self_instrumentation(load_app_module, tmp_path):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+
+    r = client.post(
+        "/api/perf_event",
+        json={
+            "event_key": "client:http.client:POST ./api/perf_event",
+            "event_type": "http.client",
+            "source": "client",
+            "status": "err",
+            "duration_ms": 40,
+        },
+    )
+    j = r.get_json()
+
+    assert r.status_code == 200
+    assert j["ok"] is True
+    assert j["skipped"] is True
+    assert j["reason"] == "internal_event"
+
+
 def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     logs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
@@ -161,9 +186,15 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'id="perf_top_duration_rows"' in logs_body
     assert 'id="measurement_profile_run_status"' in index_body
     assert 'function _measurementProfileShowDelayed(text)' in index_body
+    assert 'function _cacheTimelineEffectiveOutlierTypeSet()' in index_body
+    assert "const unavailable = !activeOlTypes.has(t);" in index_body
+    assert "if(btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;" in index_body
     assert 'window.InfluxBroLongWait = {' in nav_body
     assert "fetch('./api/perf_event'" in nav_body
+    assert "X-InfluxBro-Internal': '1" in nav_body
     assert "if(u.includes('/api/perf_stats')) return false;" in tooltips_body
+    assert "function _shouldTrackLongWait(url, headers)" in tooltips_body
+    assert "_shouldTrackLongWait(u, headers0)" in tooltips_body
 
 
 def test_config_logging_batch_endpoint_acks_and_persists(load_app_module, tmp_path):

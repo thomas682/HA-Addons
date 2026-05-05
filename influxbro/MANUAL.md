@@ -417,6 +417,7 @@ Raw Daten (DB):
   - Nur aktive (nicht durchgestrichene) Typen werden analysiert.
 - Die Button-Leiste der Analyse-Section verwendet jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern (siehe Template.md), damit Abstand/Design konsistent zu anderen Toolbars sind.
 - Der Analysecache-Zeitstrahl zeigt Ausreisser-Markierungen jetzt mit Tooltip: beim Hover erscheint ein kompakter Tooltip mit Zeitstempel, Typ(en) und Wert. Die Markierungen sind leicht vergroessert, abgerundet und zeigen einen weichen Uebergang beim Hovern.
+- Die Typ-Leiste direkt ueber dem Cache-Zeitstrahl folgt jetzt den fuer den aktuellen Messwert effektiv aktiven Strategietypen. Nicht aktive Typen bleiben sichtbar, erscheinen aber inaktiv/deaktiviert und werden nicht faelschlich wie gepruefte Counter-/Reset-Typen dargestellt.
 - Dashboard-Zustand beim Seitenwechsel: Beim Verlassen der Dashboard-Seite werden relevante Darstellungen/States im `sessionStorage` zwischengespeichert und beim erneuten Oeffnen sofort wiederhergestellt. Dazu gehoeren u.a. der Caching-Status (`load_status`), Analyse-Status/Checkliste, Ausreisser-Ergebnisliste/Selektion, Raw-Fenster sowie Graph-Detail-Settings. Das UI validiert im Hintergrund gegen den Server (Hybrid-Modus); bei veraenderten Serverdaten wird die Anzeige still aktualisiert.
   - Robustheit: InfluxBro ueberschreibt den letzten gueltigen Snapshot nicht mehr durch fruehe/leere Renders (z.B. direkt nach Navigation), und Snapshot-Daten sind groessenbegrenzt.
 - Die Analyse-History (`Analyse-Verlauf`) zeigt die komplette Analyse inklusive Fortschritt, Chunks, Typ-Auswahl und Ergebnis-Zusammenfassung.
@@ -508,6 +509,7 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
 - Die Analyse besitzt zwei Top-10-Ansichten: `Haeufigkeit` und `Laufzeit`.
 - Der Analyse-Zeitraum ist waehlbar; Default ist `1h`. Zusaetzlich stehen dieselben Zeitmodi wie bei der Messwertauswahl zur Verfuegung (`range`, optional `Von/Bis` fuer Custom).
 - Nicht-fehlerhafte Langlauf-Keys koennen dort direkt aktiviert/deaktiviert werden. Fehler bleiben immer aktiv und sind bewusst nicht abschaltbar.
+- Interne Performance-Hilfsendpunkte (`perf_event`, `perf_stats`, Client-Log/Error und Trace-Span-POSTs) werden nicht erneut als eigene Langlauf-HTTP-Events instrumentiert. Dadurch bleibt die GUI-Startphase stabiler und das Log laeuft nicht in Selbsttreffer fuer diese internen Requests.
 - Typische Nutzung:
   - Follow/Refresh fuer Live-Ansicht
   - Buttons `aeltester`/`neuster` springen innerhalb der Ansicht nach oben/unten
