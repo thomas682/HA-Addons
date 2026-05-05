@@ -187,6 +187,10 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'id="measurement_profile_run_status"' in index_body
     assert 'function _measurementProfileShowDelayed(text)' in index_body
     assert 'function _cacheTimelineEffectiveOutlierTypeSet()' in index_body
+    assert 'function _validIsoWindow(win)' in index_body
+    assert 'if(!_validIsoWindow(win)){' in index_body
+    assert "if(!_validIsoWindow({ start: startIso, stop: stopIso })) return;" in index_body
+    assert "if(!base.measurement || !base.field || !_validIsoWindow({ start, stop })) return;" in index_body
     assert "const unavailable = !activeOlTypes.has(t);" in index_body
     assert "if(btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;" in index_body
     assert 'window.InfluxBroLongWait = {' in nav_body

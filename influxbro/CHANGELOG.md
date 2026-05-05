@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.519
+
+### Fix
+
+- Dashboard / Graph-Start: Fruehe `window_points`-Aufrufe werden jetzt nur noch gestartet, wenn fuer Main-Graph, Zoom-Nachladen und Bearbeitungsgraph wirklich ein gueltiges `start`/`stop`-Zeitfenster vorliegt. Dadurch entfaellt der fruehe Fehlerpfad `POST /api/window_points` ohne Zeitbereich, der die GUI-Startphase stoeren konnte. ([#479](https://github.com/thomas682/HA-Addons/issues/479))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.518
 
 ### Fix

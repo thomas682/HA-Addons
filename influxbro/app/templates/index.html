@@ -2861,8 +2861,7 @@ function _mainWindowIso(){
       const s = LAST_TOTAL_BOUNDS && LAST_TOTAL_BOUNDS.oldest_time ? String(LAST_TOTAL_BOUNDS.oldest_time) : '';
       const e = LAST_TOTAL_BOUNDS && LAST_TOTAL_BOUNDS.newest_time ? String(LAST_TOTAL_BOUNDS.newest_time) : '';
       if(s && e) return { start: new Date(Date.parse(s)).toISOString(), stop: new Date(Date.parse(e)).toISOString() };
-      // Fallback: allow API to decide for unbounded
-      return { start: '', stop: '' };
+      return null;
     }
     const start = (r && r.start) ? r.start : null;
     const stop = (r && r.stop) ? r.stop : null;
@@ -2870,6 +2869,20 @@ function _mainWindowIso(){
     return null;
   }catch(e){
     return null;
+  }
+}
+
+function _validIsoWindow(win){
+  try{
+    if(!win || typeof win !== 'object') return false;
+    const start = String(win.start || '').trim();
+    const stop = String(win.stop || '').trim();
+    if(!(start && stop)) return false;
+    const a = Date.parse(start);
+    const b = Date.parse(stop);
+    return isFinite(a) && isFinite(b) && b > a;
+  }catch(e){
+    return false;
   }
 }
 
@@ -2893,7 +2906,13 @@ async function refreshGraphMainAgg(opts){
     const base = currentFilters();
     if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)) return;
     const win = _mainWindowIso();
-    if(!win) return;
+    if(!_validIsoWindow(win)){
+      _GRAPH_MAIN_AGG.key = '';
+      _GRAPH_MAIN_AGG.min = null;
+      _GRAPH_MAIN_AGG.max = null;
+      try{ if($graphMainInfo) $graphMainInfo.textContent = ''; }catch(e){}
+      return;
+    }
     const maxPoints = _mainAggMaxPoints();
     const key = [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start || '', win.stop || '', maxPoints, wantMin, wantMax].join('|');
     if(!force && key === _GRAPH_MAIN_AGG.key && (_GRAPH_MAIN_AGG.min || _GRAPH_MAIN_AGG.max)) return;
@@ -4395,6 +4414,7 @@ function _tryLoadZoomData(visStartMs, visStopMs){
 
   const startIso = new Date(visStartMs).toISOString();
   const stopIso = new Date(visStopMs).toISOString();
+  if(!_validIsoWindow({ start: startIso, stop: stopIso })) return;
   const everyMs = Math.max(1000, Math.round(visSpan / targetPoints));
 
   _ZOOM_LOADING = true;
@@ -15453,6 +15473,7 @@ async function refreshEditGraph(){
     stop,
     max_points: UI_EDIT_GRAPH_MAX_POINTS,
   };
+  if(!base.measurement || !base.field || !_validIsoWindow({ start, stop })) return;
 
   const j = await api('./api/window_points', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}, { key: 'edit_graph', status: 'Graph laeuft...', silent: true });
   try{
