@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.517
+
+### Enhancement
+
+- UI / Logging / Analyse: Lange Client- und Server-Wartezeiten werden jetzt zentraler behandelt. User-relevante API-Wartezeiten koennen ab einer konfigurierbaren Schwellzeit global im Statusfeld unter dem Menue erscheinen, und die Section `Messwertinfos von Homeassistant` zeigt fuer die Profilermittlung zusaetzlich einen lokalen Spinner mit Laufzeit direkt unter der Infozeile. ([#477](https://github.com/thomas682/HA-Addons/issues/477))
+- Logs / Settings: Neue Settings fuer `Langlauf-Schwelle (ms)` und `Zeitintensive Protokollierung aktiv`. Auf der Logs-Seite gibt es eine neue auf-/zuklappbare Section `Zeitintensive Protokollierung` mit Top-10-Analyse nach Haeufigkeit und maximaler Laufzeit, waehlbarem Zeitbereich (`range`/`start`/`stop`) sowie Direkt-Toggles pro Langlauf-Key. Fehler bleiben immer aktiv und koennen dort nicht deaktiviert werden. ([#477](https://github.com/thomas682/HA-Addons/issues/477))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.516
 
 ### Enhancement

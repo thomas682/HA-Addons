@@ -38,6 +38,16 @@
     .err { color: #b00020; margin-top: 8px; white-space: pre-wrap; }
     .log_error_line { display: block; background: var(--log-error-bg, #ffe0e0); color: var(--log-error-fg, #b00020); }
     .log_warn_line { display: block; background: var(--log-warn-bg, #fff8e1); color: var(--log-warn-fg, #b07000); }
+    .perf_hint { font-size:12px; opacity:0.8; line-height:1.45; }
+    .perf_grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px; margin-top:12px; }
+    .perf_table_wrap { overflow:auto; border:1px solid #eee; border-radius:12px; }
+    .perf_table { width:100%; border-collapse:collapse; font-size:12px; }
+    .perf_table th, .perf_table td { padding:8px 10px; border-bottom:1px solid #eee; vertical-align:top; text-align:left; }
+    .perf_table th { background:#f8f8f8; position:sticky; top:0; z-index:1; }
+    .perf_table tr:last-child td { border-bottom:none; }
+    .perf_key { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; overflow-wrap:anywhere; }
+    .perf_badge { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-size:11px; background:#f3f4f6; }
+    .perf_badge.err { background:#ffe4e6; color:#9f1239; }
   </style>
 </head>
 <body>
@@ -230,6 +240,61 @@
         </div>
       </details>
 
+      <details class="card" open data-ui="logs_perf.section_root" data-ib-pickkey="logs_perf.section_root" title="logs.perf.section_root">
+        <summary><span class="ib_summary_row"><span>Zeitintensive Protokollierung</span></span></summary>
+        <div class="card_body">
+          <div class="perf_hint">Fehler werden immer protokolliert und koennen nicht deaktiviert werden. Fuer alle anderen Langlauf-Keys kannst du die zusaetzliche Protokollierung direkt hier steuern.</div>
+          <div class="row logs_actions_row">
+            <div>
+              <label>Langlauf-Logging</label>
+              <label style="display:flex; align-items:center; gap:8px; height:40px; padding:0 4px;">
+                <input id="perf_logging_enabled" type="checkbox" data-ui="logs_perf.chk_enabled" data-ib-pickkey="logs_perf.chk_enabled" title="logs.perf.enabled" />
+                <span class="muted" style="opacity:0.85;">zusaetzliche Langlauf-Logs</span>
+              </label>
+            </div>
+            <div>
+              <label>Zeitraum</label>
+              <select id="perf_range" data-ui="logs_perf.select_range" data-ib-pickkey="logs_perf.select_range" title="logs.perf.range">
+                <option value="1h" selected>1h</option>
+                <option value="6h">6h</option>
+                <option value="24h">24h</option>
+                <option value="7d">7d</option>
+                <option value="30d">30d</option>
+                <option value="90d">90d</option>
+                <option value="180d">180d</option>
+                <option value="365d">365d</option>
+                <option value="this_year">Dieses Jahr</option>
+                <option value="12mo">12 Monate</option>
+                <option value="24mo">24 Monate</option>
+                <option value="all">Alle</option>
+                <option value="custom">Benutzerdefiniert</option>
+              </select>
+            </div>
+            <div id="perf_custom_range" style="display:none;">
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <div><label>Von</label><input id="perf_start" type="datetime-local" data-ui="logs_perf.input_start" data-ib-pickkey="logs_perf.input_start" title="logs.perf.start" /></div>
+                <div><label>Bis</label><input id="perf_stop" type="datetime-local" data-ui="logs_perf.input_stop" data-ib-pickkey="logs_perf.input_stop" title="logs.perf.stop" /></div>
+              </div>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="perf_analyze" type="button" data-ui="logs_perf.btn_analyze" data-ib-pickkey="logs_perf.btn_analyze" title="logs.perf.analyze">Analyse</button>
+            </div>
+          </div>
+          <div id="perf_meta" class="muted" style="margin-top:8px; font-size:12px;" data-ui="logs_perf.txt_meta" data-ib-pickkey="logs_perf.txt_meta" title="logs.perf.meta">Noch keine Analyse geladen.</div>
+          <div class="perf_grid">
+            <div class="card" data-ui="logs_perf.panel_top_count" data-ib-pickkey="logs_perf.panel_top_count" title="logs.perf.top_count">
+              <div style="font-weight:800; margin-bottom:8px;">Top 10 Haeufigkeit</div>
+              <div class="perf_table_wrap"><table class="perf_table"><thead><tr><th>Key</th><th>Count</th><th>Ø ms</th><th>Max ms</th><th>Steuerung</th></tr></thead><tbody id="perf_top_count_rows"></tbody></table></div>
+            </div>
+            <div class="card" data-ui="logs_perf.panel_top_duration" data-ib-pickkey="logs_perf.panel_top_duration" title="logs.perf.top_duration">
+              <div style="font-weight:800; margin-bottom:8px;">Top 10 Laufzeit</div>
+              <div class="perf_table_wrap"><table class="perf_table"><thead><tr><th>Key</th><th>Max ms</th><th>Ø ms</th><th>Count</th><th>Steuerung</th></tr></thead><tbody id="perf_top_duration_rows"></tbody></table></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
       <div id="support_bundle_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="logs_support_bundle.dialog" data-ib-pickkey="logs_support_bundle.dialog">
         <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
           <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
@@ -344,8 +409,18 @@
       const $sbSettings = document.getElementById('sb_settings');
       const $sbSupportSnapshot = document.getElementById('sb_support_snapshot');
       const $sbBrowserErrors = document.getElementById('sb_browser_errors');
+      const $perfLoggingEnabled = document.getElementById('perf_logging_enabled');
+      const $perfRange = document.getElementById('perf_range');
+      const $perfCustomRange = document.getElementById('perf_custom_range');
+      const $perfStart = document.getElementById('perf_start');
+      const $perfStop = document.getElementById('perf_stop');
+      const $perfAnalyze = document.getElementById('perf_analyze');
+      const $perfMeta = document.getElementById('perf_meta');
+      const $perfTopCountRows = document.getElementById('perf_top_count_rows');
+      const $perfTopDurationRows = document.getElementById('perf_top_duration_rows');
 
       let _SB_LAST = null;
+      let PERF_OVERRIDES = {};
 
       async function loadSupportSnapshots(){
         try{
@@ -419,6 +494,114 @@
       function applyWrap(){
         const card = document.getElementById('log_card');
         if(card) card.classList.toggle('wrap', !!$wrap.checked);
+      }
+
+      function _esc(s){
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function _perfFmtMs(v){
+        const n = Number(v);
+        return isFinite(n) && n >= 0 ? String(Math.round(n)) : '—';
+      }
+
+      function _perfLocalToIso(v){
+        try{
+          if(!v) return '';
+          const d = new Date(String(v));
+          if(!isFinite(d.getTime())) return '';
+          return d.toISOString();
+        }catch(e){ return ''; }
+      }
+
+      function _perfSyncRangeUi(){
+        try{ if($perfCustomRange) $perfCustomRange.style.display = ($perfRange && $perfRange.value === 'custom') ? 'block' : 'none'; }catch(e){}
+      }
+
+      function _perfPayload(){
+        const payload = { range: String($perfRange && $perfRange.value ? $perfRange.value : '1h') };
+        if(payload.range === 'custom'){
+          payload.start = _perfLocalToIso($perfStart && $perfStart.value ? $perfStart.value : '');
+          payload.stop = _perfLocalToIso($perfStop && $perfStop.value ? $perfStop.value : '');
+          if(!(payload.start && payload.stop)) throw new Error('Bitte Zeitbereich mit Von/Bis setzen.');
+        }
+        return payload;
+      }
+
+      async function _savePerfConfigPatch(patch){
+        let r;
+        try{
+          r = await fetch('./api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(patch)});
+        }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/config', {method:'POST'}, e); }catch(x){}
+          throw new Error('Failed to fetch');
+        }
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      }
+
+      async function loadPerfConfig(){
+        let r;
+        try{ r = await fetch('./api/config'); }
+        catch(e){ try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/config', {}, e); }catch(x){} return; }
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) return;
+        const cfg = j.config || {};
+        PERF_OVERRIDES = (cfg.log_slow_events_overrides && typeof cfg.log_slow_events_overrides === 'object') ? cfg.log_slow_events_overrides : {};
+        if($perfLoggingEnabled) $perfLoggingEnabled.checked = (cfg.log_slow_events_enabled !== false);
+      }
+
+      function _perfToggleHtml(row){
+        if(row && row.is_error) return '<span class="perf_badge err">immer aktiv</span>';
+        const enabled = !!(row && row.enabled);
+        return '<button type="button" data-perf-toggle="' + _esc(String(row && row.event_key || '')) + '" data-next-enabled="' + (enabled ? '0' : '1') + '">' + (enabled ? 'deaktivieren' : 'aktivieren') + '</button>';
+      }
+
+      function _renderPerfRows(tbody, rows, mode){
+        if(!tbody) return;
+        const xs = Array.isArray(rows) ? rows : [];
+        if(!xs.length){
+          tbody.innerHTML = '<tr><td colspan="5" class="muted">Keine Daten im gewaelten Zeitraum.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = xs.map((row)=>{
+          const key = '<div class="perf_key">' + _esc(row.event_key || '') + '</div><div class="muted">' + _esc((row.source || '?') + ' · ' + (row.event_type || '?')) + '</div>';
+          if(mode === 'duration'){
+            return '<tr><td>' + key + '</td><td>' + _perfFmtMs(row.dur_max_ms) + '</td><td>' + _perfFmtMs(row.dur_avg_ms) + '</td><td>' + _esc(row.count || 0) + '</td><td>' + _perfToggleHtml(row) + '</td></tr>';
+          }
+          return '<tr><td>' + key + '</td><td>' + _esc(row.count || 0) + '</td><td>' + _perfFmtMs(row.dur_avg_ms) + '</td><td>' + _perfFmtMs(row.dur_max_ms) + '</td><td>' + _perfToggleHtml(row) + '</td></tr>';
+        }).join('');
+        try{
+          tbody.querySelectorAll('[data-perf-toggle]').forEach((btn)=>{
+            btn.addEventListener('click', async ()=>{
+              const eventKey = String(btn.getAttribute('data-perf-toggle') || '');
+              const nextEnabled = btn.getAttribute('data-next-enabled') === '1';
+              if(!eventKey) return;
+              PERF_OVERRIDES = Object.assign({}, PERF_OVERRIDES || {}, { [eventKey]: nextEnabled });
+              await _savePerfConfigPatch({ log_slow_events_overrides: PERF_OVERRIDES });
+              await loadPerfConfig();
+              await analyzePerf().catch((e)=>err(String(e && e.message ? e.message : e)));
+            });
+          });
+        }catch(e){}
+      }
+
+      async function analyzePerf(){
+        err('');
+        const payload = _perfPayload();
+        let r;
+        try{
+          r = await fetch('./api/perf_stats', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+        }catch(e){
+          try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/perf_stats', {method:'POST'}, e); }catch(x){}
+          throw new Error('Failed to fetch');
+        }
+        const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+        if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        if($perfMeta) $perfMeta.textContent = 'Zeitraum: ' + String(j.range || payload.range || '1h') + ' | Start: ' + String(j.start || '-') + ' | Stop: ' + String(j.stop || '-') + ' | Keys: ' + String(j.rows_total || 0);
+        _renderPerfRows($perfTopCountRows, j.top_count || [], 'count');
+        _renderPerfRows($perfTopDurationRows, j.top_duration || [], 'duration');
       }
 
       function jumpOldest(){
@@ -979,6 +1162,9 @@
       if($serverInfluxQueries) $serverInfluxQueries.addEventListener('change', ()=>{ setServerInfluxQueries($serverInfluxQueries.checked).then(()=>loadLogs().catch(()=>{})); });
       if($serverCacheUsage) $serverCacheUsage.addEventListener('change', ()=>{ setServerCacheUsage($serverCacheUsage.checked).then(()=>loadLogs().catch(()=>{})); });
       if($serverConfigLogging) $serverConfigLogging.addEventListener('change', ()=>{ setServerConfigLogging($serverConfigLogging.checked).then(()=>loadLogs().catch(()=>{})); });
+      if($perfLoggingEnabled) $perfLoggingEnabled.addEventListener('change', ()=>{ _savePerfConfigPatch({ log_slow_events_enabled: !!$perfLoggingEnabled.checked }).catch(e=>err(String(e && e.message ? e.message : e))); });
+      if($perfRange) $perfRange.addEventListener('change', ()=>_perfSyncRangeUi());
+      if($perfAnalyze) $perfAnalyze.addEventListener('click', ()=>analyzePerf().catch(e=>err(String(e && e.message ? e.message : e))));
       $follow.addEventListener('change', ()=>setFollow(!!($follow && $follow.checked)));
       $wrap.addEventListener('change', ()=>{ applyWrap(); });
       $q.addEventListener('input', ()=>applySearch());
@@ -1029,7 +1215,9 @@
       applyWrap();
       loadViewProfile();
       loadServerProfile();
+      loadPerfConfig().catch(()=>{});
       loadLogColors().catch(()=>{});
+      _perfSyncRangeUi();
       setFollow(!!($follow && $follow.checked));
       loadLogs().then(()=>{ try{ jumpNewest(); }catch(e){} }).catch(e=>err(String(e && e.message ? e.message : e)));
       </script>

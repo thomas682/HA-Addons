@@ -1430,6 +1430,19 @@
           </div>
         </div>
         <div class="section_note"><span class="muted">Schreibt Cache-Nutzung (Jobs&Cache) ins Logfile (zusaetzlich zur Usage-Tabelle).</span></div>
+        <div class="param_row">
+          <div class="param_label">Langlauf-Schwelle (ms)<span class="param_hint">Ab dieser Dauer erscheinen user-relevante Wartezeiten global im Statusfeld und koennen als Langlauf protokolliert werden.</span></div>
+          <div class="param_control">
+            <input id="ui_longwait_threshold_ms" type="number" min="500" max="60000" data-ui="config_settings.input_ui_longwait_threshold_ms" data-ib-pickkey="config_settings.input_ui_longwait_threshold_ms" title="settings.ui_longwait_threshold_ms" />
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">Zeitintensive Protokollierung aktiv</div>
+          <div class="param_control">
+            <label class="ib_chk_row"><input type="checkbox" id="log_slow_events_enabled" data-ui="config_settings.chk_log_slow_events_enabled" data-ib-pickkey="config_settings.chk_log_slow_events_enabled" title="settings.log_slow_events_enabled" /><span></span></label>
+          </div>
+        </div>
+        <div class="section_note"><span class="muted">Fehler bleiben immer aktiv und sind hiervon nicht betroffen. Einzelne Langlauf-Keys koennen auf der Logs-Seite separat aktiviert oder deaktiviert werden.</span></div>
 
         <div class="param_row">
           <div class="param_label">Tracing aktiv<span class="param_hint">Erzeugt Action-IDs (Trace) fuer Button-Aktionen und korreliert API/Queries. Grundlage fuer Performanceanalyse.</span></div>
@@ -1690,6 +1703,7 @@ const ids = [
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","bugreport_log_history_hours","log_http_requests"
   ,"log_influx_queries"
   ,"log_cache_usage"
+  ,"ui_longwait_threshold_ms","log_slow_events_enabled","log_slow_events_overrides"
   ,"trace_enabled","trace_persist","trace_max_entries","trace_max_days"
   ,"undo_history_max"
   ,"worklog_max_entries","worklog_max_days"
@@ -3079,6 +3093,9 @@ function setForm(cfg){
   _setChecked(el.log_http_requests, !!cfg.log_http_requests);
   _setChecked(el.log_influx_queries, !!cfg.log_influx_queries);
   _setChecked(el.log_cache_usage, !!cfg.log_cache_usage);
+  _safeSet(el.ui_longwait_threshold_ms, 'value', cfg.ui_longwait_threshold_ms ?? 3000);
+  _setChecked(el.log_slow_events_enabled, (cfg.log_slow_events_enabled !== false));
+  try{ window.__InfluxBroSlowEventOverrides = (cfg.log_slow_events_overrides && typeof cfg.log_slow_events_overrides === 'object') ? cfg.log_slow_events_overrides : {}; }catch(e){}
   _setChecked(el.trace_enabled, (cfg.trace_enabled !== false));
   _setChecked(el.trace_persist, (cfg.trace_persist !== false));
   _safeSet(el.trace_max_entries, 'value', cfg.trace_max_entries ?? 1000);
@@ -3251,6 +3268,9 @@ function getForm(){
     log_http_requests: _isChecked(el.log_http_requests),
     log_influx_queries: _isChecked(el.log_influx_queries),
     log_cache_usage: _isChecked(el.log_cache_usage),
+    ui_longwait_threshold_ms: parseInt(el.ui_longwait_threshold_ms.value, 10),
+    log_slow_events_enabled: _isChecked(el.log_slow_events_enabled),
+    log_slow_events_overrides: (window.__InfluxBroSlowEventOverrides && typeof window.__InfluxBroSlowEventOverrides === 'object') ? window.__InfluxBroSlowEventOverrides : {},
     trace_enabled: _isChecked(el.trace_enabled),
     trace_persist: _isChecked(el.trace_persist),
     trace_max_entries: parseInt(el.trace_max_entries.value, 10),

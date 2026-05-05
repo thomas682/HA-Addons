@@ -500,6 +500,10 @@
       color: #9ca3af;
     }
     .ib-namepanel-list { display: flex; flex-direction: column; }
+    .ib-local-run-status { display:none; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 0 0 0; font-size:12px; opacity:0.9; }
+    .ib-local-run-spinner { width:14px; height:14px; border-radius:50%; border:2px solid rgba(0,0,0,0.18); border-top-color:rgba(0,0,0,0.72); animation: ib_local_run_spin 0.9s linear infinite; }
+    .ib-local-run-time { opacity:0.85; white-space:nowrap; }
+    @keyframes ib_local_run_spin { to { transform: rotate(360deg); } }
     .ib-namepanel-row {
       display: grid;
       grid-template-columns: 28px 1fr 240px 90px 120px;
@@ -958,6 +962,11 @@
   <details id="name_timeline_panel" class="section" open style="margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
     <summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title" data-ib-pickkey="dashboard_selection.section_multi_name_title">Messwertinfos von Homeassistant</span></span></summary>
     <div class="ib_section_desc_row" id="measurement_profile_desc">Home-Assistant-, YAML- und Influx-Infos zum aktuell gewaehlten Messwert sowie historische Messwertnamen.</div>
+    <div id="measurement_profile_run_status" class="ib-local-run-status" data-ui="dashboard_selection.panel_measurement_profile_run_status" data-ib-pickkey="dashboard_selection.panel_measurement_profile_run_status" title="dashboard_selection.panel_measurement_profile_run_status">
+      <span id="measurement_profile_run_spinner" class="ib-local-run-spinner" aria-hidden="true"></span>
+      <span id="measurement_profile_run_text">Messwertinfos werden geladen...</span>
+      <span id="measurement_profile_run_time" class="ib-local-run-time"></span>
+    </div>
     <div class="card_body">
       <div class="ib-namepanel">
         <div id="measurement_profile_panel" class="ib-profile-panel" data-ui="dashboard_selection.panel_measurement_profile" data-ib-pickkey="dashboard_selection.panel_measurement_profile">
@@ -1640,6 +1649,10 @@ const $nameTimelineRows = document.getElementById('name_timeline_rows');
 const $nameMergeLatestBtn = document.getElementById('name_merge_latest_btn');
 const $measurementProfilePanel = document.getElementById('measurement_profile_panel');
 const $measurementProfileSections = document.getElementById('measurement_profile_sections');
+const $measurementProfileRunStatus = document.getElementById('measurement_profile_run_status');
+const $measurementProfileRunSpinner = document.getElementById('measurement_profile_run_spinner');
+const $measurementProfileRunText = document.getElementById('measurement_profile_run_text');
+const $measurementProfileRunTime = document.getElementById('measurement_profile_run_time');
 
 // Row details (before/after list) are rendered inline under the selected row.
 
@@ -2161,6 +2174,9 @@ function _normalizeDerivToggles(changedEl){
 let LAST_ROWS_RAW = null;
 let LAST_JUMP_SPANS = [];
 let LAST_TOTAL_POINTS = null;
+let MEASUREMENT_PROFILE_RUN_T0 = 0;
+let MEASUREMENT_PROFILE_RUN_DELAY_T = null;
+let MEASUREMENT_PROFILE_RUN_TIMER = null;
 
 let OUTLIER_SCANNED_TOTAL = null;
 let OUTLIER_FOUND_TOTAL = null;
@@ -5602,6 +5618,59 @@ function renderMeasurementProfilePanel(profile){
   $measurementProfilePanel.style.display = 'block';
 }
 
+function _measurementProfileThresholdMs(){
+  try{
+    if(window.InfluxBroLongWait && window.InfluxBroLongWait.thresholdMs) return Number(window.InfluxBroLongWait.thresholdMs() || 3000);
+  }catch(e){}
+  return 3000;
+}
+
+function _measurementProfileFmtRuntime(ms){
+  const n = Math.max(0, Number(ms || 0));
+  if(!isFinite(n)) return '';
+  const sec = Math.floor(n / 1000);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? (h + ':' + mm + ':' + ss) : (m + ':' + ss);
+}
+
+function _measurementProfileShowDelayed(text){
+  try{ if(MEASUREMENT_PROFILE_RUN_DELAY_T) clearTimeout(MEASUREMENT_PROFILE_RUN_DELAY_T); }catch(e){}
+  try{ if(MEASUREMENT_PROFILE_RUN_TIMER) clearInterval(MEASUREMENT_PROFILE_RUN_TIMER); }catch(e){}
+  MEASUREMENT_PROFILE_RUN_T0 = Date.now();
+  if($measurementProfileRunText) $measurementProfileRunText.textContent = String(text || 'Messwertinfos werden geladen...');
+  if($measurementProfileRunTime) $measurementProfileRunTime.textContent = '';
+  MEASUREMENT_PROFILE_RUN_DELAY_T = setTimeout(()=>{
+    try{
+      if($measurementProfileRunStatus) $measurementProfileRunStatus.style.display = 'flex';
+      if($measurementProfileRunSpinner) $measurementProfileRunSpinner.style.display = 'inline-block';
+      MEASUREMENT_PROFILE_RUN_TIMER = setInterval(()=>{
+        try{
+          if($measurementProfileRunTime && MEASUREMENT_PROFILE_RUN_T0) $measurementProfileRunTime.textContent = _measurementProfileFmtRuntime(Date.now() - MEASUREMENT_PROFILE_RUN_T0);
+        }catch(e){}
+      }, 250);
+    }catch(e){}
+  }, Math.max(500, _measurementProfileThresholdMs()));
+}
+
+function _measurementProfileStop(text, isError){
+  try{ if(MEASUREMENT_PROFILE_RUN_DELAY_T) clearTimeout(MEASUREMENT_PROFILE_RUN_DELAY_T); }catch(e){}
+  try{ if(MEASUREMENT_PROFILE_RUN_TIMER) clearInterval(MEASUREMENT_PROFILE_RUN_TIMER); }catch(e){}
+  MEASUREMENT_PROFILE_RUN_DELAY_T = null;
+  MEASUREMENT_PROFILE_RUN_TIMER = null;
+  const dur = MEASUREMENT_PROFILE_RUN_T0 ? (Date.now() - MEASUREMENT_PROFILE_RUN_T0) : 0;
+  MEASUREMENT_PROFILE_RUN_T0 = 0;
+  if($measurementProfileRunText && text) $measurementProfileRunText.textContent = String(text);
+  if($measurementProfileRunSpinner) $measurementProfileRunSpinner.style.display = 'none';
+  if($measurementProfileRunTime) $measurementProfileRunTime.textContent = dur > 0 ? _measurementProfileFmtRuntime(dur) : '';
+  if($measurementProfileRunStatus && !($measurementProfileRunStatus.style.display === 'flex')){
+    $measurementProfileRunStatus.style.display = (dur >= _measurementProfileThresholdMs() || isError) ? 'flex' : 'none';
+  }
+}
+
 async function refreshMeasurementProfilePanel(){
   try{
     const measurement = String(($m && $m.value) || '').trim();
@@ -5610,8 +5679,10 @@ async function refreshMeasurementProfilePanel(){
     const friendlyName = String(($n && $n.value) || '').trim();
     if(!measurement || !field || !entityId){
       renderMeasurementProfilePanel(null);
+      try{ if($measurementProfileRunStatus) $measurementProfileRunStatus.style.display = 'none'; }catch(e){}
       return;
     }
+    _measurementProfileShowDelayed('Messwertinfos werden geladen...');
     const qp = new URLSearchParams({
       measurement,
       field,
@@ -5621,8 +5692,10 @@ async function refreshMeasurementProfilePanel(){
     });
     const j = await api('./api/measurement_profile?' + qp.toString(), null, { key: 'measurement_profile', status: 'Lade Messwertprofil...', silent: true });
     renderMeasurementProfilePanel(j);
+    _measurementProfileStop('Messwertinfos geladen.', false);
   }catch(e){
     renderMeasurementProfilePanel({ ok: false, error: e && e.message ? e.message : String(e) });
+    _measurementProfileStop(e && e.message ? e.message : 'Fehler beim Laden der Messwertinfos.', true);
   }
 }
 

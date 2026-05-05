@@ -1586,14 +1586,34 @@ def _trace_before_request() -> None:
 
 @app.after_request
 def _trace_after_request(resp: Response) -> Response:
-    if not TRACE_ENABLED:
-        return resp
     try:
+        cfg = load_cfg()
         tid = str(getattr(g, "trace_id", "") or "").strip()
-        if not tid:
-            return resp
         t0 = float(getattr(g, "_trace_req_t0", 0.0) or 0.0)
         dur_ms = int(max(0.0, (time.monotonic() - t0) * 1000.0)) if t0 else None
+        path = str(request.path or "")[:240]
+        method = str(request.method or "")[:16]
+        is_error = int(resp.status_code) >= 400
+        skip_perf_paths = {"/api/perf_event", "/api/perf_stats", "/api/trace/client_span", "/api/client_error", "/api/client_log"}
+        if dur_ms is not None and path not in skip_perf_paths and (_slow_event_key_enabled(f"server:http.request:{method} {path}", cfg, is_error=is_error)):
+            if is_error or dur_ms >= _slow_event_threshold_ms(cfg):
+                _perf_event_record(
+                    event_key=f"server:http.request:{method} {path}",
+                    event_type="http.request",
+                    source="server",
+                    status="err" if is_error else "ok",
+                    page=str(getattr(g, "trace_page", "") or "")[:80],
+                    ui=str(getattr(g, "trace_action", "") or "")[:120],
+                    detail=f"{method} {path}",
+                    duration_ms=dur_ms,
+                    toggle_allowed=True,
+                    is_error=is_error,
+                    extra={"status_code": int(resp.status_code)},
+                )
+        if not TRACE_ENABLED:
+            return resp
+        if not tid:
+            return resp
         span = {
             "trace_id": tid,
             "span_id": str(getattr(g, "trace_span_id", "") or ""),
@@ -1838,6 +1858,9 @@ DEFAULT_CFG = {
     "log_influx_queries": False,
     "log_cache_usage": False,
     "log_config_changes": True,
+    "ui_longwait_threshold_ms": 3000,
+    "log_slow_events_enabled": True,
+    "log_slow_events_overrides": {},
 
     # UI log colors (used in client log view)
     "ui_log_error_bg": "#FFE0E0",
@@ -4067,6 +4090,150 @@ def _worklog_append_op(
             "detail": str(detail or "")[:4000],
             "status": str(status or "")[:40],
             "extra": ex,
+            "ip": _req_ip(),
+            "ua": _req_ua(),
+        })
+    except Exception:
+        return
+
+
+def _slow_event_threshold_ms(cfg: dict[str, Any] | None = None) -> int:
+    try:
+        cur = cfg if isinstance(cfg, dict) else load_cfg()
+        val = int(cur.get("ui_longwait_threshold_ms", 3000) or 3000)
+    except Exception:
+        val = 3000
+    return max(500, min(60000, val))
+
+
+def _slow_event_logging_enabled(cfg: dict[str, Any] | None = None) -> bool:
+    try:
+        cur = cfg if isinstance(cfg, dict) else load_cfg()
+        return bool(cur.get("log_slow_events_enabled", True))
+    except Exception:
+        return True
+
+
+def _slow_event_override_map(cfg: dict[str, Any] | None = None) -> dict[str, bool]:
+    try:
+        cur = cfg if isinstance(cfg, dict) else load_cfg()
+        raw = cur.get("log_slow_events_overrides")
+        if not isinstance(raw, dict):
+            return {}
+        out: dict[str, bool] = {}
+        for k, v in list(raw.items())[:500]:
+            key = str(k or "").strip()[:200]
+            if key:
+                out[key] = bool(v)
+        return out
+    except Exception:
+        return {}
+
+
+def _slow_event_key_enabled(event_key: str, cfg: dict[str, Any] | None = None, *, is_error: bool = False) -> bool:
+    if is_error:
+        return True
+    key = str(event_key or "").strip()
+    overrides = _slow_event_override_map(cfg)
+    if key and key in overrides:
+        return bool(overrides.get(key))
+    return _slow_event_logging_enabled(cfg)
+
+
+def _event_ts_in_window(ts_raw: str, start_dt: datetime | None, stop_dt: datetime | None) -> bool:
+    if start_dt is None and stop_dt is None:
+        return True
+    try:
+        ts = _trace_parse_iso(str(ts_raw or ""))
+    except Exception:
+        ts = None
+    if ts is None:
+        return False
+    if start_dt is not None and ts < start_dt:
+        return False
+    if stop_dt is not None and ts > stop_dt:
+        return False
+    return True
+
+
+def _analysis_window_from_payload(payload: dict[str, Any]) -> tuple[datetime | None, datetime | None, str]:
+    try:
+        start_dt, stop_dt = _get_start_stop_from_payload(payload)
+    except Exception:
+        start_dt, stop_dt = None, None
+    rk = str(payload.get("range") or "1h").strip().lower() or "1h"
+    if start_dt is not None and stop_dt is not None:
+        return start_dt, stop_dt, rk
+    if rk in ("all", "this_year", "12mo", "24mo") or re.match(r"^\d+[hd]$", rk):
+        try:
+            return _stats_cache_range_to_datetimes(rk) + (rk,)
+        except Exception:
+            pass
+    try:
+        return parse_range_to_datetimes("1h") + ("1h",)
+    except Exception:
+        now = datetime.now(timezone.utc)
+        return now - timedelta(hours=1), now, "1h"
+
+
+def _perf_event_record(
+    *,
+    event_key: str,
+    event_type: str,
+    source: str,
+    status: str,
+    at: str = "",
+    page: str = "",
+    ui: str = "",
+    detail: str = "",
+    duration_ms: int | None = None,
+    toggle_allowed: bool = True,
+    is_error: bool = False,
+    extra: dict[str, Any] | None = None,
+) -> None:
+    try:
+        log_fn = LOG.error if is_error or str(status or "") == "err" else LOG.info
+        try:
+            log_fn(
+                "perf_event key=%s type=%s source=%s status=%s dur_ms=%s page=%s ui=%s detail=%s",
+                str(event_key or "")[:200],
+                str(event_type or "")[:80],
+                str(source or "")[:40],
+                str(status or "")[:40],
+                int(duration_ms or 0) if duration_ms is not None else 0,
+                str(page or "")[:80],
+                str(ui or "")[:120],
+                str(detail or "")[:400],
+            )
+        except Exception:
+            pass
+        entry_extra: dict[str, Any] = {
+            "event_key": str(event_key or "")[:200],
+            "event_type": str(event_type or "")[:80],
+            "source": str(source or "")[:40],
+            "toggle_allowed": bool(toggle_allowed and not is_error),
+            "is_error": bool(is_error),
+        }
+        if duration_ms is not None:
+            try:
+                entry_extra["duration_ms"] = int(max(0, int(duration_ms or 0)))
+            except Exception:
+                pass
+        if isinstance(extra, dict):
+            for k, v in list(extra.items())[:20]:
+                key = str(k or "").strip()[:60]
+                if not key:
+                    continue
+                entry_extra[key] = v
+        _analysis_history_append({
+            "at": str(at or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")),
+            "kind": "perf_event",
+            "step": str(event_key or "")[:200],
+            "page": str(page or "")[:80],
+            "detail": str(detail or "")[:4000],
+            "status": str(status or "")[:40],
+            "extra": entry_extra,
+            "ui": str(ui or "")[:120],
             "ip": _req_ip(),
             "ua": _req_ua(),
         })
@@ -23655,6 +23822,22 @@ def api_set_config():
     _bool("log_influx_queries", False)
     _bool("log_cache_usage", False)
     _bool("log_config_changes", True)
+    _bool("log_slow_events_enabled", True)
+    _clamp_int("ui_longwait_threshold_ms", 3000, 500, 60000)
+    try:
+        raw_overrides = cfg.get("log_slow_events_overrides")
+        if not isinstance(raw_overrides, dict):
+            cfg["log_slow_events_overrides"] = {}
+        else:
+            norm_overrides: dict[str, bool] = {}
+            for k, v in list(raw_overrides.items())[:500]:
+                key = str(k or "").strip()[:200]
+                if not key:
+                    continue
+                norm_overrides[key] = bool(v)
+            cfg["log_slow_events_overrides"] = norm_overrides
+    except Exception:
+        cfg["log_slow_events_overrides"] = {}
     try:
         prof = str(cfg.get("log_profile") or "debug").strip().lower()
     except Exception:
@@ -32885,11 +33068,260 @@ def _client_event_log(kind_hint: str) -> Response:
             stack,
             extra_s,
         )
+        _perf_event_record(
+            event_key=("client:error:" + (kind or kind_hint or "event")) if kind_hint == "error" else ("client:log:" + (kind or kind_hint or "event")),
+            event_type="client_error" if kind_hint == "error" else "client_log",
+            source="client",
+            status="err" if kind_hint == "error" else "ok",
+            page=page,
+            ui=str((extra or {}).get("source") or "")[:120] if isinstance(extra, dict) else "",
+            detail=message or kind or kind_hint,
+            duration_ms=None,
+            toggle_allowed=(kind_hint != "error"),
+            is_error=(kind_hint == "error"),
+            extra={"href": href[:200], "kind": kind[:60]},
+        )
     except Exception:
         # Never fail the request.
         pass
 
     return jsonify({"ok": True})
+
+
+def _perf_stats_bucket_add(
+    buckets: dict[str, dict[str, Any]],
+    *,
+    event_key: str,
+    event_type: str,
+    source: str,
+    at: str,
+    duration_ms: int | None,
+    status: str,
+    page: str = "",
+    ui: str = "",
+    detail: str = "",
+    toggle_allowed: bool = True,
+    is_error: bool = False,
+) -> None:
+    key = str(event_key or "").strip()[:200]
+    if not key:
+        return
+    row = buckets.get(key)
+    if not isinstance(row, dict):
+        row = {
+            "event_key": key,
+            "event_type": str(event_type or "")[:80],
+            "source": str(source or "")[:40],
+            "count": 0,
+            "dur_count": 0,
+            "dur_total_ms": 0,
+            "dur_avg_ms": None,
+            "dur_max_ms": None,
+            "last_at": "",
+            "last_duration_ms": None,
+            "last_status": "",
+            "page": str(page or "")[:80],
+            "ui": str(ui or "")[:120],
+            "detail": str(detail or "")[:400],
+            "toggle_allowed": bool(toggle_allowed),
+            "is_error": bool(is_error),
+        }
+        buckets[key] = row
+    row["count"] = int(row.get("count", 0) or 0) + 1
+    row["is_error"] = bool(row.get("is_error")) or bool(is_error)
+    row["toggle_allowed"] = bool(row.get("toggle_allowed", True)) and bool(toggle_allowed)
+    if at and str(at) > str(row.get("last_at") or ""):
+        row["last_at"] = str(at)
+        row["last_status"] = str(status or "")[:40]
+        row["page"] = str(page or row.get("page") or "")[:80]
+        row["ui"] = str(ui or row.get("ui") or "")[:120]
+        row["detail"] = str(detail or row.get("detail") or "")[:400]
+        if duration_ms is not None:
+            row["last_duration_ms"] = int(max(0, int(duration_ms or 0)))
+    if duration_ms is not None:
+        dur = int(max(0, int(duration_ms or 0)))
+        row["dur_count"] = int(row.get("dur_count", 0) or 0) + 1
+        row["dur_total_ms"] = int(row.get("dur_total_ms", 0) or 0) + dur
+        cur_max = row.get("dur_max_ms")
+        row["dur_max_ms"] = dur if cur_max is None else max(int(cur_max or 0), dur)
+        row["dur_avg_ms"] = int(round(float(row["dur_total_ms"]) / float(max(1, row["dur_count"]))))
+
+
+def _perf_stats_collect(payload: dict[str, Any]) -> dict[str, Any]:
+    start_dt, stop_dt, rk = _analysis_window_from_payload(payload)
+    buckets: dict[str, dict[str, Any]] = {}
+
+    with TRACE_LOCK:
+        traces = [TRACE_INDEX.get(tid) for tid in list(TRACE_MEM)]
+    for tr in traces:
+        if not isinstance(tr, dict):
+            continue
+        try:
+            _trace_normalize(tr, str(tr.get("trace_id") or ""))
+        except Exception:
+            pass
+        tr_at = str(tr.get("started_at") or tr.get("last_at") or "")
+        if not _event_ts_in_window(tr_at, start_dt, stop_dt):
+            continue
+        action = str(tr.get("action") or "").strip()
+        if action:
+            _perf_stats_bucket_add(
+                buckets,
+                event_key=f"trace:action:{action}",
+                event_type="trace.action",
+                source="trace",
+                at=tr_at,
+                duration_ms=int(tr.get("dur_ms") or 0) if tr.get("dur_ms") is not None else None,
+                status=str(tr.get("status") or ""),
+                page=str(tr.get("page") or ""),
+                ui=action,
+                detail=action,
+            )
+        for ev in (tr.get("ui_events") if isinstance(tr.get("ui_events"), list) else []):
+            if not isinstance(ev, dict):
+                continue
+            at = str(ev.get("at") or tr_at)
+            if not _event_ts_in_window(at, start_dt, stop_dt):
+                continue
+            ui = str(ev.get("ui") or "").strip()
+            if not ui:
+                continue
+            _perf_stats_bucket_add(
+                buckets,
+                event_key=f"trace:ui_event:{ui}",
+                event_type="ui_event",
+                source="trace",
+                at=at,
+                duration_ms=None,
+                status="ok",
+                page=str(ev.get("page") or tr.get("page") or ""),
+                ui=ui,
+                detail=str(ev.get("text") or ui),
+            )
+        for span in (tr.get("spans") if isinstance(tr.get("spans"), list) else []):
+            if not isinstance(span, dict):
+                continue
+            at = str(span.get("at") or tr_at)
+            if not _event_ts_in_window(at, start_dt, stop_dt):
+                continue
+            method = str(span.get("method") or "GET").upper()[:16]
+            path = str(span.get("path") or span.get("kind") or "").strip()[:240]
+            _perf_stats_bucket_add(
+                buckets,
+                event_key=f"trace:server:{method} {path}",
+                event_type=str(span.get("kind") or "http.request")[:80],
+                source="server",
+                at=at,
+                duration_ms=int(span.get("dur_ms") or 0) if span.get("dur_ms") is not None else None,
+                status=str(span.get("status") or ""),
+                page=str(span.get("page") or tr.get("page") or ""),
+                ui=str(span.get("action") or tr.get("action") or ""),
+                detail=f"{method} {path}",
+                is_error=str(span.get("status") or "") == "err",
+                toggle_allowed=str(span.get("status") or "") != "err",
+            )
+        for span in (tr.get("client_spans") if isinstance(tr.get("client_spans"), list) else []):
+            if not isinstance(span, dict):
+                continue
+            at = str(span.get("at") or tr_at)
+            if not _event_ts_in_window(at, start_dt, stop_dt):
+                continue
+            method = str(span.get("method") or "GET").upper()[:16]
+            url = str(span.get("url") or "").strip()[:240]
+            _perf_stats_bucket_add(
+                buckets,
+                event_key=f"trace:client:{method} {url}",
+                event_type=str(span.get("kind") or "http.client")[:80],
+                source="client",
+                at=at,
+                duration_ms=int(span.get("dur_ms") or 0) if span.get("dur_ms") is not None else None,
+                status=str(span.get("status") or ""),
+                page=str(span.get("page") or tr.get("page") or ""),
+                ui=str(span.get("action") or tr.get("action") or ""),
+                detail=f"{method} {url}",
+                is_error=str(span.get("status") or "") == "err",
+                toggle_allowed=str(span.get("status") or "") != "err",
+            )
+        for q in (tr.get("queries") if isinstance(tr.get("queries"), list) else []):
+            if not isinstance(q, dict):
+                continue
+            at = str(q.get("at") or tr_at)
+            if not _event_ts_in_window(at, start_dt, stop_dt):
+                continue
+            label = str(q.get("label") or "query").strip()[:120]
+            _perf_stats_bucket_add(
+                buckets,
+                event_key=f"trace:query:{label}",
+                event_type="query",
+                source="server",
+                at=at,
+                duration_ms=None,
+                status="ok",
+                page=str(tr.get("page") or ""),
+                ui=str(tr.get("action") or ""),
+                detail=label,
+            )
+
+    history_rows = _analysis_history_tail(limit=5000)
+    for row in history_rows:
+        if not isinstance(row, dict):
+            continue
+        at = str(row.get("at") or "")
+        if not _event_ts_in_window(at, start_dt, stop_dt):
+            continue
+        extra = row.get("extra") if isinstance(row.get("extra"), dict) else {}
+        kind = str(row.get("kind") or "")
+        if kind == "perf_event":
+            event_key = str(extra.get("event_key") or row.get("step") or "").strip()
+            if not event_key:
+                continue
+            dur_val = extra.get("duration_ms")
+            dur_ms = int(dur_val or 0) if dur_val is not None else None
+            _perf_stats_bucket_add(
+                buckets,
+                event_key=event_key,
+                event_type=str(extra.get("event_type") or kind)[:80],
+                source=str(extra.get("source") or "server")[:40],
+                at=at,
+                duration_ms=dur_ms,
+                status=str(row.get("status") or ""),
+                page=str(row.get("page") or ""),
+                ui=str(row.get("ui") or ""),
+                detail=str(row.get("detail") or event_key),
+                is_error=bool(extra.get("is_error")),
+                toggle_allowed=bool(extra.get("toggle_allowed", True)),
+            )
+        elif kind == "worklog":
+            event_key = "worklog:" + str(row.get("step") or row.get("page") or "worklog")[:160]
+            dur_val = extra.get("duration_ms") if isinstance(extra, dict) else None
+            dur_ms = int(dur_val or 0) if dur_val is not None else None
+            _perf_stats_bucket_add(
+                buckets,
+                event_key=event_key,
+                event_type="worklog",
+                source="server",
+                at=at,
+                duration_ms=dur_ms,
+                status=str(row.get("status") or ""),
+                page=str(row.get("page") or ""),
+                ui=str(extra.get("op") or "")[:120] if isinstance(extra, dict) else "",
+                detail=str(row.get("detail") or event_key),
+            )
+
+    items = list(buckets.values())
+    for row in items:
+        row["enabled"] = _slow_event_key_enabled(str(row.get("event_key") or ""), is_error=bool(row.get("is_error")))
+    by_count = sorted(items, key=lambda r: (-int(r.get("count") or 0), -(int(r.get("dur_avg_ms") or 0)), str(r.get("event_key") or "")))[:10]
+    by_duration = sorted(items, key=lambda r: (-(int(r.get("dur_max_ms") or 0)), -(int(r.get("dur_avg_ms") or 0)), -int(r.get("count") or 0), str(r.get("event_key") or "")))[:10]
+    return {
+        "ok": True,
+        "range": rk,
+        "start": _dt_to_rfc3339_utc(start_dt) if start_dt is not None else "",
+        "stop": _dt_to_rfc3339_utc(stop_dt) if stop_dt is not None else "",
+        "rows_total": len(items),
+        "top_count": by_count,
+        "top_duration": by_duration,
+    }
 
 
 def _config_log_enabled(cfg: dict[str, Any] | None = None) -> bool:
@@ -33075,6 +33507,58 @@ def api_client_log():
     """Receive client-side info/debug events and write them to the server log."""
 
     return _client_event_log("log")
+
+
+@app.post("/api/perf_event")
+def api_perf_event():
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        return jsonify({"ok": False, "error": "body must be object"}), 400
+    event_key = str(body.get("event_key") or "").strip()[:200]
+    if not event_key:
+        return jsonify({"ok": False, "error": "event_key required"}), 400
+    cfg = load_cfg()
+    is_error = bool(body.get("is_error")) or str(body.get("status") or "") == "err"
+    if not _slow_event_key_enabled(event_key, cfg, is_error=is_error):
+        return jsonify({"ok": True, "skipped": True, "reason": "disabled"})
+    dur_ms = None
+    try:
+        if body.get("duration_ms") is not None:
+            dur_ms = int(max(0, int(body.get("duration_ms") or 0)))
+    except Exception:
+        dur_ms = None
+    if not is_error and dur_ms is not None and dur_ms < _slow_event_threshold_ms(cfg) and not bool(body.get("force")):
+        return jsonify({"ok": True, "skipped": True, "reason": "below_threshold"})
+    extra = body.get("extra") if isinstance(body.get("extra"), dict) else {}
+    _perf_event_record(
+        event_key=event_key,
+        event_type=str(body.get("event_type") or "perf_event")[:80],
+        source=str(body.get("source") or "client")[:40],
+        status=str(body.get("status") or ("err" if is_error else "ok"))[:40],
+        at=str(body.get("at") or "")[:80],
+        page=str(body.get("page") or "")[:80],
+        ui=str(body.get("ui") or "")[:120],
+        detail=str(body.get("detail") or event_key)[:4000],
+        duration_ms=dur_ms,
+        toggle_allowed=bool(body.get("toggle_allowed", True)),
+        is_error=is_error,
+        extra=extra,
+    )
+    return jsonify({"ok": True})
+
+
+@app.post("/api/perf_stats")
+def api_perf_stats():
+    try:
+        body = request.get_json(force=True) or {}
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    return jsonify(_perf_stats_collect(body))
 
 
 @app.post("/api/global_stats_job/cancel")

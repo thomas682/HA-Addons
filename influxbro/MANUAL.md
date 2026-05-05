@@ -179,7 +179,7 @@ Wenn fuer den `friendly_name`-Selector bereits eine `entity_id` ausgewaehlt ist,
 
 Gespeicherte Dashboard-Selectorwerte werden beim Seitenstart jetzt vor dem ersten Measurement-Refresh in die UI zurueckgeschrieben. Dadurch kann bereits die initiale Measurement-Liste vorhandene Einschraenkungen wie `field`, `entity_id` oder `friendly_name` direkt nutzen, statt erst breit zu laden und den gespeicherten Zustand danach wiederherzustellen.
 
-Zwischen `Messwertauswahl` und `Caching` erscheint die eigenstaendige, auf-/zuklappbare Section `Messwertinfos von Homeassistant`. Direkt unter dem Titel steht ein Infofeld zur Einordnung. Im oberen Profilbereich werden Home-Assistant-Metadaten, YAML-Fundstellen, InfluxDB-Basisstatistiken, der abgeleitete interne Messwerttyp sowie Qualitaetshinweise gruppiert angezeigt. Darunter folgt weiterhin die professionelle Mehrfachnamen-Ansicht `Mehrere Messwertnamen` mit Panel-Header, Summary-Bar, oberer Vergleichsachse sowie Listenzeilen mit Index, Name, Zeitraum, Punkte und Status. Mit `Auf letzten Namen vereinigen` werden aeltere Namensbereiche direkt auf den neuesten Namen umgeschrieben; die Aktion erzeugt einen Change-Block und bleibt dadurch in Verlauf/Undo sichtbar.
+Zwischen `Messwertauswahl` und `Caching` erscheint die eigenstaendige, auf-/zuklappbare Section `Messwertinfos von Homeassistant`. Direkt unter dem Titel steht ein Infofeld zur Einordnung. Im oberen Profilbereich werden Home-Assistant-Metadaten, YAML-Fundstellen, InfluxDB-Basisstatistiken, der abgeleitete interne Messwerttyp sowie Qualitaetshinweise gruppiert angezeigt. Darunter folgt weiterhin die professionelle Mehrfachnamen-Ansicht `Mehrere Messwertnamen` mit Panel-Header, Summary-Bar, oberer Vergleichsachse sowie Listenzeilen mit Index, Name, Zeitraum, Punkte und Status. Mit `Auf letzten Namen vereinigen` werden aeltere Namensbereiche direkt auf den neuesten Namen umgeschrieben; die Aktion erzeugt einen Change-Block und bleibt dadurch in Verlauf/Undo sichtbar. Dauert die Profilermittlung laenger, erscheint direkt unterhalb der Infozeile zusaetzlich ein lokaler Laufstatus mit Spinner, Klartext und Laufzeit.
 
 Das Messwertprofil bleibt sichtbar, sobald `measurement`, `field` und `entity_id` bekannt sind. Wenn keine oder nur eine historische Namensvariante vorliegt, wird nicht mehr die gesamte Section ausgeblendet; stattdessen bleibt das Profil sichtbar und der Timeline-Unterbereich zeigt einen neutralen Leer-/Einzelzustand.
 
@@ -504,6 +504,10 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
 ## Logs
 
 - Zeigt die Add-on Logs von InfluxBro.
+- Neue Section `Zeitintensive Protokollierung`: fuehrt eine gesonderte Analyse ueber haeufige und lange Events aus Client, Server, Tracing und Worklog zusammen.
+- Die Analyse besitzt zwei Top-10-Ansichten: `Haeufigkeit` und `Laufzeit`.
+- Der Analyse-Zeitraum ist waehlbar; Default ist `1h`. Zusaetzlich stehen dieselben Zeitmodi wie bei der Messwertauswahl zur Verfuegung (`range`, optional `Von/Bis` fuer Custom).
+- Nicht-fehlerhafte Langlauf-Keys koennen dort direkt aktiviert/deaktiviert werden. Fehler bleiben immer aktiv und sind bewusst nicht abschaltbar.
 - Typische Nutzung:
   - Follow/Refresh fuer Live-Ansicht
   - Buttons `aeltester`/`neuster` springen innerhalb der Ansicht nach oben/unten
@@ -920,6 +924,8 @@ Hinweis (neu)
 Neu:
 
 - Status Schriftgroesse (Sidebar) ist konfigurierbar; Refresh loescht abgeschlossene Status-Eintraege.
+- Neu im Bereich `Logs`: `Langlauf-Schwelle (ms)` steuert, ab wann user-relevante Wartezeiten global im Statusfeld unter dem Menue auftauchen und als Langlauf gelten.
+- Neu im Bereich `Logs`: `Zeitintensive Protokollierung aktiv` schaltet die zusaetzlichen Langlauf-Logeintraege global fuer nicht-fehlerhafte Events an oder aus. Fehler bleiben davon unberuehrt und werden immer protokolliert.
 - Jobs: Max Job Laufzeit (Sekunden) fuer Auto-Abbruch; Job-Farben (running/done/error/cancelled).
 - Job-Farben koennen per Colorpicker oder per Hex (`#RRGGBB`) gesetzt werden.
 - Die Log-Farbfaelder in den Einstellungen (`ui_log_error_bg`, `ui_log_error_fg`, `ui_log_warn_bg`, `ui_log_warn_fg`) werden beim Laden und Speichern jetzt defensiv erneut im DOM aufgeloest. Dadurch bleibt die Settings-Seite auch bei spaet gebundenen oder kurzzeitig fehlenden Feldern benutzbar, statt mit einem Statusbar-TypeError abzubrechen.

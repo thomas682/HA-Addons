@@ -760,6 +760,108 @@
           clearCompleted,
         };
 
+        const LONGWAIT_THRESHOLD_MS = {{ (cfg.get('ui_longwait_threshold_ms') or 3000) | int }};
+        const LONGWAIT_OVERRIDES = {{ (cfg.get('log_slow_events_overrides') or {}) | tojson }};
+        const LONGWAIT_LOGGING_ENABLED = {{ 'true' if cfg.get('log_slow_events_enabled', True) else 'false' }};
+        const longwaitItems = new Map();
+
+        function _longwaitEnabled(key, isError){
+          if(isError) return true;
+          try{
+            const k = String(key || '');
+            if(k && LONGWAIT_OVERRIDES && Object.prototype.hasOwnProperty.call(LONGWAIT_OVERRIDES, k)) return !!LONGWAIT_OVERRIDES[k];
+          }catch(e){}
+          return !!LONGWAIT_LOGGING_ENABLED;
+        }
+
+        function _longwaitLabel(meta){
+          try{
+            const m = meta && typeof meta === 'object' ? meta : {};
+            const text = String(m.text || '').trim();
+            if(text) return text;
+            const ui = String(m.ui || '').trim();
+            if(ui) return ui;
+            const detail = String(m.detail || '').trim();
+            if(detail) return detail;
+          }catch(e){}
+          return 'Warte auf Antwort...';
+        }
+
+        function _longwaitPost(meta, status, durMs, isError){
+          try{
+            const m = meta && typeof meta === 'object' ? meta : {};
+            const key = String(m.event_key || m.key || '');
+            if(!key) return;
+            if(!_longwaitEnabled(key, !!isError)) return;
+            fetch('./api/perf_event', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json', 'X-InfluxBro-Request': '1', 'X-Requested-With': 'InfluxBro'},
+              credentials: 'same-origin',
+              body: JSON.stringify({
+                event_key: key,
+                event_type: String(m.event_type || 'slow_wait'),
+                source: String(m.source || 'client'),
+                status: String(status || (isError ? 'err' : 'ok')),
+                page: String(m.page || ''),
+                ui: String(m.ui || ''),
+                detail: String(m.detail || _longwaitLabel(m)),
+                duration_ms: durMs,
+                toggle_allowed: m.toggle_allowed !== false,
+                is_error: !!isError,
+                extra: (m.extra && typeof m.extra === 'object') ? m.extra : {},
+              }),
+            }).catch(()=>{});
+          }catch(e){}
+        }
+
+        window.InfluxBroLongWait = {
+          thresholdMs: ()=>LONGWAIT_THRESHOLD_MS,
+          begin: (key, meta)=>{
+            const k = String(key || '');
+            if(!k) return null;
+            try{
+              const prev = longwaitItems.get(k);
+              if(prev && prev.timer) clearTimeout(prev.timer);
+            }catch(e){}
+            const startedAt = Date.now();
+            const item = { key: k, meta: (meta && typeof meta === 'object') ? meta : {}, startedAt, shown: false, done: false, timer: null };
+            item.timer = setTimeout(()=>{
+              try{
+                const cur = longwaitItems.get(k);
+                if(!cur || cur.done) return;
+                cur.shown = true;
+                window.InfluxBroStatus.start(k, _longwaitLabel(cur.meta));
+              }catch(e){}
+            }, LONGWAIT_THRESHOLD_MS);
+            longwaitItems.set(k, item);
+            return { key: k, started_at_ms: startedAt };
+          },
+          progress: (key, text)=>{
+            const k = String(key || '');
+            const item = longwaitItems.get(k);
+            if(!item) return;
+            try{ item.meta.text = String(text || item.meta.text || ''); }catch(e){}
+            if(item.shown) window.InfluxBroStatus.progress(k, _longwaitLabel(item.meta));
+          },
+          finish: (key, opts)=>{
+            const k = String(key || '');
+            const item = longwaitItems.get(k);
+            if(!item) return;
+            longwaitItems.delete(k);
+            try{ if(item.timer) clearTimeout(item.timer); }catch(e){}
+            item.done = true;
+            const o = opts && typeof opts === 'object' ? opts : {};
+            const isError = !!o.is_error || String(o.status || '') === 'err';
+            const durMs = Math.max(0, Date.now() - Number(item.startedAt || Date.now()));
+            if(item.shown){
+              if(isError) window.InfluxBroStatus.fail(k, String(o.text || _longwaitLabel(item.meta) || 'Fehler'));
+              else window.InfluxBroStatus.done(k, String(o.text || _longwaitLabel(item.meta) || 'Fertig'));
+            }
+            _longwaitPost(Object.assign({}, item.meta, o), String(o.status || (isError ? 'err' : 'ok')), durMs, isError);
+          },
+          enabledForKey: (key, isError)=>_longwaitEnabled(String(key || ''), !!isError),
+        };
+
         // Optional sysinfo poll
         try{
           if(SYSINFO_ENABLED){

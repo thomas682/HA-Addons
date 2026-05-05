@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 
@@ -67,6 +68,7 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
             "ui_raw_center_min_points": 0,
             "ui_timer_disabled_opacity": 999,
             "selector_query_limit_days": 0,
+            "ui_longwait_threshold_ms": 1,
         },
     )
     assert r.status_code == 200
@@ -81,6 +83,87 @@ def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
     assert cfg["ui_raw_center_min_points"] == 1
     assert cfg["ui_timer_disabled_opacity"] == 100
     assert cfg["selector_query_limit_days"] == 1
+    assert cfg["ui_longwait_threshold_ms"] == 500
+
+
+def test_perf_stats_aggregates_traces_and_errors(load_app_module, tmp_path):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+
+    now = datetime.now(timezone.utc)
+    started = (now - timedelta(minutes=5)).isoformat().replace("+00:00", "Z")
+    at = (now - timedelta(minutes=4)).isoformat().replace("+00:00", "Z")
+    app_mod._trace_get_or_create("trace-1", page="dashboard", action="dashboard.load", started_at=started)
+    app_mod._trace_add_span({
+        "trace_id": "trace-1",
+        "span_id": "trace-1:1",
+        "action": "dashboard.load",
+        "page": "dashboard",
+        "started_at": started,
+        "at": at,
+        "kind": "http.request",
+        "method": "GET",
+        "path": "/api/example",
+        "status_code": 200,
+        "dur_ms": 4500,
+        "status": "ok",
+    })
+
+    r = client.post(
+        "/api/perf_event",
+        json={
+            "event_key": "client:http.client:GET ./api/example",
+            "event_type": "http.client",
+            "source": "client",
+            "status": "ok",
+            "page": "dashboard",
+            "ui": "dashboard.load",
+            "detail": "GET ./api/example",
+            "duration_ms": 4700,
+        },
+    )
+    assert r.status_code == 200
+    assert r.get_json()["ok"] is True
+
+    client.post(
+        "/api/client_error",
+        json={"page": "dashboard", "message": "kaputt", "extra": {"kind": "window.error", "source": "dashboard"}},
+    )
+
+    start = (now - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    stop = (now + timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
+    r = client.post("/api/perf_stats", json={"range": "custom", "start": start, "stop": stop})
+    j = r.get_json()
+
+    assert r.status_code == 200
+    assert j["ok"] is True
+    keys = {row["event_key"] for row in (j["top_count"] + j["top_duration"])}
+    assert "trace:server:GET /api/example" in keys
+    assert "client:error:window.error" in keys
+
+
+def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
+    config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    logs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    nav_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    tooltips_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+
+    assert 'id="ui_longwait_threshold_ms"' in config_body
+    assert 'id="log_slow_events_enabled"' in config_body
+    assert 'log_slow_events_overrides' in config_body
+    assert 'id="perf_range"' in logs_body
+    assert 'id="perf_analyze"' in logs_body
+    assert 'id="perf_top_count_rows"' in logs_body
+    assert 'id="perf_top_duration_rows"' in logs_body
+    assert 'id="measurement_profile_run_status"' in index_body
+    assert 'function _measurementProfileShowDelayed(text)' in index_body
+    assert 'window.InfluxBroLongWait = {' in nav_body
+    assert "fetch('./api/perf_event'" in nav_body
+    assert "if(u.includes('/api/perf_stats')) return false;" in tooltips_body
 
 
 def test_config_logging_batch_endpoint_acks_and_persists(load_app_module, tmp_path):

@@ -4124,6 +4124,10 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
     if(!u) return false;
     if(!(u.startsWith('./api/') || u.startsWith('/api/') || u.includes('/api/'))) return false;
     if(u.includes('/api/trace/client_span')) return false;
+    if(u.includes('/api/perf_event')) return false;
+    if(u.includes('/api/perf_stats')) return false;
+    if(u.includes('/api/client_error')) return false;
+    if(u.includes('/api/client_log')) return false;
     return true;
   }
 
@@ -4142,6 +4146,7 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
     let spanId = '';
     let t0 = 0;
     let method = 'GET';
+    let longwaitKey = '';
 
     let init2 = o;
     if(doTrace){
@@ -4159,33 +4164,73 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
       try{ t0 = performance.now(); }catch(e){ t0 = 0; }
     }
 
+    try{
+      method = String(o.method || method || 'GET').toUpperCase();
+      longwaitKey = 'client:http.client:' + method + ' ' + String(u || '').slice(0, 240);
+      if(window.InfluxBroLongWait && window.InfluxBroLongWait.begin){
+        window.InfluxBroLongWait.begin(longwaitKey, {
+          key: longwaitKey,
+          event_key: longwaitKey,
+          event_type: 'http.client',
+          source: 'client',
+          page: (t && t.page) ? String(t.page) : _page(),
+          ui: (t && t.action_ui) ? String(t.action_ui) : '',
+          text: (t && t.action_ui) ? ('Warte auf ' + String(t.action_ui)) : ('Warte auf ' + method + ' ' + String(u || '').slice(0, 80)),
+          detail: method + ' ' + String(u || '').slice(0, 240),
+          extra: { url: String(u || '').slice(0, 240), method },
+        });
+      }
+    }catch(e){}
+
     const p = orig(input, init2);
-    if(!doTrace) return p;
     return p.then((resp)=>{
       try{
         const dur = t0 ? Math.round(performance.now() - t0) : 0;
         const status = resp && typeof resp.status === 'number' ? resp.status : 0;
         const ok = resp && resp.ok;
-        // fire-and-forget client span
-        orig('./api/trace/client_span', {
-          method:'POST',
-          headers:{'Content-Type':'application/json','X-InfluxBro-Internal':'1'},
-          keepalive:true,
-          body: JSON.stringify({
-            trace_id: String(t.trace_id || ''),
-            span_id: String(spanId || ''),
-            page: String(t.page || ''),
-            action: String(t.action_ui || ''),
-            started_at: String(t.started_at || ''),
-            method: String(method || 'GET'),
-            url: String(u || ''),
-            status_code: status,
-            dur_ms: dur,
-            status: (ok === false || status >= 400) ? 'err' : 'ok',
-          })
-        }).catch(()=>{});
+        if(doTrace){
+          // fire-and-forget client span
+          orig('./api/trace/client_span', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','X-InfluxBro-Internal':'1'},
+            keepalive:true,
+            body: JSON.stringify({
+              trace_id: String(t.trace_id || ''),
+              span_id: String(spanId || ''),
+              page: String(t.page || ''),
+              action: String(t.action_ui || ''),
+              started_at: String(t.started_at || ''),
+              method: String(method || 'GET'),
+              url: String(u || ''),
+              status_code: status,
+              dur_ms: dur,
+              status: (ok === false || status >= 400) ? 'err' : 'ok',
+            })
+          }).catch(()=>{});
+        }
+        try{
+          if(window.InfluxBroLongWait && window.InfluxBroLongWait.finish){
+            window.InfluxBroLongWait.finish(longwaitKey, {
+              status: (ok === false || status >= 400) ? 'err' : 'ok',
+              is_error: (ok === false || status >= 400),
+              text: (ok === false || status >= 400) ? ('Fehler: ' + method + ' ' + String(u || '').slice(0, 80)) : ('Fertig: ' + method + ' ' + String(u || '').slice(0, 80)),
+            });
+          }
+        }catch(e){}
       }catch(e){}
       return resp;
+    }).catch((err)=>{
+      try{
+        if(window.InfluxBroLongWait && window.InfluxBroLongWait.finish){
+          window.InfluxBroLongWait.finish(longwaitKey, {
+            status: 'err',
+            is_error: true,
+            text: 'Fehler: ' + method + ' ' + String(u || '').slice(0, 80),
+            extra: { error: String(err && err.message ? err.message : err || '') },
+          });
+        }
+      }catch(e){}
+      throw err;
     });
   };
 
