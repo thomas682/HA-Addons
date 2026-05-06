@@ -788,6 +788,15 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
 - Support-Bundle: erstellt ein ZIP mit konfigurierbaren Inhalten (Zeitfenster, Logs, Aktionen, Jobs/History/Monitor, Cache-Meta, Settings Snapshot) inkl. serverseitiger Redaction. Vorschau zeigt Inhalt + Groessenschaetzung.
 - Default: `neuster` + `Follow: ein`.
 - Der `Follow`-Schalter wird beim erneuten Oeffnen der Seite mit seinem zuletzt gespeicherten Zustand wiederhergestellt.
+- Der Statusleisten-Button `5 min Logs` verwendet jetzt denselben direkten Popup-Pfad wie `Logs (5min)` im Fehlerdialog.
+- Im 5-Minuten-Logdialog werden `ERROR`-/`EXCEPTION`-/`TRACEBACK`-Zeilen rot hervorgehoben, Warnungen orange.
+- Auf der Logs-Seite gibt es jetzt eine temporaere Aufzeichnung:
+  - Name vergeben
+  - `Aufzeichnung starten`
+  - spaeter `Aufzeichnung stoppen`
+  - Auswahl der letzten 10 Aufzeichnungen
+  - `Komplettlog`, um den Filter wieder aufzuheben
+- Diese Aufzeichnung loescht keine Logs. Stattdessen merkt sich InfluxBro das Zeitfenster und zeigt nur Eintraege ab diesem Zeitpunkt bis zum Stoppen der Aufzeichnung.
 
 ## Jobs & Cache
 

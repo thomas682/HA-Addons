@@ -703,6 +703,31 @@ def test_manual_contains_step_by_step_v2_to_v3_upgrade_guidance():
     assert 'Aktive Datenbank auf InfluxDB v3 umstellen' in manual
 
 
+def test_error_statusbar_logs5_uses_shared_recent_logs_helper():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'window.InfluxBroRecentLogs && window.InfluxBroRecentLogs.open5min' in topbar
+    assert "const btn = document.getElementById('influxbro_popup_logs'); if(btn) btn.click();" not in topbar
+
+
+def test_popup_recent_logs_renders_error_lines_in_red():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'function _logsExcerptHtml(text)' in tooltips
+    assert "color:#b00020" in tooltips
+    assert "window.InfluxBroRecentLogs = { open5min: ()=>_openRecentLogs(5) };" in tooltips
+
+
+def test_logs_page_exposes_temporary_recording_controls():
+    logs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    assert 'id="record_name"' in logs
+    assert 'id="record_toggle"' in logs
+    assert 'id="record_recent"' in logs
+    assert 'id="record_full"' in logs
+    assert "const LS_REC = 'influxbro_logs_recordings_v1';" in logs
+    assert 'function _startRecording()' in logs
+    assert 'function _stopRecording()' in logs
+    assert 'const all = _filterByRecording(RAW.split("\\n"));' in logs
+
+
 def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-ib-tooltip-toggle="1"' in tooltips

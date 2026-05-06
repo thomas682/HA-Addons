@@ -57,6 +57,24 @@
     <main class="content" data-ui="logs_page.main" data-ib-pickkey="logs_page.main" title="logs.page">
       <h2>Logs</h2>
       <div class="muted">InfluxBro Add-on Logs (Supervisor)</div>
+      <div class="row" style="margin-top:8px;">
+        <div style="min-width:180px; flex:0 0 220px;">
+          <label>Name für Aufzeichnung</label>
+          <input id="record_name" data-ui="logs_main.input_record_name" data-ib-pickkey="logs_main.input_record_name" title="logs.record_name" placeholder="z.B. Dashboard Test" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="record_toggle" type="button" data-ui="logs_main.btn_record_toggle" data-ib-pickkey="logs_main.btn_record_toggle" title="logs.record_toggle">Aufzeichnung starten</button>
+        </div>
+        <div style="min-width:220px; flex:1 1 260px;">
+          <label>Letzte 10 Aufzeichnungen</label>
+          <select id="record_recent" data-ui="logs_main.select_record_recent" data-ib-pickkey="logs_main.select_record_recent" title="logs.record_recent"><option value="">Komplettlog</option></select>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="record_full" type="button" data-ui="logs_main.btn_record_full" data-ib-pickkey="logs_main.btn_record_full" title="logs.record_full">Komplettlog</button>
+        </div>
+      </div>
 
       <details class="card" open data-ui="logs_page.section_root" data-ib-pickkey="logs_page.section_root" title="logs.page">
         <summary><span class="ib_summary_row"><span>Logs</span><button type="button" class="ib_info_icon" data-info-title="Logs: Logs" data-info-body="Dieser Bereich zeigt Add-on- oder Supervisor-Logs, bietet Schnellfilter, Download/Export und Debug-Report-Funktionen." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
@@ -377,6 +395,10 @@
       const $copy = document.getElementById('copy');
       const $download = document.getElementById('download');
       const $clear = document.getElementById('clear');
+      const $recordName = document.getElementById('record_name');
+      const $recordToggle = document.getElementById('record_toggle');
+      const $recordRecent = document.getElementById('record_recent');
+      const $recordFull = document.getElementById('record_full');
       const $export = document.getElementById('export');
       const $debugReport = document.getElementById('debug_report');
       const $supportBundle = document.getElementById('support_bundle');
@@ -468,6 +490,89 @@
       let TIMER = null;
       let MARKS = [];
       let MARK_IDX = -1;
+      const LS_REC = 'influxbro_logs_recordings_v1';
+      let RECORDINGS = [];
+      let ACTIVE_RECORDING_ID = '';
+
+      function _recordingsLoad(){
+        try{
+          const raw = localStorage.getItem(LS_REC);
+          const j = raw ? JSON.parse(raw) : [];
+          RECORDINGS = Array.isArray(j) ? j : [];
+        }catch(e){ RECORDINGS = []; }
+      }
+      function _recordingsSave(){
+        try{ localStorage.setItem(LS_REC, JSON.stringify(RECORDINGS.slice(-10))); }catch(e){}
+      }
+      function _recordingsRender(){
+        if(!$recordRecent) return;
+        const prev = String(ACTIVE_RECORDING_ID || $recordRecent.value || '');
+        $recordRecent.innerHTML = '<option value="">Komplettlog</option>';
+        RECORDINGS.slice().reverse().forEach((r)=>{
+          const opt = document.createElement('option');
+          opt.value = String(r.id || '');
+          const from = String(r.start_at || '').replace('T',' ').replace('Z','');
+          const to = String(r.end_at || 'aktiv').replace('T',' ').replace('Z','');
+          opt.textContent = String(r.name || 'Aufzeichnung') + ' | ' + from + ' -> ' + to;
+          $recordRecent.appendChild(opt);
+        });
+        $recordRecent.value = prev;
+      }
+      function _activeRecording(){
+        const id = String(ACTIVE_RECORDING_ID || ($recordRecent && $recordRecent.value ? $recordRecent.value : '') || '');
+        if(!id) return null;
+        return RECORDINGS.find(r => String(r.id || '') === id) || null;
+      }
+      function _parseLineTs(line){
+        try{
+          const m = String(line || '').match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})(?:,(\d{3}))?/);
+          if(!m) return null;
+          const iso = (m[1] || '').replace(' ', 'T') + '.' + String(m[2] || '000') + 'Z';
+          const d = new Date(iso);
+          return isFinite(d.getTime()) ? d.getTime() : null;
+        }catch(e){ return null; }
+      }
+      function _filterByRecording(lines){
+        const rec = _activeRecording();
+        if(!rec) return lines;
+        const start = Date.parse(String(rec.start_at || ''));
+        const end = rec.end_at ? Date.parse(String(rec.end_at || '')) : null;
+        return lines.filter((line)=>{
+          const ts = _parseLineTs(line);
+          if(ts === null) return true;
+          if(isFinite(start) && ts < start) return false;
+          if(end !== null && isFinite(end) && ts > end) return false;
+          return true;
+        });
+      }
+      function _recordingBtnSync(){
+        const rec = RECORDINGS.find(r => !r.end_at) || null;
+        if(!rec){ if($recordToggle) $recordToggle.textContent = 'Aufzeichnung starten'; return; }
+        if($recordToggle) $recordToggle.textContent = 'Aufzeichnung stoppen';
+      }
+      function _startRecording(){
+        const open = RECORDINGS.find(r => !r.end_at);
+        if(open){ ACTIVE_RECORDING_ID = String(open.id || ''); _recordingBtnSync(); return; }
+        const name = String($recordName && $recordName.value ? $recordName.value : '').trim() || ('Aufzeichnung ' + new Date().toLocaleString());
+        const rec = { id: 'rec_' + Date.now(), name, start_at: new Date().toISOString(), end_at: '' };
+        RECORDINGS.push(rec);
+        RECORDINGS = RECORDINGS.slice(-10);
+        ACTIVE_RECORDING_ID = String(rec.id);
+        _recordingsSave();
+        _recordingsRender();
+        _recordingBtnSync();
+        applySearch();
+      }
+      function _stopRecording(){
+        const rec = RECORDINGS.find(r => !r.end_at);
+        if(!rec) return;
+        rec.end_at = new Date().toISOString();
+        ACTIVE_RECORDING_ID = String(rec.id || '');
+        _recordingsSave();
+        _recordingsRender();
+        _recordingBtnSync();
+        applySearch();
+      }
 
       const LS_VIEW = "influxbro_logs_view_profile_v1";
 
@@ -655,7 +760,7 @@
       function applySearch(){
         const t = String($q.value || "").toLowerCase();
         const view = $viewProfile ? String($viewProfile.value || "trace") : "trace";
-        const all = RAW.split("\n");
+        const all = _filterByRecording(RAW.split("\n"));
 
         const filtered = all.filter(l => {
           const s = String(l || "");
@@ -1172,6 +1277,9 @@
       if($qMarkPrev) $qMarkPrev.addEventListener('click', ()=>jumpMark(-1));
       if($qMarkNext) $qMarkNext.addEventListener('click', ()=>jumpMark(1));
       $clear.addEventListener('click', ()=>{ RAW = ""; $logpre.innerHTML = ""; err(""); });
+      if($recordToggle) $recordToggle.addEventListener('click', ()=>{ const open = RECORDINGS.find(r => !r.end_at); if(open) _stopRecording(); else _startRecording(); });
+      if($recordRecent) $recordRecent.addEventListener('change', ()=>{ ACTIVE_RECORDING_ID = String($recordRecent.value || ''); applySearch(); _recordingBtnSync(); });
+      if($recordFull) $recordFull.addEventListener('click', ()=>{ ACTIVE_RECORDING_ID = ''; if($recordRecent) $recordRecent.value = ''; applySearch(); _recordingBtnSync(); });
       $copy.addEventListener('click', async ()=>{
         try{ 
           await navigator.clipboard.writeText($logpre.textContent || ""); 
@@ -1213,6 +1321,9 @@
       }catch(e){}
 
       applyWrap();
+      _recordingsLoad();
+      _recordingsRender();
+      _recordingBtnSync();
       loadViewProfile();
       loadServerProfile();
       loadPerfConfig().catch(()=>{});

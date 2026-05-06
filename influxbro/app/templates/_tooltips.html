@@ -2983,22 +2983,9 @@
           return;
         }
         try{
-          const r = await fetch('./api/log_excerpt?minutes=5');
-          const j = await r.json().catch(()=>null);
-          if(!j || !j.ok){
-            const m = j && j.error ? String(j.error) : ('HTTP ' + r.status);
-            CURRENT_POPUP_LOG_TEXT = m;
-            CURRENT_COPY_TEXT = m;
-            preEl.textContent = m;
-            CURRENT_POPUP_VISIBLE_TEXT = m;
-            CURRENT_POPUP_LOGS_ACTIVE = true;
-            try{ logsBtn.style.background = '#dfeaff'; logsBtn.style.borderColor = '#7aa7ff'; logsBtn.style.fontWeight = '700'; }catch(e){}
-            return;
-          }
-          const t = String(j.text || '').trim();
+          const t = await _openRecentLogs(5);
           CURRENT_POPUP_LOG_TEXT = t || '(leer)';
           CURRENT_COPY_TEXT = CURRENT_POPUP_LOG_TEXT;
-          preEl.textContent = CURRENT_POPUP_LOG_TEXT;
           CURRENT_POPUP_VISIBLE_TEXT = CURRENT_POPUP_LOG_TEXT;
           CURRENT_POPUP_LOGS_ACTIVE = true;
           try{ logsBtn.style.background = '#dfeaff'; logsBtn.style.borderColor = '#7aa7ff'; logsBtn.style.fontWeight = '700'; }catch(e){}
@@ -3018,6 +3005,7 @@
     // Expose the bugreport action for other UI elements (e.g. bottom status bar)
     try{ window.InfluxBroBugreport = { run: (msg)=>_bugreportRun(msg) }; }catch(e){}
     try{ window.InfluxBroSmartBugAssistant = { run: (msg)=>_smartBugRun(msg) }; }catch(e){}
+    try{ window.InfluxBroRecentLogs = { open5min: ()=>_openRecentLogs(5) }; }catch(e){}
 
     POPUP_REFS = { root, title, pre, meta, metaFooter: popupMetaFooter, copyBtn, settingsBtn, logsBtn, split, historyBox };
 
@@ -3216,6 +3204,34 @@
       }catch(e){
         try{ root.style.display = 'block'; }catch(x){}
       }
+    }
+
+    function _logsExcerptHtml(text){
+      const lines = String(text || '').split(/\r?\n/);
+      function esc(s){ return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+      return lines.map((line)=>{
+        const up = String(line || '').toUpperCase();
+        const body = esc(line);
+        if(up.includes(' ERROR ') || up.includes('EXCEPTION') || up.includes('TRACEBACK')) return '<span style="display:block;color:#b00020;">' + body + '</span>';
+        if(up.includes(' WARNING ')) return '<span style="display:block;color:#b07000;">' + body + '</span>';
+        return '<span style="display:block;">' + body + '</span>';
+      }).join('');
+    }
+
+    async function _openRecentLogs(minutes){
+      const mins = Math.max(1, Math.min(120, Number(minutes) || 5));
+      const url = './api/log_excerpt?minutes=' + encodeURIComponent(String(mins));
+      let r;
+      try{ r = await fetch(url); }
+      catch(e){
+        try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(url, {}, e); }catch(x){}
+        throw new Error('Failed to fetch');
+      }
+      const j = await r.json().catch(()=>null);
+      if(!j || !j.ok) throw new Error(j && j.error ? String(j.error) : ('HTTP ' + r.status));
+      const text = String(j.text || '').trim() || '(leer)';
+      _show('Logs (5min)', _logsExcerptHtml(text), { bodyHtml: true, copyText: text, copyTitle: 'Zwischenablage', meta: 'Zeitraum: letzte ' + String(mins) + ' Minuten' });
+      return text;
     }
 
   window.InfluxBroPopup = {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.535
+
+### Fix
+
+- UI / Logs / Fehlerdialog: Der Statusleisten-Button `5 min Logs` oeffnet jetzt direkt denselben 5-Minuten-Logdialog wie der Fehler-Popup-Pfad, statt stumm auf einen nicht vorhandenen Popup-Button zu klicken. Innerhalb des 5-Minuten-Logdialogs werden `ERROR`-/`EXCEPTION`-/`TRACEBACK`-Zeilen rot hervorgehoben. Auf der Logs-Seite gibt es zusaetzlich eine temporaere Aufzeichnungsfunktion mit Name, Start/Stop, letzten 10 Zeitfenstern und Rueckkehr zum Komplettlog. Diese Aufzeichnung loescht keine Logs, sondern filtert nur clientseitig auf neue Eintraege seit dem Startzeitpunkt. ([#498](https://github.com/thomas682/HA-Addons/issues/498))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.534
 
 ### Fix
