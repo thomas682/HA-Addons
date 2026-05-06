@@ -1137,6 +1137,17 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 ## Diagnose
 
+- `Query testen` auf der Diagnose-Seite besitzt jetzt eine erweiterte Query-History.
+- Herkunftsmarkierung:
+  - `(manuell)` fuer Queries, die direkt im Diagnose-Dialog ausgefuehrt wurden
+  - `(system)` fuer automatisch protokollierte System-Queries
+- Die History ist als auswaehlbare Liste aufgebaut und bietet:
+  - Suche
+  - Filter `nur ERROR`
+  - `Kopieren`
+  - `Einfuegen oben`
+- Fehlerhafte manuelle Queries werden mit `ERROR` markiert und rot dargestellt.
+
 - Menuepunkt `Diagnose` zeigt Best-effort Status (Add-on, Influx Verbindung, Systemlast) und einige KPIs.
 - Erweiterte KPIs werden aus InfluxDB `GET /metrics` gelesen (falls erreichbar). Wenn `/metrics` nicht verfuegbar ist, zeigt die Seite trotzdem die Basis-Infos.
 - Speicher-Inventar: Groesse wird korrekt sortiert (unabhaengig von der Anzeigeeinheit) und `mtime` wird lesbar dargestellt.

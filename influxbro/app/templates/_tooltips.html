@@ -3601,6 +3601,11 @@
           let queryAbortController = null;
           let lastQueryValue = '';
           let historyLoaded = false;
+          let historyRows = [];
+          let historySearch = null;
+          let historyErrOnly = null;
+          let historySelect = null;
+          let historyPreview = null;
 
           function insertIntoQueryArea(txt){
             const value = String(txt || '');
@@ -3632,6 +3637,45 @@
             }
           }
 
+          function _historyViewRows(){
+            const q = String((historySearch && historySearch.value) || '').trim().toLowerCase();
+            const errOnly = !!(historyErrOnly && historyErrOnly.checked);
+            return historyRows.filter((it)=>{
+              const status = String(it && it.status ? it.status : 'ok').toLowerCase();
+              if(errOnly && status !== 'error') return false;
+              if(!q) return true;
+              const hay = [it && it.at, it && it.label, it && it.query, it && it.response, it && it.source_kind, it && it.status].map(v => String(v || '').toLowerCase()).join('\n');
+              return hay.includes(q);
+            });
+          }
+
+          function renderHistoryList(){
+            const rows = _historyViewRows();
+            if(!historySelect || !historyPreview) return;
+            historySelect.innerHTML = '';
+            if(!rows.length){
+              const opt = document.createElement('option');
+              opt.value = '';
+              opt.textContent = '(keine Eintraege)';
+              historySelect.appendChild(opt);
+              historyPreview.value = '';
+              return;
+            }
+            rows.forEach((it, idx)=>{
+              const opt = document.createElement('option');
+              opt.value = String(idx);
+              const status = String(it && it.status ? it.status : 'ok').toLowerCase();
+              const src = String(it && it.source_kind ? it.source_kind : 'system');
+              const marker = status === 'error' ? 'ERROR' : 'OK';
+              opt.textContent = '[' + marker + '] (' + src + ') ' + String(it.label || 'query') + ' | ' + String(it.at || '');
+              historySelect.appendChild(opt);
+            });
+            historySelect.value = '0';
+            const first = rows[0];
+            historyPreview.value = String(first && first.query ? first.query : '');
+            historyPreview.style.color = String(first && first.status || '').toLowerCase() === 'error' ? '#b00020' : '';
+          }
+
           async function renderQueryHistory(){
             historyPanel.innerHTML = '';
             const loading = document.createElement('div');
@@ -3647,80 +3691,101 @@
                 return;
               }
               const xs = Array.isArray(j.queries) ? j.queries : [];
-              if(!xs.length){
-                historyPanel.textContent = '(keine Query History vorhanden)';
-                return;
-              }
-              xs.forEach((it, idx)=>{
-                const card = document.createElement('div');
-                card.style.border = '1px solid #eee';
-                card.style.borderRadius = '10px';
-                card.style.background = '#fff';
-                card.style.padding = '8px 10px';
-                card.style.marginTop = idx === 0 ? '0' : '8px';
+              const local = (window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.list) ? window.InfluxBroQueryHistory.list('dbinfo_query_test') : [];
+              historyRows = xs.concat(Array.isArray(local) ? local : []).sort((a,b)=> String(b.at || '').localeCompare(String(a.at || '')));
 
-                const head = document.createElement('div');
-                head.style.display = 'flex';
-                head.style.justifyContent = 'space-between';
-                head.style.gap = '8px';
-                head.style.alignItems = 'baseline';
-                head.style.flexWrap = 'wrap';
-                const ts = document.createElement('div');
-                ts.style.fontSize = '11px';
-                ts.style.opacity = '0.7';
-                ts.textContent = String(it.at || '');
-                const lab = document.createElement('div');
-                lab.style.fontSize = '11px';
-                lab.style.fontWeight = '700';
-                lab.textContent = String(it.label || 'query');
-                head.appendChild(lab);
-                head.appendChild(ts);
+              const row = document.createElement('div');
+              row.style.display = 'flex';
+              row.style.gap = '8px';
+              row.style.flexWrap = 'wrap';
+              row.style.marginBottom = '8px';
 
-                const area = document.createElement('textarea');
-                area.readOnly = true;
-                area.value = String(it.query || '');
-                area.style.width = '100%';
-                area.style.minHeight = '72px';
-                area.style.marginTop = '6px';
-                area.style.padding = '8px 10px';
-                area.style.boxSizing = 'border-box';
-                area.style.border = '1px solid #eee';
-                area.style.borderRadius = '8px';
-                area.style.background = '#fafafa';
-                area.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
-                area.style.fontSize = '11px';
-                area.style.lineHeight = '1.35';
-                area.style.resize = 'vertical';
+              historySearch = document.createElement('input');
+              historySearch.type = 'search';
+              historySearch.placeholder = 'History durchsuchen...';
+              historySearch.style.flex = '1 1 220px';
+              historySearch.style.minWidth = '220px';
+              historySearch.style.height = '34px';
 
-                const actions = document.createElement('div');
-                actions.style.display = 'flex';
-                actions.style.gap = '8px';
-                actions.style.flexWrap = 'wrap';
-                actions.style.marginTop = '6px';
+              const errLbl = document.createElement('label');
+              errLbl.style.display = 'flex';
+              errLbl.style.alignItems = 'center';
+              errLbl.style.gap = '8px';
+              errLbl.style.fontSize = '12px';
+              historyErrOnly = document.createElement('input');
+              historyErrOnly.type = 'checkbox';
+              applyMiniCheckboxStyleSafe(historyErrOnly);
+              errLbl.appendChild(historyErrOnly);
+              errLbl.appendChild(document.createTextNode('nur ERROR'));
 
-                const copyBtn = document.createElement('button');
-                copyBtn.type = 'button';
-                copyBtn.textContent = 'Kopieren';
-                copyBtn.className = 'btn_sm';
-                copyBtn.style.width = 'auto';
-                copyBtn.onclick = async ()=>{
-                  try{ await navigator.clipboard.writeText(selectedOrFull(area)); }catch(e){}
-                };
+              const copyBtn = document.createElement('button');
+              copyBtn.type = 'button';
+              copyBtn.textContent = 'Kopieren';
+              copyBtn.className = 'btn_sm';
+              copyBtn.style.width = 'auto';
 
-                const insertBtn = document.createElement('button');
-                insertBtn.type = 'button';
-                insertBtn.textContent = 'Einfuegen oben';
-                insertBtn.className = 'btn_sm';
-                insertBtn.style.width = 'auto';
-                insertBtn.onclick = ()=>{ insertIntoQueryArea(selectedOrFull(area)); };
+              const insertBtn = document.createElement('button');
+              insertBtn.type = 'button';
+              insertBtn.textContent = 'Einfuegen oben';
+              insertBtn.className = 'btn_sm';
+              insertBtn.style.width = 'auto';
 
-                actions.appendChild(copyBtn);
-                actions.appendChild(insertBtn);
-                card.appendChild(head);
-                card.appendChild(area);
-                card.appendChild(actions);
-                historyPanel.appendChild(card);
+              row.appendChild(historySearch);
+              row.appendChild(errLbl);
+              row.appendChild(copyBtn);
+              row.appendChild(insertBtn);
+              historyPanel.appendChild(row);
+
+              historySelect = document.createElement('select');
+              historySelect.size = 8;
+              historySelect.style.width = '100%';
+              historySelect.style.height = 'auto';
+              historySelect.style.minHeight = '180px';
+              historyPanel.appendChild(historySelect);
+
+              historyPreview = document.createElement('textarea');
+              historyPreview.readOnly = true;
+              historyPreview.style.width = '100%';
+              historyPreview.style.minHeight = '100px';
+              historyPreview.style.marginTop = '8px';
+              historyPreview.style.padding = '8px 10px';
+              historyPreview.style.boxSizing = 'border-box';
+              historyPreview.style.border = '1px solid #eee';
+              historyPreview.style.borderRadius = '8px';
+              historyPreview.style.background = '#fafafa';
+              historyPreview.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+              historyPreview.style.fontSize = '11px';
+              historyPreview.style.lineHeight = '1.35';
+              historyPanel.appendChild(historyPreview);
+
+              historySearch.addEventListener('input', renderHistoryList);
+              historyErrOnly.addEventListener('change', renderHistoryList);
+              historySelect.addEventListener('change', ()=>{
+                const rows = _historyViewRows();
+                const idx = Number(historySelect.value || '0');
+                const it = rows[idx] || null;
+                historyPreview.value = String(it && it.query ? it.query : '');
+                historyPreview.style.color = String(it && it.status || '').toLowerCase() === 'error' ? '#b00020' : '';
               });
+              copyBtn.onclick = async ()=>{
+                const rows = _historyViewRows();
+                const idx = Number((historySelect && historySelect.value) || '0');
+                const it = rows[idx] || null;
+                if(!it) return;
+                try{ await navigator.clipboard.writeText(String(it.query || '')); }catch(e){}
+              };
+              insertBtn.onclick = ()=>{
+                const rows = _historyViewRows();
+                const idx = Number((historySelect && historySelect.value) || '0');
+                const it = rows[idx] || null;
+                if(!it) return;
+                insertIntoQueryArea(String(it.query || ''));
+              };
+
+              if(!historyRows.length){
+                historyPreview.value = '';
+              }
+              renderHistoryList();
               historyLoaded = true;
             }catch(e){
               historyPanel.textContent = String(e && e.message ? e.message : e);
@@ -3779,6 +3844,7 @@
                 parts.push('Fehler: ' + (j.error || ('HTTP ' + r.status)));
                 statusLine.textContent = parts.join('\n');
                 resultPre.textContent = j.error || ('HTTP ' + r.status);
+                try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add && window.InfluxBroQueryHistory.add('dbinfo_query_test', String(j.query_language || 'query_test'), q, j.error || ('HTTP ' + r.status), { source_kind:'manuell', status:'error', dur_ms:j.duration_ms, trigger_page:'dbinfo_page.main', trigger_button:'dbinfo_main.btn_query_test' }); }catch(e){}
               }else{
                 statusLine.style.display = 'block';
                 statusLine.style.color = '#0a7a28';
@@ -3790,6 +3856,7 @@
                 parts.push('Zeilen: ' + (j.rows ? j.rows.length : 0));
                 statusLine.textContent = parts.join(' | ');
                 renderResult(j.rows || []);
+                try{ window.InfluxBroQueryHistory && window.InfluxBroQueryHistory.add && window.InfluxBroQueryHistory.add('dbinfo_query_test', String(j.query_language || 'query_test'), q, 'rows=' + String(j.rows ? j.rows.length : 0), { source_kind:'manuell', status:'ok', dur_ms:j.duration_ms, trigger_page:'dbinfo_page.main', trigger_button:'dbinfo_main.btn_query_test' }); }catch(e){}
               }
             }catch(e){
               if(e && e.name === 'AbortError'){
@@ -4083,6 +4150,8 @@
       span_id: String(meta.span_id || ''),
       action: String(meta.action || ''),
       dur_ms: durMs,
+      source_kind: String(meta.source_kind || 'manual'),
+      status: String(meta.status || 'ok'),
     };
     const xs = _load(scope);
     const prev = xs.length ? xs[xs.length - 1] : null;

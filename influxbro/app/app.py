@@ -32406,6 +32406,8 @@ def api_query_history():
                     "span_id": str(q.get("span_id") or ""),
                     "page": page,
                     "action": action,
+                    "source_kind": "system",
+                    "status": "ok",
                     "query": query_txt,
                 })
 

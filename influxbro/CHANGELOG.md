@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.537
+
+### Fix
+
+- Diagnose / Query-Test: Die Query-History im Diagnose-Dialog unterscheidet jetzt zwischen `(manuell)` und `(system)`. Manuell ausgefuehrte Queries aus `Query testen` werden zusaetzlich lokal in derselben History gespeichert. Die History wird als auswaehlbare Liste mit Suche, `nur ERROR`-Filter, `Kopieren` und `Einfuegen oben` dargestellt. Fehlerhafte manuelle Queries werden mit `ERROR` markiert und rot hervorgehoben, waehrend serverseitig protokollierte Queries als `(system)` erscheinen. ([#499](https://github.com/thomas682/HA-Addons/issues/499))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.536
 
 ### Fix

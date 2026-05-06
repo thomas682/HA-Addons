@@ -735,6 +735,16 @@ def test_logs_search_filters_whole_blocks_not_single_lines():
     assert 'const searched = filteredBlocks.filter(block => block.some(l => String(l||"").toLowerCase().includes(t)));' in logs
 
 
+def test_query_test_history_supports_manual_system_and_error_filter():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "source_kind: String(meta.source_kind || 'manual')" in tooltips
+    assert "status: String(meta.status || 'ok')" in tooltips
+    assert "window.InfluxBroQueryHistory.add('dbinfo_query_test'" in tooltips
+    assert "nur ERROR" in tooltips
+    assert "historySelect = document.createElement('select');" in tooltips
+    assert "insertIntoQueryArea(String(it.query || ''));" in tooltips
+
+
 def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-ib-tooltip-toggle="1"' in tooltips
