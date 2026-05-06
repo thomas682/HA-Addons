@@ -1685,6 +1685,46 @@ def test_migration_page_route_exists(load_app_module, tmp_path):
     assert "Migration Datenbank" in r.get_data(as_text=True)
 
 
+def test_v3_config_endpoint_roundtrip(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    client = app_mod.app.test_client()
+    r = client.post("/api/db/v3/config", json={"enabled": True, "host": "v3.local", "port": 8086, "scheme": "http", "verify_ssl": True, "token": "secret", "org": "org3", "database": "db3", "batch_size": 1234, "window_days": 9, "timeout_seconds": 11})
+    assert r.status_code == 200
+    r2 = client.get("/api/db/v3/config")
+    j = r2.get_json()
+    assert j["ok"] is True
+    assert j["config"]["host"] == "v3.local"
+    assert j["config"]["database"] == "db3"
+    assert j["config"]["token"] == "********"
+
+
+def test_migration_check_reports_safe_parallel_target_when_source_equals_target(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "token": "src", "org": "org", "bucket": "src_bucket", "scheme": "http", "host": "same.local", "port": 8086, "v3_target_host": "same.local", "v3_target_scheme": "http", "v3_target_port": 8086, "v3_target_token": "tgt", "v3_target_org": "org", "v3_target_database": "src_bucket", "v3_target_enabled": True})
+    monkeypatch.setattr(app_mod, "_migration_target_test", lambda cfg: {"ok": True})
+    monkeypatch.setattr(app_mod, "_migration_range_bounds_iso", lambda cfg: ("2024-01-01T00:00:00Z", "2024-01-02T00:00:00Z"))
+    client = app_mod.app.test_client()
+    r = client.post("/api/migration/check", json={})
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["same_source_target"] is True
+    assert j["safe_target_database"].endswith("_v3_migration")
+
+
+def test_migration_start_persists_windows_and_checklist(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "token": "src", "org": "org", "bucket": "src_bucket", "v3_target_host": "v3.local", "v3_target_token": "tgt", "v3_target_database": "db3", "v3_target_enabled": True, "v3_target_window_days": 1})
+    monkeypatch.setattr(app_mod, "_migration_target_test", lambda cfg: {"ok": True})
+    monkeypatch.setattr(app_mod, "_migration_range_bounds_iso", lambda cfg: ("2024-01-01T00:00:00Z", "2024-01-03T00:00:00Z"))
+    monkeypatch.setattr(app_mod.threading, "Thread", lambda target, daemon: type("_T", (), {"start": lambda self: None})())
+    client = app_mod.app.test_client()
+    r = client.post("/api/migration/start", json={"confirm": True})
+    j = r.get_json()
+    assert j["ok"] is True
+    assert len(j["migration"]["windows"]) == 2
+    assert any(item["key"] == "migration_started" for item in j["migration"]["checklist"])
+
+
 def test_verify_measurement_start_returns_job_id(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})

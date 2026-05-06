@@ -678,6 +678,21 @@ def test_config_and_nav_expose_migration_and_influx_v3_controls():
     assert "./api/migration/summary" in migration
 
 
+def test_config_and_migration_page_expose_v3_target_controls_and_actions():
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    migration = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "migration.html").read_text()
+    assert 'id="active_database_mode"' in config
+    assert 'id="v3_target_host"' in config
+    assert 'id="v3_target_database"' in config
+    assert 'id="v3_target_batch_size"' in config
+    assert './api/db/v3/config' in migration
+    assert './api/db/v3/test' in migration
+    assert './api/migration/start' in migration
+    assert './api/migration/validate' in migration
+    assert './api/migration/clear-target' in migration
+    assert './api/database/switch-to-v3' in migration
+
+
 def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-ib-tooltip-toggle="1"' in tooltips

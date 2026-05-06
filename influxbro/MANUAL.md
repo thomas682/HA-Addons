@@ -209,32 +209,102 @@ InfluxBro besitzt jetzt eine erste V3-/Migrationsschicht: In den Verbindungseins
 
 ## Hochrüstung V2 auf V3 Influx DB in Home Assistant
 
-- Unterschiede:
-  - InfluxDB v2 basiert in InfluxBro auf den bestehenden Flux-/Bucket-Pfaden.
-  - InfluxDB v3 benoetigt je nach Produktvariante andere Query-/Write-Pfade; nicht alle produktiven InfluxBro-Funktionen sind aktuell gleichwertig verfuegbar.
-- Gründe fuer eine Hochrüstung:
-  - modernere Serverbasis
-  - neue Produktvarianten / Betriebsmodelle
-  - potenziell bessere Skalierung fuer bestimmte Workloads
-- Risiken:
-  - Query-/Write-Kompatibilitaet nicht fuer jeden bestehenden InfluxBro-Datenpfad identisch
-  - geaenderte Betriebs-/Auth-Modelle je nach V3-Deployment
-  - Migration ohne vorheriges Backup ist nicht empfohlen
-- Vorgehen:
-  1. InfluxBro Verbindung pruefen
-  2. Versionsmodus auf `auto` oder manuell `3` stellen
-  3. Diagnose ueber `api/influx_info` / `api/influx_detect` pruefen
-  4. Menuepunkt `Migration Datenbank` oeffnen
-  5. Warnungen und Checklist durchgehen
-  6. Vorher Backup erstellen
-  7. Zuerst kleinen Testzeitraum pruefen
-  8. Danach gestaffelte oder vollstaendige Migration planen
-- Rollback:
-  - Vor Migration Backup erstellen
-  - bei Abweichungen auf v2-Konfiguration/Backups zurueckgehen
-- Einschränkungen:
-  - nicht alle produktiven InfluxBro-Datenpfade sind fuer V3 bereits gleichwertig umgesetzt
-  - diese Einschraenkungen werden im Migrationsstatus und in Diagnoseinformationen explizit sichtbar gemacht
+Unterschiede:
+- InfluxDB v2 basiert in InfluxBro auf den bestehenden Flux-/Bucket-Pfaden.
+- InfluxDB v3 benoetigt je nach Produktvariante andere Query-/Write-Pfade; nicht alle produktiven InfluxBro-Funktionen sind aktuell gleichwertig verfuegbar.
+
+Gründe fuer eine Hochrüstung:
+- modernere Serverbasis
+- neue Produktvarianten / Betriebsmodelle
+- potenziell bessere Skalierung fuer bestimmte Workloads
+
+Risiken:
+- Query-/Write-Kompatibilitaet nicht fuer jeden bestehenden InfluxBro-Datenpfad identisch
+- geaenderte Betriebs-/Auth-Modelle je nach V3-Deployment
+- Migration ohne vorheriges Backup ist nicht empfohlen
+
+Neue V3-Zielverbindung:
+- In `Einstellungen -> InfluxDB v3 Zielverbindung` kann eine separate Zielverbindung gespeichert werden.
+- Relevante Felder:
+  - `v3_target_enabled`
+  - `v3_target_scheme`
+  - `v3_target_host`
+  - `v3_target_port`
+  - `v3_target_verify_ssl`
+  - `v3_target_timeout_seconds`
+  - `v3_target_token`
+  - `v3_target_org`
+  - `v3_target_database`
+  - `v3_target_batch_size`
+  - `v3_target_window_days`
+- Diese Zielverbindung ersetzt die produktive V2-Verbindung nicht automatisch.
+
+Verbindungstest:
+- `POST /api/db/v3/test` prueft die konfigurierte Zielverbindung best-effort.
+- Der Test umfasst:
+  - Health-Endpunkt
+  - Authentifizierungs-/Erreichbarkeitspruefung
+  - Probe-Write in die konfigurierte oder sichere Ziel-Datenbank
+
+Migration V2 -> V3 starten:
+- Die Seite `Migration Datenbank` verwendet folgende APIs:
+  - `GET /api/migration/summary`
+  - `POST /api/migration/check`
+  - `POST /api/migration/start`
+  - `GET /api/migration/status`
+  - `POST /api/migration/validate`
+  - `GET /api/migration/report`
+  - `POST /api/migration/retry-window`
+  - `POST /api/migration/clear-target`
+  - `POST /api/database/switch-to-v3`
+- Vor dem Start wird geprueft:
+  - Quellkonfiguration v2 vorhanden
+  - Zielkonfiguration v3 vorhanden
+  - sicherer Zielname bestimmt
+  - Migrationszeitraum bestimmbar
+
+Wiederaufnahme / Delta-/Nachmigration:
+- Migrationszeitfenster werden persistent gespeichert.
+- Erfolgreiche Zeitfenster bleiben bei erneutem Start auf `done` und werden uebersprungen.
+- Ueber `retry-window` koennen gezielt unvollstaendige Zeitfenster erneut auf `pending` gesetzt werden.
+- Dadurch koennen nur fehlende/fehlerhafte Fenster erneut uebertragen werden, statt immer einen kompletten Vollabzug erneut zu starten.
+
+Zielbereinigung:
+- `POST /api/migration/clear-target` leert ausschliesslich das Zielsystem im konfigurierten Zieldatenbereich.
+- Das Quellsystem wird dabei nie veraendert.
+- Nach Zielbereinigung werden die gespeicherten Zeitfenster wieder auf `pending` gesetzt.
+
+Quellsystem-Schutz:
+- Das Quellsystem bleibt waehrend der gesamten Migration unveraendert.
+- Weder Daten noch Quell-Datenbank werden geloescht.
+- Die aktive Datenbank bleibt standardmaessig `v2`.
+- Erst `POST /api/database/switch-to-v3` schaltet den Modus explizit auf `v3`.
+
+Quelle und Ziel identisch:
+- Wenn Quelle und Ziel technisch auf dieselbe Datenbank zeigen, verwendet InfluxBro automatisch einen sicheren parallelen Zielnamen im Format `<quelle>_v3_migration`.
+- Dadurch wird nie direkt in dieselbe Quell-Datenbank migriert.
+
+Vorgehen:
+1. InfluxBro Verbindung pruefen
+2. Versionsmodus auf `auto` oder manuell `3` stellen
+3. Diagnose ueber `api/influx_info` / `api/influx_detect` pruefen
+4. V3-Zielverbindung speichern und testen
+5. Menuepunkt `Migration Datenbank` oeffnen
+6. Warnungen und Checklist durchgehen
+7. Vorher Backup erstellen
+8. Zuerst kleinen Testzeitraum pruefen
+9. Danach gestaffelte oder vollstaendige Migration starten
+10. Validierung und Bericht pruefen
+11. Erst danach explizit auf `v3` umschalten
+
+Rollback:
+- Vor Migration Backup erstellen
+- bei Abweichungen auf v2-Konfiguration/Backups zurueckgehen
+- die aktive V2-Konfiguration bleibt gespeichert
+
+Einschränkungen:
+- nicht alle produktiven InfluxBro-Datenpfade sind fuer V3 bereits gleichwertig umgesetzt
+- diese Einschraenkungen werden im Migrationsstatus und in Diagnoseinformationen explizit sichtbar gemacht
 
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 

@@ -16,11 +16,13 @@
     .muted { opacity: 0.72; font-size: 12px; }
     .err { color:#b00020; white-space:pre-wrap; }
     .ok { color:#0a7a28; white-space:pre-wrap; }
+    .warn { color:#b07000; white-space:pre-wrap; }
     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     pre { white-space: pre-wrap; background:#fafafa; border:1px solid #eee; border-radius: 12px; padding: 10px; }
     ul { margin: 8px 0 0 18px; }
     li { margin: 4px 0; }
     button { padding: 10px 12px; height: 40px; box-sizing: border-box; cursor:pointer; }
+    input, select { padding: 10px 12px; height: 40px; box-sizing: border-box; width: 100%; }
   </style>
 </head>
 <body>
@@ -56,6 +58,39 @@
         </div>
       </div>
 
+      <div class="card" data-ui="migration_main.panel_target" data-ib-pickkey="migration_main.panel_target" title="migration.target">
+        <div style="font-weight:800;">V3 Zielverbindung</div>
+        <div class="grid2" style="margin-top:12px;">
+          <div><label>Host</label><input id="v3_host" /></div>
+          <div><label>Port</label><input id="v3_port" type="number" /></div>
+          <div><label>Scheme</label><select id="v3_scheme"><option value="http">http</option><option value="https">https</option></select></div>
+          <div><label>verify_ssl</label><select id="v3_verify_ssl"><option value="true">true</option><option value="false">false</option></select></div>
+          <div><label>Token</label><input id="v3_token" /></div>
+          <div><label>Org</label><input id="v3_org" /></div>
+          <div><label>Database</label><input id="v3_database" /></div>
+          <div><label>Batch Size</label><input id="v3_batch_size" type="number" /></div>
+          <div><label>Window Days</label><input id="v3_window_days" type="number" /></div>
+          <div><label>Timeout</label><input id="v3_timeout" type="number" /></div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button id="save_v3" type="button" data-ui="migration_main.btn_save_v3" data-ib-pickkey="migration_main.btn_save_v3">V3 Ziel speichern</button>
+          <button id="test_v3" type="button" data-ui="migration_main.btn_test_v3" data-ib-pickkey="migration_main.btn_test_v3">V3 Verbindung testen</button>
+          <div id="target_test" class="muted"></div>
+        </div>
+      </div>
+
+      <div class="card" data-ui="migration_main.panel_actions" data-ib-pickkey="migration_main.panel_actions" title="migration.actions">
+        <div style="font-weight:800;">Migration V2 → V3</div>
+        <div class="row" style="margin-top:12px;">
+          <button id="check_btn" type="button" data-ui="migration_main.btn_check" data-ib-pickkey="migration_main.btn_check">Migration prüfen</button>
+          <button id="start_btn" type="button" data-ui="migration_main.btn_start" data-ib-pickkey="migration_main.btn_start">Migration V2 → V3 starten</button>
+          <button id="validate_btn" type="button" data-ui="migration_main.btn_validate" data-ib-pickkey="migration_main.btn_validate">Migration validieren</button>
+          <button id="clear_btn" type="button" data-ui="migration_main.btn_clear_target" data-ib-pickkey="migration_main.btn_clear_target">V3 Ziel leeren</button>
+          <button id="switch_btn" type="button" data-ui="migration_main.btn_switch_v3" data-ib-pickkey="migration_main.btn_switch_v3">Aktive Datenbank auf InfluxDB v3 umstellen</button>
+        </div>
+        <div class="warn" id="action_warn" style="margin-top:10px;"></div>
+      </div>
+
       <div class="card" data-ui="migration_main.panel_checklist" data-ib-pickkey="migration_main.panel_checklist" title="migration.checklist">
         <div style="font-weight:800;">Migrationscheckliste</div>
         <ul id="checklist"></ul>
@@ -69,6 +104,11 @@
       <div class="card" data-ui="migration_main.panel_candidates" data-ib-pickkey="migration_main.panel_candidates" title="migration.candidates">
         <div style="font-weight:800;">Migration Candidates</div>
         <pre id="candidates">-</pre>
+      </div>
+
+      <div class="card" data-ui="migration_main.panel_report" data-ib-pickkey="migration_main.panel_report" title="migration.report">
+        <div style="font-weight:800;">Migrationsbericht</div>
+        <pre id="report">-</pre>
       </div>
 
       <div id="err" class="err"></div>
@@ -87,6 +127,32 @@
       return j;
     }
 
+    async function apiPost(url, body){
+      const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'X-InfluxBro-Request':'1', 'X-Requested-With':'InfluxBro' }, body: JSON.stringify(body || {}) });
+      const j = await r.json().catch(()=>({ok:false,error:'invalid json'}));
+      if(!r.ok || !j.ok) throw new Error(j && j.error ? j.error : ('HTTP ' + r.status));
+      return j;
+    }
+
+    async function loadV3Config(){
+      const j = await api('./api/db/v3/config');
+      const c = j.config || {};
+      $('v3_host').value = c.host || '';
+      $('v3_port').value = c.port || 8086;
+      $('v3_scheme').value = c.scheme || 'http';
+      $('v3_verify_ssl').value = String(c.verify_ssl !== false);
+      $('v3_token').value = c.token || '';
+      $('v3_org').value = c.org || '';
+      $('v3_database').value = c.database || '';
+      $('v3_batch_size').value = c.batch_size || 5000;
+      $('v3_window_days').value = c.window_days || 7;
+      $('v3_timeout').value = c.timeout_seconds || 10;
+    }
+
+    function migrationChecklistHtml(items){
+      return (items || []).map(it => `<li><strong>${String(it.label || '')}</strong>: ${String(it.state || 'open')}${it.message ? ' – ' + String(it.message) : ''}</li>`).join('');
+    }
+
     async function load(){
       err(''); ok('');
       $('hint').textContent = 'Lade Migrationsstatus...';
@@ -96,15 +162,81 @@
       $('effective_version').textContent = String(info.effective_version || '-');
       $('detected_version').textContent = String(info.detected_version || '-');
       $('detection_source').textContent = String(info.detection_source || '-');
-      $('checklist').innerHTML = (j.checklist || []).map(x => `<li>${String(x || '')}</li>`).join('');
+      $('action_warn').textContent = JSON.stringify((j.migration_state || {}), null, 2);
+      $('checklist').innerHTML = migrationChecklistHtml((j.migration_state && j.migration_state.checklist) ? j.migration_state.checklist : j.checklist || []);
       $('warnings').innerHTML = (j.warnings || []).map(x => `<li>${String(x || '')}</li>`).join('');
       $('candidates').textContent = JSON.stringify((j.migration_candidates && j.migration_candidates.rows) ? j.migration_candidates.rows : [], null, 2);
+      $('report').textContent = JSON.stringify((j.migration_state && j.migration_state.report) ? j.migration_state.report : {}, null, 2);
       $('hint').textContent = 'Status aktualisiert.';
       ok('Migrationsstatus geladen.');
     }
 
+    async function saveV3(){
+      await apiPost('./api/db/v3/config', {
+        host: $('v3_host').value,
+        port: parseInt($('v3_port').value || '8086', 10),
+        scheme: $('v3_scheme').value,
+        verify_ssl: $('v3_verify_ssl').value === 'true',
+        token: $('v3_token').value,
+        org: $('v3_org').value,
+        database: $('v3_database').value,
+        batch_size: parseInt($('v3_batch_size').value || '5000', 10),
+        window_days: parseInt($('v3_window_days').value || '7', 10),
+        timeout_seconds: parseInt($('v3_timeout').value || '10', 10),
+        enabled: true,
+      });
+      ok('V3 Zielverbindung gespeichert.');
+      await loadV3Config();
+    }
+
+    async function testV3(){
+      const j = await apiPost('./api/db/v3/test', {});
+      $('target_test').textContent = JSON.stringify(j, null, 2);
+      ok('V3 Verbindung geprüft.');
+    }
+
+    async function runCheck(){
+      const j = await apiPost('./api/migration/check', {});
+      $('action_warn').textContent = JSON.stringify(j, null, 2);
+      ok('Migrationsprüfung abgeschlossen.');
+    }
+
+    async function startMigration(){
+      const j = await apiPost('./api/migration/start', { confirm: true });
+      $('report').textContent = JSON.stringify(j.migration || {}, null, 2);
+      ok('Migration gestartet.');
+      await load();
+    }
+
+    async function validateMigration(){
+      const j = await apiPost('./api/migration/validate', {});
+      $('report').textContent = JSON.stringify(j.migration.report || {}, null, 2);
+      ok('Migration validiert.');
+      await load();
+    }
+
+    async function clearTarget(){
+      const j = await apiPost('./api/migration/clear-target', { confirm: true });
+      $('action_warn').textContent = JSON.stringify(j, null, 2);
+      ok('V3 Ziel bereinigt.');
+      await load();
+    }
+
+    async function switchToV3(){
+      const j = await apiPost('./api/database/switch-to-v3', { confirm: true });
+      $('action_warn').textContent = JSON.stringify(j, null, 2);
+      ok('Aktive Datenbank auf v3 umgestellt.');
+    }
+
     $('refresh').addEventListener('click', ()=>{ load().catch(e=>err(String(e && e.message ? e.message : e))); });
-    load().catch(e=>err(String(e && e.message ? e.message : e)));
+    $('save_v3').addEventListener('click', ()=>{ saveV3().catch(e=>err(String(e && e.message ? e.message : e))); });
+    $('test_v3').addEventListener('click', ()=>{ testV3().catch(e=>err(String(e && e.message ? e.message : e))); });
+    $('check_btn').addEventListener('click', ()=>{ runCheck().catch(e=>err(String(e && e.message ? e.message : e))); });
+    $('start_btn').addEventListener('click', ()=>{ startMigration().catch(e=>err(String(e && e.message ? e.message : e))); });
+    $('validate_btn').addEventListener('click', ()=>{ validateMigration().catch(e=>err(String(e && e.message ? e.message : e))); });
+    $('clear_btn').addEventListener('click', ()=>{ clearTarget().catch(e=>err(String(e && e.message ? e.message : e))); });
+    $('switch_btn').addEventListener('click', ()=>{ switchToV3().catch(e=>err(String(e && e.message ? e.message : e))); });
+    Promise.all([loadV3Config(), load()]).catch(e=>err(String(e && e.message ? e.message : e)));
   </script>
 </body>
 </html>

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.533
+
+### Fix
+
+- Migration V2 → V3: Die Migrationsschicht wurde zu einem eigenstaendigen Assistenten ausgebaut. Es gibt jetzt eine separate persistente InfluxDB-v3-Zielverbindung in den Einstellungen, `api/db/v3/config` und `api/db/v3/test`, einen persistenten Migrationsstatus mit Zeitfenstern/Checklist/Report sowie neue Endpunkte fuer Pruefung, Start, Status, Validierung, Bericht, Wiederaufnahme einzelner Zeitfenster, Zielbereinigung und explizite Umschaltung auf v3. Die Seite `Migration Datenbank` zeigt Quell-/Zielstatus, Warnungen, Migration-Candidates, Bericht und Migrationsaktionen. Bei identischer Quelle/Ziel-Konfiguration wird automatisch ein sicherer paralleler Zielname `<quelle>_v3_migration` verwendet; das Quellsystem bleibt waehrend Migration, Wiederholung und Zielbereinigung unveraendert. ([#495](https://github.com/thomas682/HA-Addons/issues/495))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.532
 
 ### Fix

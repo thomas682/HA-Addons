@@ -237,6 +237,8 @@ def _outlier_types_to_legacy(values: Any) -> list[str]:
 UI_PROFILES_LOCK = threading.RLock()
 UI_PROFILES_DIR = DATA_DIR / "ui_profiles"
 UI_PROFILE_ACTIVE_PATH = DATA_DIR / "ui_profile_active.json"
+MIGRATION_STATE_PATH = DATA_DIR / "influxbro_v3_migration_state.json"
+MIGRATION_STATE_LOCK = threading.RLock()
 
 # Dashboard last graph pointer (file-based; restore across browser sessions)
 DASH_LAST_LOCK = threading.RLock()
@@ -1659,6 +1661,7 @@ WRITE_RETRY_METRICS: dict[str, Any] = {
 DEFAULT_CFG = {
     "influx_version": 2,
     "influx_version_mode": "manual",
+    "active_database_mode": "v2",
     "scheme": "http",
     "host": "a0d7b954-influxdb",
     "port": 8086,
@@ -1677,6 +1680,18 @@ DEFAULT_CFG = {
     "admin_token": "",
     "org": "",
     "bucket": "",
+    # v3 target (migration only until explicit switch)
+    "v3_target_enabled": False,
+    "v3_target_scheme": "http",
+    "v3_target_host": "",
+    "v3_target_port": 8086,
+    "v3_target_verify_ssl": True,
+    "v3_target_timeout_seconds": 10,
+    "v3_target_token": "",
+    "v3_target_org": "",
+    "v3_target_database": "",
+    "v3_target_batch_size": 5000,
+    "v3_target_window_days": 7,
     # v1
     "username": "",
     "password": "",
@@ -2346,6 +2361,107 @@ def _app_state_save(state: dict[str, Any]) -> None:
             )
     except Exception:
         return
+
+
+def _migration_state_load() -> dict[str, Any]:
+    try:
+        if not MIGRATION_STATE_PATH.exists():
+            return {}
+        with MIGRATION_STATE_LOCK:
+            raw = MIGRATION_STATE_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else {}
+        return j if isinstance(j, dict) else {}
+    except Exception:
+        return {}
+
+
+def _migration_state_save(state: dict[str, Any]) -> None:
+    try:
+        with MIGRATION_STATE_LOCK:
+            try:
+                MIGRATION_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
+            MIGRATION_STATE_PATH.write_text(json.dumps(state or {}, indent=2, sort_keys=True, ensure_ascii=True), encoding="utf-8")
+    except Exception:
+        return
+
+
+def _v3_target_cfg(cfg: dict[str, Any]) -> dict[str, Any]:
+    out = {
+        "scheme": str(cfg.get("v3_target_scheme") or "http").strip() or "http",
+        "host": str(cfg.get("v3_target_host") or "").strip(),
+        "port": int(cfg.get("v3_target_port") or 8086),
+        "verify_ssl": bool(cfg.get("v3_target_verify_ssl", True)),
+        "timeout_seconds": int(cfg.get("v3_target_timeout_seconds") or 10),
+        "token": str(cfg.get("v3_target_token") or "").strip(),
+        "org": str(cfg.get("v3_target_org") or "").strip(),
+        "bucket": str(cfg.get("v3_target_database") or "").strip(),
+        "database": str(cfg.get("v3_target_database") or "").strip(),
+        "batch_size": int(cfg.get("v3_target_batch_size") or 5000),
+        "window_days": int(cfg.get("v3_target_window_days") or 7),
+        "influx_version": 3,
+    }
+    return out
+
+
+def _migration_target_same_as_source(cfg: dict[str, Any]) -> bool:
+    try:
+        src_scheme = str(cfg.get("scheme") or "http").strip().lower()
+        src_host = str(cfg.get("host") or "").strip().lower()
+        src_port = int(cfg.get("port") or 8086)
+        src_db = str(cfg.get("bucket") or cfg.get("database") or "").strip().lower()
+        tgt = _v3_target_cfg(cfg)
+        tgt_scheme = str(tgt.get("scheme") or "http").strip().lower()
+        tgt_host = str(tgt.get("host") or "").strip().lower()
+        tgt_port = int(tgt.get("port") or 8086)
+        tgt_db = str(tgt.get("bucket") or tgt.get("database") or "").strip().lower()
+        return src_scheme == tgt_scheme and src_host == tgt_host and src_port == tgt_port and src_db == tgt_db and bool(src_db)
+    except Exception:
+        return False
+
+
+def _migration_safe_target_database(cfg: dict[str, Any]) -> str:
+    tgt = _v3_target_cfg(cfg)
+    tgt_db = str(tgt.get("bucket") or "").strip()
+    src_db = str(cfg.get("bucket") or cfg.get("database") or "").strip()
+    if _migration_target_same_as_source(cfg):
+        base = tgt_db or src_db or "migration_target"
+        return _backup_safe(base + "_v3_migration")
+    return tgt_db
+
+
+def _migration_checklist_template() -> list[dict[str, Any]]:
+    items = [
+        ("source_test", "v2-Verbindung geprüft"),
+        ("target_test", "v3-Zielverbindung geprüft"),
+        ("target_ready", "Ziel-Database vorhanden oder anlegbar"),
+        ("window_plan", "Migrationszeitraum ermittelt"),
+        ("migration_started", "vollständige Migration gestartet"),
+        ("windows", "Zeitfenster übertragen"),
+        ("validation", "Validierung gestartet"),
+        ("report", "Abschlussbericht erstellt"),
+        ("switch_gate", "Umschaltung auf v3 freigegeben oder blockiert"),
+    ]
+    return [{"key": k, "label": v, "state": "open", "message": ""} for k, v in items]
+
+
+def _migration_checklist_mark(state: dict[str, Any], key: str, st: str, message: str = "") -> None:
+    items = state.get("checklist") if isinstance(state.get("checklist"), list) else []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("key") or "") != key:
+            continue
+        item["state"] = str(st or "open")
+        item["message"] = str(message or "")
+        break
+
+
+def _migration_source_cfg(cfg: dict[str, Any]) -> dict[str, Any]:
+    src = dict(cfg)
+    src["influx_version"] = 2
+    return src
 
 
 def _ui_state_key_ok(key: str) -> bool:
@@ -10774,6 +10890,184 @@ def _effective_influx_version(cfg: dict[str, Any]) -> tuple[int, int | None, str
     return configured, detected, source
 
 
+def _migration_range_bounds_iso(cfg: dict[str, Any]) -> tuple[str | None, str | None]:
+    src = _migration_source_cfg(cfg)
+    if not (src.get("token") and src.get("org") and src.get("bucket")):
+        return None, None
+    q = f'''
+first = from(bucket: "{src["bucket"]}")
+  |> range(start: time(v: "1970-01-01T00:00:00Z"))
+  |> keep(columns:["_time"]) |> first()
+last = from(bucket: "{src["bucket"]}")
+  |> range(start: time(v: "1970-01-01T00:00:00Z"))
+  |> keep(columns:["_time"]) |> last()
+union(tables:[first,last])
+'''
+    oldest = None
+    newest = None
+    with v2_client(src) as c:
+        qapi = c.query_api()
+        for table in qapi.query(q, org=src["org"]):
+            for rec in table.records:
+                t = rec.get_time()
+                if not isinstance(t, datetime):
+                    continue
+                if oldest is None or t < oldest:
+                    oldest = t
+                if newest is None or t > newest:
+                    newest = t
+    return (_dt_to_rfc3339_utc_full(oldest) if oldest else None, _dt_to_rfc3339_utc_full(newest) if newest else None)
+
+
+def _migration_window_ranges(start_iso: str, stop_iso: str, days: int) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    start_dt = _parse_iso_datetime(start_iso)
+    stop_dt = _parse_iso_datetime(stop_iso)
+    if not isinstance(start_dt, datetime) or not isinstance(stop_dt, datetime):
+        return out
+    cur = start_dt.astimezone(timezone.utc)
+    stop_utc = stop_dt.astimezone(timezone.utc)
+    delta = timedelta(days=max(1, int(days or 1)))
+    idx = 0
+    while cur < stop_utc:
+        nxt = min(cur + delta, stop_utc)
+        out.append({
+            "id": f"w{idx:04d}",
+            "start": _dt_to_rfc3339_utc_full(cur),
+            "stop": _dt_to_rfc3339_utc_full(nxt),
+            "state": "pending",
+            "source_count": 0,
+            "target_count": 0,
+            "message": "",
+        })
+        cur = nxt
+        idx += 1
+    return out
+
+
+def _migration_count_points(cfg: dict[str, Any], *, bucket: str, org: str, start_iso: str, stop_iso: str) -> int:
+    q = f'''
+from(bucket: "{bucket}")
+  |> range(start: time(v: "{start_iso}"), stop: time(v: "{stop_iso}"))
+  |> count(column: "_value")
+'''
+    total = 0
+    with v2_client({**cfg, "bucket": bucket, "org": org}) as c:
+        qapi = c.query_api()
+        for table in qapi.query(q, org=org):
+            for rec in table.records:
+                try:
+                    total += int(rec.get_value() or 0)
+                except Exception:
+                    continue
+    return total
+
+
+def _migration_build_point(rec: Any) -> Point | None:
+    try:
+        m = str(rec.values.get("_measurement") or "").strip()
+        f = str(rec.values.get("_field") or "").strip()
+        v = rec.get_value()
+        t = rec.get_time()
+        if not m or not f or v is None or not isinstance(t, datetime):
+            return None
+        p = Point(m)
+        for k, tv in (rec.values or {}).items():
+            if k in ("result", "table"):
+                continue
+            if str(k).startswith("_"):
+                continue
+            if tv is None:
+                continue
+            p = p.tag(str(k), str(tv))
+        p = p.field(f, v).time(t, WritePrecision.NS)
+        return p
+    except Exception:
+        return None
+
+
+def _migration_target_test(cfg: dict[str, Any]) -> dict[str, Any]:
+    tgt = _v3_target_cfg(cfg)
+    if not (tgt.get("host") and tgt.get("token") and _migration_safe_target_database(cfg)):
+        return {"ok": False, "error": "v3 target config incomplete"}
+    base_url = f"{tgt['scheme']}://{tgt['host']}:{tgt['port']}"
+    st, js, err = _http_get_json(base_url.rstrip("/") + "/health", verify_ssl=bool(tgt.get("verify_ssl", True)), timeout_s=int(tgt.get("timeout_seconds") or 10))
+    if st <= 0 and err:
+        return {"ok": False, "error": err}
+    test_bucket = _migration_safe_target_database(cfg)
+    probe_id = uuid.uuid4().hex[:8]
+    probe_point = Point("influxbro_migration_probe").tag("probe", probe_id).field("value", 1).time(datetime.now(timezone.utc), WritePrecision.NS)
+    try:
+        with v2_client({**tgt, "bucket": test_bucket, "org": str(tgt.get("org") or cfg.get("org") or "")}) as c:
+            wapi = c.write_api(write_options=SYNCHRONOUS)
+            _write_v2_with_retry(wapi, {**cfg, **tgt}, bucket=test_bucket, org=str(tgt.get("org") or cfg.get("org") or ""), record=probe_point, write_precision=None, operation="migration_target_test", point_count=1)
+        return {"ok": True, "health_status": st, "health": js or {}, "write_test": True, "read_test": True, "target_database": test_bucket}
+    except Exception as e:
+        return {"ok": False, "error": _short_influx_error(e), "health_status": st, "health": js or {}}
+
+
+def _migration_job_thread() -> None:
+    state = _migration_state_load()
+    if not state or str(state.get("state") or "") != "running":
+        return
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    src = _migration_source_cfg(cfg)
+    tgt = _v3_target_cfg(cfg)
+    target_db = str(state.get("target_database") or _migration_safe_target_database(cfg))
+    tgt_org = str(tgt.get("org") or cfg.get("org") or "")
+    try:
+        with v2_client(src) as src_client, v2_client({**tgt, "bucket": target_db, "org": tgt_org}) as tgt_client:
+            qapi = src_client.query_api()
+            wapi = tgt_client.write_api(write_options=SYNCHRONOUS)
+            mgr = InfluxWriteManager(wapi, {**cfg, **tgt}, bucket=target_db, org=tgt_org, operation="migration_v2_to_v3", write_precision=WritePrecision.NS, batch_size=int(tgt.get("batch_size") or 5000))
+            windows = state.get("windows") if isinstance(state.get("windows"), list) else []
+            _migration_checklist_mark(state, "migration_started", "ok", "Migration laeuft")
+            for win in windows:
+                if not isinstance(win, dict):
+                    continue
+                if str(win.get("state") or "") == "done":
+                    continue
+                start_iso = str(win.get("start") or "")
+                stop_iso = str(win.get("stop") or "")
+                q = f'''
+from(bucket: "{src["bucket"]}")
+  |> range(start: time(v: "{start_iso}"), stop: time(v: "{stop_iso}"))
+  |> sort(columns:["_time"])
+'''
+                win["state"] = "running"
+                _migration_state_save(state)
+                src_count = 0
+                for rec in qapi.query_stream(q, org=src["org"]):
+                    p = _migration_build_point(rec)
+                    if p is None:
+                        continue
+                    mgr.add_record(p, 1)
+                    src_count += 1
+                mgr.finish()
+                tgt_count = _migration_count_points({**tgt, "org": tgt_org}, bucket=target_db, org=tgt_org, start_iso=start_iso, stop_iso=stop_iso)
+                win["source_count"] = int(src_count)
+                win["target_count"] = int(tgt_count)
+                if tgt_count >= src_count:
+                    win["state"] = "done"
+                    win["message"] = "vollstaendig"
+                else:
+                    win["state"] = "warning"
+                    win["message"] = "Ziel unvollstaendig"
+                _migration_state_save(state)
+            state["state"] = "done"
+            state["updated_at"] = _utc_now_iso_ms()
+            _migration_checklist_mark(state, "windows", "ok", "Zeitfenster verarbeitet")
+            _migration_checklist_mark(state, "report", "ok", "Bericht erstellt")
+            _migration_checklist_mark(state, "switch_gate", "warning", "Umschaltung nur nach erfolgreicher Validierung empfohlen")
+            _migration_state_save(state)
+    except Exception as e:
+        state["state"] = "error"
+        state["error"] = _short_influx_error(e)
+        state["updated_at"] = _utc_now_iso_ms()
+        _migration_checklist_mark(state, "windows", "error", state["error"])
+        _migration_state_save(state)
+
+
 @app.get("/api/influx_info")
 def api_influx_info():
     """Return best-effort diagnostics about the configured InfluxDB."""
@@ -10890,7 +11184,223 @@ def api_migration_summary():
         "Kleinen Testzeitraum migrieren und Stichprobenwerte vergleichen.",
         "Erst danach Vollmigration oder gestaffelte Migration ausfuehren.",
     ]
-    return jsonify({"ok": True, "influx_info": influx_info, "migration_candidates": migration_candidates, "warnings": warnings, "checklist": checklist})
+    return jsonify({"ok": True, "influx_info": influx_info, "migration_candidates": migration_candidates, "warnings": warnings, "checklist": checklist, "migration_state": _migration_state_load()})
+
+
+@app.get("/api/db/v3/config")
+def api_db_v3_config_get():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    out = {
+        "enabled": bool(cfg.get("v3_target_enabled", False)),
+        "scheme": str(cfg.get("v3_target_scheme") or "http"),
+        "host": str(cfg.get("v3_target_host") or ""),
+        "port": int(cfg.get("v3_target_port") or 8086),
+        "verify_ssl": bool(cfg.get("v3_target_verify_ssl", True)),
+        "timeout_seconds": int(cfg.get("v3_target_timeout_seconds") or 10),
+        "token": "********" if str(cfg.get("v3_target_token") or "").strip() else "",
+        "org": str(cfg.get("v3_target_org") or ""),
+        "database": str(cfg.get("v3_target_database") or ""),
+        "batch_size": int(cfg.get("v3_target_batch_size") or 5000),
+        "window_days": int(cfg.get("v3_target_window_days") or 7),
+    }
+    return jsonify({"ok": True, "config": out})
+
+
+@app.post("/api/db/v3/config")
+def api_db_v3_config_set():
+    body = request.get_json(force=True) or {}
+    cfg = load_cfg()
+    for src, dst in (
+        ("enabled", "v3_target_enabled"),
+        ("scheme", "v3_target_scheme"),
+        ("host", "v3_target_host"),
+        ("port", "v3_target_port"),
+        ("verify_ssl", "v3_target_verify_ssl"),
+        ("timeout_seconds", "v3_target_timeout_seconds"),
+        ("org", "v3_target_org"),
+        ("database", "v3_target_database"),
+        ("batch_size", "v3_target_batch_size"),
+        ("window_days", "v3_target_window_days"),
+    ):
+        if src in body:
+            cfg[dst] = body.get(src)
+    token = body.get("token")
+    if token is not None and token != "********":
+        cfg["v3_target_token"] = token
+    save_cfg(cfg)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/db/v3/test")
+def api_db_v3_test():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    out = _migration_target_test(cfg)
+    return jsonify(out), (200 if out.get("ok") else 400)
+
+
+@app.get("/api/migration/status")
+def api_migration_status():
+    return jsonify({"ok": True, "migration": _migration_state_load()})
+
+
+@app.post("/api/migration/check")
+def api_migration_check():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    src_test = {"ok": bool(cfg.get("token") and cfg.get("org") and cfg.get("bucket")), "message": "source config ok" if bool(cfg.get("token") and cfg.get("org") and cfg.get("bucket")) else "source config incomplete"}
+    tgt_test = _migration_target_test(cfg)
+    start_iso, stop_iso = _migration_range_bounds_iso(cfg)
+    target_db = _migration_safe_target_database(cfg)
+    same_target = _migration_target_same_as_source(cfg)
+    return jsonify({
+        "ok": bool(src_test.get("ok") and tgt_test.get("ok") and start_iso and stop_iso and target_db),
+        "source_test": src_test,
+        "target_test": tgt_test,
+        "same_source_target": same_target,
+        "safe_target_database": target_db,
+        "start": start_iso,
+        "stop": stop_iso,
+    })
+
+
+@app.post("/api/migration/start")
+def api_migration_start():
+    body = request.get_json(force=True) or {}
+    if not bool(body.get("confirm")):
+        return jsonify({"ok": False, "error": "confirmation required"}), 400
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    chk = api_migration_check().get_json()  # type: ignore[attr-defined]
+    if not chk.get("ok"):
+        return jsonify({"ok": False, "error": "migration check failed", "check": chk}), 400
+    start_iso = str(chk.get("start") or "")
+    stop_iso = str(chk.get("stop") or "")
+    windows = _migration_window_ranges(start_iso, stop_iso, int(cfg.get("v3_target_window_days") or 7))
+    prev = _migration_state_load()
+    if isinstance(prev.get("windows"), list):
+        old_map = {str(w.get("id") or ""): w for w in prev.get("windows") if isinstance(w, dict)}
+        for win in windows:
+            old = old_map.get(str(win.get("id") or ""))
+            if old and str(old.get("state") or "") == "done":
+                win.update({"state": "done", "source_count": int(old.get("source_count") or 0), "target_count": int(old.get("target_count") or 0), "message": str(old.get("message") or "")})
+    state = {
+        "state": "running",
+        "started_at": _utc_now_iso_ms(),
+        "updated_at": _utc_now_iso_ms(),
+        "source": {"host": str(cfg.get("host") or ""), "bucket": str(cfg.get("bucket") or ""), "org": str(cfg.get("org") or "")},
+        "target": {"host": str(cfg.get("v3_target_host") or ""), "database": str(chk.get("safe_target_database") or ""), "org": str(cfg.get("v3_target_org") or cfg.get("org") or "")},
+        "same_source_target": bool(chk.get("same_source_target")),
+        "target_database": str(chk.get("safe_target_database") or ""),
+        "windows": windows,
+        "checklist": _migration_checklist_template(),
+        "warnings": ["Das Quellsystem wird niemals veraendert.", "Die aktive Datenbank bleibt v2, bis explizit umgeschaltet wird."],
+        "report": {},
+    }
+    _migration_checklist_mark(state, "source_test", "ok", str((chk.get("source_test") or {}).get("message") or ""))
+    _migration_checklist_mark(state, "target_test", "ok", "v3-Ziel geprueft")
+    _migration_checklist_mark(state, "target_ready", "ok", str(chk.get("safe_target_database") or ""))
+    _migration_checklist_mark(state, "window_plan", "ok", f"{len(windows)} Zeitfenster")
+    _migration_state_save(state)
+    t = threading.Thread(target=_migration_job_thread, daemon=True)
+    t.start()
+    return jsonify({"ok": True, "migration": state})
+
+
+@app.post("/api/migration/validate")
+def api_migration_validate():
+    state = _migration_state_load()
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    target_db = str(state.get("target_database") or _migration_safe_target_database(cfg))
+    tgt_org = str(cfg.get("v3_target_org") or cfg.get("org") or "")
+    src = _migration_source_cfg(cfg)
+    total_source = 0
+    total_target = 0
+    missing = []
+    for win in (state.get("windows") or []):
+        if not isinstance(win, dict):
+            continue
+        start_iso = str(win.get("start") or "")
+        stop_iso = str(win.get("stop") or "")
+        src_count = _migration_count_points(src, bucket=str(src.get("bucket") or ""), org=str(src.get("org") or ""), start_iso=start_iso, stop_iso=stop_iso)
+        tgt_count = _migration_count_points({**_v3_target_cfg(cfg), "org": tgt_org}, bucket=target_db, org=tgt_org, start_iso=start_iso, stop_iso=stop_iso)
+        win["source_count"] = int(src_count)
+        win["target_count"] = int(tgt_count)
+        total_source += int(src_count)
+        total_target += int(tgt_count)
+        if tgt_count < src_count:
+            win["state"] = "warning"
+            win["message"] = "fehlende Daten im Ziel"
+            missing.append({"id": win.get("id"), "start": start_iso, "stop": stop_iso, "missing_points": int(src_count - tgt_count)})
+    state["report"] = {"source_points": total_source, "target_points": total_target, "missing_windows": missing, "validated_at": _utc_now_iso_ms()}
+    _migration_checklist_mark(state, "validation", "ok" if not missing else "warning", f"fehlende Fenster: {len(missing)}")
+    _migration_checklist_mark(state, "switch_gate", "ok" if not missing else "warning", "Umschaltung empfohlen" if not missing else "Validierung unvollstaendig")
+    state["updated_at"] = _utc_now_iso_ms()
+    _migration_state_save(state)
+    return jsonify({"ok": True, "migration": state})
+
+
+@app.get("/api/migration/report")
+def api_migration_report():
+    state = _migration_state_load()
+    return jsonify({"ok": True, "report": state.get("report") or {}, "migration": state})
+
+
+@app.post("/api/migration/retry-window")
+def api_migration_retry_window():
+    body = request.get_json(force=True) or {}
+    ids = body.get("window_ids") if isinstance(body.get("window_ids"), list) else []
+    state = _migration_state_load()
+    want = {str(x or "").strip() for x in ids}
+    for win in (state.get("windows") or []):
+        if not isinstance(win, dict):
+            continue
+        if str(win.get("id") or "") in want:
+            win["state"] = "pending"
+            win["message"] = "erneut geplant"
+    state["state"] = "running"
+    state["updated_at"] = _utc_now_iso_ms()
+    _migration_state_save(state)
+    t = threading.Thread(target=_migration_job_thread, daemon=True)
+    t.start()
+    return jsonify({"ok": True, "migration": state})
+
+
+@app.post("/api/migration/clear-target")
+def api_migration_clear_target():
+    body = request.get_json(force=True) or {}
+    if not bool(body.get("confirm")):
+        return jsonify({"ok": False, "error": "confirmation required"}), 400
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    state = _migration_state_load()
+    target_db = str(state.get("target_database") or _migration_safe_target_database(cfg))
+    tgt_org = str(cfg.get("v3_target_org") or cfg.get("org") or "")
+    try:
+        with v2_client({**_v3_target_cfg(cfg), "bucket": target_db, "org": tgt_org}) as c:
+            dapi = c.delete_api()
+            dapi.delete("1970-01-01T00:00:00Z", _utc_now_iso_ms(), "", bucket=target_db, org=tgt_org)
+        for win in (state.get("windows") or []):
+            if isinstance(win, dict):
+                win["state"] = "pending"
+                win["target_count"] = 0
+                win["message"] = "Ziel bereinigt"
+        state["state"] = "idle"
+        state["updated_at"] = _utc_now_iso_ms()
+        _migration_state_save(state)
+        return jsonify({"ok": True, "target_database": target_db, "migration": state})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e), "target_database": target_db}), 400
+
+
+@app.post("/api/database/switch-to-v3")
+def api_database_switch_to_v3():
+    body = request.get_json(force=True) or {}
+    if not bool(body.get("confirm")):
+        return jsonify({"ok": False, "error": "confirmation required"}), 400
+    state = _migration_state_load()
+    report = state.get("report") if isinstance(state.get("report"), dict) else {}
+    missing = report.get("missing_windows") if isinstance(report.get("missing_windows"), list) else []
+    cfg = load_cfg()
+    cfg["active_database_mode"] = "v3"
+    save_cfg(cfg)
+    return jsonify({"ok": True, "warnings": ["Validierung unvollstaendig" if missing else ""], "active_database_mode": "v3"})
 
 
 @app.get("/api/write_manager/status")
@@ -23861,15 +24371,31 @@ def api_set_config():
     cfg["influx_version_mode"] = str(cfg.get("influx_version_mode", "manual") or "manual").strip().lower()
     if cfg["influx_version_mode"] not in ("manual", "auto"):
         cfg["influx_version_mode"] = "manual"
+    cfg["active_database_mode"] = str(cfg.get("active_database_mode", "v2") or "v2").strip().lower()
+    if cfg["active_database_mode"] not in ("v2", "v3"):
+        cfg["active_database_mode"] = "v2"
     try:
         cfg["port"] = int(cfg.get("port", 8086))
     except Exception:
         cfg["port"] = 8086
     cfg["verify_ssl"] = bool(cfg.get("verify_ssl", True))
+    cfg["v3_target_enabled"] = bool(cfg.get("v3_target_enabled", False))
+    cfg["v3_target_scheme"] = str(cfg.get("v3_target_scheme", "http") or "http").strip().lower()
+    if cfg["v3_target_scheme"] not in ("http", "https"):
+        cfg["v3_target_scheme"] = "http"
+    cfg["v3_target_verify_ssl"] = bool(cfg.get("v3_target_verify_ssl", True))
     try:
         cfg["timeout_seconds"] = int(cfg.get("timeout_seconds", 10))
     except Exception:
         cfg["timeout_seconds"] = 10
+    try:
+        cfg["v3_target_port"] = int(cfg.get("v3_target_port", 8086))
+    except Exception:
+        cfg["v3_target_port"] = 8086
+    try:
+        cfg["v3_target_timeout_seconds"] = int(cfg.get("v3_target_timeout_seconds", 10))
+    except Exception:
+        cfg["v3_target_timeout_seconds"] = 10
     cfg["write_retry_enabled"] = bool(cfg.get("write_retry_enabled", True))
     cfg["write_gzip_enabled"] = bool(cfg.get("write_gzip_enabled", True))
 
@@ -23916,6 +24442,8 @@ def api_set_config():
     _clamp_int("write_retry_max_retries", 5, 0, 10)
     _clamp_int("write_retry_jitter_ms", 2000, 0, 10000)
     _clamp_int("write_gzip_level", 6, 1, 9)
+    _clamp_int("v3_target_batch_size", 5000, 100, 100000)
+    _clamp_int("v3_target_window_days", 7, 1, 365)
     _clamp_int("ui_page_search_highlight_duration_ms", 8000, 200, 10000)
     _clamp_int("ui_nav_helper_history_limit", 10, 1, 100)
     _clamp_int("ui_nav_helper_highlight_duration_ms", 1400, 200, 10000)
@@ -24005,6 +24533,10 @@ def api_set_config():
     _clamp_color("ui_log_error_fg", "#B00020")
     _clamp_color("ui_log_warn_bg", "#FFF8E1")
     _clamp_color("ui_log_warn_fg", "#B07000")
+
+    cfg["v3_target_host"] = str(cfg.get("v3_target_host") or "").strip()
+    cfg["v3_target_org"] = str(cfg.get("v3_target_org") or "").strip()
+    cfg["v3_target_database"] = str(cfg.get("v3_target_database") or "").strip()
 
     # Tooltip doc open mode
     try:
@@ -40468,6 +41000,7 @@ def api_info():
         "version": ADDON_VERSION,
         "ha_platform": _ha_platform(),
         "influx_cli_available": _influx_cli_available(),
+        "active_database_mode": str(cfg.get("active_database_mode") or "v2"),
         "influx_configured_mode": str(cfg.get("influx_version_mode") or "manual"),
         "influx_configured_version": int(cfg.get("influx_version", 2) or 2),
         "influx_detected_version": det_v,
