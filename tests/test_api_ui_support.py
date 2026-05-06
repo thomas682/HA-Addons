@@ -693,6 +693,16 @@ def test_config_and_migration_page_expose_v3_target_controls_and_actions():
     assert './api/database/switch-to-v3' in migration
 
 
+def test_manual_contains_step_by_step_v2_to_v3_upgrade_guidance():
+    manual = (Path(__file__).resolve().parents[1] / "influxbro" / "MANUAL.md").read_text()
+    assert '## Hochrüstung V2 auf V3 Influx DB in Home Assistant' in manual
+    assert '### A) Bestehende InfluxDB v2 nach v3 hochrüsten' in manual
+    assert '### B) Neues InfluxDB v3 System sauber aufsetzen' in manual
+    assert '### Alle Schritte in InfluxBro für saubere Datenübertragung von V2 auf V3' in manual
+    assert 'V3 Ziel leeren' in manual
+    assert 'Aktive Datenbank auf InfluxDB v3 umstellen' in manual
+
+
 def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-ib-tooltip-toggle="1"' in tooltips

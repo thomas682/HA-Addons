@@ -297,6 +297,143 @@ Vorgehen:
 10. Validierung und Bericht pruefen
 11. Erst danach explizit auf `v3` umschalten
 
+### A) Bestehende InfluxDB v2 nach v3 hochrüsten
+
+1. Bestehende V2-Umgebung erfassen
+- Quelle notieren: Host, Port, Scheme, Org, Bucket, Token, SSL-Modus, Timeout.
+- In InfluxBro `Einstellungen -> Verbindung` und `InfluxDB v2` pruefen.
+- Sicherstellen, dass Dashboard, Statistik, Backup und Restore unter v2 aktuell fehlerfrei arbeiten.
+
+2. Backup vor jeder Migration erstellen
+- In InfluxBro `Backup` oeffnen.
+- Fuer produktive Systeme mindestens ein FullBackup erstellen.
+- Wenn moeglich zusaetzlich ein range-basiertes Backup eines repräsentativen Zeitraums anlegen.
+
+3. Zielstrategie festlegen
+- Wenn Quelle und Ziel technisch getrennt sind:
+  - echtes externes V3-Ziel verwenden.
+- Wenn Quelle und Ziel auf derselben Instanz oder demselben Datenraum liegen:
+  - InfluxBro verwendet automatisch einen parallelen sicheren Zielnamen im Muster `<quelle>_v3_migration`.
+
+4. InfluxDB-v3-Zielverbindung in InfluxBro eintragen
+- `Einstellungen -> InfluxDB v3 Zielverbindung`
+- Folgende Felder pflegen:
+  - `v3_target_enabled`
+  - `v3_target_scheme`
+  - `v3_target_host`
+  - `v3_target_port`
+  - `v3_target_verify_ssl`
+  - `v3_target_timeout_seconds`
+  - `v3_target_token`
+  - `v3_target_org`
+  - `v3_target_database`
+  - `v3_target_batch_size`
+  - `v3_target_window_days`
+
+5. Versionserkennung aktivieren
+- Optional `influx_version_mode = auto` setzen.
+- Alternativ Quelle manuell auf `2` und Ziel konzeptionell auf `3` planen.
+- `api/influx_info` und `api/influx_detect` pruefen.
+
+6. Zielverbindung testen
+- In `Migration Datenbank` den Button fuer den V3-Verbindungstest ausfuehren.
+- Erwartung:
+  - Ziel erreichbar
+  - Token verwendbar
+  - Probe-Write moeglich
+
+7. Migration prüfen
+- In `Migration Datenbank` zuerst `Migration prüfen` ausführen.
+- Dabei werden mindestens geprueft:
+  - Quellkonfiguration
+  - Zielkonfiguration
+  - sichere Ziel-Datenbank
+  - bestimmbare Zeitgrenzen
+
+8. Migration starten
+- `Migration V2 → V3 starten`
+- Die Migration arbeitet in Zeitfenstern (`v3_target_window_days`) und schreibt in Batches (`v3_target_batch_size`).
+- Erfolgreiche Zeitfenster werden als `done` markiert.
+
+9. Migration validieren
+- Nach dem ersten Lauf `Migration validieren` ausführen.
+- InfluxBro vergleicht pro Zeitfenster mindestens Quell- und Zielanzahlen.
+- Fehlende Zeitfenster bleiben sichtbar markiert.
+
+10. Fehlende Fenster gezielt erneut migrieren
+- Wenn Zeitfenster fehlen oder unvollstaendig sind, diese gezielt erneut anstossen.
+- Erfolgreich verarbeitete Zeitfenster bleiben erhalten und werden uebersprungen.
+
+11. Optional Ziel bereinigen
+- Wenn der Lauf verworfen werden soll: `V3 Ziel leeren`.
+- Diese Aktion betrifft ausschliesslich das Zielsystem.
+- Das Quellsystem bleibt unveraendert.
+
+12. Erst nach erfolgreicher Prüfung umschalten
+- Wenn Checklist, Warnungen und Bericht sauber sind:
+  - `Aktive Datenbank auf InfluxDB v3 umstellen`
+- Vorher bleibt `active_database_mode = v2`.
+
+### B) Neues InfluxDB v3 System sauber aufsetzen
+
+1. Neue V3-Instanz bereitstellen
+- Host/URL, Port, Token, Datenbankname und SSL-Setup festlegen.
+
+2. InfluxBro unverändert auf v2 weiterlaufen lassen
+- Bestehende v2-Verbindung nicht ersetzen.
+- V3 nur als Zielverbindung eintragen.
+
+3. V3-Zielverbindung speichern und testen
+- In `Einstellungen -> InfluxDB v3 Zielverbindung` alle Felder pflegen.
+- Danach den V3-Test ausfuehren.
+
+4. Migrationsfenster konservativ wählen
+- Start mit kleinerem `v3_target_window_days`, z. B. 1 oder 7.
+- Start mit moderater `v3_target_batch_size`.
+
+5. Probe-/Teilmigration ausführen
+- Erst `Migration prüfen`
+- Dann kleinen Zeitraum migrieren
+- Danach validieren
+
+6. Ergebnis fachlich prüfen
+- Vergleich der Zeitfensteranzahl
+- Stichproben aus Dashboard/Statistik
+- Candidate-/Warnungslisten kontrollieren
+
+7. Vollständige Migration starten
+- Erst nach erfolgreichem Teiltest den gesamten Bereich migrieren.
+
+8. Umschalten erst nach Abschlussbericht
+- Die produktive Umschaltung auf v3 erfolgt erst nach sauberer Validierung und ausdrücklicher Nutzeraktion.
+
+### Alle Schritte in InfluxBro für saubere Datenübertragung von V2 auf V3
+
+1. `Einstellungen` öffnen
+2. V2-Verbindung prüfen
+3. V3-Zielverbindung pflegen
+4. V3-Verbindung testen
+5. `Backup` öffnen und Sicherung erstellen
+6. `Migration Datenbank` öffnen
+7. `Migration prüfen` ausführen
+8. Warnungen, Candidates und Checkliste prüfen
+9. `Migration V2 → V3 starten`
+10. Laufenden Status und Zeitfenster beobachten
+11. `Migration validieren`
+12. Bericht lesen
+13. Fehlende Fenster gezielt erneut starten
+14. Falls notwendig `V3 Ziel leeren`
+15. Nach erfolgreicher Validierung `Aktive Datenbank auf InfluxDB v3 umstellen`
+
+### Praktische Hinweise
+
+- V2 bleibt aktiv, bis du explizit umschaltest.
+- Die Quelle wird nie geloescht.
+- Die Quelle wird nicht beschrieben.
+- Bei identischer Quelle/Ziel-Konfiguration migriert InfluxBro in einen parallelen sicheren Zielnamen.
+- Bei Problemen zuerst validieren, dann gezielt wiederholen oder Ziel bereinigen.
+- Erst nach erfolgreichem Bericht produktiv auf v3 schalten.
+
 Rollback:
 - Vor Migration Backup erstellen
 - bei Abweichungen auf v2-Konfiguration/Backups zurueckgehen
