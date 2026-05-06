@@ -1658,6 +1658,7 @@ WRITE_RETRY_METRICS: dict[str, Any] = {
 
 DEFAULT_CFG = {
     "influx_version": 2,
+    "influx_version_mode": "manual",
     "scheme": "http",
     "host": "a0d7b954-influxdb",
     "port": 8086,
@@ -9897,6 +9898,18 @@ def dbinfo_page():
     )
 
 
+@app.get("/migration")
+def migration_page():
+    cfg = load_cfg()
+    return render_template(
+        "migration.html",
+        cfg=cfg,
+        allow_delete=True,
+        nav="migration",
+        repo_url=FIXED_REPO_URL,
+    )
+
+
 @app.get("/manual")
 def manual_page():
     cfg = load_cfg()
@@ -10718,6 +10731,49 @@ def _http_get_text(url: str, verify_ssl: bool, timeout_s: int) -> tuple[int, str
         return 0, None, str(e) or e.__class__.__name__
 
 
+def _detect_influx_version(cfg: dict[str, Any]) -> tuple[int | None, str]:
+    scheme = str(cfg.get("scheme") or "http").strip() or "http"
+    host = str(cfg.get("host") or "").strip()
+    port = int(cfg.get("port") or 8086)
+    verify_ssl = bool(cfg.get("verify_ssl", True))
+    timeout_s = int(cfg.get("timeout_seconds") or 10)
+    base_url = str(cfg.get("url") or f"{scheme}://{host}:{port}").strip()
+    try:
+        st, js, err = _http_get_json(base_url.rstrip("/") + "/health", verify_ssl=verify_ssl, timeout_s=min(8, timeout_s))
+        ver = str((js or {}).get("version") or (js or {}).get("build") or "").strip().lower()
+        if ver.startswith("3") or "influxdb3" in ver or "influxdb v3" in ver:
+            return 3, "health.version"
+        if ver.startswith("2"):
+            return 2, "health.version"
+        if ver.startswith("1"):
+            return 1, "health.version"
+        if st == 200 and isinstance(js, dict) and str(js.get("status") or "").strip().lower() == "pass":
+            return 2, "health.status"
+        if err:
+            return None, "health.error"
+    except Exception:
+        pass
+    try:
+        raw = str(cfg.get("influx_version") or "").strip()
+        if raw in ("1", "2", "3"):
+            return int(raw), "configured"
+    except Exception:
+        pass
+    return None, "unknown"
+
+
+def _effective_influx_version(cfg: dict[str, Any]) -> tuple[int, int | None, str]:
+    mode = str(cfg.get("influx_version_mode") or "manual").strip().lower()
+    try:
+        configured = int(cfg.get("influx_version", 2) or 2)
+    except Exception:
+        configured = 2
+    detected, source = _detect_influx_version(cfg)
+    if mode == "auto" and detected in (1, 2, 3):
+        return int(detected), detected, source
+    return configured, detected, source
+
+
 @app.get("/api/influx_info")
 def api_influx_info():
     """Return best-effort diagnostics about the configured InfluxDB."""
@@ -10737,6 +10793,11 @@ def api_influx_info():
         "verify_ssl": verify_ssl,
         "timeout_seconds": timeout_s,
         "influx_version": None,
+        "configured_mode": str(cfg.get("influx_version_mode") or "manual"),
+        "configured_version": int(cfg.get("influx_version", 2) or 2),
+        "detected_version": None,
+        "detection_source": "unknown",
+        "effective_version": None,
         "health": None,
         "health_http_status": None,
         "health_error": None,
@@ -10758,6 +10819,11 @@ def api_influx_info():
             info["health_error"] = str(err)
     except Exception:
         pass
+
+    eff_v, det_v, det_src = _effective_influx_version(cfg)
+    info["detected_version"] = det_v
+    info["detection_source"] = det_src
+    info["effective_version"] = eff_v
 
     # Buckets (InfluxDB v2)
     try:
@@ -10788,6 +10854,43 @@ def api_influx_info():
         info["database_count"] = None
 
     return jsonify({"ok": True, "info": info})
+
+
+@app.get("/api/influx_detect")
+def api_influx_detect():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    eff_v, det_v, det_src = _effective_influx_version(cfg)
+    return jsonify({
+        "ok": True,
+        "configured_mode": str(cfg.get("influx_version_mode") or "manual"),
+        "configured_version": int(cfg.get("influx_version", 2) or 2),
+        "detected_version": det_v,
+        "effective_version": eff_v,
+        "detection_source": det_src,
+    })
+
+
+@app.get("/api/migration/summary")
+def api_migration_summary():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    influx_info = api_influx_info().get_json()  # type: ignore[attr-defined]
+    try:
+        migration_candidates = api_dq_migration_candidates().get_json()  # type: ignore[attr-defined]
+    except Exception:
+        migration_candidates = {"ok": False, "rows": []}
+    warnings: list[str] = []
+    eff_v = int((influx_info or {}).get("info", {}).get("effective_version") or int(cfg.get("influx_version", 2) or 2))
+    if eff_v == 3:
+        warnings.append("Viele produktive InfluxBro-Datenpfade sind fuer InfluxDB v3 aktuell nur eingeschraenkt oder als nicht unterstuetzt markiert.")
+    warnings.append("Vor jeder Migration zuerst ein Backup erstellen und Quell-/Zielverbindung getrennt pruefen.")
+    checklist = [
+        "Quellinstanz pruefen (Version, Auth, Buckets/Database).",
+        "Zielinstanz pruefen (Version, Auth, Buckets/Database).",
+        "Backup vor Migration erstellen.",
+        "Kleinen Testzeitraum migrieren und Stichprobenwerte vergleichen.",
+        "Erst danach Vollmigration oder gestaffelte Migration ausfuehren.",
+    ]
+    return jsonify({"ok": True, "influx_info": influx_info, "migration_candidates": migration_candidates, "warnings": warnings, "checklist": checklist})
 
 
 @app.get("/api/write_manager/status")
@@ -23755,6 +23858,9 @@ def api_set_config():
         cfg["influx_version"] = int(cfg.get("influx_version", 2))
     except Exception:
         cfg["influx_version"] = 2
+    cfg["influx_version_mode"] = str(cfg.get("influx_version_mode", "manual") or "manual").strip().lower()
+    if cfg["influx_version_mode"] not in ("manual", "auto"):
+        cfg["influx_version_mode"] = "manual"
     try:
         cfg["port"] = int(cfg.get("port", 8086))
     except Exception:
@@ -40355,11 +40461,18 @@ def _inject_globals():
 
 @app.get("/api/info")
 def api_info():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    eff_v, det_v, det_src = _effective_influx_version(cfg)
     return jsonify({
         "ok": True,
         "version": ADDON_VERSION,
         "ha_platform": _ha_platform(),
         "influx_cli_available": _influx_cli_available(),
+        "influx_configured_mode": str(cfg.get("influx_version_mode") or "manual"),
+        "influx_configured_version": int(cfg.get("influx_version", 2) or 2),
+        "influx_detected_version": det_v,
+        "influx_detection_source": det_src,
+        "influx_effective_version": eff_v,
     })
 
 

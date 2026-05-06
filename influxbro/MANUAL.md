@@ -205,6 +205,37 @@ Auf dieser Basis gibt es jetzt einen zentralen `InfluxWriteManager`, der Batch-F
 
 Zusätzlich kann InfluxBro zentrale V2-Write-Requests und Backup-Payloads jetzt per gzip komprimieren. Die Verbindungseinstellungen enthalten dafuer `write_gzip_enabled` und `write_gzip_level`. Backup-ZIPs duerfen Line-Protocol-Payloads als `.lp.gz` enthalten; Restore und Validierung erkennen diese komprimierten Payloads transparent.
 
+InfluxBro besitzt jetzt eine erste V3-/Migrationsschicht: In den Verbindungseinstellungen gibt es einen Versionsmodus (`manual` oder `auto`) und die manuelle Auswahl `1 / 2 / 3`. Die Diagnose-/Detect-APIs zeigen konfigurierte, erkannte und effektive Influx-Version sowie die Detection-Quelle an. Der neue Menuepunkt `Migration Datenbank` bietet einen sicheren Migrationsstatus mit Warnungen, Checkliste und vorhandenen Migration-Candidates. Produktive V3-Datenpfade sind weiterhin teilweise eingeschraenkt; diese Einschraenkungen werden jetzt jedoch sichtbar dokumentiert statt implizit zu bleiben.
+
+## Hochrüstung V2 auf V3 Influx DB in Home Assistant
+
+- Unterschiede:
+  - InfluxDB v2 basiert in InfluxBro auf den bestehenden Flux-/Bucket-Pfaden.
+  - InfluxDB v3 benoetigt je nach Produktvariante andere Query-/Write-Pfade; nicht alle produktiven InfluxBro-Funktionen sind aktuell gleichwertig verfuegbar.
+- Gründe fuer eine Hochrüstung:
+  - modernere Serverbasis
+  - neue Produktvarianten / Betriebsmodelle
+  - potenziell bessere Skalierung fuer bestimmte Workloads
+- Risiken:
+  - Query-/Write-Kompatibilitaet nicht fuer jeden bestehenden InfluxBro-Datenpfad identisch
+  - geaenderte Betriebs-/Auth-Modelle je nach V3-Deployment
+  - Migration ohne vorheriges Backup ist nicht empfohlen
+- Vorgehen:
+  1. InfluxBro Verbindung pruefen
+  2. Versionsmodus auf `auto` oder manuell `3` stellen
+  3. Diagnose ueber `api/influx_info` / `api/influx_detect` pruefen
+  4. Menuepunkt `Migration Datenbank` oeffnen
+  5. Warnungen und Checklist durchgehen
+  6. Vorher Backup erstellen
+  7. Zuerst kleinen Testzeitraum pruefen
+  8. Danach gestaffelte oder vollstaendige Migration planen
+- Rollback:
+  - Vor Migration Backup erstellen
+  - bei Abweichungen auf v2-Konfiguration/Backups zurueckgehen
+- Einschränkungen:
+  - nicht alle produktiven InfluxBro-Datenpfade sind fuer V3 bereits gleichwertig umgesetzt
+  - diese Einschraenkungen werden im Migrationsstatus und in Diagnoseinformationen explizit sichtbar gemacht
+
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
 Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus dem Profil abgeleitet werden. Grundlage sind insbesondere `derived.internal_type`, `device_class`, `state_class`, erkannter Influx-Feldtyp und weitere Profilmerkmale. Das Dashboard zeigt die effektiven Typen automatisch an. Ueber den Button `Strategiewahl` oeffnet sich ein Dialog mit:

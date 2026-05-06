@@ -1664,6 +1664,27 @@ def test_backup_zip_and_restore_support_lp_gz(load_app_module, tmp_path):
         assert "value=1" in fh.read()
 
 
+def test_influx_detect_endpoint_reports_v3_health_detection(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version_mode": "auto", "influx_version": 2, "scheme": "http", "host": "localhost", "port": 8086, "verify_ssl": True, "timeout_seconds": 10})
+    monkeypatch.setattr(app_mod, "_http_get_json", lambda url, verify_ssl, timeout_s: (200, {"status": "pass", "version": "3.0.1"}, None))
+    client = app_mod.app.test_client()
+    r = client.get("/api/influx_detect")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["detected_version"] == 3
+    assert j["effective_version"] == 3
+
+
+def test_migration_page_route_exists(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    client = app_mod.app.test_client()
+    r = client.get("/migration")
+    assert r.status_code == 200
+    assert "Migration Datenbank" in r.get_data(as_text=True)
+
+
 def test_verify_measurement_start_returns_job_id(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})

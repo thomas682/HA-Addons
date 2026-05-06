@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>InfluxBro – Migration Datenbank</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .content { padding: 16px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin-top: 12px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+    .grid2 { display:grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 12px; }
+    @media (max-width: 980px){ .grid2 { grid-template-columns: 1fr; } }
+    .muted { opacity: 0.72; font-size: 12px; }
+    .err { color:#b00020; white-space:pre-wrap; }
+    .ok { color:#0a7a28; white-space:pre-wrap; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    pre { white-space: pre-wrap; background:#fafafa; border:1px solid #eee; border-radius: 12px; padding: 10px; }
+    ul { margin: 8px 0 0 18px; }
+    li { margin: 4px 0; }
+    button { padding: 10px 12px; height: 40px; box-sizing: border-box; cursor:pointer; }
+  </style>
+</head>
+<body>
+  {% include "_topbar.html" %}
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="migration_page.main" data-ib-pickkey="migration_page.main" title="migration.page">
+      <h2>Migration Datenbank</h2>
+      <div class="muted">Sicherer Migrationsassistent fuer Versionswechsel und Vorpruefungen. Destruktive Migrationen werden hier bewusst nicht automatisch gestartet.</div>
+
+      <div class="card" data-ui="migration_main.panel_detect" data-ib-pickkey="migration_main.panel_detect" title="migration.detect">
+        <div class="row">
+          <button id="refresh" type="button" data-ui="migration_main.btn_refresh" data-ib-pickkey="migration_main.btn_refresh">Status aktualisieren</button>
+          <div id="hint" class="muted"></div>
+        </div>
+        <div class="grid2" style="margin-top:12px;">
+          <div>
+            <div><strong>Konfigurierter Modus</strong></div>
+            <div id="configured_mode" class="muted">-</div>
+          </div>
+          <div>
+            <div><strong>Effektive Version</strong></div>
+            <div id="effective_version" class="muted">-</div>
+          </div>
+          <div>
+            <div><strong>Erkannte Version</strong></div>
+            <div id="detected_version" class="muted">-</div>
+          </div>
+          <div>
+            <div><strong>Erkennungsquelle</strong></div>
+            <div id="detection_source" class="muted">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" data-ui="migration_main.panel_checklist" data-ib-pickkey="migration_main.panel_checklist" title="migration.checklist">
+        <div style="font-weight:800;">Migrationscheckliste</div>
+        <ul id="checklist"></ul>
+      </div>
+
+      <div class="card" data-ui="migration_main.panel_warnings" data-ib-pickkey="migration_main.panel_warnings" title="migration.warnings">
+        <div style="font-weight:800;">Warnungen & Einschränkungen</div>
+        <ul id="warnings"></ul>
+      </div>
+
+      <div class="card" data-ui="migration_main.panel_candidates" data-ib-pickkey="migration_main.panel_candidates" title="migration.candidates">
+        <div style="font-weight:800;">Migration Candidates</div>
+        <pre id="candidates">-</pre>
+      </div>
+
+      <div id="err" class="err"></div>
+      <div id="ok" class="ok"></div>
+    </main>
+  </div>
+  <script>
+    const $ = (id)=>document.getElementById(id);
+    const err = (msg)=>{ $('err').textContent = String(msg || ''); };
+    const ok = (msg)=>{ $('ok').textContent = String(msg || ''); };
+
+    async function api(url){
+      const r = await fetch(url, { headers:{ 'X-InfluxBro-Request':'1', 'X-Requested-With':'InfluxBro' } });
+      const j = await r.json().catch(()=>({ok:false,error:'invalid json'}));
+      if(!r.ok || !j.ok) throw new Error(j && j.error ? j.error : ('HTTP ' + r.status));
+      return j;
+    }
+
+    async function load(){
+      err(''); ok('');
+      $('hint').textContent = 'Lade Migrationsstatus...';
+      const j = await api('./api/migration/summary');
+      const info = (j.influx_info && j.influx_info.info) ? j.influx_info.info : {};
+      $('configured_mode').textContent = String(info.configured_mode || '-');
+      $('effective_version').textContent = String(info.effective_version || '-');
+      $('detected_version').textContent = String(info.detected_version || '-');
+      $('detection_source').textContent = String(info.detection_source || '-');
+      $('checklist').innerHTML = (j.checklist || []).map(x => `<li>${String(x || '')}</li>`).join('');
+      $('warnings').innerHTML = (j.warnings || []).map(x => `<li>${String(x || '')}</li>`).join('');
+      $('candidates').textContent = JSON.stringify((j.migration_candidates && j.migration_candidates.rows) ? j.migration_candidates.rows : [], null, 2);
+      $('hint').textContent = 'Status aktualisiert.';
+      ok('Migrationsstatus geladen.');
+    }
+
+    $('refresh').addEventListener('click', ()=>{ load().catch(e=>err(String(e && e.message ? e.message : e))); });
+    load().catch(e=>err(String(e && e.message ? e.message : e)));
+  </script>
+</body>
+</html>

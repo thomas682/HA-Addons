@@ -665,6 +665,19 @@ def test_config_connection_section_exposes_write_gzip_settings():
     assert 'write_gzip_level: parseInt(el.write_gzip_level.value,10),' in config
 
 
+def test_config_and_nav_expose_migration_and_influx_v3_controls():
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    migration = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "migration.html").read_text()
+    assert 'id="influx_version_mode"' in config
+    assert '<option value="auto">auto</option>' in config
+    assert '<option value="3">3 (mit Einschränkungen)</option>' in config
+    assert 'href="./migration"' in nav
+    assert 'Migration Datenbank' in nav
+    assert 'data-ui="migration_page.main"' in migration
+    assert "./api/migration/summary" in migration
+
+
 def test_timer_table_shows_status_column_and_disabled_style_settings():
     jobs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
     assert '--ui-timer-disabled-fg:' in jobs

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.531
+
+### Fix
+
+- InfluxDB v3 / Migration Datenbank: Erste V3-/Migrationsschicht eingefuehrt. Die Verbindungseinstellungen enthalten jetzt einen Versionsmodus (`manual` / `auto`) und die manuelle Auswahl `1 / 2 / 3`. `api/influx_info`, `api/influx_detect` und `api/info` zeigen konfigurierte, erkannte und effektive Influx-Version sowie die Detection-Quelle an. Zusaetzlich gibt es den neuen Menuepunkt `Migration Datenbank` mit sicherem Migrationsstatus, Warnungen, Checklist und Einbindung vorhandener Migration-Candidates. Damit wird InfluxDB v3 in UI/API sichtbar und nachvollziehbar, waehrend eingeschraenkte produktive Datenpfade explizit als solche dokumentiert bleiben statt still zu versagen. ([#489](https://github.com/thomas682/HA-Addons/issues/489))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.530
 
 ### Fix
