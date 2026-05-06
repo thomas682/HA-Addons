@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.520
+
+### Fix
+
+- Dashboard / Messwertinfos: Der Friendly-Name-Historienpfad `friendly_name + entity_id + range=all` baut die Bereichsanalyse fuer `api/tag_combo_ranges` jetzt mit einem gueltigen zweistufigen Flux-Join auf. Dadurch verschwindet der 500er `stream[A] is not Record (argument tables)` beim Dashboard-Start und die historischen Namenszeitrange koennen wieder geladen werden. ([#481](https://github.com/thomas682/HA-Addons/issues/481))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.519
 
 ### Fix

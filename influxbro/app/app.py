@@ -24627,8 +24627,9 @@ first_row = base |> first() |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}
 last_row = base |> last() |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, newest_time: r._time}}))
 count_row = base |> count(column: "_time") |> group() |> sum(column: "_time") |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, count: r._time}}))
 
-join(tables: {{a:first_row, b:last_row}}, on:["friendly_name"])
-  |> join(tables: {{x:count_row}}, on:["friendly_name"])
+first_last = join(tables: {{a:first_row, b:last_row}}, on:["friendly_name"])
+
+join(tables: {{a:first_last, b:count_row}}, on:["friendly_name"])
   |> keep(columns: ["friendly_name", "oldest_time", "newest_time", "count"])
 '''
                     for t in qapi.query(q_one, org=cfg["org"]) or []:

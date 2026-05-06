@@ -894,10 +894,11 @@ def test_api_jobs_delete_rejects_active_jobs(load_app_module, tmp_path):
 
 def test_api_tag_combo_ranges_uses_flux_accumulator_name(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
-    captured: dict[str, object] = {"q": None}
+    captured: list[str] = []
 
     class _FakeRecord:
-        def __init__(self):
+        def __init__(self, value=None):
+            self._value = value
             self.values = {
                 "friendly_name": "Disk Write",
                 "oldest_time": "2026-01-01T00:00:00Z",
@@ -905,14 +906,19 @@ def test_api_tag_combo_ranges_uses_flux_accumulator_name(load_app_module, tmp_pa
                 "count": 12,
             }
 
+        def get_value(self):
+            return self._value
+
     class _FakeTable:
-        def __init__(self):
-            self.records = [_FakeRecord()]
+        def __init__(self, records):
+            self.records = records
 
     class _FakeQueryAPI:
         def query(self, q: str, org: str | None = None):
-            captured["q"] = q
-            return [_FakeTable()]
+            captured.append(q)
+            if 'schema.tagValues' in q:
+                return [_FakeTable([_FakeRecord('Disk Write')])]
+            return [_FakeTable([_FakeRecord()])]
 
     class _FakeClient:
         def query_api(self):
@@ -950,9 +956,10 @@ def test_api_tag_combo_ranges_uses_flux_accumulator_name(load_app_module, tmp_pa
     assert r.status_code == 200
     j = r.get_json()
     assert j["ok"] is True
-    q = captured["q"]
-    assert isinstance(q, str)
-    assert "fn: (r, accumulator)" in q
+    q = next(q for q in captured if 'join(tables:' in q)
+    assert "fn: (r, accumulator)" not in q
+    assert 'first_last = join(tables: {a:first_row, b:last_row}, on:["friendly_name"])' in q
+    assert 'join(tables: {a:first_last, b:count_row}, on:["friendly_name"])' in q
     assert "acc.oldest_time" not in q
 
 
@@ -1444,6 +1451,12 @@ def test_tag_combo_ranges_prefetches_names_for_friendly_name_entity_all(load_app
     j = r.get_json()
     assert j["ok"] is True
     assert any('schema.tagValues' in q for q in captured)
+    q_prefetch = next(q for q in captured if 'schema.tagValues' in q)
+    q_join = next(q for q in captured if 'join(tables:' in q)
+    assert 'start: time(v: "1970-01-01T00:00:00Z")' in q_prefetch
+    assert 'first_last = join(tables: {a:first_row, b:last_row}, on:["friendly_name"])' in q_join
+    assert '|> join(tables: {x:count_row}, on:["friendly_name"])' not in q_join
+    assert 'join(tables: {a:first_last, b:count_row}, on:["friendly_name"])' in q_join
 
 
 def test_fields_all_time_uses_schema_measurement_field_keys(load_app_module, tmp_path, monkeypatch):
