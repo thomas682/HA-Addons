@@ -6326,6 +6326,16 @@ function selectorQueryTimeParams(){
   }
 }
 
+function selectorSuggestionTimeParams(){
+  const out = selectorQueryTimeParams();
+  try{
+    const rk = String((out && out.range) || '').trim().toLowerCase();
+    const hasCustom = !!(out && out.start && out.stop);
+    if(!hasCustom && (!rk || rk === 'all')) return { range: '30d' };
+  }catch(e){}
+  return out;
+}
+
 function currentFilters(){
   const measurementValue = String(($mf && $mf.value) || ($m && $m.value) || "").trim();
   return {
@@ -6627,7 +6637,7 @@ function renderEntity(){
 async function loadMeasurements(opts){
   const o = opts || {};
   try{
-    const qs = new URLSearchParams(selectorQueryTimeParams()).toString();
+    const qs = new URLSearchParams(selectorSuggestionTimeParams()).toString();
     const j = await api("./api/measurements" + (qs ? ("?" + qs) : ""), null, { key: "measurements", status: "Lade Measurements...", silent: !!o.silent });
     ALL_MEASUREMENTS = (j.measurements || []).map(String);
     renderMeasurements();
@@ -6704,7 +6714,7 @@ async function refreshDashboardSuggestions(opts){
   const meas = String(s.measurement || '').trim();
   const eid = String(s.entity_id || '').trim();
   const fn = String(s.friendly_name || '').trim();
-  const common = selectorQueryTimeParams();
+  const common = selectorSuggestionTimeParams();
   if(meas) common.measurement = meas;
   try{
     ALL_ENTITY = await dashboardLoadTagValues('entity_id', {...common, friendly_name: fn || ''});

@@ -175,6 +175,8 @@ Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id`
 
 Fuer die reine `_field`-Liste eines bereits bekannten `_measurement` wird im Dashboard jedoch bewusst kein eigener Zeitfilter mehr an `/api/fields` mitgeschickt. Der Server nutzt dafuer den schnellen Measurement-FieldKey-Pfad statt einer All-Time-`distinct(_field)`-Abfrage, damit die normale Messwertauswahl nicht durch teure Feld-Scans gebremst wird.
 
+Fuer die übrigen sichtbaren Selector-Vorschläge des Dashboards (`Measurements`, `friendly_name`, `entity_id`) wird ein unbeschränktes `All` im normalen Messwertauswahl-Pfad ebenfalls nicht mehr blind an die Vorschlagsabfragen durchgereicht. Solange kein expliziter benutzerdefinierter Zeitraum vorliegt, nutzt die sichtbare Dashboard-Auswahl dafür einen leichten 30d-Scope.
+
 Die Bereichsanalyse fuer historische Tag-Kombinationen (`entity_id` <-> `friendly_name`) verwendet dabei denselben gueltigen Flux-Reduce-Pfad wie die restlichen Dashboard-Statistikabfragen. Im Spezialfall `friendly_name + entity_id + All` wird der Friendly-Name-Verlauf jetzt zusaetzlich ueber einen gueltigen zweistufigen Join aufgebaut. Dadurch funktionieren Vorschlaege und Namenszeitraeume auch bei `All` wieder ohne Parserfehler im Backend.
 
 Wenn fuer den `friendly_name`-Selector bereits eine `entity_id` ausgewaehlt ist, wird zusaetzlich auch das aktuelle `_field` in die Hintergrundabfrage uebernommen. Der Selector bleibt dadurch weiterhin vollstaendig ueber den gesamten Datenbestand (`All`), muss aber nicht mehr unnoetig ueber andere Felder derselben Entity suchen.

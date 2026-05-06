@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.542
+
+### Fix
+
+- Dashboard / Messwertauswahl: Fuer reine Selector-Listen des Dashboards werden weitere `range=all`-Pfade konsequent auf einen leichten 30d-Scope begrenzt, solange kein expliziter benutzerdefinierter Zeitraum vorliegt. Das betrifft insbesondere die Measurement- und Tag-Vorschlagsabfragen der sichtbaren Messwertauswahl und haelt den Startup-Pfad konsistent schlank. ([#506](https://github.com/thomas682/HA-Addons/issues/506))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.541
 
 ### Fix
