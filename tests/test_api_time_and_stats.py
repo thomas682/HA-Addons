@@ -467,7 +467,7 @@ def test_tag_values_respects_selector_limit_setting(load_app_module, tmp_path, m
     assert '1970-01-01T00:00:00Z' not in q
 
 
-def test_fields_endpoint_uses_direct_query_for_unicode_measurement(load_app_module, tmp_path, monkeypatch):
+def test_fields_endpoint_uses_schema_field_keys_for_plain_measurement(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured: dict[str, object] = {"q": None}
 
@@ -513,8 +513,57 @@ def test_fields_endpoint_uses_direct_query_for_unicode_measurement(load_app_modu
     assert r.get_json()["fields"] == ["value"]
     q = captured["q"]
     assert isinstance(q, str)
-    assert 'r._measurement == "\u00b0F"' in q
-    assert "schema.measurementFieldKeys" not in q
+    assert 'schema.measurementFieldKeys(bucket: "b", measurement: "\u00b0F")' in q
+    assert 'r._measurement == "\u00b0F"' not in q
+
+
+def test_fields_endpoint_ignores_range_all_for_plain_measurement(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    captured: dict[str, object] = {"q": None}
+
+    class _FakeRecord:
+        def __init__(self, value: str):
+            self._value = value
+
+        def get_value(self):
+            return self._value
+
+    class _FakeTable:
+        def __init__(self, records):
+            self.records = records
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            captured["q"] = q
+            return [_FakeTable([_FakeRecord("value")])]
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {
+        **cfg,
+        "influx_version": 2,
+        "token": "t",
+        "org": "o",
+        "bucket": "b",
+    })
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.get("/api/fields?measurement=%C2%B0F&range=all")
+    assert r.status_code == 200
+    q = captured["q"]
+    assert isinstance(q, str)
+    assert 'schema.measurementFieldKeys(bucket: "b", measurement: "\u00b0F")' in q
+    assert '1970-01-01T00:00:00Z' not in q
 
 
 def test_resolve_signal_does_not_require_value_column(load_app_module, tmp_path, monkeypatch):

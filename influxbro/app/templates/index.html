@@ -6689,7 +6689,7 @@ async function loadDashboardFields(measurement, opts){
     if($f && !o.silent) $f.value = "";
     return true;
   }
-  const qp = new URLSearchParams({ measurement: m, ...selectorQueryTimeParams() });
+  const qp = new URLSearchParams({ measurement: m });
   const j = await api("./api/fields?" + qp.toString(), null, { key: "fields", status: "Lade Fields...", silent: !!o.silent });
   ALL_FIELDS = (j.fields || []).map(String).filter(Boolean);
   if($fieldList) $fieldList.innerHTML = ALL_FIELDS.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');

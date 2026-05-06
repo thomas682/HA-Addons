@@ -25292,7 +25292,7 @@ def fields():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                if measurement and not entity_id and not friendly_name and not selector_start_dt and not selector_stop_dt and not range_key:
+                if measurement and not entity_id and not friendly_name:
                     q = (
                         'import "influxdata/influxdb/schema"\n'
                         f'schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: {_flux_str(measurement)})'

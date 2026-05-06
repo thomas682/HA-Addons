@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.541
+
+### Fix
+
+- Dashboard / Selector / Fields: Die reine Feldliste fuer ein bereits gewaehltes `_measurement` schickt im Dashboard keine unnoetigen Zeitfilter mehr an `/api/fields`. Zusaetzlich nutzt der Backend-Endpunkt fuer reine Measurement-Feldlisten jetzt immer den schnellen `schema.measurementFieldKeys(...)`-Pfad, selbst wenn versehentlich `range=all` mitgegeben wird. Dadurch entfallen die teuren All-Time-`distinct(_field)`-Queries fuer die normale Messwertauswahl. ([#504](https://github.com/thomas682/HA-Addons/issues/504))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.540
 
 ### Fix
