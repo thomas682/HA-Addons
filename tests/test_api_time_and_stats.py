@@ -1558,6 +1558,51 @@ def test_support_bundle_snapshot_create_uses_runtime_cfg_reader(load_app_module,
     assert j["row"]["id"]
 
 
+def test_write_v2_with_retry_retries_timeout_then_succeeds(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    sleeps: list[float] = []
+
+    class _FakeWriteApi:
+        def __init__(self):
+            self.calls = 0
+
+        def write(self, **kwargs):
+            self.calls += 1
+            if self.calls < 3:
+                raise TimeoutError("simulated timeout")
+            return None
+
+    fake = _FakeWriteApi()
+    monkeypatch.setattr(app_mod.time, "sleep", lambda s: sleeps.append(s))
+    monkeypatch.setattr(app_mod.random, "uniform", lambda a, b: 0)
+
+    app_mod._write_v2_with_retry(
+        fake,
+        {"write_retry_enabled": True, "write_retry_base_seconds": 1, "write_retry_max_retries": 5, "write_retry_jitter_ms": 0},
+        bucket="b",
+        org="o",
+        record=[1, 2, 3],
+        operation="unit_test_write",
+        point_count=3,
+    )
+
+    assert fake.calls == 3
+    assert sleeps == [1.0, 2.0]
+
+
+def test_write_manager_status_endpoint_returns_retry_metrics(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "write_retry_enabled": True, "write_retry_base_seconds": 5, "write_retry_max_retries": 5, "write_retry_jitter_ms": 2000})
+    client = app_mod.app.test_client()
+    r = client.get("/api/write_manager/status")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["write_manager"]["enabled"] is True
+    assert j["write_manager"]["base_seconds"] == 5
+    assert j["write_manager"]["max_retries"] == 5
+
+
 def test_verify_measurement_start_returns_job_id(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})

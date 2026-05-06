@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.528
+
+### Fix
+
+- Influx Writes / Stabilitaet: Zentrale Retry-Strategie fuer synchrone InfluxDB-v2-Write-Operationen eingefuehrt. Betroffene Write-Pfade verwenden jetzt Exponential Backoff, Jitter, Retry-Limits und Write-Metriken. Die Retry-Parameter sind persistent konfigurierbar (`write_retry_enabled`, `write_retry_base_seconds`, `write_retry_max_retries`, `write_retry_jitter_ms`) und per `api/write_manager/status` abrufbar. Dadurch verhalten sich Verify-/Change-Block-Writes unter 429/5xx/Timeout-/Netzwerkfehlern deutlich stabiler und erzeugen weniger Request-Stuerme. ([#492](https://github.com/thomas682/HA-Addons/issues/492))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.527
 
 ### Fix

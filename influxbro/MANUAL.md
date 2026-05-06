@@ -199,6 +199,8 @@ Der Smart Debug Assistant und zugehoerige Popup-/Tooltip-Pfade exportieren die H
 
 Bei expliziten Dashboard-Zeiträumen wie `range=all` verwendet die Feldliste jetzt ebenfalls den direkten Query-Pfad statt des Schema-Shortcuts. Zusätzlich funktioniert `Snapshot erzeugen` im Smart Debug Assistant wieder, weil die Snapshot-Erzeugung die Runtime-Konfiguration über einen vorhandenen Reader einliest statt auf ein undefiniertes Symbol zuzugreifen.
 
+Fuer synchrone InfluxDB-v2-Write-Operationen gibt es jetzt eine zentrale Retry-Strategie mit Exponential Backoff, Jitter und Retry-Limits. Die Parameter sind in den Verbindungseinstellungen persistent konfigurierbar (`write_retry_enabled`, `write_retry_base_seconds`, `write_retry_max_retries`, `write_retry_jitter_ms`). Ueber `api/write_manager/status` lassen sich ausserdem Retry-/Fehler-Metriken wie letzte Ursache, Retry-Rate und durchschnittliche Retry-Wartezeit abrufen.
+
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
 Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus dem Profil abgeleitet werden. Grundlage sind insbesondere `derived.internal_type`, `device_class`, `state_class`, erkannter Influx-Feldtyp und weitere Profilmerkmale. Das Dashboard zeigt die effektiven Typen automatisch an. Ueber den Button `Strategiewahl` oeffnet sich ein Dialog mit:

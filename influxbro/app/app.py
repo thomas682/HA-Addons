@@ -10,6 +10,7 @@ import logging
 import logging.handlers
 import math
 import os
+import random
 import re
 import shutil
 import socket
@@ -1642,6 +1643,18 @@ _ALLOW_DELETE_ENV = env_bool("ALLOW_DELETE", False)
 
 LAST_AUTODETECT_SOURCE = None
 YAML_FALLBACK_ENABLED = False
+WRITE_RETRY_LOCK = threading.Lock()
+WRITE_RETRY_METRICS: dict[str, Any] = {
+    "write_total": 0,
+    "retried_writes": 0,
+    "retry_attempts": 0,
+    "failed_writes": 0,
+    "last_retry_cause": "",
+    "last_retry_at": "",
+    "last_operation": "",
+    "last_error": "",
+    "total_retry_sleep_ms": 0,
+}
 
 DEFAULT_CFG = {
     "influx_version": 2,
@@ -1650,6 +1663,10 @@ DEFAULT_CFG = {
     "port": 8086,
     "verify_ssl": True,
     "timeout_seconds": 10,
+    "write_retry_enabled": True,
+    "write_retry_base_seconds": 5,
+    "write_retry_max_retries": 5,
+    "write_retry_jitter_ms": 2000,
     "influx_yaml_path": DEFAULT_INFLUX_YAML_PATH,
     # v2
     "token": "",
@@ -3553,10 +3570,28 @@ def _verify_write_lp_to_bucket_v2(cfg: dict[str, Any], verify_bucket: str, lines
                 batch.append(pt)
                 count += 1
                 if len(batch) >= 2000:
-                    wapi.write(bucket=verify_bucket, org=str(cfg.get("org") or ""), record=batch, write_precision=WritePrecision.NS)
+                    _write_v2_with_retry(
+                        wapi,
+                        cfg,
+                        bucket=verify_bucket,
+                        org=str(cfg.get("org") or ""),
+                        record=batch,
+                        write_precision=WritePrecision.NS,
+                        operation="verify_write",
+                        point_count=len(batch),
+                    )
                     batch = []
         if batch:
-            wapi.write(bucket=verify_bucket, org=str(cfg.get("org") or ""), record=batch, write_precision=WritePrecision.NS)
+            _write_v2_with_retry(
+                wapi,
+                cfg,
+                bucket=verify_bucket,
+                org=str(cfg.get("org") or ""),
+                record=batch,
+                write_precision=WritePrecision.NS,
+                operation="verify_write",
+                point_count=len(batch),
+            )
     return count
 
 
@@ -9503,6 +9538,125 @@ def v1_client(cfg: dict):
         verify_ssl=verify_ssl,
         timeout=int(cfg.get("timeout_seconds", 10)),
     )
+
+
+def _write_retry_settings(cfg: dict[str, Any]) -> dict[str, Any]:
+    enabled = bool(cfg.get("write_retry_enabled", True))
+    try:
+        base_s = int(cfg.get("write_retry_base_seconds", 5) or 5)
+    except Exception:
+        base_s = 5
+    try:
+        max_retries = int(cfg.get("write_retry_max_retries", 5) or 5)
+    except Exception:
+        max_retries = 5
+    try:
+        jitter_ms = int(cfg.get("write_retry_jitter_ms", 2000) or 2000)
+    except Exception:
+        jitter_ms = 2000
+    return {
+        "enabled": enabled,
+        "base_s": max(0, min(120, base_s)),
+        "max_retries": max(0, min(10, max_retries)),
+        "jitter_ms": max(0, min(10000, jitter_ms)),
+    }
+
+
+def _write_retry_reason(err: Exception | None) -> tuple[bool, str]:
+    if err is None:
+        return False, ""
+    try:
+        if isinstance(err, ApiException):
+            status = int(getattr(err, "status", 0) or 0)
+            if status == 429:
+                return True, "http_429"
+            if 500 <= status <= 599:
+                return True, f"http_{status}"
+    except Exception:
+        pass
+    try:
+        if isinstance(err, TimeoutError):
+            return True, "timeout"
+    except Exception:
+        pass
+    msg = ""
+    try:
+        msg = str(err or "").lower()
+    except Exception:
+        msg = ""
+    if any(tok in msg for tok in ("timed out", "timeout", "read timed out")):
+        return True, "timeout"
+    if any(tok in msg for tok in ("connection reset", "connection aborted", "temporarily unavailable", "connection refused", "service unavailable", "too many requests", "network is unreachable")):
+        return True, "network"
+    return False, err.__class__.__name__ if err else ""
+
+
+def _write_retry_note(operation: str, cause: str, attempts: int, sleep_ms: int, failed: bool, err: Exception | None) -> None:
+    with WRITE_RETRY_LOCK:
+        WRITE_RETRY_METRICS["last_operation"] = str(operation or "")
+        WRITE_RETRY_METRICS["last_retry_cause"] = str(cause or "")
+        WRITE_RETRY_METRICS["last_retry_at"] = _utc_now_iso_ms()
+        WRITE_RETRY_METRICS["last_error"] = _short_influx_error(err) if err else ""
+        WRITE_RETRY_METRICS["retry_attempts"] = int(WRITE_RETRY_METRICS.get("retry_attempts") or 0) + max(0, attempts)
+        WRITE_RETRY_METRICS["total_retry_sleep_ms"] = int(WRITE_RETRY_METRICS.get("total_retry_sleep_ms") or 0) + max(0, sleep_ms)
+        if attempts > 0:
+            WRITE_RETRY_METRICS["retried_writes"] = int(WRITE_RETRY_METRICS.get("retried_writes") or 0) + 1
+        if failed:
+            WRITE_RETRY_METRICS["failed_writes"] = int(WRITE_RETRY_METRICS.get("failed_writes") or 0) + 1
+
+
+def _write_metrics_snapshot(cfg: dict[str, Any]) -> dict[str, Any]:
+    settings = _write_retry_settings(cfg)
+    with WRITE_RETRY_LOCK:
+        total = int(WRITE_RETRY_METRICS.get("write_total") or 0)
+        retried = int(WRITE_RETRY_METRICS.get("retried_writes") or 0)
+        retry_attempts = int(WRITE_RETRY_METRICS.get("retry_attempts") or 0)
+        failed = int(WRITE_RETRY_METRICS.get("failed_writes") or 0)
+        total_sleep = int(WRITE_RETRY_METRICS.get("total_retry_sleep_ms") or 0)
+        snap = dict(WRITE_RETRY_METRICS)
+    snap.update({
+        "enabled": bool(settings["enabled"]),
+        "base_seconds": int(settings["base_s"]),
+        "max_retries": int(settings["max_retries"]),
+        "jitter_ms": int(settings["jitter_ms"]),
+        "retry_rate": round((retried / total), 4) if total > 0 else 0.0,
+        "failure_rate": round((failed / total), 4) if total > 0 else 0.0,
+        "avg_retry_sleep_ms": round((total_sleep / retry_attempts), 2) if retry_attempts > 0 else 0.0,
+    })
+    return snap
+
+
+def _write_v2_with_retry(wapi: Any, cfg: dict[str, Any], *, bucket: str, org: str, record: Any, write_precision: Any | None = None, operation: str, point_count: int) -> None:
+    settings = _write_retry_settings(cfg)
+    with WRITE_RETRY_LOCK:
+        WRITE_RETRY_METRICS["write_total"] = int(WRITE_RETRY_METRICS.get("write_total") or 0) + max(1, int(point_count or 1))
+    attempts = 0
+    total_sleep_ms = 0
+    while True:
+        try:
+            kwargs = {"bucket": bucket, "org": org, "record": record}
+            if write_precision is not None:
+                kwargs["write_precision"] = write_precision
+            wapi.write(**kwargs)
+            if attempts > 0:
+                _write_retry_note(operation, str(WRITE_RETRY_METRICS.get("last_retry_cause") or ""), attempts, total_sleep_ms, False, None)
+            return
+        except Exception as e:
+            retryable, cause = _write_retry_reason(e)
+            if not settings["enabled"] or not retryable or attempts >= int(settings["max_retries"]):
+                _write_retry_note(operation, cause, attempts, total_sleep_ms, True, e)
+                raise
+            attempts += 1
+            delay_ms = int(settings["base_s"]) * 1000 * (2 ** (attempts - 1))
+            jitter_ms = int(random.uniform(0, int(settings["jitter_ms"]))) if int(settings["jitter_ms"]) > 0 else 0
+            sleep_ms = delay_ms + jitter_ms
+            total_sleep_ms += sleep_ms
+            _write_retry_note(operation, cause, 0, sleep_ms, False, e)
+            try:
+                LOG.warning("write_retry operation=%s attempt=%s cause=%s sleep_ms=%s", operation, attempts, cause, sleep_ms)
+            except Exception:
+                pass
+            time.sleep(max(0.0, sleep_ms / 1000.0))
     
 def _initial_suggestions(cfg: dict[str, Any]) -> dict[str, list[str]]:
     suggestions: dict[str, list[str]] = {"measurements": [], "friendly_name": [], "entity_id": []}
@@ -10584,6 +10738,12 @@ def api_influx_info():
         info["database_count"] = None
 
     return jsonify({"ok": True, "info": info})
+
+
+@app.get("/api/write_manager/status")
+def api_write_manager_status():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    return jsonify({"ok": True, "write_manager": _write_metrics_snapshot(cfg)})
 
 
 @app.get("/api/influx_metrics")
@@ -23522,6 +23682,7 @@ def api_set_config():
         cfg["timeout_seconds"] = int(cfg.get("timeout_seconds", 10))
     except Exception:
         cfg["timeout_seconds"] = 10
+    cfg["write_retry_enabled"] = bool(cfg.get("write_retry_enabled", True))
 
     try:
         cfg["ui_table_visible_rows"] = int(cfg.get("ui_table_visible_rows", 20))
@@ -23562,6 +23723,9 @@ def api_set_config():
     # UI font sizes are grouped; legacy font keys are derived from the groups.
     _apply_ui_font_groups(cfg)
     _clamp_int("ui_page_search_highlight_width_px", 5, 1, 12)
+    _clamp_int("write_retry_base_seconds", 5, 0, 120)
+    _clamp_int("write_retry_max_retries", 5, 0, 10)
+    _clamp_int("write_retry_jitter_ms", 2000, 0, 10000)
     _clamp_int("ui_page_search_highlight_duration_ms", 8000, 200, 10000)
     _clamp_int("ui_nav_helper_history_limit", 10, 1, 100)
     _clamp_int("ui_nav_helper_highlight_duration_ms", 1400, 200, 10000)
@@ -37036,7 +37200,7 @@ def _cb_write_exact(wapi, cfg: dict[str, Any], pid: dict[str, Any], point: dict[
     for tk, tv in (tags or {}).items():
         p = p.tag(str(tk), str(tv))
     p = p.field(field, v).time(dt, WritePrecision.NS)
-    wapi.write(bucket=bucket, org=org, record=p)
+    _write_v2_with_retry(wapi, cfg, bucket=bucket, org=org, record=p, operation="change_block_exact", point_count=1)
 
 
 def _cb_set_block_status(block_id: str, *, status: str | None = None, undo_status: str | None = None, repeat_status: str | None = None) -> None:
@@ -37157,7 +37321,16 @@ def _cb_apply(block_id: str, *, direction: str) -> dict[str, Any]:
                 return
             bkt = str(batch_bucket or cfg.get("bucket") or "")
             org = str(batch_org or cfg.get("org") or "")
-            wapi.write(bucket=bkt, org=org, record=write_batch, write_precision=WritePrecision.NS)
+            _write_v2_with_retry(
+                wapi,
+                cfg,
+                bucket=bkt,
+                org=org,
+                record=write_batch,
+                write_precision=WritePrecision.NS,
+                operation="change_block_batch",
+                point_count=len(write_batch),
+            )
             write_batch = []
             batch_bucket = None
             batch_org = None

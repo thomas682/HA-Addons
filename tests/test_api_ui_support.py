@@ -640,6 +640,21 @@ def test_settings_layout_and_null_safe_bindings_are_present():
     assert "ui_log_error_bg: _getEl('ui_log_error_bg') ? String(_getEl('ui_log_error_bg').value || '').trim() : ''," in config
     assert "reportConfigError('Settings initial load failed'" in config
     assert "reportConfigError('Settings action binding failed'" in config
+    assert 'id="write_retry_enabled"' in config
+    assert 'id="write_retry_base_seconds"' in config
+    assert 'id="write_retry_max_retries"' in config
+    assert 'id="write_retry_jitter_ms"' in config
+    assert 'write_retry_enabled' in config
+
+
+def test_config_connection_section_exposes_write_retry_settings():
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'id="write_retry_enabled"' in config
+    assert 'id="write_retry_base_seconds"' in config
+    assert 'id="write_retry_max_retries"' in config
+    assert 'id="write_retry_jitter_ms"' in config
+    assert '_setChecked(el.write_retry_enabled, (cfg.write_retry_enabled !== false));' in config
+    assert 'write_retry_base_seconds: parseInt(el.write_retry_base_seconds.value,10),' in config
 
 
 def test_timer_table_shows_status_column_and_disabled_style_settings():
