@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.526
+
+### Fix
+
+- Dashboard / Smart Debug Assistant: Der Tooltip-/Popup-Helper exportiert `_keyFromEl` jetzt zusaetzlich global. Dadurch laufen Smart-Assistant-/Popup-Pfade nicht mehr in einen `Uncaught ReferenceError: _keyFromEl is not defined`, wenn Host-/Dialogpfade die Hilfsfunktion ausserhalb des urspruenglichen Closures referenzieren. ([#487](https://github.com/thomas682/HA-Addons/issues/487))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.525
 
 ### Fix

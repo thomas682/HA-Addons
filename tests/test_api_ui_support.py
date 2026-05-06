@@ -1589,6 +1589,7 @@ def test_tooltips_use_custom_html_tooltip_layer():
     assert "ib_html_tooltip" in tooltips
     assert "HTML custom tooltip" in tooltips
     assert "window.matchMedia && !window.matchMedia('(hover:hover) and (pointer:fine)').matches" not in tooltips
+    assert "try{ window._keyFromEl = _keyFromEl; }catch(e){}" in tooltips
 
 
 def test_topbar_suppresses_known_ha_unhandled_rejection_noise():

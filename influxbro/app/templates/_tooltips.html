@@ -450,6 +450,8 @@
     }
   }
 
+  try{ window._keyFromEl = _keyFromEl; }catch(e){}
+
   function _ensureKeySuffix(title, key){
     const t = _norm(title);
     const k = _norm(key);
