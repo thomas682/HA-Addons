@@ -1603,6 +1603,36 @@ def test_write_manager_status_endpoint_returns_retry_metrics(load_app_module, tm
     assert j["write_manager"]["max_retries"] == 5
 
 
+def test_influx_write_manager_batches_and_flushes(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    calls: list[dict[str, object]] = []
+
+    class _FakeWriteApi:
+        def write(self, **kwargs):
+            calls.append(kwargs)
+            return None
+
+    monkeypatch.setattr(app_mod.random, "uniform", lambda a, b: 0)
+    mgr = app_mod.InfluxWriteManager(
+        _FakeWriteApi(),
+        {"write_retry_enabled": True, "write_retry_base_seconds": 1, "write_retry_max_retries": 1, "write_retry_jitter_ms": 0},
+        bucket="b",
+        org="o",
+        operation="unit_test_batch",
+        batch_size=2,
+    )
+    mgr.add_record("a", 1)
+    mgr.add_record("b", 1)
+    mgr.add_record("c", 1)
+    out = mgr.finish()
+
+    assert len(calls) == 2
+    assert calls[0]["record"] == ["a", "b"]
+    assert calls[1]["record"] == ["c"]
+    assert out["total_points"] == 3
+    assert out["flushes"] == 2
+
+
 def test_verify_measurement_start_returns_job_id(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.529
+
+### Fix
+
+- Influx Writes / Architektur: Zentralen `InfluxWriteManager` eingefuehrt. Verify-Writes und Change-Block-Writes nutzen jetzt denselben Manager fuer Batch-Flushes, Streaming-Zufuehrung und Fortschritts-/Health-Metriken, statt die Logik pro Pfad separat aufzubauen. Damit ist die Write-Schicht konsistenter, die Health-Metriken (`api/write_manager/status`) sind an einer Stelle gebuendelt, und weitere Bulk-Write-Pfade koennen dieselbe Schicht wiederverwenden. ([#491](https://github.com/thomas682/HA-Addons/issues/491))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.528
 
 ### Fix

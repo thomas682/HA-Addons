@@ -3544,7 +3544,7 @@ def _verify_write_lp_to_bucket_v2(cfg: dict[str, Any], verify_bucket: str, lines
     count = 0
     with v2_client(cfg) as c:
         wapi = c.write_api(write_options=SYNCHRONOUS)
-        batch: list[Point] = []
+        manager = InfluxWriteManager(wapi, cfg, bucket=verify_bucket, org=str(cfg.get("org") or ""), operation="verify_write", write_precision=WritePrecision.NS, batch_size=2000)
         for raw in lines:
             pts = _lp_parse_points_from_line(raw)
             if not pts:
@@ -3567,31 +3567,9 @@ def _verify_write_lp_to_bucket_v2(cfg: dict[str, Any], verify_bucket: str, lines
                         continue
                     pt = pt.tag(str(k), str(v))
                 pt = pt.field(fld, val).time(dt, WritePrecision.NS)
-                batch.append(pt)
+                manager.add_record(pt, 1)
                 count += 1
-                if len(batch) >= 2000:
-                    _write_v2_with_retry(
-                        wapi,
-                        cfg,
-                        bucket=verify_bucket,
-                        org=str(cfg.get("org") or ""),
-                        record=batch,
-                        write_precision=WritePrecision.NS,
-                        operation="verify_write",
-                        point_count=len(batch),
-                    )
-                    batch = []
-        if batch:
-            _write_v2_with_retry(
-                wapi,
-                cfg,
-                bucket=verify_bucket,
-                org=str(cfg.get("org") or ""),
-                record=batch,
-                write_precision=WritePrecision.NS,
-                operation="verify_write",
-                point_count=len(batch),
-            )
+        manager.finish()
     return count
 
 
@@ -9657,6 +9635,74 @@ def _write_v2_with_retry(wapi: Any, cfg: dict[str, Any], *, bucket: str, org: st
             except Exception:
                 pass
             time.sleep(max(0.0, sleep_ms / 1000.0))
+
+
+class InfluxWriteManager:
+    def __init__(self, wapi: Any, cfg: dict[str, Any], *, bucket: str, org: str, operation: str, write_precision: Any | None = WritePrecision.NS, batch_size: int = 2000, progress_cb: Any | None = None):
+        self.wapi = wapi
+        self.cfg = cfg
+        self.bucket = str(bucket or "")
+        self.org = str(org or "")
+        self.operation = str(operation or "write_manager")
+        self.write_precision = write_precision
+        self.batch_size = max(1, int(batch_size or 2000))
+        self.progress_cb = progress_cb
+        self.batch: list[Any] = []
+        self.total_points = 0
+        self.flushes = 0
+
+    def _progress(self) -> None:
+        try:
+            if self.progress_cb:
+                self.progress_cb(total_points=int(self.total_points), flushes=int(self.flushes), pending_points=len(self.batch))
+        except Exception:
+            pass
+
+    def add_record(self, record: Any, point_count: int = 1) -> None:
+        self.batch.append(record)
+        self.total_points += max(1, int(point_count or 1))
+        if len(self.batch) >= self.batch_size:
+            self.flush()
+
+    def add_records(self, records: Iterable[Any]) -> None:
+        for rec in records:
+            self.add_record(rec, 1)
+
+    def flush(self) -> None:
+        if not self.batch:
+            return
+        _write_v2_with_retry(
+            self.wapi,
+            self.cfg,
+            bucket=self.bucket,
+            org=self.org,
+            record=list(self.batch),
+            write_precision=self.write_precision,
+            operation=self.operation,
+            point_count=len(self.batch),
+        )
+        self.flushes += 1
+        self.batch = []
+        self._progress()
+
+    def write_record(self, record: Any, point_count: int = 1) -> None:
+        _write_v2_with_retry(
+            self.wapi,
+            self.cfg,
+            bucket=self.bucket,
+            org=self.org,
+            record=record,
+            write_precision=self.write_precision,
+            operation=self.operation,
+            point_count=point_count,
+        )
+        self.total_points += max(1, int(point_count or 1))
+        self.flushes += 1
+        self._progress()
+
+    def finish(self) -> dict[str, int]:
+        self.flush()
+        return {"total_points": int(self.total_points), "flushes": int(self.flushes)}
     
 def _initial_suggestions(cfg: dict[str, Any]) -> dict[str, list[str]]:
     suggestions: dict[str, list[str]] = {"measurements": [], "friendly_name": [], "entity_id": []}
@@ -37200,7 +37246,7 @@ def _cb_write_exact(wapi, cfg: dict[str, Any], pid: dict[str, Any], point: dict[
     for tk, tv in (tags or {}).items():
         p = p.tag(str(tk), str(tv))
     p = p.field(field, v).time(dt, WritePrecision.NS)
-    _write_v2_with_retry(wapi, cfg, bucket=bucket, org=org, record=p, operation="change_block_exact", point_count=1)
+    InfluxWriteManager(wapi, cfg, bucket=bucket, org=org, operation="change_block_exact", write_precision=None, batch_size=1).write_record(p, 1)
 
 
 def _cb_set_block_status(block_id: str, *, status: str | None = None, undo_status: str | None = None, repeat_status: str | None = None) -> None:
@@ -37314,23 +37360,18 @@ def _cb_apply(block_id: str, *, direction: str) -> dict[str, Any]:
         write_batch: list[Point] = []
         batch_bucket: str | None = None
         batch_org: str | None = None
+        manager: InfluxWriteManager | None = None
 
         def flush_writes() -> None:
-            nonlocal write_batch, batch_bucket, batch_org
+            nonlocal write_batch, batch_bucket, batch_org, manager
             if not write_batch:
                 return
             bkt = str(batch_bucket or cfg.get("bucket") or "")
             org = str(batch_org or cfg.get("org") or "")
-            _write_v2_with_retry(
-                wapi,
-                cfg,
-                bucket=bkt,
-                org=org,
-                record=write_batch,
-                write_precision=WritePrecision.NS,
-                operation="change_block_batch",
-                point_count=len(write_batch),
-            )
+            if manager is None or manager.bucket != bkt or manager.org != org:
+                manager = InfluxWriteManager(wapi, cfg, bucket=bkt, org=org, operation="change_block_batch", write_precision=WritePrecision.NS, batch_size=2000)
+            manager.batch = list(write_batch)
+            manager.flush()
             write_batch = []
             batch_bucket = None
             batch_org = None
