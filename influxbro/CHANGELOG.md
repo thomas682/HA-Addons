@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.527
+
+### Fix
+
+- Dashboard / Smart Assist: Zwei Fehlerpfade behoben. Erstens verwendet `api/fields` bei explizitem `range`-Parameter (z. B. `range=all`) jetzt nicht mehr den `schema.measurementFieldKeys(...)`-Shortcut, sondern den robusteren direkten Query-Pfad, damit die Feldliste auch in diesem UI-Fall stabil geladen wird. Zweitens verwendet die Snapshot-Erzeugung des Smart Debug Assistant wieder einen vorhandenen Runtime-Config-Reader statt des undefinierten Symbols `read_runtime_cfg`. Dadurch funktioniert `Snapshot erzeugen` wieder und erzeugt erneut eine Datei. ([#488](https://github.com/thomas682/HA-Addons/issues/488))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.526
 
 ### Fix

@@ -197,6 +197,8 @@ Der Statistik-Cache behandelt fehlende Eintraege jetzt als erwarteten Leerzustan
 
 Der Smart Debug Assistant und zugehoerige Popup-/Tooltip-Pfade exportieren die Hilfsfunktion `_keyFromEl` jetzt auch global. Dadurch schlagen spaetere Host-/Dialogpfade nicht mehr mit `ReferenceError: _keyFromEl is not defined` fehl, wenn der Smart-Assistant aus dem Fehlerdialog oder Popup-Kontext gestartet wird.
 
+Bei expliziten Dashboard-Zeiträumen wie `range=all` verwendet die Feldliste jetzt ebenfalls den direkten Query-Pfad statt des Schema-Shortcuts. Zusätzlich funktioniert `Snapshot erzeugen` im Smart Debug Assistant wieder, weil die Snapshot-Erzeugung die Runtime-Konfiguration über einen vorhandenen Reader einliest statt auf ein undefiniertes Symbol zuzugreifen.
+
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
 Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus dem Profil abgeleitet werden. Grundlage sind insbesondere `derived.internal_type`, `device_class`, `state_class`, erkannter Influx-Feldtyp und weitere Profilmerkmale. Das Dashboard zeigt die effektiven Typen automatisch an. Ueber den Button `Strategiewahl` oeffnet sich ein Dialog mit:

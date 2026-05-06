@@ -1539,8 +1539,23 @@ def test_fields_all_time_uses_schema_measurement_field_keys(load_app_module, tmp
     assert r.status_code == 200
     q = captured["q"]
     assert isinstance(q, str)
-    assert 'schema.measurementFieldKeys(bucket: "b", measurement: "°C")' in q
-    assert 'distinct(column: "_field")' not in q
+    assert 'schema.measurementFieldKeys' not in q
+    assert 'distinct(column: "_field")' in q
+
+
+def test_support_bundle_snapshot_create_uses_runtime_cfg_reader(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "token": "t"})
+    monkeypatch.setattr(app_mod, "_monitor_template_snapshot", lambda: {"ok": True})
+    monkeypatch.setattr(app_mod, "_app_state_load", lambda: {"state": "ok"})
+    app_mod.RUNTIME_CFG_FILE.write_text('{"ui_tooltips_enabled": true}', encoding="utf-8")
+
+    client = app_mod.app.test_client()
+    r = client.post("/api/support_bundle/snapshot/create", json={})
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["row"]["id"]
 
 
 def test_verify_measurement_start_returns_job_id(load_app_module, tmp_path, monkeypatch):

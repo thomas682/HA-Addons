@@ -2998,6 +2998,16 @@ def load_cfg():
     return cfg
 
 
+def read_runtime_cfg() -> dict[str, Any]:
+    try:
+        if not RUNTIME_CFG_FILE.exists():
+            return {}
+        raw = json.loads(RUNTIME_CFG_FILE.read_text(encoding="utf-8")) or {}
+        return raw if isinstance(raw, dict) else {}
+    except Exception:
+        return {}
+
+
 def _clamp_int_cfg(cfg: dict[str, Any], key: str, default: int, lo: int, hi: int) -> None:
     try:
         cfg[key] = int(cfg.get(key, default))
@@ -24325,7 +24335,7 @@ def fields():
                     "error": "InfluxDB v2 requires token, org, bucket. Bitte in /config YAML einlesen und speichern.",
                 }), 400
             with v2_client(cfg) as c:
-                if measurement and not entity_id and not friendly_name and not selector_start_dt and not selector_stop_dt:
+                if measurement and not entity_id and not friendly_name and not selector_start_dt and not selector_stop_dt and not range_key:
                     q = (
                         'import "influxdata/influxdb/schema"\n'
                         f'schema.measurementFieldKeys(bucket: "{cfg["bucket"]}", measurement: {_flux_str(measurement)})'
