@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.524
+
+### Fix
+
+- Console / Ingress-Host: Unbehandelte Promise-Rejections mit dem numerischen Host-Code `3` werden im eingebetteten HA-Panel jetzt wie das bereits bekannte `No Listener: tabs:outgoing.message.ready` als nicht-nutzbares Host-Rauschen unterdrueckt. Dadurch erscheint der minuetliche Console-Fehler aus `ha-panel-app.ts` nicht mehr als InfluxBro-Fehler. ([#485](https://github.com/thomas682/HA-Addons/issues/485))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.523
 
 ### Fix

@@ -3558,6 +3558,12 @@ try{
     // Home Assistant / Ingress vendor noise on navigation (not actionable for users).
     if(msg.includes('No Listener: tabs:outgoing.message.ready')){
       try{ if(e && e.preventDefault) e.preventDefault(); }catch(x){}
+      return;
+    }
+    // Embedded HA panel noise: some host-side timers reject with numeric code 3.
+    if(reason === 3 || msg === '3'){
+      try{ if(e && e.preventDefault) e.preventDefault(); }catch(x){}
+      return;
     }
     _reportConsoleError('unhandledrejection', msg, '', 0, reason && reason.stack ? reason.stack : '');
   });
