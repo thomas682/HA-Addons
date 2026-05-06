@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.523
+
+### Fix
+
+- Dashboard / Ladezeit: Nicht-kritische Startup-Anfragen werden bei bereits bekannter Messwertauswahl aus dem synchronen Initialpfad verschoben. Die Measurement-Liste, Selector-Suggestions, das Messwertprofil und der Stats-Reload nach Cache-Restore laufen jetzt als Warmup im Hintergrund, und die Namenszeitachse laedt das Messwertprofil nicht mehr doppelt nach. Dadurch wird die Dashboard-Seite frueher sichtbar und blockiert seltener auf langsame `measurements`, `stats` oder `tag_combo_ranges`-Nebenpfade. ([#484](https://github.com/thomas682/HA-Addons/issues/484))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.522
 
 ### Fix

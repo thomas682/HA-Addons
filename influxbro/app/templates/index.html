@@ -3243,7 +3243,7 @@ function cacheRestoreIfAvailable(){
       draw(LAST_ROWS);
       autoScaleYFromWindow();
       try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
-      loadStats().catch(()=>{});
+      _deferDashboardWarmup(()=>loadStats(), 60);
     }
 
     // Best-effort: load the field list for the restored measurement so the dropdown is valid.
@@ -5845,12 +5845,10 @@ async function refreshNameTimelinePanel(){
       hideNameTimelinePanel();
       return;
     }
-    try{ await refreshMeasurementProfilePanel(); }catch(e){}
     try{ await refreshOutlierStrategyPanel(); }catch(e){}
     const rows = await loadComboRanges('friendly_name', { entity_id: entityId, friendly_name: null });
     renderNameTimeline(rows || []);
   }catch(e){
-    try{ await refreshMeasurementProfilePanel(); }catch(x){}
     try{ await refreshOutlierStrategyPanel(); }catch(x){}
     hideNameTimelinePanel();
   }
@@ -17399,6 +17397,13 @@ function _asyncNoThrow(fn){
   try{ fn(); }catch(e){}
 }
 
+function _deferDashboardWarmup(fn, delay){
+  const ms = Math.max(0, Number(delay) || 0);
+  setTimeout(()=>{
+    try{ Promise.resolve().then(()=>fn()).catch(()=>{}); }catch(e){}
+  }, ms);
+}
+
 const _debRefreshDashboardSrc = debounce(()=>{
   _asyncNoThrow(()=>{ refreshDashboardSuggestions({silent: true}).catch(()=>{}); });
 }, 350);
@@ -18238,11 +18243,13 @@ try{
     if(globalSel.entity_id) $e.value = globalSel.entity_id;
 
     // Load measurements after restoring stored selector values.
-    await loadMeasurements({silent: true});
+    const startupMeasurement = String(($mf && $mf.value) || '').trim();
+    if(startupMeasurement) _deferDashboardWarmup(()=>loadMeasurements({silent: true}), 0);
+    else await loadMeasurements({silent: true});
 
     await loadDashboardFields(String(($mf && $mf.value) || '').trim(), {silent: true});
-    await refreshDashboardSuggestions({silent: true});
-    try{ await refreshMeasurementProfilePanel(); }catch(e){}
+    _deferDashboardWarmup(()=>refreshDashboardSuggestions({silent: true}), 40);
+    _deferDashboardWarmup(()=>refreshMeasurementProfilePanel(), 20);
     try{ if(!$measurementProfileSections || !$measurementProfileSections.innerHTML) renderMeasurementProfilePanel(null); }catch(e){}
     saveState();
 

@@ -382,8 +382,16 @@ def test_query_test_dialog_includes_query_history_panel():
 def test_dashboard_restores_global_selection_before_initial_measurements_load():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     restore_idx = body.index("if(globalSel.measurement_filter)")
-    load_idx = body.index("await loadMeasurements({silent: true});")
+    load_idx = body.index("const startupMeasurement = String(($mf && $mf.value) || '').trim();")
     assert restore_idx < load_idx
+
+
+def test_dashboard_startup_defers_warm_selector_and_profile_requests_when_measurement_known():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "function _deferDashboardWarmup(fn, delay){" in body
+    assert "if(startupMeasurement) _deferDashboardWarmup(()=>loadMeasurements({silent: true}), 0);" in body
+    assert "_deferDashboardWarmup(()=>refreshDashboardSuggestions({silent: true}), 40);" in body
+    assert "_deferDashboardWarmup(()=>refreshMeasurementProfilePanel(), 20);" in body
 
 
 def test_settings_include_bugreport_log_history_hours():
@@ -692,6 +700,19 @@ def test_dashboard_name_timeline_panel_and_merge_action_exist():
     assert '$nameTimelinePanel.open = true;' in body
     assert 'function mergeFriendlyNamesToLatest()' in body
     assert './api/friendly_name_merge_latest' in body
+
+
+def test_name_timeline_no_longer_reloads_measurement_profile_on_every_refresh():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    start = body.index("async function refreshNameTimelinePanel(){")
+    end = body.index("async function mergeFriendlyNamesToLatest(){")
+    block = body[start:end]
+    assert "refreshMeasurementProfilePanel()" not in block
+
+
+def test_cache_restore_defers_stats_reload_off_critical_start_path():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "_deferDashboardWarmup(()=>loadStats(), 60);" in body
 
 
 def test_analysis_log_modal_has_copy_button_and_error_highlight_and_no_superpicker():
@@ -1568,6 +1589,14 @@ def test_tooltips_use_custom_html_tooltip_layer():
     assert "ib_html_tooltip" in tooltips
     assert "HTML custom tooltip" in tooltips
     assert "window.matchMedia && !window.matchMedia('(hover:hover) and (pointer:fine)').matches" not in tooltips
+
+
+def test_topbar_suppresses_known_ha_unhandled_rejection_noise():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "if(msg.includes('No Listener: tabs:outgoing.message.ready')){" in body
+    assert "if(reason === 3 || msg === '3'){" in body
+    assert "if(e && e.preventDefault) e.preventDefault();" in body
+    assert "_reportConsoleError('unhandledrejection', msg, '', 0, reason && reason.stack ? reason.stack : '');" in body
 
 
 def test_popup_uses_global_decode_helper_for_query_and_meta_texts():
