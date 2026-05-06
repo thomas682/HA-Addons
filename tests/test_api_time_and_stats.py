@@ -1725,6 +1725,18 @@ def test_migration_start_persists_windows_and_checklist(load_app_module, tmp_pat
     assert any(item["key"] == "migration_started" for item in j["migration"]["checklist"])
 
 
+def test_storage_usage_delete_allows_only_safe_items(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    app_mod.RUNTIME_CFG_FILE.write_text('{}', encoding='utf-8')
+    client = app_mod.app.test_client()
+    r = client.post('/api/storage_usage/delete', json={'name':'runtime_cfg', 'confirm': True})
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j['ok'] is True
+    r2 = client.post('/api/storage_usage/delete', json={'name':'backup_dir', 'confirm': True})
+    assert r2.status_code == 400
+
+
 def test_native_fullbackup_uses_explicit_host_and_org_flags(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     job_id = "job-fullbackup"

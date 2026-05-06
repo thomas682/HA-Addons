@@ -756,6 +756,14 @@ def test_logs_page_exposes_time_window_filter_and_record_apply():
     assert 'ACTIVE_FILTER = { start_at: String(rec.start_at || \'\'), stop_at: \'\' };' in logs
 
 
+def test_dbinfo_storage_table_exposes_safe_delete_selection():
+    dbinfo = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "dbinfo.html").read_text()
+    assert 'id="storage_delete"' in dbinfo
+    assert 'safe_del' in dbinfo
+    assert 'tr.className = it.safe_delete ? \'selectable\' : \'\';' in dbinfo
+    assert "./api/storage_usage/delete" in dbinfo
+
+
 def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-ib-tooltip-toggle="1"' in tooltips

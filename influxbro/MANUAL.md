@@ -1153,6 +1153,10 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
   - `Kopieren`
   - `Einfuegen oben`
 - Fehlerhafte manuelle Queries werden mit `ERROR` markiert und rot dargestellt.
+- In der Speicher-Tabelle `dbinfo_storage.tbl` markiert InfluxBro jetzt Dateien/Ordner, die sicher regenerierbar sind.
+- Diese Eintraege koennen selektiert und mit `Löschen` entfernt werden.
+- Das Loeschen ist auf eine feste serverseitige Whitelist begrenzt, z. B. fuer Laufzeitzustand, lokale UI-Zustaende und Cache-/Trace-/History-Dateien.
+- Produktive Backups, Quell-Datenbanken oder andere nicht explizit freigegebene Speicherziele werden ueber diesen Pfad nicht geloescht.
 
 - Menuepunkt `Diagnose` zeigt Best-effort Status (Add-on, Influx Verbindung, Systemlast) und einige KPIs.
 - Erweiterte KPIs werden aus InfluxDB `GET /metrics` gelesen (falls erreichbar). Wenn `/metrics` nicht verfuegbar ist, zeigt die Seite trotzdem die Basis-Infos.

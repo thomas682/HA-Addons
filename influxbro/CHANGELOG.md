@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.539
+
+### Fix
+
+- Diagnose / Speicher: In der Tabelle `dbinfo_storage.tbl` werden jetzt sicher regenerierbare Dateien/Ordner explizit markiert. Diese Zeilen koennen selektiert und ueber einen Button `Löschen` mit Sicherheitsabfrage entfernt werden; danach wird die Liste aktualisiert. Das Loeschen ist serverseitig auf eine feste Whitelist regenerierbarer Laufzeit-/Cache-/State-Dateien begrenzt und greift nicht auf produktive Backups oder persistente Kerndaten zu. ([#501](https://github.com/thomas682/HA-Addons/issues/501))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.538
 
 ### Fix

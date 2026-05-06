@@ -240,6 +240,29 @@ UI_PROFILE_ACTIVE_PATH = DATA_DIR / "ui_profile_active.json"
 MIGRATION_STATE_PATH = DATA_DIR / "influxbro_v3_migration_state.json"
 MIGRATION_STATE_LOCK = threading.RLock()
 
+STORAGE_SAFE_DELETE_NAMES = {
+    "runtime_cfg",
+    "dash_last",
+    "ui_state",
+    "app_state",
+    "ui_profile_active",
+    "cache_usage",
+    "ui_actions",
+    "worklog",
+    "traces",
+    "jobs_history",
+    "timers_state",
+    "analysis_start_cache",
+    "exports_dir",
+    "imports_dir",
+    "ui_profiles_dir",
+    "dash_cache_dir",
+    "analysis_cache_dir",
+    "stats_cache_dir",
+    "series_stats_cache_dir",
+    "storage_usage_history",
+}
+
 # Dashboard last graph pointer (file-based; restore across browser sessions)
 DASH_LAST_LOCK = threading.RLock()
 DASH_LAST_PATH = DATA_DIR / "influxbro_dashboard_last.json"
@@ -33094,6 +33117,8 @@ def api_storage_usage():
             "bytes": 0,
             "files": None,
             "mtime": st.get("mtime"),
+            "safe_delete": name in STORAGE_SAFE_DELETE_NAMES,
+            "safe_delete_reason": "wird bei Bedarf neu erzeugt" if name in STORAGE_SAFE_DELETE_NAMES else "",
         }
         if row["exists"] and row["kind"] == "dir":
             b, n = _dir_size(p)
@@ -33133,6 +33158,51 @@ def api_storage_usage():
         "backup_min_free_mb": int(cfg.get("backup_min_free_mb", 0) or 0),
         "backup_dir": str(backup_dir(cfg)),
     })
+
+
+@app.post("/api/storage_usage/delete")
+def api_storage_usage_delete():
+    body = request.get_json(force=True) or {}
+    if not bool(body.get("confirm")):
+        return jsonify({"ok": False, "error": "confirmation required"}), 400
+    want = str(body.get("name") or "").strip()
+    if not want or want not in STORAGE_SAFE_DELETE_NAMES:
+        return jsonify({"ok": False, "error": "item not safely deletable"}), 400
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    entries: dict[str, Path] = {
+        "runtime_cfg": RUNTIME_CFG_FILE,
+        "dash_last": DASH_LAST_PATH,
+        "ui_state": UI_STATE_PATH,
+        "app_state": APP_STATE_PATH,
+        "ui_profile_active": UI_PROFILE_ACTIVE_PATH,
+        "cache_usage": CACHE_USAGE_PATH,
+        "ui_actions": UI_ACTIONS_PATH,
+        "worklog": ANALYSIS_HISTORY_PATH,
+        "traces": TRACE_PATH,
+        "jobs_history": JOBS_HISTORY_PATH,
+        "timers_state": TIMERS_STATE_PATH,
+        "analysis_start_cache": ANALYSIS_START_CACHE_PATH,
+        "exports_dir": EXPORT_DIR,
+        "imports_dir": IMPORT_DIR,
+        "ui_profiles_dir": UI_PROFILES_DIR,
+        "dash_cache_dir": DASH_CACHE_DIR,
+        "analysis_cache_dir": ANALYSIS_CACHE_DIR,
+        "stats_cache_dir": STATS_CACHE_DIR,
+        "series_stats_cache_dir": SERIES_STATS_CACHE_DIR,
+        "storage_usage_history": (DATA_DIR / "storage_usage_history.jsonl"),
+    }
+    p = entries.get(want)
+    if not p:
+        return jsonify({"ok": False, "error": "path unresolved"}), 400
+    try:
+        if p.exists():
+            if p.is_dir():
+                shutil.rmtree(p)
+            else:
+                p.unlink(missing_ok=True)
+        return jsonify({"ok": True, "deleted": want, "path": str(p)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 
 def _series_inventory_window(days: int) -> tuple[datetime, datetime]:
