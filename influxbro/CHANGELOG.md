@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.536
+
+### Fix
+
+- Logs / Suche: Die Suchfilterung auf der Logs-Seite arbeitet jetzt blockbasiert statt nur zeilenweise. Mehrzeilige Query-/Trace-Logeintraege bleiben damit als zusammenhaengender Block sichtbar, wenn der Suchbegriff nur in einer ihrer Unterzeilen vorkommt. So wird bei Query-Logs nicht mehr nur eine einzelne `|> range(...)`-Zeile angezeigt, sondern der gesamte zugehoerige Logblock. ([#500](https://github.com/thomas682/HA-Addons/issues/500))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.535
 
 ### Fix

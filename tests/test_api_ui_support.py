@@ -728,6 +728,13 @@ def test_logs_page_exposes_temporary_recording_controls():
     assert 'const all = _filterByRecording(RAW.split("\\n"));' in logs
 
 
+def test_logs_search_filters_whole_blocks_not_single_lines():
+    logs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    assert 'function splitBlocks(lines)' in logs
+    assert 'const blocks = splitBlocks(all);' in logs
+    assert 'const searched = filteredBlocks.filter(block => block.some(l => String(l||"").toLowerCase().includes(t)));' in logs
+
+
 def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-ib-tooltip-toggle="1"' in tooltips

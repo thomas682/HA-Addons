@@ -762,17 +762,35 @@
         const view = $viewProfile ? String($viewProfile.value || "trace") : "trace";
         const all = _filterByRecording(RAW.split("\n"));
 
-        const filtered = all.filter(l => {
-          const s = String(l || "");
-          const up = s.toUpperCase();
+        function splitBlocks(lines){
+          const out = [];
+          let cur = [];
+          function flush(){
+            if(cur.length) out.push(cur);
+            cur = [];
+          }
+          lines.forEach((line)=>{
+            const s = String(line || '');
+            const isHeader = /^\d{4}-\d{2}-\d{2} /.test(s);
+            if(isHeader && cur.length) flush();
+            cur.push(s);
+          });
+          flush();
+          return out;
+        }
+
+        const blocks = splitBlocks(all);
+
+        const filteredBlocks = blocks.filter((block) => {
+          const joined = block.join("\n");
+          const up = joined.toUpperCase();
           const hasLvl = (up.includes(" ERROR ") || up.includes(" WARNING ") || up.includes(" INFO ") || up.includes(" DEBUG "));
-          const isDetails = s.includes("influxbro.details");
+          const isDetails = joined.includes("influxbro.details");
           if(view === "error") return up.includes(" ERROR ") || up.includes("TRACEBACK") || up.includes("EXCEPTION");
           if(view === "debug"){
             if(isDetails) return false;
             return hasLvl ? true : true;
           }
-          // trace
           return true;
         });
 
@@ -792,24 +810,23 @@
           return String(s || "").toUpperCase().includes(" WARNING ");
         }
 
-        if(!t){
-          const html = filtered.map(l => {
+        function renderBlock(block){
+          return block.map((l)=>{
             const esc = escapeHtml(l);
             if(isErrorLine(l)) return `<span class="log_error_line">${esc}</span>`;
             if(isWarnLine(l)) return `<span class="log_warn_line">${esc}</span>`;
             return esc;
           }).join("\n");
+        }
+
+        if(!t){
+          const html = filteredBlocks.map(renderBlock).join("\n");
           $logpre.innerHTML = html;
           applyMarkSearch();
           return;
         }
-        const searched = filtered.filter(l => String(l||"").toLowerCase().includes(t));
-        const html = searched.map(l => {
-          const esc = escapeHtml(l);
-          if(isErrorLine(l)) return `<span class="log_error_line">${esc}</span>`;
-          if(isWarnLine(l)) return `<span class="log_warn_line">${esc}</span>`;
-          return esc;
-        }).join("\n");
+        const searched = filteredBlocks.filter(block => block.some(l => String(l||"").toLowerCase().includes(t)));
+        const html = searched.map(renderBlock).join("\n");
         $logpre.innerHTML = html;
         applyMarkSearch();
       }
