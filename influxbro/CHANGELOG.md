@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.525
+
+### Fix
+
+- Stats Cache / Console: `api/stats_cache/get` behandelt einen fehlenden Cache-Eintrag jetzt als normalen Leerzustand (`ok: true`, `ready: false`, `cache_miss: true`) statt als HTTP-404 mit `cache miss`. Dadurch erzeugen vorab verschwundene oder bereinigte Statistik-Caches keine irrefuehrenden Console-Fehler mehr, waehrend die UI den Cache-Fallback weiterhin sauber erkennen kann. ([#486](https://github.com/thomas682/HA-Addons/issues/486))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.524
 
 ### Fix

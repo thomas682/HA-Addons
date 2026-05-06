@@ -1490,6 +1490,19 @@ def test_tag_combo_ranges_timeout_returns_warning_rows_for_name_prefetch(load_ap
     assert "Timeout beim Zugriff" in j["warning"]
 
 
+def test_stats_cache_get_returns_ready_false_for_cache_miss(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    client = app_mod.app.test_client()
+    r = client.get("/api/stats_cache/get?cache_id=missing-cache-id&limit=20000&offset=0")
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["ready"] is False
+    assert j["cache_miss"] is True
+    assert j["rows"] == []
+    assert j["total"] == 0
+
+
 def test_fields_all_time_uses_schema_measurement_field_keys(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured = {"q": None}

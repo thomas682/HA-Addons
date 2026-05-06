@@ -22168,7 +22168,16 @@ def api_stats_cache_get():
     meta = _stats_cache_load_meta(cache_id)
     payload = _stats_cache_load_payload(cache_id)
     if not meta or not payload:
-        return jsonify({"ok": False, "error": "cache miss"}), 404
+        return jsonify({
+            "ok": True,
+            "ready": False,
+            "cache_miss": True,
+            "rows": [],
+            "total": 0,
+            "columns": [],
+            "key": {},
+            "cache": {"id": cache_id},
+        })
 
     try:
         limit = int(request.args.get("limit", "5000"))

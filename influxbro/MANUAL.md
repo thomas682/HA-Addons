@@ -193,6 +193,8 @@ Bei bereits bekannter Dashboard-Auswahl werden einige teure Nebenpfade (Measurem
 
 Bekannte Host-/Ingress-Rejections aus dem eingebetteten HA-Panel werden zusaetzlich clientseitig gefiltert. Dazu gehoert neben `No Listener: tabs:outgoing.message.ready` jetzt auch der numerische Host-Code `3`, der andernfalls als minuetlicher Console-Fehler in `ha-panel-app.ts` auftauchen kann, ohne dass InfluxBro selbst einen fachlichen Fehler ausgeloest hat.
 
+Der Statistik-Cache behandelt fehlende Eintraege jetzt als erwarteten Leerzustand statt als harten HTTP-Fehler. Wenn ein alter `cache_id` bereits bereinigt wurde, kann die UI dadurch still auf Hintergrundjob oder frisches Ergebnis zurueckfallen, ohne einen irrefuehrenden `cache miss`-Consolefehler zu erzeugen.
+
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
 Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus dem Profil abgeleitet werden. Grundlage sind insbesondere `derived.internal_type`, `device_class`, `state_class`, erkannter Influx-Feldtyp und weitere Profilmerkmale. Das Dashboard zeigt die effektiven Typen automatisch an. Ueber den Button `Strategiewahl` oeffnet sich ein Dialog mit:
