@@ -2420,9 +2420,39 @@
     }
     POPUP_SET_ACTIONS = _setActionButtons;
 
+    function _popupCurrentCopyText(){
+      try{
+        const active = document.activeElement;
+        if(active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')){
+          const value = String(active.value || '');
+          const start = Number(active.selectionStart);
+          const end = Number(active.selectionEnd);
+          if(value && isFinite(start) && isFinite(end) && end > start) return value.slice(start, end);
+          if(value && active.closest && active.closest('#influxbro_popup_root')) return value;
+        }
+      }catch(e){}
+      try{
+        const sel = String(window.getSelection ? (window.getSelection() || '') : '').trim();
+        if(sel) return sel;
+      }catch(e){}
+      try{
+        const visible = String(CURRENT_POPUP_VISIBLE_TEXT || '').trim();
+        if(visible) return visible;
+      }catch(e){}
+      try{
+        const stored = String(CURRENT_COPY_TEXT || '').trim();
+        if(stored) return stored;
+      }catch(e){}
+      try{
+        return String(pre.textContent || '');
+      }catch(e){
+        return '';
+      }
+    }
+
     async function doCopy(){
       try{ copyHint.textContent = ''; }catch(e){}
-      const txt = String(CURRENT_COPY_TEXT || pre.textContent || '');
+      const txt = String(_popupCurrentCopyText() || '');
       if(!txt){
         try{ copyHint.textContent = 'nichts zu kopieren'; }catch(e){}
         return;

@@ -185,6 +185,8 @@ Das Messwertprofil bleibt sichtbar, sobald `measurement`, `field` und `entity_id
 
 Das gefilterte Analyse-Logging (`analysis_log_modal`) folgt jetzt enger dem bestehenden Dialogmuster: Such-/Refresh-Leiste wie gehabt, zusaetzlicher Button `In Zwischenablage kopieren`, Dialog-Meta rechts unten, kein S-Picker und visuelle Hervorhebung von Fehlerzeilen. Die Laufzeit `dur_ms` wird aus den vorhandenen Eventdaten robuster abgeleitet und nicht mehr pauschal als `0` angezeigt, wenn bessere Informationen verfuegbar sind.
 
+Der zentrale Dialog-Button `Zwischenablage` kopiert in Popup-Fenstern jetzt bevorzugt den aktuell sichtbaren oder markierten Inhalt. Das betrifft insbesondere `Letzter Fehler` zusammen mit `Logs (5min)`, wo der angezeigte Logauszug wieder direkt kopierbar ist.
+
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
 Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus dem Profil abgeleitet werden. Grundlage sind insbesondere `derived.internal_type`, `device_class`, `state_class`, erkannter Influx-Feldtyp und weitere Profilmerkmale. Das Dashboard zeigt die effektiven Typen automatisch an. Ueber den Button `Strategiewahl` oeffnet sich ein Dialog mit:

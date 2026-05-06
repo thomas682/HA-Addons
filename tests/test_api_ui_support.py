@@ -887,6 +887,15 @@ def test_popup_search_uses_current_visible_text():
     assert 'CURRENT_POPUP_VISIBLE_TEXT' in tooltips
 
 
+def test_popup_copy_prefers_current_visible_or_selected_text():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'function _popupCurrentCopyText()' in tooltips
+    assert "active.closest('#influxbro_popup_root')" in tooltips
+    assert "const sel = String(window.getSelection ? (window.getSelection() || '') : '').trim();" in tooltips
+    assert "const visible = String(CURRENT_POPUP_VISIBLE_TEXT || '').trim();" in tooltips
+    assert "const stored = String(CURRENT_COPY_TEXT || '').trim();" in tooltips
+
+
 def test_dashboard_raw_query_button_and_query_history_metadata_exist():
     index_html = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'id="raw_query_open"' in index_html

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.521
+
+### Fix
+
+- Dialoge / Zwischenablage: Der zentrale Popup-Copy-Button bevorzugt jetzt den aktuell sichtbaren oder im Popup markierten Inhalt, bevor auf den gespeicherten Fallbacktext zurueckgegriffen wird. Dadurch kopiert der Button im Dialog `Letzter Fehler` nach `Logs (5min)` wieder den angezeigten Log-/Textinhalt statt leer oder veraltet zu bleiben. ([#482](https://github.com/thomas682/HA-Addons/issues/482))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.520
 
 ### Fix
