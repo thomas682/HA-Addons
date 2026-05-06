@@ -795,6 +795,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Fuer `Messwertlücke` gibt es einen globalen Schwellwert `outlier_gap_seconds_default` in den Einstellungen sowie Dashboard-Overrides in der Ausreißer-Parametrierung und im Filter-Scan.
 - Die Statistik-Seite faengt abgelaufene `global_stats`-Jobs jetzt sauber ab. Alte Job-IDs werden lokal geloescht und die Ansicht faellt still auf Cache-/Snapshot-Daten zurueck, statt bei jedem Seitenaufruf mit einem 404 fuer ein altes Job-Ergebnis zu starten.
 - Tooltips sind bewusst kurz gehalten: oben eine Funktionsbeschreibung, unten der UI-Key in spitzen Klammern (z.B. `<dashboard_caching.btn_cache_pruefen>`).
+- Tooltips koennen jetzt global direkt im Tooltip-Kopf ueber eine Checkbox ein-/ausgeschaltet werden. Die Einstellung ist persistent und gilt seitenuebergreifend fuer alle Standard-Tooltips.
 - Unter der Cache-Summary des Dashboards wird jetzt zusaetzlich `Gefunden:` mit den im Cache bekannten Ausreißern je Typ angezeigt. Pro Cache-Segment gibt es daneben den Toggle `ol`, der vertikale Marker fuer alle Ausreißer-Zeitpunkte dieses Segments im Zeitstrahl einblendet.
 - Die `ol` Marker im Zeitstrahl sind jetzt nach Ausreisser-Typ eingefaerbt und koennen oberhalb des Zeitstrahls pro Typ ein-/ausgeblendet werden (wirkt nur auf den Zeitstrahl, nicht auf Tabellen/Counts).
 - Nach `Analyse mit Cache` oder `Analyse ohne Cache` werden zusammenhaengende Analyse-Cache-Segmente jetzt automatisch kombiniert. Das entspricht dem manuellen Dashboard-Button `kombinieren`.
@@ -865,6 +866,34 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der Dialog `Ausreißer-Parameter` erklaert jeden Parameter direkt unter dem Eingabefeld. Die Werte werden global gespeichert (wie in den Einstellungen). Leere Felder deaktivieren optionale Grenzen oder setzen wieder den Default.
 - `Counter: Max Sprung` ist im Dialog getrennt nach Einheit editierbar (`W`, `kW`, `Wh`, `kWh`) und wird als globaler Default pro Einheit gespeichert.
 - `Recovery-Streak` wirkt auf die Dashboard-Ausreißeranalyse: Erst nach der eingestellten Anzahl gueltiger Werte in Folge gilt eine Stoerphase wieder als beendet.
+- Im Bereich `dashboard_analysis.panel_typen_gewaehlt` verwenden die Analyse-Typ-Chips nur noch den globalen Standard-Tooltip. Zusaetzliche `i`-Buttons in den Chips entfallen dort.
+- Der Standard-Tooltip fuer Analyse-Typ-Chips zeigt jetzt:
+  - den fachlichen Namen (z. B. `Stoerphase`)
+  - den technischen UI-Key (z. B. `dashboard_analysis.chip_type.fault_cluster`)
+  - eine Kurzbeschreibung
+  - optional ein Beispiel
+  - einen kleinen Button `Dokumentation oeffnen`
+- Die frueheren Meta-Anzeigen `Schweregrad`, `Datenquelle`, `Status` und die separate Dokumentations-Metabox werden dort nicht mehr angezeigt.
+- Solange `Shift` gedrueckt bleibt, verschwindet der Standard-Tooltip nicht automatisch. Das ermoeglicht die Interaktion mit Links oder Buttons im Tooltip; beim Loslassen von `Shift` schliesst der Tooltip wieder.
+
+### Analyse-Typen im Dashboard
+
+- `dashboard_analysis.chip_type.fault_cluster` / `Stoerphase`
+  - Erkennt zusammenhaengende Stoerphasen statt einzelner Ausreißerpunkte und bewertet die Rueckkehr in den Normalzustand separat.
+- `dashboard_analysis.chip_type.null_value` / `NULL-Wert`
+  - Erkennt fehlende oder als `NULL` gespeicherte Messwerte, damit Unterbrechungen oder unvollstaendige Daten sichtbar werden.
+- `dashboard_analysis.chip_type.zero_value` / `Unplausibler 0-Wert`
+  - Erkennt Nullwerte, die fachlich nicht plausibel sind und daher als potenzieller Fehlerzustand behandelt werden sollen.
+- `dashboard_analysis.chip_type.time_gap` / `Messwertluecke`
+  - Erkennt unplausibel grosse Zeitabstaende zwischen zwei Messpunkten.
+- `dashboard_analysis.chip_type.range_violation` / `Grenzverletzung`
+  - Erkennt Werte ausserhalb des erwarteten Wertebereichs.
+- `dashboard_analysis.chip_type.negative_jump` / `Negativer Sprung`
+  - Erkennt unplausible Rueckspruenge in Serien, die typischerweise nicht negativ springen sollten.
+- `dashboard_analysis.chip_type.rate_jump` / `Sprunghafter Anstieg`
+  - Erkennt ploetzliche positive Spruenge, die ueber dem erwarteten Schrittbereich liegen.
+- `dashboard_analysis.chip_type.reset_event` / `Reset-Ereignis`
+  - Erkennt Resets oder Neustarts eines Zaehler-/Messverlaufs.
 - Ueber der Raw-Tabelle gibt es zusaetzlich `Löschen`, `Undo` und `Info`. `Löschen` loescht den selektierten DB-Wert nach Rueckfrage. `Undo` macht genau die letzte direkte Button-Aenderung (`Einfügen` oder `Löschen`) fuer den selektierten Raw-Wert rueckgaengig. `Info` zeigt die komplette Aenderungshistorie des selektierten Raw-Werts im Popup.
 - Nach `Löschen` wird die Raw-Tabelle sofort neu geladen. Die Selektion springt dabei auf die naechste verbleibende Zeile, alternativ auf die vorherige, wenn die geloeschte Zeile am Ende stand.
 - Der Raw-Info-Button zeigt jetzt ein reines Icon statt der bisherigen Textbeschriftung `Info`.

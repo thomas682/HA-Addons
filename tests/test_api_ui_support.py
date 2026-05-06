@@ -678,6 +678,33 @@ def test_config_and_nav_expose_migration_and_influx_v3_controls():
     assert "./api/migration/summary" in migration
 
 
+def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert 'data-ib-tooltip-toggle="1"' in tooltips
+    assert 'Tooltips</label>' in tooltips
+    assert 'async function _persistTooltipEnabled(next)' in tooltips
+    assert 'if(key === \'Shift\'){' in tooltips
+    assert 'document.addEventListener(\'keyup\'' in tooltips
+    assert 'Dokumentation öffnen' in tooltips
+    assert '? öffnet Doku' not in tooltips
+    assert 'Schweregrad' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
+    assert 'Datenquelle' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
+    assert 'Status' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
+
+
+def test_dashboard_analysis_chips_use_only_standard_tooltip():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    start = body.index('function renderAnalysisTypeLists(){')
+    end = body.index('function renderOutlierOverviewTable(){')
+    block = body[start:end]
+    assert 'data-tooltip-title=' in block
+    assert 'data-tooltip-desc=' in block
+    assert 'data-tooltip-example=' in block
+    assert 'data-tooltip-count=' in block
+    assert 'data-chip-info' not in block
+    assert '_showOutlierChipTooltip' not in block
+
+
 def test_timer_table_shows_status_column_and_disabled_style_settings():
     jobs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
     assert '--ui-timer-disabled-fg:' in jobs

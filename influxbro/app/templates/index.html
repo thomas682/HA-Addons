@@ -8949,10 +8949,13 @@ function renderAnalysisTypeLists(){
       function _chipHtml(t, label, active){
         const color = _chipColors[t] || '#5ea56a';
         const cls = active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive ib-chip-strike';
-        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-ui="dashboard_analysis.chip_type.' + t + '" data-ib-pickkey="dashboard_analysis.chip_type.' + t + '" data-type="' + t + '" data-active="' + (active ? '1' : '0') + '" data-doc="' + _escAttr(String((OUTLIER_TYPE_META[t]||{}).doc || t)) + '" tabindex="0" role="button" aria-label="' + _escAttr(label + ' – ' + (active ? 'aktiv' : 'deaktiviert')) + '" title="Klicken zum ' + (active ? 'Abwaehlen' : 'Auswaehlen') + '">'
+        const meta = OUTLIER_TYPE_META[t] || {};
+        const desc = String(meta.description || ('Erklaert den Analyse-Typ ' + label + '.'));
+        const example = String(meta.example || '');
+        const count = Number((ANALYSIS_STATE && ANALYSIS_STATE.foundByType && ANALYSIS_STATE.foundByType[t]) || 0) || 0;
+        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-ui="dashboard_analysis.chip_type.' + t + '" data-ib-pickkey="dashboard_analysis.chip_type.' + t + '" data-type="' + t + '" data-active="' + (active ? '1' : '0') + '" data-doc="' + _escAttr(String(meta.doc || t)) + '" data-tooltip-title="' + _escAttr(String(label || t)) + '" data-tooltip-desc="' + _escAttr(desc) + '" data-tooltip-example="' + _escAttr(example) + '" data-tooltip-severity="' + _escAttr(String(meta.severity || 'low')) + '" data-tooltip-count="' + _escAttr(String(count)) + '" tabindex="0" role="button" aria-label="' + _escAttr(label + ' – ' + (active ? 'aktiv' : 'deaktiviert')) + '" title="' + _escAttr(desc) + '">'
           + '<div class="ib-chip-dot"></div>'
           + '<span class="ib-chip-label">' + label + '</span>'
-          + '<button type="button" class="ib-chip-info" data-chip-info="1" aria-label="Info zu ' + _escAttr(label) + '">ⓘ</button>'
           + '</div>';
       }
 
@@ -8969,44 +8972,12 @@ function renderAnalysisTypeLists(){
 
       // Add click handlers (toggle active/unselected in one panel)
       $selected.querySelectorAll('[data-type]').forEach(el => {
-        let showTimer = null;
-        el.addEventListener('mouseenter', ()=>{
-          if(showTimer) clearTimeout(showTimer);
-          showTimer = setTimeout(()=>{ _showOutlierChipTooltip(el, false); }, 350);
-        });
-        el.addEventListener('mouseleave', ()=>{
-          if(showTimer) clearTimeout(showTimer);
-          _hideOutlierChipTooltip(200);
-        });
-        el.addEventListener('focus', ()=>{ _showOutlierChipTooltip(el, false); });
-        el.addEventListener('blur', ()=>{ if(!OUTLIER_CHIP_TOOLTIP_PINNED) _hideOutlierChipTooltip(120); });
         el.addEventListener('keydown', (ev)=>{
           const key = String(ev.key || '');
-          if(key === '?' || key === '/'){
-            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-            const docKey = String(el.getAttribute('data-doc') || '').trim();
-            if(docKey) window.open(_outlierChipDocUrl(docKey), '_blank', 'noopener');
-            return;
-          }
-          if(key === 'Escape'){
-            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-            _closePinnedOutlierChipTooltip();
-            return;
-          }
           if(key === 'Enter' || key === ' '){
-            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-            _showOutlierChipTooltip(el, true);
-            return;
+            try{ ev.preventDefault(); }catch(e){}
           }
         });
-        const infoBtn = el.querySelector('[data-chip-info]');
-        if(infoBtn){
-          infoBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _showOutlierChipTooltip(el, true); });
-          infoBtn.addEventListener('keydown', (ev)=>{
-            const key = String(ev.key || '');
-            if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _showOutlierChipTooltip(el, true); }
-          });
-        }
         el.addEventListener('click', ()=>{
           const type = String(el.getAttribute('data-type') || '').trim();
           if(!type) return;

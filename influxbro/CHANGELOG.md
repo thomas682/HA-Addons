@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.532
+
+### Fix
+
+- Tooltips / Dashboard Analyse-Typen: Der globale Standard-Tooltip wurde auf das neue kompakte Dialogmuster umgestellt und besitzt jetzt direkt im Tooltip-Kopf einen persistenten globalen Ein/Aus-Schalter. Im Bereich `dashboard_analysis.panel_typen_gewaehlt` wurden die separaten Chip-`i`-Buttons entfernt; die Analyse-Typ-Chips verwenden nur noch den Standard-Tooltip mit Kurzbeschreibung, technischem Key, optionalem Beispiel und kleinem Button `Dokumentation oeffnen`. Die alten Meta-Felder `Schweregrad`, `Datenquelle`, `Status` und die separate Dokumentations-Metabox entfallen. Solange `Shift` gedrueckt bleibt, bleibt der Tooltip fuer Interaktionen sichtbar; beim Loslassen von `Shift` schliesst er wieder. ([#494](https://github.com/thomas682/HA-Addons/issues/494))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.531
 
 ### Fix
