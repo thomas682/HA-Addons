@@ -187,6 +187,8 @@ Das gefilterte Analyse-Logging (`analysis_log_modal`) folgt jetzt enger dem best
 
 Der zentrale Dialog-Button `Zwischenablage` kopiert in Popup-Fenstern jetzt bevorzugt den aktuell sichtbaren oder markierten Inhalt. Das betrifft insbesondere `Letzter Fehler` zusammen mit `Logs (5min)`, wo der angezeigte Logauszug wieder direkt kopierbar ist.
 
+Falls die Friendly-Name-Historie im Dashboard bei sehr grossen All-Time-Serien in ein Influx-Timeout laeuft, bleibt die Seite jetzt dennoch bedienbar: Die Namenshistorie faellt in diesem Spezialfall ohne 500er auf einen leeren/teilweisen Verlauf mit Warnhinweis zurueck. Zusaetzlich erzeugen reine `sysinfo`-Nebenpfade keine eigenen Client-Trace-Spans mehr, und die HTML-Tooltips werden nicht mehr auf Fine-Pointer-Geraete beschraenkt.
+
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
 Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus dem Profil abgeleitet werden. Grundlage sind insbesondere `derived.internal_type`, `device_class`, `state_class`, erkannter Influx-Feldtyp und weitere Profilmerkmale. Das Dashboard zeigt die effektiven Typen automatisch an. Ueber den Button `Strategiewahl` oeffnet sich ein Dialog mit:

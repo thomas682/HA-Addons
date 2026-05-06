@@ -723,11 +723,6 @@
       if(DOC_OPEN_MODE !== 'new_tab' && DOC_OPEN_MODE !== 'same_tab' && DOC_OPEN_MODE !== 'modal') DOC_OPEN_MODE = 'new_tab';
     }catch(e){ DOC_OPEN_MODE = 'new_tab'; }
 
-    // Only enable on hover-capable pointer devices.
-    try{
-      if(window.matchMedia && !window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
-    }catch(e){}
-
     function _pickerModeActive(){
       try{ return !!document.querySelector('#ui_picker_toggle.active, #ui_superpicker_toggle.active'); }catch(e){ return false; }
     }
@@ -4151,12 +4146,13 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
   }
   function _shouldTrace(url){
     const u = String(url || '');
-    if(!u) return false;
-    if(!(u.startsWith('./api/') || u.startsWith('/api/') || u.includes('/api/'))) return false;
-    if(u.includes('/api/trace/client_span')) return false;
-    if(u.includes('/api/perf_event')) return false;
-    if(u.includes('/api/perf_stats')) return false;
-    if(u.includes('/api/client_error')) return false;
+      if(!u) return false;
+      if(!(u.startsWith('./api/') || u.startsWith('/api/') || u.includes('/api/'))) return false;
+      if(u.includes('/api/trace/client_span')) return false;
+      if(u.includes('/api/sysinfo')) return false;
+      if(u.includes('/api/perf_event')) return false;
+      if(u.includes('/api/perf_stats')) return false;
+      if(u.includes('/api/client_error')) return false;
     if(u.includes('/api/client_log')) return false;
     return true;
   }

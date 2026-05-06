@@ -24600,6 +24600,18 @@ base
             return v.strip()
         return None
 
+    def _query_timed_out(err: Exception | None) -> bool:
+        try:
+            if isinstance(err, TimeoutError):
+                return True
+        except Exception:
+            pass
+        try:
+            msg = str(err or "").lower()
+        except Exception:
+            msg = ""
+        return ("timed out" in msg) or ("timeout" in msg)
+
     out_rows: list[dict[str, Any]] = []
     try:
         with v2_client(cfg) as c:
@@ -24658,6 +24670,17 @@ join(tables: {{a:first_last, b:count_row}}, on:["friendly_name"])
                         })
         return jsonify({"ok": True, "rows": out_rows})
     except Exception as e:
+        if use_name_prefetch and (
+            _query_timed_out(e)
+            or _query_timed_out(getattr(e, "__cause__", None))
+            or _query_timed_out(getattr(e, "__context__", None))
+        ):
+            return jsonify({
+                "ok": True,
+                "rows": out_rows,
+                "warning": _short_influx_error(e),
+                "timed_out": True,
+            })
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
 
 

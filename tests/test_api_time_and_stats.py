@@ -1459,6 +1459,37 @@ def test_tag_combo_ranges_prefetches_names_for_friendly_name_entity_all(load_app
     assert 'join(tables: {a:first_last, b:count_row}, on:["friendly_name"])' in q_join
 
 
+def test_tag_combo_ranges_timeout_returns_warning_rows_for_name_prefetch(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+
+    class _FakeQueryAPI:
+        def query(self, q: str, org: str | None = None):
+            raise TimeoutError("simulated timeout")
+
+    class _FakeClient:
+        def query_api(self):
+            return _FakeQueryAPI()
+
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_client(cfg: dict):
+        yield _FakeClient()
+
+    monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b", "host": "192.168.2.153", "port": 8086, "timeout_seconds": 10})
+    monkeypatch.setattr(app_mod, "v2_client", _fake_v2_client)
+
+    client = app_mod.app.test_client()
+    r = client.post("/api/tag_combo_ranges", json={"measurement": "°C", "field": "value", "group_tag": "friendly_name", "entity_id": "sensor.demo", "friendly_name": None, "limit": 80, "range": "all"})
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["rows"] == []
+    assert j["timed_out"] is True
+    assert "Timeout beim Zugriff" in j["warning"]
+
+
 def test_fields_all_time_uses_schema_measurement_field_keys(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     captured = {"q": None}

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.522
+
+### Fix
+
+- Dashboard / Messwertinfos / Tooltips: Drei verbundene Nachfixe. Erstens liefert `api/tag_combo_ranges` im teuren Spezialpfad `friendly_name + entity_id + range=all` bei Influx-Timeouts jetzt keinen 500er mehr an die UI, sondern einen erfolgreichen Fallback mit Warnhinweis und leeren/teilweisen Namenszeitranges. Zweitens werden Client-Trace-Spans fuer `api/sysinfo` nicht mehr erzeugt, damit Popup-/Nebenpfade weniger Netzwerklaerm verursachen. Drittens initialisiert die HTML-Tooltip-Engine nicht mehr nur auf `hover:hover + pointer:fine`, damit Tooltips auch in Hybrid-/Nicht-Fine-Pointer-Umgebungen wieder verfuegbar bleiben. ([#483](https://github.com/thomas682/HA-Addons/issues/483))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.521
 
 ### Fix

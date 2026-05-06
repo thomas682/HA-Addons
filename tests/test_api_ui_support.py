@@ -197,6 +197,7 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "fetch('./api/perf_event'" in nav_body
     assert "X-InfluxBro-Internal': '1" in nav_body
     assert "if(u.includes('/api/perf_stats')) return false;" in tooltips_body
+    assert "if(u.includes('/api/sysinfo')) return false;" in tooltips_body
     assert "function _shouldTrackLongWait(url, headers)" in tooltips_body
     assert "_shouldTrackLongWait(u, headers0)" in tooltips_body
 
@@ -1566,6 +1567,7 @@ def test_tooltips_use_custom_html_tooltip_layer():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "ib_html_tooltip" in tooltips
     assert "HTML custom tooltip" in tooltips
+    assert "window.matchMedia && !window.matchMedia('(hover:hover) and (pointer:fine)').matches" not in tooltips
 
 
 def test_popup_uses_global_decode_helper_for_query_and_meta_texts():
