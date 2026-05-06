@@ -657,6 +657,14 @@ def test_config_connection_section_exposes_write_retry_settings():
     assert 'write_retry_base_seconds: parseInt(el.write_retry_base_seconds.value,10),' in config
 
 
+def test_config_connection_section_exposes_write_gzip_settings():
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'id="write_gzip_enabled"' in config
+    assert 'id="write_gzip_level"' in config
+    assert '_setChecked(el.write_gzip_enabled, (cfg.write_gzip_enabled !== false));' in config
+    assert 'write_gzip_level: parseInt(el.write_gzip_level.value,10),' in config
+
+
 def test_timer_table_shows_status_column_and_disabled_style_settings():
     jobs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
     assert '--ui-timer-disabled-fg:' in jobs

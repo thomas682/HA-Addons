@@ -315,6 +315,18 @@
             <input id="write_retry_jitter_ms" type="number" />
           </div>
         </div>
+        <div class="param_row">
+          <div class="param_label">write_gzip_enabled<span class="param_hint">Aktiviert gzip fuer InfluxDB-v2-HTTP-Requests und komprimierte LP-Payloads in Backup-ZIPs.</span></div>
+          <div class="param_control">
+            <label class="ib_chk_row"><input type="checkbox" id="write_gzip_enabled" data-ui="config_settings.chk_write_gzip_enabled" data-ib-pickkey="config_settings.chk_write_gzip_enabled" title="settings.write_gzip_enabled" /><span></span></label>
+          </div>
+        </div>
+        <div class="param_row">
+          <div class="param_label">write_gzip_level<span class="param_hint">gzip-Komprimierungsstufe fuer Write-/Backup-Payloads (1-9).</span></div>
+          <div class="param_control">
+            <input id="write_gzip_level" type="number" />
+          </div>
+        </div>
         <div class="section_note"><span class="muted">Hinweis: Diese Werte werden in <code>/data/influx_browser_config.json</code> gespeichert (persistent).</span></div>
       </div>
     </div>
@@ -1697,7 +1709,7 @@ const _isChecked = (node) => !!(node && node.checked);
 
 const ids = [
   "influx_yaml_path",
-  "influx_version","scheme","host","port","verify_ssl","timeout_seconds","write_retry_enabled","write_retry_base_seconds","write_retry_max_retries","write_retry_jitter_ms",
+  "influx_version","scheme","host","port","verify_ssl","timeout_seconds","write_retry_enabled","write_retry_base_seconds","write_retry_max_retries","write_retry_jitter_ms","write_gzip_enabled","write_gzip_level",
   "org","bucket","token","admin_token",
   "database","username","password",
   "ui_table_visible_rows","ui_outlier_visible_rows","ui_raw_outlier_display_limit_per_type","ui_raw_outlier_search_limit","ui_table_row_height_px","ui_table_header_bg","ui_table_header_fg","ui_table_min_empty_rows","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_graph_ctx_before_minutes","ui_graph_ctx_after_minutes","ui_edit_graph_max_points","ui_decimals",
@@ -2993,6 +3005,8 @@ function setForm(cfg){
   _safeSet(el.write_retry_base_seconds, 'value', cfg.write_retry_base_seconds ?? 5);
   _safeSet(el.write_retry_max_retries, 'value', cfg.write_retry_max_retries ?? 5);
   _safeSet(el.write_retry_jitter_ms, 'value', cfg.write_retry_jitter_ms ?? 2000);
+  _setChecked(el.write_gzip_enabled, (cfg.write_gzip_enabled !== false));
+  _safeSet(el.write_gzip_level, 'value', cfg.write_gzip_level ?? 6);
 
   _safeSet(el.org, 'value', cfg.org ?? "");
   _safeSet(el.bucket, 'value', cfg.bucket ?? "");
@@ -3179,6 +3193,8 @@ function getForm(){
     write_retry_base_seconds: parseInt(el.write_retry_base_seconds.value,10),
     write_retry_max_retries: parseInt(el.write_retry_max_retries.value,10),
     write_retry_jitter_ms: parseInt(el.write_retry_jitter_ms.value,10),
+    write_gzip_enabled: _isChecked(el.write_gzip_enabled),
+    write_gzip_level: parseInt(el.write_gzip_level.value,10),
 
     org: (el.org.value || "").trim(),
     bucket: (el.bucket.value || "").trim(),

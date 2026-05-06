@@ -1667,6 +1667,8 @@ DEFAULT_CFG = {
     "write_retry_base_seconds": 5,
     "write_retry_max_retries": 5,
     "write_retry_jitter_ms": 2000,
+    "write_gzip_enabled": True,
+    "write_gzip_level": 6,
     "influx_yaml_path": DEFAULT_INFLUX_YAML_PATH,
     # v2
     "token": "",
@@ -9466,7 +9468,7 @@ def v2_admin_client(cfg: dict, timeout_seconds_override: int | None = None):
     ts = timeout_seconds_override if timeout_seconds_override is not None else int(cfg.get("timeout_seconds", 10))
     timeout_ms = int(ts) * 1000
     verify_ssl = bool(cfg.get("verify_ssl", True))
-    client = InfluxDBClient(url=url, token=token, org=org, timeout=timeout_ms, verify_ssl=verify_ssl)
+    client = InfluxDBClient(url=url, token=token, org=org, timeout=timeout_ms, verify_ssl=verify_ssl, enable_gzip=bool(cfg.get("write_gzip_enabled", True)))
     try:
         yield client
     finally:
@@ -9486,7 +9488,7 @@ def v2_client(cfg: dict, timeout_seconds_override: int | None = None):
     timeout_ms = int(ts) * 1000
     verify_ssl = bool(cfg.get("verify_ssl", True))
 
-    client = InfluxDBClient(url=url, token=token, org=org, timeout=timeout_ms, verify_ssl=verify_ssl)
+    client = InfluxDBClient(url=url, token=token, org=org, timeout=timeout_ms, verify_ssl=verify_ssl, enable_gzip=bool(cfg.get("write_gzip_enabled", True)))
     try:
         yield client
     finally:
@@ -9597,6 +9599,8 @@ def _write_metrics_snapshot(cfg: dict[str, Any]) -> dict[str, Any]:
         "base_seconds": int(settings["base_s"]),
         "max_retries": int(settings["max_retries"]),
         "jitter_ms": int(settings["jitter_ms"]),
+        "gzip_enabled": bool(cfg.get("write_gzip_enabled", True)),
+        "gzip_level": int(cfg.get("write_gzip_level", 6) or 6),
         "retry_rate": round((retried / total), 4) if total > 0 else 0.0,
         "failure_rate": round((failed / total), 4) if total > 0 else 0.0,
         "avg_retry_sleep_ms": round((total_sleep / retry_attempts), 2) if retry_attempts > 0 else 0.0,
@@ -11875,7 +11879,16 @@ def _rollup_open_backup_lp_text(backup_id: str):
         f_txt = None
         try:
             z = zipfile.ZipFile(zpath, mode="r")
-            f_bin = z.open("payload/data.lp", mode="r")
+            payload_name = "payload/data.lp"
+            gz_mode = False
+            if payload_name not in z.namelist():
+                if "payload/data.lp.gz" not in z.namelist():
+                    raise FileNotFoundError("rollup lp payload missing in zip")
+                payload_name = "payload/data.lp.gz"
+                gz_mode = True
+            f_bin = z.open(payload_name, mode="r")
+            if gz_mode:
+                f_bin = gzip.GzipFile(fileobj=f_bin, mode="rb")
             f_txt = io.TextIOWrapper(f_bin, encoding="utf-8", errors="replace")
             yield f_txt
         finally:
@@ -12067,7 +12080,7 @@ from(bucket: "{source_bucket}")
     }
     meta_path.write_text(json.dumps(meta, ensure_ascii=True, sort_keys=True, indent=2), encoding="utf-8")
     # Pack as zip and remove raw payload tree
-    _backup_pack_zip_tree(ROLLUP_BACKUPS_DIR, bid, meta_path=meta_path, payload_dir=payload_dir, payload_arc_prefix="payload")
+    _backup_pack_zip_tree(ROLLUP_BACKUPS_DIR, bid, meta_path=meta_path, payload_dir=payload_dir, payload_arc_prefix="payload", gzip_payload=bool(cfg.get("write_gzip_enabled", True)), gzip_level=int(cfg.get("write_gzip_level", 6) or 6))
     return meta
 
 
@@ -12096,7 +12109,15 @@ def _rollup_backup_validate(backup_id: str) -> dict[str, Any]:
             if not want:
                 raise RuntimeError("backup sha256 missing")
             h = hashlib.sha256()
-            with z.open("payload/data.lp", mode="r") as f:
+            payload_name = "payload/data.lp"
+            gz_mode = False
+            if payload_name not in z.namelist():
+                if "payload/data.lp.gz" not in z.namelist():
+                    raise RuntimeError("backup payload missing")
+                payload_name = "payload/data.lp.gz"
+                gz_mode = True
+            with z.open(payload_name, mode="r") as f0:
+                f = gzip.GzipFile(fileobj=f0, mode="rb") if gz_mode else f0
                 for chunk in iter(lambda: f.read(1 << 20), b""):
                     h.update(chunk)
             if h.hexdigest() != want:
@@ -15439,7 +15460,7 @@ def _backup_zip_path(dir_path: Path, backup_id: str) -> Path:
     return dir_path / f"{stem}.zip"
 
 
-def _backup_pack_zip(dir_path: Path, backup_id: str, meta_path: Path, lp_path: Path) -> Path:
+def _backup_pack_zip(dir_path: Path, backup_id: str, meta_path: Path, lp_path: Path, *, gzip_payload: bool = False, gzip_level: int = 6) -> Path:
     """Pack meta+lp into a zip next to them (best-effort).
 
     Creates `<stem>.zip` and then removes the original files.
@@ -15458,7 +15479,10 @@ def _backup_pack_zip(dir_path: Path, backup_id: str, meta_path: Path, lp_path: P
         if meta_path.exists():
             z.write(meta_path, arcname=meta_path.name)
         if lp_path.exists():
-            z.write(lp_path, arcname=lp_path.name)
+            if gzip_payload:
+                z.writestr(lp_path.name + ".gz", gzip.compress(lp_path.read_bytes(), compresslevel=max(1, min(9, int(gzip_level or 6)))))
+            else:
+                z.write(lp_path, arcname=lp_path.name)
 
     try:
         tmp.replace(zpath)
@@ -15488,6 +15512,8 @@ def _backup_pack_zip_tree(
     meta_path: Path,
     payload_dir: Path,
     payload_arc_prefix: str,
+    gzip_payload: bool = False,
+    gzip_level: int = 6,
 ) -> Path:
     """Pack meta JSON + a payload directory into a zip next to them (best-effort).
 
@@ -15517,7 +15543,10 @@ def _backup_pack_zip_tree(
                             continue
                         rel = str(p.relative_to(root)).replace("\\", "/")
                         arc = f"{pref}/{rel}" if rel else pref
-                        z.write(p, arcname=arc)
+                        if gzip_payload and arc.endswith(".lp"):
+                            z.writestr(arc + ".gz", gzip.compress(p.read_bytes(), compresslevel=max(1, min(9, int(gzip_level or 6)))))
+                        else:
+                            z.write(p, arcname=arc)
                     except Exception:
                         continue
 
@@ -15699,7 +15728,7 @@ from(bucket: "{cfg["bucket"]}")
         "newest_time": _dt_to_rfc3339_utc(newest) if newest else None,
     }
     meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
-    _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+    _backup_pack_zip(bdir, backup_id, meta_path, lp_path, gzip_payload=bool(cfg.get("write_gzip_enabled", True)), gzip_level=int(cfg.get("write_gzip_level", 6) or 6))
     return backup_id
 
 
@@ -16128,13 +16157,18 @@ def _open_backup_lp_text(dir_path: Path, backup_id: str, *, is_fullbackup: bool 
         z = zipfile.ZipFile(zpath, mode="r")
         try:
             lp_name = stem + ".lp"
+            gz_mode = False
             if lp_name not in z.namelist():
-                cands = [n for n in z.namelist() if n.lower().endswith(".lp")]
+                cands = [n for n in z.namelist() if n.lower().endswith(".lp") or n.lower().endswith(".lp.gz")]
                 if not cands:
                     raise FileNotFoundError("lp payload missing in zip")
                 lp_name = cands[0]
+            if lp_name.lower().endswith(".lp.gz"):
+                gz_mode = True
             raw = z.open(lp_name, mode="r")
             try:
+                if gz_mode:
+                    raw = gzip.GzipFile(fileobj=raw, mode="rb")
                 txt = io.TextIOWrapper(raw, encoding="utf-8", errors="replace", newline="")
                 try:
                     yield txt
@@ -16368,7 +16402,7 @@ from(bucket: "{cfg["bucket"]}")
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
         try:
-            _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+            _backup_pack_zip(bdir, backup_id, meta_path, lp_path, gzip_payload=bool(cfg.get("write_gzip_enabled", True)), gzip_level=int(cfg.get("write_gzip_level", 6) or 6))
         except Exception:
             pass
         set_progress(written_bytes=bytes_size, point_count=count)
@@ -16642,6 +16676,8 @@ def _fullbackup_job_thread(job_id: str, cfg: dict[str, Any], bdir: Path, backup_
                 meta_path=meta_path,
                 payload_dir=payload_dir,
                 payload_arc_prefix="native",
+                gzip_payload=bool(cfg.get("write_gzip_enabled", True)),
+                gzip_level=int(cfg.get("write_gzip_level", 6) or 6),
             )
             try:
                 set_progress(written_bytes=int(zpath.stat().st_size), point_count=0)
@@ -16932,7 +16968,7 @@ from(bucket: "{cfg["bucket"]}")
         meta["bytes"] = bytes_size
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
         try:
-            _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+            _backup_pack_zip(bdir, backup_id, meta_path, lp_path, gzip_payload=bool(cfg.get("write_gzip_enabled", True)), gzip_level=int(cfg.get("write_gzip_level", 6) or 6))
         except Exception:
             pass
         set_progress(written_bytes=bytes_size, point_count=count)
@@ -18454,7 +18490,7 @@ from(bucket: "{cfg["bucket"]}")
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
         try:
-            _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+            _backup_pack_zip(bdir, backup_id, meta_path, lp_path, gzip_payload=bool(cfg.get("write_gzip_enabled", True)), gzip_level=int(cfg.get("write_gzip_level", 6) or 6))
         except Exception:
             # If packing fails, keep legacy files.
             pass
@@ -18781,7 +18817,7 @@ from(bucket: "{cfg["bucket"]}")
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
         try:
-            _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+            _backup_pack_zip(bdir, backup_id, meta_path, lp_path, gzip_payload=bool(cfg.get("write_gzip_enabled", True)), gzip_level=int(cfg.get("write_gzip_level", 6) or 6))
         except Exception:
             pass
         return jsonify({"ok": True, "message": f"Backup created: {backup_id}", "backup": meta, "query": q.strip()})
@@ -20089,7 +20125,7 @@ from(bucket: "{cfg["bucket"]}")
                                     newest = t if newest is None or t > newest else newest
                 meta = {"id": backup_id, "created_at": _utc_now_iso_ms(), "kind": "db_full", "format": "lp", "influx_version": 2, "bucket": cfg.get("bucket"), "point_count": count, "bytes": int(lp_path.stat().st_size) if lp_path.exists() else 0, "oldest_time": _dt_to_rfc3339_utc(oldest) if oldest else None, "newest_time": _dt_to_rfc3339_utc(newest) if newest else None, "start": _dt_to_rfc3339_utc(oldest) if oldest else None, "stop": _dt_to_rfc3339_utc(newest) if newest else None}
                 meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
-                _backup_pack_zip(bdir, backup_id, meta_path, lp_path)
+                _backup_pack_zip(bdir, backup_id, meta_path, lp_path, gzip_payload=bool(cfg.get("write_gzip_enabled", True)), gzip_level=int(cfg.get("write_gzip_level", 6) or 6))
             if not backup_id:
                 set_state("failed", "Backup fehlt", progress=100, step="backup_select", error="backup_id required")
                 return
@@ -23729,6 +23765,7 @@ def api_set_config():
     except Exception:
         cfg["timeout_seconds"] = 10
     cfg["write_retry_enabled"] = bool(cfg.get("write_retry_enabled", True))
+    cfg["write_gzip_enabled"] = bool(cfg.get("write_gzip_enabled", True))
 
     try:
         cfg["ui_table_visible_rows"] = int(cfg.get("ui_table_visible_rows", 20))
@@ -23772,6 +23809,7 @@ def api_set_config():
     _clamp_int("write_retry_base_seconds", 5, 0, 120)
     _clamp_int("write_retry_max_retries", 5, 0, 10)
     _clamp_int("write_retry_jitter_ms", 2000, 0, 10000)
+    _clamp_int("write_gzip_level", 6, 1, 9)
     _clamp_int("ui_page_search_highlight_duration_ms", 8000, 200, 10000)
     _clamp_int("ui_nav_helper_history_limit", 10, 1, 100)
     _clamp_int("ui_nav_helper_highlight_duration_ms", 1400, 200, 10000)

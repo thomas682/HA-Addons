@@ -4,6 +4,7 @@ from datetime import datetime
 from io import BytesIO
 from contextlib import contextmanager
 from pathlib import Path
+import zipfile
 
 
 def test_dashboard_selection_labels_and_order():
@@ -1631,6 +1632,36 @@ def test_influx_write_manager_batches_and_flushes(load_app_module, tmp_path, mon
     assert calls[1]["record"] == ["c"]
     assert out["total_points"] == 3
     assert out["flushes"] == 2
+
+
+def test_v2_client_enables_gzip_from_cfg(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    captured: dict[str, object] = {}
+
+    class _FakeClient:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(app_mod, "InfluxDBClient", _FakeClient)
+    with app_mod.v2_client({"scheme": "http", "host": "localhost", "port": 8086, "token": "t", "org": "o", "verify_ssl": True, "timeout_seconds": 10, "write_gzip_enabled": True}) as _c:
+        pass
+    assert captured["enable_gzip"] is True
+
+
+def test_backup_zip_and_restore_support_lp_gz(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    meta_path, lp_path = app_mod._backup_files(tmp_path, "demo_backup")
+    meta_path.write_text('{"id":"demo_backup"}', encoding="utf-8")
+    lp_path.write_text("m,f=v value=1 1\n", encoding="utf-8")
+    zpath = app_mod._backup_pack_zip(tmp_path, "demo_backup", meta_path, lp_path, gzip_payload=True, gzip_level=6)
+    assert zpath.exists()
+    with zipfile.ZipFile(zpath, mode="r") as z:
+        assert any(name.endswith(".lp.gz") for name in z.namelist())
+    with app_mod._open_backup_lp_text(tmp_path, "demo_backup") as fh:
+        assert "value=1" in fh.read()
 
 
 def test_verify_measurement_start_returns_job_id(load_app_module, tmp_path, monkeypatch):

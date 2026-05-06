@@ -203,6 +203,8 @@ Fuer synchrone InfluxDB-v2-Write-Operationen gibt es jetzt eine zentrale Retry-S
 
 Auf dieser Basis gibt es jetzt einen zentralen `InfluxWriteManager`, der Batch-Flushes, Streaming-Zufuehrung und Health-/Fortschrittsdaten fuer synchrone V2-Write-Pfade buendelt. Verify-Writes und Change-Block-Writes laufen damit ueber dieselbe Schicht statt ueber verteilte Einzellogik.
 
+Zusätzlich kann InfluxBro zentrale V2-Write-Requests und Backup-Payloads jetzt per gzip komprimieren. Die Verbindungseinstellungen enthalten dafuer `write_gzip_enabled` und `write_gzip_level`. Backup-ZIPs duerfen Line-Protocol-Payloads als `.lp.gz` enthalten; Restore und Validierung erkennen diese komprimierten Payloads transparent.
+
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
 Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus dem Profil abgeleitet werden. Grundlage sind insbesondere `derived.internal_type`, `device_class`, `state_class`, erkannter Influx-Feldtyp und weitere Profilmerkmale. Das Dashboard zeigt die effektiven Typen automatisch an. Ueber den Button `Strategiewahl` oeffnet sich ein Dialog mit:

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.530
+
+### Fix
+
+- Influx Writes / Backups / Restore: gzip-Unterstuetzung systematisch fuer zentrale V2-Write- und Backup-Pfade ausgebaut. Die V2-HTTP-Clients verwenden jetzt optional `enable_gzip`, die Verbindungseinstellungen enthalten `write_gzip_enabled` und `write_gzip_level`, und Backup-ZIPs koennen Line-Protocol-Payloads als `.lp.gz` enthalten. Restore-/Validierungshelfer erkennen diese komprimierten Payloads transparent. Dadurch sinken Transfergroessen fuer Write-/Backup-Pfade, ohne die vorhandenen Restore-Workflows zu brechen. ([#490](https://github.com/thomas682/HA-Addons/issues/490))
+- Maintenance: Tested with Home Assistant Core: 2026.4.4
+
 ## 1.12.529
 
 ### Fix
