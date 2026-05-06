@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.534
+
+### Fix
+
+- FullBackup / Native v2: Der CLI-Aufruf fuer `influx backup` uebergibt `--host` und `--org` jetzt explizit statt sich nur auf die Umgebungsvariablen zu verlassen. Ausserdem wird bei einem Fehler nicht nur die letzte beliebige CLI-Zeile gemeldet, sondern bevorzugt eine tatsaechliche Fehlerzeile (`error`, `failed`, `unauthorized`, `forbidden`). Dadurch wird der Native-Fullbackup-Pfad robuster und die Fehlermeldung aussagekraeftiger, wenn der CLI-Lauf nach `Downloading metadata snapshot` abbricht. ([#497](https://github.com/thomas682/HA-Addons/issues/497))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.533
 
 ### Fix

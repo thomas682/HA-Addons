@@ -17185,7 +17185,14 @@ def _fullbackup_job_thread(job_id: str, cfg: dict[str, Any], bdir: Path, backup_
             pass
         payload_dir.mkdir(parents=True, exist_ok=True)
 
-        cmd = ["influx", "backup", "--bucket", str(cfg.get("bucket")), str(payload_dir)]
+        cmd = [
+            "influx",
+            "backup",
+            "--host", _influx_url(cfg),
+            "--org", str(cfg.get("org") or ""),
+            "--bucket", str(cfg.get("bucket")),
+            str(payload_dir),
+        ]
         cmd_redacted = (
             f"influx backup --host {json.dumps(_influx_url(cfg))} --org {json.dumps(str(cfg.get('org') or ''))} "
             f"--bucket {json.dumps(str(cfg.get('bucket') or ''))} {json.dumps(str(payload_dir))}"
@@ -17255,7 +17262,8 @@ def _fullbackup_job_thread(job_id: str, cfg: dict[str, Any], bdir: Path, backup_
             if rc != 0:
                 msg = "Native Backup fehlgeschlagen"
                 if tail:
-                    msg = msg + ": " + tail[-1]
+                    detail = next((ln for ln in reversed(tail) if ln and ("error" in ln.lower() or "failed" in ln.lower() or "unauthorized" in ln.lower() or "forbidden" in ln.lower())), tail[-1])
+                    msg = msg + ": " + detail
                 raise RuntimeError(msg)
 
             # Determine raw size (best-effort)

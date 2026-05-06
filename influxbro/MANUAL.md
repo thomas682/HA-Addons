@@ -306,6 +306,12 @@ Einschränkungen:
 - nicht alle produktiven InfluxBro-Datenpfade sind fuer V3 bereits gleichwertig umgesetzt
 - diese Einschraenkungen werden im Migrationsstatus und in Diagnoseinformationen explizit sichtbar gemacht
 
+## Native FullBackup (v2)
+
+- Fuer `Native v2 FullBackup` verwendet InfluxBro den Influx-CLI-Aufruf `influx backup`.
+- Host und Org werden dabei jetzt explizit als CLI-Parameter uebergeben und nicht nur indirekt ueber Umgebungsvariablen.
+- Wenn der CLI-Lauf fehlschlaegt, wird bevorzugt eine echte Fehlerzeile aus der CLI-Ausgabe in die UI uebernommen (z. B. `unauthorized`, `forbidden`, `failed`), statt nur eine beliebige Statuszeile wie `Downloading metadata snapshot` zu zeigen.
+
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
 Die Ausreißertypen koennen jetzt serverseitig ueber eine Messwertstrategie aus dem Profil abgeleitet werden. Grundlage sind insbesondere `derived.internal_type`, `device_class`, `state_class`, erkannter Influx-Feldtyp und weitere Profilmerkmale. Das Dashboard zeigt die effektiven Typen automatisch an. Ueber den Button `Strategiewahl` oeffnet sich ein Dialog mit:

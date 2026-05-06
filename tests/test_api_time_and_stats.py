@@ -1725,6 +1725,61 @@ def test_migration_start_persists_windows_and_checklist(load_app_module, tmp_pat
     assert any(item["key"] == "migration_started" for item in j["migration"]["checklist"])
 
 
+def test_native_fullbackup_uses_explicit_host_and_org_flags(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    job_id = "job-fullbackup"
+    backup_id = "fullbackup__db_full__native_v2__demo"
+    app_mod.FULLBACKUP_JOBS[job_id] = {"id": job_id, "state": "queued", "message": "", "started_at": app_mod._utc_now_iso_ms(), "started_mono": 0.0, "cancelled": False, "format": "native_v2"}
+
+    monkeypatch.setattr(app_mod, "_influx_cli_available", lambda: True)
+    monkeypatch.setattr(app_mod, "_job_set_finished", lambda job: None)
+
+    class _FakeAdminClient:
+        def authorizations_api(self):
+            class _Auth:
+                def find_authorizations(self_inner):
+                    return []
+            return _Auth()
+        def close(self):
+            return None
+
+    @contextmanager
+    def _fake_v2_admin_client(cfg, timeout_seconds_override=None):
+        yield _FakeAdminClient()
+
+    monkeypatch.setattr(app_mod, "v2_admin_client", _fake_v2_admin_client)
+
+    captured = {}
+    class _FakeStdout:
+        def fileno(self):
+            return 0
+        def readline(self):
+            return ""
+    class _FakePopen:
+        def __init__(self, cmd, stdout=None, stderr=None, text=None, env=None):
+            captured["cmd"] = cmd
+            captured["env"] = env
+            self.stdout = _FakeStdout()
+        def poll(self):
+            return 0
+        def wait(self):
+            return 0
+        def terminate(self):
+            return None
+
+    monkeypatch.setattr(app_mod.subprocess, "Popen", _FakePopen)
+    monkeypatch.setattr(app_mod.select, "select", lambda r, w, x, t: ([], [], []))
+
+    cfg = {"influx_version": 2, "scheme": "http", "host": "influx.local", "port": 8086, "verify_ssl": True, "timeout_seconds": 10, "org": "org1", "bucket": "bucket1", "admin_token": "secret"}
+    app_mod._fullbackup_job_thread(job_id, cfg, tmp_path, backup_id)
+
+    cmd = captured["cmd"]
+    assert "--host" in cmd
+    assert "http://influx.local:8086" in cmd
+    assert "--org" in cmd
+    assert "org1" in cmd
+
+
 def test_verify_measurement_start_returns_job_id(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "token": "t", "org": "o", "bucket": "b"})
