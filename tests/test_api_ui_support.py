@@ -745,6 +745,17 @@ def test_query_test_history_supports_manual_system_and_error_filter():
     assert "insertIntoQueryArea(String(it.query || ''));" in tooltips
 
 
+def test_logs_page_exposes_time_window_filter_and_record_apply():
+    logs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    assert 'id="filter_start"' in logs
+    assert 'id="filter_stop"' in logs
+    assert 'id="filter_clear"' in logs
+    assert 'id="record_apply"' in logs
+    assert "const LS_FILTER = 'influxbro_logs_timefilter_v1';" in logs
+    assert 'function _filterByTimeWindow(lines)' in logs
+    assert 'ACTIVE_FILTER = { start_at: String(rec.start_at || \'\'), stop_at: \'\' };' in logs
+
+
 def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-ib-tooltip-toggle="1"' in tooltips

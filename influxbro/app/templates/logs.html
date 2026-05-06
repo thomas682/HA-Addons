@@ -72,6 +72,10 @@
         </div>
         <div>
           <label>&nbsp;</label>
+          <button id="record_apply" type="button" data-ui="logs_main.btn_record_apply" data-ib-pickkey="logs_main.btn_record_apply" title="logs.record_apply">filtern</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
           <button id="record_full" type="button" data-ui="logs_main.btn_record_full" data-ib-pickkey="logs_main.btn_record_full" title="logs.record_full">Komplettlog</button>
         </div>
       </div>
@@ -229,6 +233,18 @@
         <div>
           <label>Wrap</label>
           <input id="wrap" type="checkbox" data-ui="logs_main.chk_wrap" data-ib-pickkey="logs_main.chk_wrap" title="logs.wrap" />
+        </div>
+        <div>
+          <label>Von</label>
+          <input id="filter_start" type="datetime-local" data-ui="logs_main.input_filter_start" data-ib-pickkey="logs_main.input_filter_start" title="logs.filter_start" />
+        </div>
+        <div>
+          <label>Bis</label>
+          <input id="filter_stop" type="datetime-local" data-ui="logs_main.input_filter_stop" data-ib-pickkey="logs_main.input_filter_stop" title="logs.filter_stop" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="filter_clear" data-ui="logs_main.btn_filter_clear" data-ib-pickkey="logs_main.btn_filter_clear" title="logs.filter_clear" aria-label="Filter loeschen">Löschen</button>
         </div>
         <div style="flex:1; min-width: 80px;">
           <label>Suche</label>
@@ -398,7 +414,11 @@
       const $recordName = document.getElementById('record_name');
       const $recordToggle = document.getElementById('record_toggle');
       const $recordRecent = document.getElementById('record_recent');
+      const $recordApply = document.getElementById('record_apply');
       const $recordFull = document.getElementById('record_full');
+      const $filterStart = document.getElementById('filter_start');
+      const $filterStop = document.getElementById('filter_stop');
+      const $filterClear = document.getElementById('filter_clear');
       const $export = document.getElementById('export');
       const $debugReport = document.getElementById('debug_report');
       const $supportBundle = document.getElementById('support_bundle');
@@ -491,8 +511,41 @@
       let MARKS = [];
       let MARK_IDX = -1;
       const LS_REC = 'influxbro_logs_recordings_v1';
+      const LS_FILTER = 'influxbro_logs_timefilter_v1';
       let RECORDINGS = [];
       let ACTIVE_RECORDING_ID = '';
+      let ACTIVE_FILTER = { start_at: '', stop_at: '' };
+
+      function _localToIso(v){
+        try{
+          if(!v) return '';
+          const d = new Date(String(v));
+          return isFinite(d.getTime()) ? d.toISOString() : '';
+        }catch(e){ return ''; }
+      }
+      function _isoToLocal(v){
+        try{
+          if(!v) return '';
+          const d = new Date(String(v));
+          if(!isFinite(d.getTime())) return '';
+          const pad = (n)=>String(n).padStart(2,'0');
+          return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }catch(e){ return ''; }
+      }
+      function _filterLoad(){
+        try{
+          const raw = localStorage.getItem(LS_FILTER);
+          const j = raw ? JSON.parse(raw) : {};
+          ACTIVE_FILTER = { start_at: String(j.start_at || ''), stop_at: String(j.stop_at || '') };
+        }catch(e){ ACTIVE_FILTER = { start_at:'', stop_at:'' }; }
+      }
+      function _filterSave(){
+        try{ localStorage.setItem(LS_FILTER, JSON.stringify(ACTIVE_FILTER || {})); }catch(e){}
+      }
+      function _filterUiSync(){
+        try{ if($filterStart) $filterStart.value = _isoToLocal(ACTIVE_FILTER.start_at); }catch(e){}
+        try{ if($filterStop) $filterStop.value = _isoToLocal(ACTIVE_FILTER.stop_at); }catch(e){}
+      }
 
       function _recordingsLoad(){
         try{
@@ -545,6 +598,18 @@
           return true;
         });
       }
+      function _filterByTimeWindow(lines){
+        const start = ACTIVE_FILTER.start_at ? Date.parse(String(ACTIVE_FILTER.start_at || '')) : null;
+        const stop = ACTIVE_FILTER.stop_at ? Date.parse(String(ACTIVE_FILTER.stop_at || '')) : null;
+        if(start === null && stop === null) return lines;
+        return lines.filter((line)=>{
+          const ts = _parseLineTs(line);
+          if(ts === null) return true;
+          if(start !== null && isFinite(start) && ts < start) return false;
+          if(stop !== null && isFinite(stop) && ts > stop) return false;
+          return true;
+        });
+      }
       function _recordingBtnSync(){
         const rec = RECORDINGS.find(r => !r.end_at) || null;
         if(!rec){ if($recordToggle) $recordToggle.textContent = 'Aufzeichnung starten'; return; }
@@ -558,8 +623,11 @@
         RECORDINGS.push(rec);
         RECORDINGS = RECORDINGS.slice(-10);
         ACTIVE_RECORDING_ID = String(rec.id);
+        ACTIVE_FILTER = { start_at: String(rec.start_at || ''), stop_at: '' };
         _recordingsSave();
         _recordingsRender();
+        _filterSave();
+        _filterUiSync();
         _recordingBtnSync();
         applySearch();
       }
@@ -568,8 +636,11 @@
         if(!rec) return;
         rec.end_at = new Date().toISOString();
         ACTIVE_RECORDING_ID = String(rec.id || '');
+        ACTIVE_FILTER = { start_at: String(rec.start_at || ''), stop_at: String(rec.end_at || '') };
         _recordingsSave();
         _recordingsRender();
+        _filterSave();
+        _filterUiSync();
         _recordingBtnSync();
         applySearch();
       }
@@ -760,7 +831,7 @@
       function applySearch(){
         const t = String($q.value || "").toLowerCase();
         const view = $viewProfile ? String($viewProfile.value || "trace") : "trace";
-        const all = _filterByRecording(RAW.split("\n"));
+        const all = _filterByTimeWindow(_filterByRecording(RAW.split("\n")));
 
         function splitBlocks(lines){
           const out = [];
@@ -1296,7 +1367,18 @@
       $clear.addEventListener('click', ()=>{ RAW = ""; $logpre.innerHTML = ""; err(""); });
       if($recordToggle) $recordToggle.addEventListener('click', ()=>{ const open = RECORDINGS.find(r => !r.end_at); if(open) _stopRecording(); else _startRecording(); });
       if($recordRecent) $recordRecent.addEventListener('change', ()=>{ ACTIVE_RECORDING_ID = String($recordRecent.value || ''); applySearch(); _recordingBtnSync(); });
-      if($recordFull) $recordFull.addEventListener('click', ()=>{ ACTIVE_RECORDING_ID = ''; if($recordRecent) $recordRecent.value = ''; applySearch(); _recordingBtnSync(); });
+      if($recordApply) $recordApply.addEventListener('click', ()=>{
+        const rec = _activeRecording();
+        if(!rec) return;
+        ACTIVE_FILTER = { start_at: String(rec.start_at || ''), stop_at: String(rec.end_at || '') };
+        _filterSave();
+        _filterUiSync();
+        applySearch();
+      });
+      if($recordFull) $recordFull.addEventListener('click', ()=>{ ACTIVE_RECORDING_ID = ''; ACTIVE_FILTER = { start_at:'', stop_at:'' }; if($recordRecent) $recordRecent.value = ''; _filterSave(); _filterUiSync(); applySearch(); _recordingBtnSync(); });
+      if($filterStart) $filterStart.addEventListener('change', ()=>{ ACTIVE_FILTER.start_at = _localToIso($filterStart.value); _filterSave(); applySearch(); });
+      if($filterStop) $filterStop.addEventListener('change', ()=>{ ACTIVE_FILTER.stop_at = _localToIso($filterStop.value); _filterSave(); applySearch(); });
+      if($filterClear) $filterClear.addEventListener('click', ()=>{ ACTIVE_FILTER = { start_at:'', stop_at:'' }; _filterSave(); _filterUiSync(); applySearch(); });
       $copy.addEventListener('click', async ()=>{
         try{ 
           await navigator.clipboard.writeText($logpre.textContent || ""); 
@@ -1340,6 +1422,8 @@
       applyWrap();
       _recordingsLoad();
       _recordingsRender();
+      _filterLoad();
+      _filterUiSync();
       _recordingBtnSync();
       loadViewProfile();
       loadServerProfile();

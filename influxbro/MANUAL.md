@@ -797,6 +797,12 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
   - Auswahl der letzten 10 Aufzeichnungen
   - `Komplettlog`, um den Filter wieder aufzuheben
 - Diese Aufzeichnung loescht keine Logs. Stattdessen merkt sich InfluxBro das Zeitfenster und zeigt nur Eintraege ab diesem Zeitpunkt bis zum Stoppen der Aufzeichnung.
+- Beim Start einer Aufzeichnung wird die Ansicht sofort auf Eintraege ab diesem Startzeitpunkt gefiltert.
+- Zusaetzlich gibt es in der Aktionsleiste jetzt einen expliziten Zeitbereichfilter mit:
+  - `Von`
+  - `Bis`
+  - `Löschen` zum Zuruecksetzen des Zeitfilters
+  - `filtern`, um den Zeitraum einer ausgewaehlten Aufzeichnung als aktiven Zeitfilter zu uebernehmen
 - Die Suchfunktion auf der Logs-Seite filtert mehrzeilige Query-/Trace-Eintraege jetzt blockweise statt zeilenweise. Wenn der Suchbegriff nur in einer Zeile eines Query-Blocks vorkommt, bleibt der gesamte Block sichtbar.
 
 ## Jobs & Cache

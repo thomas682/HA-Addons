@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.538
+
+### Fix
+
+- Logs / Aufzeichnung: Beim Start einer temporaeren Log-Aufzeichnung filtert die Logs-Ansicht sofort auf Eintraege ab diesem Zeitpunkt. Zusaetzlich gibt es in der Aktionsleiste nun einen expliziten Zeitbereichsfilter (`Von` / `Bis`) samt `Löschen`, sowie einen Button `filtern`, der den Zeitraum einer ausgewaehlten Aufzeichnung als aktiven Zeitfilter uebernimmt. Dadurch lassen sich laufende oder gespeicherte Aufzeichnungen gezielt als Sichtfenster verwenden, ohne das Komplettlog zu loeschen. ([#502](https://github.com/thomas682/HA-Addons/issues/502))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.537
 
 ### Fix
