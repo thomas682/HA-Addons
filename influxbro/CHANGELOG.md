@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.540
+
+### Fix
+
+- Dashboard / Startup: Der Root-Render des Dashboards blockiert nicht mehr auf serverseitigen Start-Suggestions fuer Measurement/Friendly Name/Entity ID. Die Selector-Listen werden wie ohnehin vorgesehen clientseitig nachgeladen, wodurch der kritische `GET /`-Pfad deutlich frueher HTML liefern kann und die Seite schneller sichtbar wird. ([#503](https://github.com/thomas682/HA-Addons/issues/503))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.539
 
 ### Fix

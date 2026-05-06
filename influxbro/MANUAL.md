@@ -191,6 +191,8 @@ Falls die Friendly-Name-Historie im Dashboard bei sehr grossen All-Time-Serien i
 
 Bei bereits bekannter Dashboard-Auswahl werden einige teure Nebenpfade (Measurement-Liste, Selector-Suggestions, Messwertprofil und Stats-Reload nach Cache-Restore) nur noch als Hintergrund-Warmup geladen. Die Seite wird dadurch frueher sichtbar, waehrend nicht-kritische Selector- und Statistikdaten kurz danach nachziehen.
 
+Zusätzlich blockiert der erste Dashboard-HTML-Render nicht mehr auf serverseitig vorberechneten Start-Suggestions fuer Measurement/Friendly Name/Entity ID. Die zugehoerigen Selector-Listen werden nach dem Seitenaufbau clientseitig geladen, sodass der kritische `GET /`-Pfad frueher sichtbar werden kann.
+
 Bekannte Host-/Ingress-Rejections aus dem eingebetteten HA-Panel werden zusaetzlich clientseitig gefiltert. Dazu gehoert neben `No Listener: tabs:outgoing.message.ready` jetzt auch der numerische Host-Code `3`, der andernfalls als minuetlicher Console-Fehler in `ha-panel-app.ts` auftauchen kann, ohne dass InfluxBro selbst einen fachlichen Fehler ausgeloest hat.
 
 Der Statistik-Cache behandelt fehlende Eintraege jetzt als erwarteten Leerzustand statt als harten HTTP-Fehler. Wenn ein alter `cache_id` bereits bereinigt wurde, kann die UI dadurch still auf Hintergrundjob oder frisches Ergebnis zurueckfallen, ohne einen irrefuehrenden `cache miss`-Consolefehler zu erzeugen.

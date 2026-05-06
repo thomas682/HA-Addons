@@ -170,6 +170,23 @@ def test_perf_event_skips_internal_self_instrumentation(load_app_module, tmp_pat
     assert j["reason"] == "internal_event"
 
 
+def test_dashboard_index_does_not_block_on_initial_suggestions(load_app_module, tmp_path):
+    cfg_root = tmp_path / "config"
+    data_root = tmp_path / "data"
+
+    app_mod = load_app_module(config_dir=cfg_root, data_dir=data_root)
+    client = app_mod.app.test_client()
+
+    def _boom(_cfg):
+        raise AssertionError("_initial_suggestions should not run for dashboard index")
+
+    app_mod._initial_suggestions = _boom
+    r = client.get("/")
+
+    assert r.status_code == 200
+    assert "InfluxBro" in r.get_data(as_text=True)
+
+
 def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     logs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()

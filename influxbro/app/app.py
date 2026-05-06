@@ -1610,6 +1610,48 @@ def _trace_before_request() -> None:
         return
 
 
+def _response_gzip_candidate(resp: Response) -> bool:
+    try:
+        if request.method == "HEAD":
+            return False
+        if int(resp.status_code or 0) < 200 or int(resp.status_code or 0) >= 300:
+            return False
+        if resp.direct_passthrough:
+            return False
+        if str(resp.headers.get("Content-Encoding") or "").strip():
+            return False
+        if "gzip" not in str(request.headers.get("Accept-Encoding") or "").lower():
+            return False
+        ctype = str(resp.mimetype or resp.headers.get("Content-Type") or "").lower()
+        allowed = (
+            ctype.startswith("text/"),
+            ctype in ("application/json", "application/javascript", "text/javascript", "image/svg+xml"),
+        )
+        if not any(allowed):
+            return False
+        raw = resp.get_data()
+        return isinstance(raw, (bytes, bytearray)) and len(raw) >= 1024
+    except Exception:
+        return False
+
+
+def _maybe_gzip_response(resp: Response) -> Response:
+    try:
+        if not _response_gzip_candidate(resp):
+            return resp
+        raw = resp.get_data()
+        comp = gzip.compress(raw, compresslevel=6)
+        if len(comp) >= len(raw):
+            return resp
+        resp.set_data(comp)
+        resp.headers["Content-Encoding"] = "gzip"
+        resp.headers["Content-Length"] = str(len(comp))
+        resp.headers["Vary"] = "Accept-Encoding"
+    except Exception:
+        return resp
+    return resp
+
+
 @app.after_request
 def _trace_after_request(resp: Response) -> Response:
     try:
@@ -1656,8 +1698,8 @@ def _trace_after_request(resp: Response) -> Response:
         }
         _trace_add_span(span)
     except Exception:
-        return resp
-    return resp
+        return _maybe_gzip_response(resp)
+    return _maybe_gzip_response(resp)
 
 def env_bool(key: str, default: bool) -> bool:
     v = os.environ.get(key, str(default)).lower()
@@ -9886,14 +9928,12 @@ def _initial_suggestions(cfg: dict[str, Any]) -> dict[str, list[str]]:
 @app.get("/")
 def index():
     cfg = load_cfg()
-    suggestions = _initial_suggestions(cfg)
-
     return render_template(
         "index.html",
         cfg=cfg,
         allow_delete=True,
         nav="dashboard",
-        suggestions=suggestions,
+        suggestions={"measurements": [], "friendly_name": [], "entity_id": []},
     )
 
 
