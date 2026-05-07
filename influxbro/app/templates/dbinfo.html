@@ -2,11 +2,11 @@
 <html lang="de">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>InfluxBro – Diagnose</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; }
-    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100dvh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
     .content { padding: 16px; }
     .muted { opacity: 0.7; font-size: 12px; }
@@ -53,9 +53,6 @@
     .cfg_tbl thead th { background: var(--ib-table-head-bg, #0B1F3A); color: var(--ib-table-head-fg, #FFFFFF); font-weight: 800; }
     .cfg_tbl tbody tr:nth-child(even) { background: #fafafa; }
     .cfg_tbl td { word-break: break-word; }
-    .cfg_tbl tr.selectable { cursor:pointer; }
-    .cfg_tbl tr.is-selected { outline: 2px solid #0b0b0c; background:#eef3ff !important; }
-    .safe_del { color:#0a7a28; font-weight:700; }
   </style>
 </head>
 <body>
@@ -166,7 +163,6 @@
 
         <div class="row" style="margin-top: 10px;" data-ui="dbinfo_storage.panel_controls" data-ib-pickkey="dbinfo_storage.panel_controls" title="dbinfo.storage.controls">
           <button id="storage_refresh" type="button" class="btn_xs" data-ui="dbinfo_storage.btn_refresh" data-ib-pickkey="dbinfo_storage.btn_refresh" title="dbinfo.storage.refresh">Aktualisieren</button>
-          <button id="storage_delete" type="button" class="btn_xs" data-ui="dbinfo_storage.btn_delete" data-ib-pickkey="dbinfo_storage.btn_delete" title="dbinfo.storage.delete">Löschen</button>
           <div class="muted" id="storage_meta" style="padding-top: 10px;"></div>
         </div>
 
@@ -180,7 +176,6 @@
                 <th>Dateien</th>
                 <th>Groesse</th>
                 <th>mtime</th>
-                <th>Löschbar</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -650,7 +645,6 @@
           const rows = Array.isArray(j.items) ? j.items : [];
           rows.forEach(it=>{
             const tr = document.createElement('tr');
-            tr.className = it.safe_delete ? 'selectable' : '';
             const files = (it.files === null || it.files === undefined) ? '' : String(it.files);
             const bytes = _parseSizeToBytes(it.bytes);
             const mtimeRaw = (it.mtime !== null && it.mtime !== undefined) ? it.mtime : '';
@@ -683,25 +677,12 @@
             tdMtime.setAttribute('data-sort', String(mtimeKey));
             tdMtime.textContent = mtimeText;
 
-            const tdSafe = document.createElement('td');
-            if(it.safe_delete){
-              tdSafe.innerHTML = '<span class="safe_del">ja</span><div class="muted">' + String(it.safe_delete_reason || '') + '</div>';
-              tr.addEventListener('click', ()=>{
-                try{ $body.querySelectorAll('tr.is-selected').forEach(el => el.classList.remove('is-selected')); }catch(e){}
-                tr.classList.add('is-selected');
-                SELECTED_STORAGE_NAME = String(it.name || '');
-              });
-            }else{
-              tdSafe.textContent = 'nein';
-            }
-
             tr.appendChild(tdName);
             tr.appendChild(tdPath);
             tr.appendChild(tdKind);
             tr.appendChild(tdFiles);
             tr.appendChild(tdBytes);
             tr.appendChild(tdMtime);
-            tr.appendChild(tdSafe);
             $body.appendChild(tr);
           });
         }catch(e){}
@@ -953,24 +934,7 @@
 
       try{
         const b = document.getElementById('storage_refresh');
-        const d = document.getElementById('storage_delete');
         if(b) b.onclick = ()=>{ refreshStorage().catch(()=>{}); };
-        if(d) d.onclick = async ()=>{
-          const $tbl = document.getElementById('storage_tbl');
-          const selected = $tbl ? $tbl.querySelector('tbody tr.is-selected td:first-child') : null;
-          const name = selected ? String(selected.textContent || '').trim() : '';
-          if(!name) return;
-          const txt = 'Ausgewählte Datei/Ordner wirklich löschen?\n\n' + name + '\n\nNur für sicher regenerierbare Einträge gedacht.';
-          let want = false;
-          if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
-            want = await window.InfluxBroConfirm.ask({ title: 'Speicher-Eintrag löschen', text: txt, okLabel: 'Löschen', cancelLabel: 'Abbrechen', pickerKey: 'dialog_storage_delete_confirm.root', templateName: 'dialog_confirm_action' });
-          }else want = confirm(txt);
-          if(!want) return;
-          const r = await fetch('./api/storage_usage/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, confirm:true }) });
-          const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
-          if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
-          await refreshStorage();
-        };
       }catch(e){}
       try{
         const b = document.getElementById('worklog_refresh');
@@ -1217,4 +1181,3 @@
   </div>
 </body>
 </html>
-        let SELECTED_STORAGE_NAME = '';
