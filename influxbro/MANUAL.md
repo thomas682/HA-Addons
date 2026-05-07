@@ -90,7 +90,7 @@ Neu: Top-Leiste (Profil + Zoom)
     - Direkte Pick-Eingabe: Wenn du einen String wie `<PICK:...|...>` eingibst und Enter drueckst, wird exakt dieses Element gesucht (Page-Mismatch / Nichttreffer wird klar gemeldet).
   - Picker / S-Picker: kopiert eine kanonische Elementkennung in die Zwischenablage. Neu: Vollformat mit stabiler Produktkennung + exakter Instanzkennung: `<PICK:<Page>|v=1;pk=<product_key>;ik=<instance_key>>`. Legacy-Referenzen ohne `v=1` bleiben lesbar.
     - `oltype` wird nur angehaengt, wenn das Element ein `data-cache-oltype` Attribut besitzt (es wird nur der Wert kopiert, kein Key-Name).
-  - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elemente als anklickbare Chips (Klick = Entfernen). `Ende` kopiert die Liste als mehrere `<PICK:...>` Eintraege.
+  - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Das funktioniert wieder direkt waehrend des Pickens per gedrueckter `Shift`-Taste, auch wenn der Picker zuvor normal ohne Shift aktiviert wurde. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elemente als anklickbare Chips (Klick = Entfernen). `Ende` kopiert die Liste als mehrere `<PICK:...>` Eintraege.
   - Neu: Button `Verschieben` (Icon mit 2 Quadraten + Pfeil). Dieser oeffnet den Einstellungen-Organizer.
     - Wenn du eine Aktion auswaehlst und nicht auf der Seite `Einstellungen` bist, wird automatisch nach `Einstellungen` gewechselt.
     - Funktionen: Parameterzeilen zwischen Bereichen verschieben; Hauptpunkte/Unterpunkte verschieben oder umbenennen; benutzerdefinierte Hauptpunkte/Unterpunkte erzeugen; loeschen nur wenn wirklich leer (Systempunkte sind gesperrt).
@@ -1293,7 +1293,7 @@ Hinweis (neu)
 
 Neu:
 
-- Status Schriftgroesse (Sidebar) ist konfigurierbar; Refresh loescht abgeschlossene Status-Eintraege.
+- Status Schriftgroesse (Sidebar) ist konfigurierbar; das Sidebar-Statuspanel fuehrt alle Eintraege in einer einzigen Liste. Laufende Jobs haben dort direkt einen Spinner, `Refresh` loescht abgeschlossene Status-Eintraege und `Loeschen` leert die komplette Statusliste inklusive aktuell laufender Eintraege.
 - Neu im Bereich `Logs`: `Langlauf-Schwelle (ms)` steuert, ab wann user-relevante Wartezeiten global im Statusfeld unter dem Menue auftauchen und als Langlauf gelten.
 - Neu im Bereich `Logs`: `Zeitintensive Protokollierung aktiv` schaltet die zusaetzlichen Langlauf-Logeintraege global fuer nicht-fehlerhafte Events an oder aus. Fehler bleiben davon unberuehrt und werden immer protokolliert.
 - Jobs: Max Job Laufzeit (Sekunden) fuer Auto-Abbruch; Job-Farben (running/done/error/cancelled).

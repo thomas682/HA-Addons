@@ -1786,6 +1786,20 @@ def test_picker_supports_superpicker_fallback_mode():
     assert "fallback:" in topbar
     assert "badge.textContent = display;" in topbar
     assert "if(readSuper()){ if($superBtn) $superBtn.classList.add('active');" in topbar
+    assert "if(!(ev && ev.shiftKey) || multiMode) return;" in topbar
+    assert "if(_handledMouseDownPick){" in topbar
+
+
+def test_nav_status_panel_uses_single_list_and_delete_button():
+    nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    assert 'id="influxbro_status_list"' in nav
+    assert 'id="influxbro_status_clear_all"' in nav
+    assert 'data-ui="nav_status.btn_delete"' in nav
+    assert 'Refresh loescht abgeschlossene Eintraege. Loeschen leert alles.' in nav
+    assert 'id="influxbro_status_head"' not in nav
+    assert "div.className = 'item' + (x.state === 'running' ? ' item_running' : '');" in nav
+    assert "hg.innerHTML = runningIconHtml();" in nav
+    assert "function completeAllAndClear(){" in nav
 
 
 def test_global_button_logging_and_button_error_reporting_exist():

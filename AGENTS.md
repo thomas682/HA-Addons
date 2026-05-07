@@ -563,6 +563,17 @@ Eine aktive Queue wird bei Modussperre eingefroren:
 - Sie darf NICHT umgesetzt, abgeschlossen, committed oder gepusht werden
 - Die Queue-Regel ist niemals eine Erlaubnis, eine aktive Modussperre zu umgehen
 
+### 3.2.1 Additive Plan-Queue-Dokumentationsausnahme (lokal, eng begrenzt)
+
+- Diese Ausnahme gilt NUR innerhalb dieser Repository-Regeln und hebt NIEMALS höher priorisierte System- oder Developer-Sperren auf.
+- Wenn ausschließlich der repository-interne Plan-Modus aktiv ist und KEINE höher priorisierte globale Schreibsperre mit Formulierungen wie `READ-ONLY`, `ZERO exceptions`, `STRICTLY FORBIDDEN` oder sinngleich aktiv ist, DÜRFEN folgende lokale Dateien trotz Plan-Modus beschrieben werden:
+  - `./.opencode/todo_plan.md`
+  - `./.opencode/todo_build.md`
+  - `./.opencode/queue_items/*.md`
+  - `./.opencode/plan_state.md`
+- Diese Ausnahme dient ausschließlich der Queue-/Plan-Dokumentation.
+- VERBOTEN bleiben alle anderen Dateiänderungen, Commits, Pushes, GitHub-Mutationen und Abschlussaktionen.
+
 ### 3.3 Pflicht-Checkpoint vor jeder Mutation
 
 Vor jeder schreibenden Aktion MUSS der Agent prüfen:
@@ -706,6 +717,11 @@ Wenn Plan-Modus aktiv ist:
 - Detaillierten Plan erstellen und alle Aufgaben anzeigen
 - Aufgaben logisch gruppieren
 - Auf explizite Nutzerfreigabe warten, bevor etwas umgesetzt wird (keine Dateiänderungen, keine Commits, keine Pushes)
+
+### 6.1.1 Lokale Dokumentationsausnahme fuer Queue-Dateien
+
+- Zusaetzlich zu 6.1 gilt: Die in Abschnitt 3.2.1 genannten lokalen Queue-/Plan-Dateien duerfen im Plan-Modus beschrieben werden, sofern keine hoeher priorisierte Schreibsperre aktiv ist.
+- Diese Ausnahme ist abschliessend. Es gibt keine weitere Ausnahme fuer andere Dateien.
 
 **VERBOTEN:** Nach Planpräsentation proaktiv nach Issues fragen oder Issue-Triage anbieten.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.547
+
+### Fix
+
+- Sidebar / Status / Picker: Das Sidebar-Statuspanel fuehrt laufende und abgeschlossene Eintraege jetzt nur noch in `influxbro_status_list`, markiert aktive Jobs direkt in der Liste mit Spinner und bietet zusaetzlich einen expliziten Button `Loeschen`, der auch laufende Statusjobs sauber entfernt. Gleichzeitig reagiert Picker/S-Picker wieder zuverlaessig auf Shift-basierte Mehrfachauswahl direkt waehrend des Pickens, statt nur beim initialen Buttonklick. ([#514](https://github.com/thomas682/HA-Addons/issues/514))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.546
 
 ### Fix

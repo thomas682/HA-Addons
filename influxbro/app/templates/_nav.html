@@ -136,16 +136,19 @@
     #influxbro_status_panel .title { font-weight: 700; font-size: 12px; opacity: 0.8; }
     #influxbro_status_panel .box { margin-top: 6px; border: 1px solid #eee; border-radius: 12px; padding: 10px 10px; background: #fafafa; }
     #influxbro_status_panel .row { display:flex; align-items:center; gap: 8px; }
-    #influxbro_status_panel .hg { width: 14px; height: 14px; display:inline-flex; align-items:center; justify-content:center; }
+    #influxbro_status_panel .hg { width: 14px; height: 14px; display:inline-flex; align-items:center; justify-content:center; flex: 0 0 auto; }
     #influxbro_status_panel .hg svg { width: 14px; height: 14px; opacity: 0.75; }
     #influxbro_status_panel .muted { font-size: 12px; opacity: 0.75; }
     #influxbro_status_panel .list { margin-top: 8px; max-height: 180px; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     #influxbro_status_panel .item { display:flex; align-items:baseline; justify-content:space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed rgba(0,0,0,0.08); }
     #influxbro_status_panel .item:last-child { border-bottom: 0; }
+    #influxbro_status_panel .item_left { display:flex; align-items:flex-start; gap: 8px; min-width: 0; }
     #influxbro_status_panel .k { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: var(--ui-status-font); opacity: 0.7; }
     #influxbro_status_panel .t { font-size: var(--ui-status-font); white-space: nowrap; overflow: visible; text-overflow: clip; }
     #influxbro_status_panel .tm { font-size: var(--ui-status-font); opacity: 0.75; white-space: nowrap; }
     #influxbro_status_panel .item { white-space: nowrap; min-width: max-content; }
+    #influxbro_status_panel .item_running .hg svg { opacity: 0.95; animation: ib_status_spin 1.2s linear infinite; transform-origin: 50% 50%; }
+    @keyframes ib_status_spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @media (max-width: 980px){
       /* Avoid forcing horizontal page scroll on iPhone. */
       #influxbro_status_panel .item { min-width: 0; }
@@ -276,22 +279,12 @@
     <div class="title">Status</div>
     <div class="row" style="margin-top: 8px; justify-content:flex-start; gap: 8px;">
       <button id="influxbro_status_refresh" type="button" style="cursor:pointer; padding: 8px 10px; height: 32px;" data-ui="nav_status.btn_refresh" data-ib-pickkey="nav_status.btn_refresh" title="nav.status.refresh">Refresh</button>
-      <div class="muted" style="font-size: var(--ui-status-font); opacity: 0.75;">Loescht abgeschlossene Eintraege.</div>
+      <button id="influxbro_status_clear_all" type="button" style="cursor:pointer; padding: 8px 10px; height: 32px;" data-ui="nav_status.btn_delete" data-ib-pickkey="nav_status.btn_delete" title="nav.status.delete">Loeschen</button>
+      <div class="muted" style="font-size: var(--ui-status-font); opacity: 0.75;">Refresh loescht abgeschlossene Eintraege. Loeschen leert alles.</div>
     </div>
     <div class="box">
       <div class="row" id="influxbro_sysinfo" style="display:none; margin-bottom: 8px;" data-ui="nav_main.panel_sysinfo" data-ib-pickkey="nav_main.panel_sysinfo" title="nav.sysinfo">
         <span class="t" id="influxbro_sysinfo_txt" style="font-size: var(--ui-status-font); opacity: 0.85; white-space: normal;"></span>
-      </div>
-      <div class="row" id="influxbro_status_head" style="display:none;">
-        <span class="hg" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M7 3h10M7 21h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M8 3c0 5 4 5 4 9s-4 4-4 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M16 3c0 5-4 5-4 9s4 4 4 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </span>
-        <span class="t" id="influxbro_status_head_txt">Aktion laeuft...</span>
-        <span class="tm" id="influxbro_status_head_time"></span>
       </div>
       <div class="list" id="influxbro_status_list"></div>
       <div class="last" id="influxbro_status_last" style="display:none;"></div>
@@ -536,12 +529,10 @@
       try{
         if(window.InfluxBroStatus) return;
         const SYSINFO_ENABLED = {{ 'true' if (cfg and cfg.get('ui_status_show_sysinfo', false)) else 'false' }};
-        const $head = document.getElementById('influxbro_status_head');
-        const $headTxt = document.getElementById('influxbro_status_head_txt');
-        const $headTime = document.getElementById('influxbro_status_head_time');
         const $list = document.getElementById('influxbro_status_list');
         const $last = document.getElementById('influxbro_status_last');
         const $refresh = document.getElementById('influxbro_status_refresh');
+        const $clearAll = document.getElementById('influxbro_status_clear_all');
         const $sys = document.getElementById('influxbro_sysinfo');
         const $sysTxt = document.getElementById('influxbro_sysinfo_txt');
 
@@ -619,28 +610,41 @@
           }
         }
 
+        function runningIconHtml(){
+          return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">'
+            + '<path d="M7 3h10M7 21h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+            + '<path d="M8 3c0 5 4 5 4 9s-4 4-4 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+            + '<path d="M16 3c0 5-4 5-4 9s4 4 4 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+            + '</svg>';
+        }
+
         function render(){
           try{
-            const running = Array.from(items.values()).filter(x => x.state === 'running');
-            if($head) $head.style.display = running.length ? 'flex' : 'none';
-            if($headTxt) $headTxt.textContent = running.length ? String(running[0].text || 'Aktion laeuft...') : '';
-            if($headTime) $headTime.textContent = running.length ? fmtMs(Date.now() - Number(running[0].started_at_ms || Date.now())) : '';
-
             if($list){
               const xs = Array.from(items.values()).slice().sort((a,b)=>Number(a.started_at_ms||0) - Number(b.started_at_ms||0));
               $list.innerHTML = '';
               xs.forEach(x => {
                 const div = document.createElement('div');
-                div.className = 'item';
+                div.className = 'item' + (x.state === 'running' ? ' item_running' : '');
                 const left = document.createElement('div');
+                left.className = 'item_left';
+                if(x.state === 'running'){
+                  const hg = document.createElement('span');
+                  hg.className = 'hg';
+                  hg.setAttribute('aria-hidden', 'true');
+                  hg.innerHTML = runningIconHtml();
+                  left.appendChild(hg);
+                }
+                const info = document.createElement('div');
                 const t = document.createElement('div');
                 t.className = 't';
                 t.textContent = String(x.text || '');
                 const k = document.createElement('div');
                 k.className = 'k';
                 k.textContent = String(x.key || '');
-                left.appendChild(t);
-                left.appendChild(k);
+                info.appendChild(t);
+                info.appendChild(k);
+                left.appendChild(info);
                 const tm = document.createElement('div');
                 tm.className = 'tm';
                 tm.textContent = (x.state === 'running')
@@ -704,6 +708,25 @@
                 if(st && st !== 'running') items.delete(String(x.key || ''));
               }catch(e){}
             });
+          }catch(e){}
+          persistDebounced();
+          render();
+          stopTimerIfIdle();
+        }
+
+        function completeAllAndClear(){
+          const now = Date.now();
+          try{
+            Array.from(items.values()).forEach(x => {
+              try{
+                if(String(x.state || '') === 'running'){
+                  x.state = 'done';
+                  x.done_ms = Math.max(0, now - Number(x.started_at_ms || now));
+                }
+              }catch(e){}
+            });
+            items.clear();
+            last = null;
           }catch(e){}
           persistDebounced();
           render();
@@ -884,6 +907,15 @@
             $refresh.addEventListener('click', (ev)=>{
               try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
               clearCompleted();
+            });
+          }
+        }catch(e){}
+        try{
+          if($clearAll && !$clearAll.__influxbro_bound){
+            $clearAll.__influxbro_bound = true;
+            $clearAll.addEventListener('click', (ev)=>{
+              try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+              completeAllAndClear();
             });
           }
         }catch(e){}
