@@ -44,6 +44,12 @@ Diese Prüfung ist vor jeder Such-, Lese-, Schreib-, Git- oder Testaktion durchz
 - Ist die Anfrage NEU, MUSS ein GitHub-Issue erstellt werden, BEVOR mit der Umsetzung begonnen wird.
 - Titel: kurze Zusammenfassung
 - Body: vollständige Beschreibung
+- Der Issue-Body MUSS zusätzlich einen eigenen Abschnitt `## Ursprüngliche Nutzeranweisung` enthalten.
+- In diesem Abschnitt MUSS die ursprüngliche Chat-Anweisung des Nutzers möglichst wortgetreu übernommen werden.
+- Die ursprüngliche Nutzeranweisung darf nicht sinngemäß ersetzt, gekürzt oder stillschweigend geglättet werden.
+- Falls die Anforderung aus mehreren zusammengehörigen Chat-Nachrichten besteht, MÜSSEN alle relevanten Nachrichten chronologisch in diesem Abschnitt dokumentiert werden.
+- Technische Interpretationen, Ableitungen und Akzeptanzkriterien gehören NICHT in diesen Abschnitt, sondern in die normale Issue-Beschreibung.
+- Enthält die ursprüngliche Nutzeranweisung sensible Daten, Zugangsdaten, Tokens, Passwörter oder private personenbezogene Daten, MÜSSEN diese vor dem Einfügen entfernt oder maskiert werden.
 - Label: `type/enhancement` oder `type/bug`
 - Status: `status/in_progress` wenn sofort umgesetzt wird, sonst `status/open`
 
@@ -249,7 +255,7 @@ VERBOTEN:** Push wenn Syntaxprüfung fehlgeschlagen, erforderliche QA nicht ausg
 Ein Issue gilt erst als umgesetzt, wenn:
 
 1. Die angeforderte Code-/Konfig-/Dokumentationsänderung tatsächlich angewendet wurde
-2. Alle relevanten Pflicht-QA-Prüfungen für dieses Issue ausgeführt wurden
+2. Alle relevanten Pflicht-QA-Prüfungen ohne Fehler für dieses Issue ausgeführt wurden
 3. Keine blockierenden Fehler für dieses Issue verbleiben
 4. Die Änderung committed wurde
 5. Die Änderung nach `main` gepusht wurde (gemäß Repository-Policy)
@@ -315,6 +321,16 @@ Solange eine Abarbeitung aktiv ist und noch nicht vollständig abgeschlossen wur
 - **Neue Eingaben werden in die entsprechende Queue eingereiht.**
 - **Der aktive Prozess läuft bis zum vollständigen Abschluss weiter.**
 
+Diese Regel gilt NICHT kontextübergreifend: Beginnt ein neuer Auftrag mit anderem Scope oder unter aktiver Modussperre, verfallen frühere GO-/Issue-Freigaben gemäß Abschnitt 2.1.1 und 4.1 automatisch.
+
+### 2.1.1 Verfall früherer GO-/Issue-Freigaben (PFLICHT)
+
+- Eine frühere `GO`-, Build- oder Issue-Freigabe gilt ausschließlich für den damals aktiven Auftrag.
+- Kommt später eine neue Nutzeranweisung mit anderem Ziel, anderem Scope, anderen Verboten oder anderen Deliverables, verfällt die frühere Freigabe automatisch.
+- `GO` darf NIEMALS als globaler Dauerzustand interpretiert werden.
+- `GO` darf NUR an den unmittelbar davor aktiven, thematisch passenden Auftrag gebunden werden.
+- Frühere `GO`-/Issue-Freigaben dürfen NICHT auf neue Analyse-, Plan-, Read-Only- oder anders gelagerte Aufträge übertragen werden.
+
 ### 2.2 Zwei Queues
 
 #### ToDo Plan – Planungsanfragen
@@ -372,13 +388,8 @@ Anzeigeregeln:
 
 ### 2.3 Einreihungsregeln
 
-| Eingabe-Typ | Ziel-Queue |
-
-|---|---|
-| Neue Planungs-/Analyseanfrage | ToDo Plan |
-| Neuer Implementierungsauftrag oder GO | ToDo Build |
-| Präzisierung/Ergänzung zur aktiven Aufgabe | Aktive ToDo-Liste ergänzen |
-| Explizites Abbruchsignal | Sofortige Unterbrechung (siehe 2.4) |
+Alle neuen Plan Anweisungen werden erst in "ToDo Plan" eingefügt und nicht direkt ausgeführt
+Alle neuen Build Anweisungen werden erst in "ToDo Build" eingefügt und nicht direkt ausgeführt
 
 ### 2.4 Explizite Abbruchsignale (EINZIGE Ausnahme)
 
@@ -442,6 +453,25 @@ Fügt der Nutzer während der Ausführung neue Anforderungen hinzu:
 3. Der Agent benennt kurz, was in Arbeit war und wie die neue Anweisung eingereiht wurde
 4. Nur bei explizitem Abbruchsignal darf die bisherige Arbeit fallengelassen werden
 
+### 2.8 Kontextbruch-Erkennung (PFLICHT)
+
+- Vor jeder Fortsetzung einer früher freigegebenen Abarbeitung MUSS der Agent prüfen, ob inzwischen ein neuer Auftrag mit anderem Scope aktiv ist.
+- Ein Kontextbruch liegt insbesondere vor, wenn:
+  - das Ziel fachlich wechselt
+  - Analyse/Planung statt Umsetzung verlangt wird
+  - neue Verbote oder Modussperren formuliert wurden
+  - andere Deliverables oder andere Abnahmekriterien gelten
+- Faustregel:
+  - neues Ziel
+  - neuer Scope
+  - neue Verbote
+  - neue Deliverables
+  = neuer Kontext
+- Bei erkanntem Kontextbruch MUSS der Agent:
+  1. den alten Ausführungsmodus schließen
+  2. alte `GO`-/Issue-Freigaben verwerfen
+  3. den neuen Auftrag ausschließlich nach dessen aktuellen Regeln behandeln
+
 ---
 
 ## ABSCHNITT 3 – MODUSSPERRE
@@ -482,8 +512,16 @@ Vor jeder schreibenden Aktion MUSS der Agent prüfen:
 1. Ist ein System-/Developer-Hinweis aktiv, der nur Lesen/Planen erlaubt?
 2. Ist `Plan Mode` oder `READ-ONLY` aktiv?
 3. Betrifft die Aktion eine Mutation an Dateien, Git, GitHub, Konfiguration oder persistentem Zustand?
+4. Beruht die geplante Mutation ausschließlich auf einer älteren `GO`-/Issue-Freigabe aus dem Verlauf?
+5. Gibt es inzwischen eine neuere Nutzeranweisung mit Analyse-, Plan-, Read-Only- oder andersartigem Scope?
 
 Wird eine dieser Fragen mit `ja` beantwortet: Aktion UNTERLASSEN.
+
+Wird Frage 4 mit `ja` oder Frage 5 mit `ja` beantwortet:
+
+- alte Freigabe NICHT weiterverwenden
+- keine Mutation ausführen
+- neuen Auftrag nur nach aktuellem Scope behandeln
 
 ### 3.4 Pflichtantwort bei aktiver Sperre
 
@@ -495,17 +533,18 @@ Bei jeder operativen Anfrage unter aktiver Sperre MUSS der Agent sinngemaäß an
 
 ## ABSCHNITT 4 – GO-BEFEHL (EINZIGE DEFINITION)
 
-Schreibt der Nutzer `go` oder `GO`, führt der Agent folgende Sequenz vollständig und ohne Unterbrechung aus:
+Der Befehl `go` oder `GO` ist ausschließlich ein Ausführungssignal.
 
-1. Alle offenen/ausstehenden geplanten Aufgaben aus ToDo-Liste und `./.opencode/plan_state.md` implementieren
-2. Erforderliche QA ausführen (Abschnitt 1.4 Schritt B)
-3. Fehler klassifizieren
-4. `influxbro/config.yaml` Version erhöhen (wenn Laufzeit/UI/API/Verhalten geändert)
-5. Änderungen stagen
-6. Commit mit strukturierter Message erstellen
-7. Nach `main` pushen
-8. Ergebnis im Chat melden
-9. Abschlusssignal ausführen (Abschnitt 1.4 Schritt F)
+`GO` ist immer scope-gebunden und niemals global auf spätere, andersartige Aufträge übertragbar.
+
+Im Modus **Plan** wird `go` ignoriert.
+
+Im Modus **Build** aktiviert `go` den vollständigen Ablauf aus
+**ABSCHNITT 1 – PFLICHT-AUSFÜHRUNGSFLUSS**.
+
+Der Agent darf danach nicht erneut nachfragen, sondern muss alle offenen Aufgaben aus der aktuellen ToDo-Liste und `./.opencode/plan_state.md` gemäß Abschnitt 1 vollständig bearbeiten, prüfen, versionieren, committen, nach `main` pushen, das Ergebnis melden und das definierte Abschlusssignal ausführen.
+
+Der GO-Befehl enthält bewusst keine eigene Ablaufdefinition. Maßgeblich ist immer Abschnitt 1.
 
 **VERBOTEN:** Nach dem ersten Paket stoppen, solange kein echter Blocker existiert.
 
@@ -521,50 +560,84 @@ Schreibt der Nutzer `go` oder `GO`, führt der Agent folgende Sequenz vollständ
 - Fragen auslösen
 - Weitere Verarbeitung pausieren oder verzögern
 
+### 4.1 Scope-Bindung von GO (PFLICHT)
+
+- Der Befehl `go` / `GO` bezieht sich ausschließlich auf den unmittelbar davor aktiven und thematisch passenden Auftrag.
+- `GO` aktiviert NICHT automatisch frühere, andersartige oder bereits durch neue Nutzeranweisungen abgelöste Aufgaben.
+- Wenn nach einer früheren `GO`-Freigabe ein neuer Auftrag mit anderem Scope beginnt, ist die frühere `GO`-Freigabe automatisch ungültig.
+- `GO` darf nur ausgeführt werden, wenn die letzte einschlägige Nutzeranweisung tatsächlich eine Umsetzungsfreigabe ist.
+- Wenn die letzte relevante Nutzeranweisung stattdessen Analyse, Planung, Read-Only oder „noch keine Umsetzung“ verlangt, hat diese Anweisung immer Vorrang.
+
+**Kernregel:**
+Alte `GO`-/Issue-Freigaben verfallen automatisch, sobald ein neuer Nutzerauftrag mit anderem Scope oder mit Analyse-/Read-Only-Vorgaben beginnt.
+
 ---
 
-## ABSCHNITT 5 – AUTONOME AUSFÜHRUNGSRICHTLINIE
+## ABSCHNITT 5 – AUTONOME AUSFÜHRUNG NACH FREIGABE
 
-### 5.1 Kern-Regel
+### 5.1 Grundsatz
 
-Wenn der Nutzer die Umsetzung explizit freigibt (z. B. „alle Issues umsetzen", `go` oder äquivalente Formulierung), MUSS der Agent alle Aufgaben vollständig und ohne Zwischenfragen ausführen.
+Wenn der Nutzer die Umsetzung explizit freigibt, gilt dies als vollständige Arbeitsanweisung.
 
-### 5.2 Keine-Unterbrechung-Regel
+Beispiele:
 
-**VERBOTEN während freigegebener Ausführung:**
+- `go` / `GO` im Build-Modus
+- „alle Issues umsetzen“
+- „arbeite alle offenen Punkte ab“
+- „setze die geplanten Aufgaben um“
+- „alle Issues außer #X umsetzen“
 
-- Schritt-für-Schritt-Bestätigungen einholen
-- Priorisierungsfragen stellen
-- „Wie soll ich vorgehen?"-Fragen stellen
-- Nummerierte Auswahlmenüs (1/2/3) für Zwischenschritte
+Nach einer solchen Freigabe arbeitet der Agent ohne weitere Rückfragen gemäß
+**ABSCHNITT 1 – PFLICHT-AUSFÜHRUNGSFLUSS**.
 
-### 5.3 Erlaubte Unterbrechungen (AUSSCHLIESSLICH DIESE)
+### 5.2 Keine Zwischenbestätigungen
 
-Der Agent DARF die Ausführung nur unterbrechen, wenn:
+Während einer freigegebenen Ausführung sind verboten:
 
-- Kritische Informationen fehlen und kein Fortschritt möglich ist
-- Externe Abhängigkeiten erforderlich sind (z. B. Zugangsdaten, API-Zugang)
-- Mehrere gültige Umsetzungen mit erheblichem Einfluss existieren
-- Eine destruktive oder nicht umkehrbare Aktion erforderlich ist
+- Schritt-für-Schritt-Bestätigungen
+- Rückfragen zur Priorisierung
+- Rückfragen zur Paketbildung
+- Auswahlmenüs für Zwischenschritte
+- erneute Nachfrage, ob wirklich umgesetzt werden soll
+
+### 5.3 Erlaubte Unterbrechungen
+
+Der Agent darf nur unterbrechen, wenn ein echter Blocker vorliegt:
+
+- notwendige Informationen fehlen und kein sinnvoller Fortschritt möglich ist
+- externe Zugänge oder Zugangsdaten fehlen
+- mehrere technisch gültige Wege mit deutlich unterschiedlichem Risiko bestehen
+- eine destruktive oder schwer rückgängig zu machende Aktion erforderlich wäre
+
+In allen anderen Fällen ist eine sinnvolle Annahme zu treffen und weiterzuarbeiten.
 
 ### 5.4 Multi-Issue-Ausführung
 
-- Issues sequenziell abarbeiten
-- Ein Issue vollständig abschließen, bevor das nächste beginnt
-- NICHT zwischen Issues fragen
-- NICHT Ausführung neu bestätigen
-- „Arbeite alle Issues ab" oder „Arbeite alle Issues außer #X ab" sind vollständige Arbeitsanweisungen – keine zusätzliche Bestätigung, kein weiteres `GO` und keine Rückfrage zur Paketbildung erforderlich
-- Schließt der Nutzer einzelne Issues explizit aus, sind alle übrigen automatisch zur Umsetzung ausgewählt
-- Offene Issues, die laut Nutzer umgesetzt werden sollen, MÜSSEN selbstständig automatisch weiter bearbeitet werden, bis keine solchen Issues mehr offen sind
+Bei mehreren Issues oder Aufgaben gilt:
+
+- sequenziell abarbeiten
+- ein Issue vollständig abschließen, bevor das nächste begonnen wird
+- ausgeschlossene Issues überspringen
+- alle übrigen freigegebenen Issues automatisch weiterbearbeiten
+- keine erneute Freigabe zwischen den Issues einholen
+
+Issues mit dem Label `rememberme` bleiben ausgeschlossen, sofern eine andere Regel dies bereits festlegt.
 
 ### 5.5 Berichterstattung
 
-Berichte NUR:
+Der Agent berichtet nur:
 
-- Nach Abschluss eines logischen Blocks (z. B. ein Issue vollständig umgesetzt)
-- Oder am Ende aller Aufgaben
+- nach Abschluss eines vollständigen Issues oder logischen Arbeitsblocks
+- am Ende aller freigegebenen Aufgaben
+- bei einem echten Blocker
 
-Berichte dürfen KEINE Fragen enthalten, außer bei einem echten Blocker.
+Berichte dürfen keine Rückfragen enthalten, außer wenn ein Blocker gemäß 5.3 vorliegt.
+
+### 5.6 Freigaben gelten nicht kontextübergreifend
+
+- Eine Ausführungsfreigabe gilt niemals kontextübergreifend.
+- Sie darf nicht auf spätere, andersartige Nutzeraufträge übertragen werden.
+- Sobald ein neuer Auftrag mit anderem Scope beginnt, MUSS für diesen neuen Auftrag wieder separat geprüft werden, ob überhaupt eine Ausführungsfreigabe vorliegt.
 
 ## ABSCHNITT 6 – PLAN-MODUS
 
@@ -582,14 +655,23 @@ Wenn Plan-Modus aktiv ist:
 
 - Läuft bereits eine freigegebene Build-Ausführung, bleibt diese bis zu einem logischen Abschlusspunkt aktiv.
 - Ein späterer Wechsel in den Plan-Modus darf diese laufende Ausführung NICHT rückwirkend stoppen oder als Read-Only umdeuten.
-- Neue Plan-Anfragen während laufender Build-Ausführung werden in die ToDo-Plan-Queue eingereiht.
-- Nur ein explizites Abbruchsignal (Abschnitt 2.4) kann eine laufende Build-Ausführung zugunsten von Plan-Arbeit unterbrechen.
+- Neue Plan-Anfragen während laufender Build-Ausführung werden in die **ToDo Plan Queue** eingereiht.
+- Die laufende Build-Ausführung bleibt in der **ToDo Build Queue** aktiv, bis der aktuelle logische Block abgeschlossen ist.
+- Nur ein explizites Abbruchsignal gemäß Abschnitt 2.4 kann eine laufende Build-Ausführung zugunsten von Plan-Arbeit unterbrechen.
 
 ### 6.3 Build-Modus darf aktive Plan-Arbeit nicht unterbrechen
 
-- Läuft bereits aktive Plan-Arbeit, DARF ein späterer Build/GO-Befehl diese nicht abbrechen.
-- Der aktuelle Plan-Antwort muss zuerst einen logischen Abschlusspunkt erreichen.
-- Der Build/GO-Befehl wird danach als nächste Aktion ausgeführt, es sei denn, der Nutzer weist ausdrücklich an sofort zu wechseln.
+- Läuft bereits aktive Plan-Arbeit, darf ein späterer Build-/GO-Befehl diese nicht abbrechen.
+- Die aktuell laufende Plan-Arbeit muss zuerst einen logischen Abschlusspunkt erreichen.
+- Der Build-/GO-Befehl wird in die **ToDo Build Queue** eingereiht.
+- Nach Abschluss der laufenden Plan-Arbeit wird die **ToDo Build Queue** als nächste Aktion bearbeitet.
+- Eine sofortige Unterbrechung erfolgt nur, wenn der Nutzer dies ausdrücklich anweist.
+
+### 6.4 Plan-Aufträge entwerten alte GO-Freigaben
+
+- Beginnt ein neuer Auftrag im Plan-Modus oder unter aktiver Read-Only-/Modussperre, verlieren frühere `GO`-/Issue-Freigaben automatisch ihre Gültigkeit für diesen neuen Auftrag.
+- Der Agent darf in diesem Fall frühere Ausführungsfreigaben nicht wiederaufgreifen.
+- Der neue Plan-/Analyseauftrag ist ausschließlich nach den aktuellen Vorgaben zu behandeln.
 
 ## ABSCHNITT 7 – BULK-VERARBEITUNG UND KONTEXT-MANAGEMENT
 
@@ -690,13 +772,23 @@ Externe APIs (z. B. Alibaba Qwen) können Anfragen bei zu schnellem Traffic able
 
 ## ABSCHNITT 8 – ISSUE-VERWALTUNG
 
-### 8.1 Grundregeln (KRITISCH)
+### 8.1 Grundregeln für Issues
 
-- **Issues werden NIEMALS automatisch geprüft, geladen oder gestartet.**
-- Issues werden ausschließlich auf expliziten Befehl des Nutzers geprüft und abgearbeitet (Auslöser: Abschnitt 16.2).
-- Nur bei NEUER Anfrage fragen, ob ein Issue erstellt oder sofort umgesetzt werden soll.
-- Bezieht sich die Anfrage auf ein bestehendes Issue: direkt weiterarbeiten, keine Rückfrage.
-- **Sperrbedingung:** Sind noch Todos offen (ToDo-Liste, `todo_plan.md`, `todo_build.md`), dürfen KEINE neuen Issues gestartet werden – auch nicht auf Anfrage. Der Agent meldet den blockierten Zustand und listet offene Punkte auf.
+- Issues werden niemals automatisch geprüft, geladen, triagiert oder gestartet.
+- Issues werden ausschließlich auf expliziten Befehl des Nutzers geprüft oder abgearbeitet.
+- Gültige Auslöser sind in Abschnitt 16.2 definiert.
+
+- Bei einer neuen fachlichen Anfrage fragt der Agent, ob daraus ein Issue erstellt oder die Änderung direkt umgesetzt werden soll.
+- Bezieht sich die Anfrage eindeutig auf ein bestehendes Issue, arbeitet der Agent direkt daran weiter, ohne erneut zu fragen.
+
+- Offene Aufgaben in der **ToDo Build Queue** blockieren standardmäßig den Start neuer Issues.
+- Offene Aufgaben in der **ToDo Plan Queue** blockieren nur neue Plan-/Analyseaufgaben, nicht zwingend freigegebene Build-Arbeit.
+- Bei blockiertem Zustand meldet der Agent die offenen Punkte und startet kein neues Issue.
+- Der Nutzer darf die Sperre ausdrücklich überschreiben, z. B. mit:
+  - „Issue #X trotzdem starten“
+  - „bestehende Todos zurückstellen“
+  - „Priorität auf dieses Issue ändern“
+
 - `rememberme`-Issues sind bei jeder Prüfung, Triage oder Sammelumsetzung strikt zu überspringen, auch wenn der Nutzer nach „allen Issues“ fragt.
 
 ### 8.2 Issue-Status-Labels (PFLICHT)
@@ -1150,6 +1242,14 @@ Issues werden ausschließlich geprüft und gestartet, wenn der Nutzer eine der f
 > "Es liegen noch offene Aufgaben vor – neue Issues können erst gestartet werden, wenn alle aktuellen Todos abgeschlossen sind."
 >
 > Offene Punkte: [Auflistung der ausstehenden Einträge]
+
+### 16.3 Pflichtantwort bei Konflikt mit alten GO-Freigaben
+
+Wenn ältere `GO`-/Issue-Freigaben im Gesprächsverlauf vorhanden sind, der aktuelle Auftrag aber Analyse, Planung, Read-Only oder einen anderen Scope verlangt, MUSS der Agent sinngemäß klarstellen:
+
+> „Frühere GO-Freigaben werden nicht übernommen, weil ein neuer Analyse-/Read-Only- oder andersartiger Auftrag aktiv ist.“
+
+Diese Klarstellung ist verpflichtend, bevor der Agent mit Analyse/Plan fortfährt.
 
 ## ABSCHNITT 17 – VOLLSTÄNDIGKEITSDEFINITION
 
