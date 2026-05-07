@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.566
+
+### Fix
+
+- Logs: Die beiden Löschbuttons `logs_main.btn_filter_clear` und `logs_main.btn_record_recent_clear` verwenden jetzt dasselbe Mülleimer-SVG wie die übrigen Löschaktionen. Zusätzlich folgt `logs_main.select_record_recent` jetzt der Breitenlogik des Suchfeldbereichs und spannt sich wie `logs_main.input_search_mark` über den verfügbaren Platz statt mit einer starren Mindestbreite zu arbeiten. ([#534](https://github.com/thomas682/HA-Addons/issues/534))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.565
 
 ### Fix

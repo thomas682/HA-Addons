@@ -1039,6 +1039,10 @@ def test_logs_recorder_controls_moved_to_header_and_filter_toolbar():
     assert 'id="record_toggle"' not in body
     assert 'id="record_apply"' not in body
     assert 'id="record_full"' not in body
+    assert 'id="filter_clear"' in body
+    assert '<svg viewBox="0 0 24 24"' in body
+    assert 'id="record_recent_filter" data-ui="logs_main.select_record_recent"' in body
+    assert 'style="width:100%;"' in body
 
 
 def test_dashboard_outlier_strategy_ui_exists():
