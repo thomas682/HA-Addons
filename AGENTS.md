@@ -572,6 +572,7 @@ Eine aktive Queue wird bei Modussperre eingefroren:
   - `./.opencode/queue_items/*.md`
   - `./.opencode/plan_state.md`
 - Diese Ausnahme dient ausschließlich der Queue-/Plan-Dokumentation.
+- Wenn eine höher priorisierte Schreibsperre jede Dateiänderung verbietet, duerfen auch diese Dateien NICHT geschrieben werden. In diesem Fall MUSS die Queue vollständig im Chat als einzelner Block `Queue im Planmodus` geführt und nach Ende der Sperre zuerst in `./.opencode/todo_plan.md`, `./.opencode/todo_build.md` und `./.opencode/plan_state.md` synchronisiert werden.
 - VERBOTEN bleiben alle anderen Dateiänderungen, Commits, Pushes, GitHub-Mutationen und Abschlussaktionen.
 
 ### 3.3 Pflicht-Checkpoint vor jeder Mutation
@@ -722,6 +723,13 @@ Wenn Plan-Modus aktiv ist:
 
 - Zusaetzlich zu 6.1 gilt: Die in Abschnitt 3.2.1 genannten lokalen Queue-/Plan-Dateien duerfen im Plan-Modus beschrieben werden, sofern keine hoeher priorisierte Schreibsperre aktiv ist.
 - Diese Ausnahme ist abschliessend. Es gibt keine weitere Ausnahme fuer andere Dateien.
+- Wenn eine hoeher priorisierte Schreibsperre aktiv ist, wird im Plan-Modus kein lokaler Queue- oder Plan-State geschrieben. Stattdessen wird ausschließlich ein einzelner Chat-Block `Queue im Planmodus` angezeigt, der alle gemerkten Informationen traegt und nach Ende der Sperre zuerst in die bestehenden `.opencode`-Dateien synchronisiert werden muss.
+
+### 6.1.2 Queue im Plan-Modus (Chat-only unter Schreibsperre)
+
+- Der Block `Queue im Planmodus` ersetzt unter aktiver uebergeordneter Schreibsperre die sichtbare lokale Queue-Darstellung im Chat.
+- Dieser Block MUSS den aktiven Punkt, gemerkte Pfade, offene Planungspunkte und Blocker enthalten.
+- Außerhalb einer solchen Schreibsperre gelten wieder die normalen lokalen Queue-/Plan-Dateien und Sichtbarkeitsregeln dieser Repository-Policy.
 
 **VERBOTEN:** Nach Planpräsentation proaktiv nach Issues fragen oder Issue-Triage anbieten.
 
