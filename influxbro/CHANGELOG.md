@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.555
+
+### Fix
+
+- Dashboard / Picker / Selector-Nebenläufe: Summary-Settings-Buttons bekommen jetzt stabile explizite Pickkeys aus einem zentralen Helfer, wodurch die gemeldeten Dashboard-Pickkey-Kollisionen wegfallen. Zusätzlich werden `fields`, `measurement_profile`, `outlier_strategy` und `name_timeline` bei identischer Auswahl inflight koalesziert, und erwartete Abort-Fälle werden nicht mehr als harte Client-Fetch-Fehler geloggt. ([#522](https://github.com/thomas682/HA-Addons/issues/522))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.554
 
 ### Fix

@@ -192,6 +192,7 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     logs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
     index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     nav_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     tooltips_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
 
     assert 'id="ui_longwait_threshold_ms"' in config_body
@@ -220,6 +221,9 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'analysis_log_filter_text_clear' in index_body
     assert 'analysis_log_filter_mark_clear' in index_body
     assert "at + ' | dur_ms='" in index_body
+    assert 'const DASHBOARD_REQUEST_GUARDS = {' in index_body
+    assert 'if(guard.inflight && guard.key === guardKey) return guard.inflight;' in index_body
+    assert 'if(e && (e.name === \'AbortError\'' in index_body
     assert 'function _validIsoWindow(win)' in index_body
     assert 'if(!_validIsoWindow(win)){' in index_body
     assert "if(!_validIsoWindow({ start: startIso, stop: stopIso })) return;" in index_body
@@ -231,6 +235,11 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "X-InfluxBro-Internal': '1" in nav_body
     assert "if(u.includes('/api/perf_stats')) return false;" in tooltips_body
     assert "if(u.includes('/api/sysinfo')) return false;" in tooltips_body
+    assert 'window.InfluxBroEnsureSummarySettingsButtons = function(){' in topbar
+    assert 'window.InfluxBroSummaryConfigButtonMeta = function(detailsEl){' in topbar
+    assert "cfgBtn.setAttribute('data-ib-pickkey'" in topbar
+    assert 'if(window.InfluxBroEnsureSummarySettingsButtons){' in tooltips_body
+    assert "m.includes('signal is aborted without reason')" in tooltips_body
     assert "function _shouldTrackLongWait(url, headers)" in tooltips_body
     assert "_shouldTrackLongWait(u, headers0)" in tooltips_body
 

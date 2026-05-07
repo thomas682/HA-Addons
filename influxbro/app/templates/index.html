@@ -4832,6 +4832,9 @@ async function api(url, opts){
     try{
       r = await fetch(url, { ...o, signal: ctrl.signal });
     }catch(e){
+      if(e && (e.name === 'AbortError' || String(e).includes('AbortError') || String(e).includes('signal is aborted without reason'))){
+        throw e;
+      }
       try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError(url, o, e); }catch(x){}
       throw new Error('Failed to fetch');
     }
@@ -5812,29 +5815,39 @@ async function refreshMeasurementProfilePanel(){
     const field = String(($f && $f.value) || '').trim();
     const entityId = String(($e && $e.value) || '').trim();
     const friendlyName = String(($n && $n.value) || '').trim();
+    const guard = DASHBOARD_REQUEST_GUARDS.measurementProfile;
     if(!measurement || !field || !entityId){
       renderMeasurementProfilePanel(null);
       try{ if($measurementProfileRunStatus) $measurementProfileRunStatus.style.display = 'none'; }catch(e){}
       return;
     }
+    const guardKey = [measurement, field, entityId, friendlyName, JSON.stringify(selectorQueryTimeParams())].join('|');
+    if(guard.inflight && guard.key === guardKey) return guard.inflight;
+    const token = ++guard.token;
     _measurementProfileShowDelayed('Messwertinfos werden geladen...');
-    const clientT0 = Date.now();
-    const qp = new URLSearchParams({
-      measurement,
-      field,
-      entity_id: entityId,
-      friendly_name: friendlyName,
-      ...selectorQueryTimeParams(),
-    });
-    const j = await api('./api/measurement_profile?' + qp.toString(), null, { key: 'measurement_profile', status: 'Lade Messwertprofil...', silent: true });
-    LAST_MEASUREMENT_PROFILE_TRACE = {
-      client_total_ms: Math.max(0, Date.now() - clientT0),
-      server_runtime: j && j.runtime ? j.runtime : null,
-      request: (j && j.runtime && j.runtime.request) ? j.runtime.request : { measurement, field, entity_id: entityId, friendly_name: friendlyName },
-      error: null,
-    };
-    renderMeasurementProfilePanel(j);
-    _measurementProfileStop('Messwertinfos geladen.', false);
+    guard.key = guardKey;
+    guard.inflight = (async ()=>{
+      const clientT0 = Date.now();
+      const qp = new URLSearchParams({
+        measurement,
+        field,
+        entity_id: entityId,
+        friendly_name: friendlyName,
+        ...selectorQueryTimeParams(),
+      });
+      const j = await api('./api/measurement_profile?' + qp.toString(), null, { key: 'measurement_profile', status: 'Lade Messwertprofil...', silent: true });
+      if(token !== guard.token) return j;
+      LAST_MEASUREMENT_PROFILE_TRACE = {
+        client_total_ms: Math.max(0, Date.now() - clientT0),
+        server_runtime: j && j.runtime ? j.runtime : null,
+        request: (j && j.runtime && j.runtime.request) ? j.runtime.request : { measurement, field, entity_id: entityId, friendly_name: friendlyName },
+        error: null,
+      };
+      renderMeasurementProfilePanel(j);
+      _measurementProfileStop('Messwertinfos geladen.', false);
+      return j;
+    })();
+    return await guard.inflight;
   }catch(e){
     LAST_MEASUREMENT_PROFILE_TRACE = {
       client_total_ms: MEASUREMENT_PROFILE_RUN_T0 ? Math.max(0, Date.now() - MEASUREMENT_PROFILE_RUN_T0) : 0,
@@ -5844,6 +5857,9 @@ async function refreshMeasurementProfilePanel(){
     };
     renderMeasurementProfilePanel({ ok: false, error: e && e.message ? e.message : String(e) });
     _measurementProfileStop(e && e.message ? e.message : 'Fehler beim Laden der Messwertinfos.', true);
+  }finally{
+    const guard = DASHBOARD_REQUEST_GUARDS.measurementProfile;
+    if(guard && guard.inflight) guard.inflight = null;
   }
 }
 
@@ -5967,17 +5983,30 @@ async function refreshNameTimelinePanel(){
     const measurement = String(($m && $m.value) || '').trim();
     const field = String(($f && $f.value) || '').trim();
     const entityId = String(($e && $e.value) || '').trim();
+    const guard = DASHBOARD_REQUEST_GUARDS.nameTimeline;
     if(!measurement || !field || !entityId){
       try{ await refreshOutlierStrategyPanel(); }catch(x){}
       hideNameTimelinePanel();
       return;
     }
-    try{ await refreshOutlierStrategyPanel(); }catch(e){}
-    const rows = await loadComboRanges('friendly_name', { entity_id: entityId, friendly_name: null });
-    renderNameTimeline(rows || []);
+    const guardKey = [measurement, field, entityId, JSON.stringify(selectorQueryTimeParams())].join('|');
+    if(guard.inflight && guard.key === guardKey) return guard.inflight;
+    const token = ++guard.token;
+    guard.key = guardKey;
+    guard.inflight = (async ()=>{
+      try{ await refreshOutlierStrategyPanel(); }catch(e){}
+      const rows = await loadComboRanges('friendly_name', { entity_id: entityId, friendly_name: null });
+      if(token !== guard.token) return rows;
+      renderNameTimeline(rows || []);
+      return rows;
+    })();
+    return await guard.inflight;
   }catch(e){
     try{ await refreshOutlierStrategyPanel(); }catch(x){}
     hideNameTimelinePanel();
+  }finally{
+    const guard = DASHBOARD_REQUEST_GUARDS.nameTimeline;
+    if(guard && guard.inflight) guard.inflight = null;
   }
 }
 
@@ -6818,6 +6847,7 @@ async function dashboardLoadTagValues(tag, params){
 async function loadDashboardFields(measurement, opts){
   const o = opts || {};
   const m = String(measurement || "").trim();
+  const guard = DASHBOARD_REQUEST_GUARDS.fields;
   if(!m){
     ALL_FIELDS = [];
     if($fieldList) $fieldList.innerHTML = '';
@@ -6826,14 +6856,26 @@ async function loadDashboardFields(measurement, opts){
     if($f && !o.silent) $f.value = "";
     return true;
   }
+  const guardKey = m;
+  if(guard.inflight && guard.key === guardKey) return guard.inflight;
+  const token = ++guard.token;
   const qp = new URLSearchParams({ measurement: m });
-  const j = await api("./api/fields?" + qp.toString(), null, { key: "fields", status: "Lade Fields...", silent: !!o.silent });
-  ALL_FIELDS = (j.fields || []).map(String).filter(Boolean);
-  if($fieldList) $fieldList.innerHTML = ALL_FIELDS.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');
-  _setSelCount($cntField, ALL_FIELDS.length);
-  _selApplyWidthForInput($f, ALL_FIELDS);
-  logSelectorLoad('field', ALL_FIELDS, { measurement_filter: m, friendly_name: String(($n && $n.value)||''), entity_id: String(($e && $e.value)||'') });
-  return true;
+  guard.key = guardKey;
+  guard.inflight = (async ()=>{
+    const j = await api("./api/fields?" + qp.toString(), null, { key: "fields", status: "Lade Fields...", silent: !!o.silent });
+    if(token !== guard.token) return true;
+    ALL_FIELDS = (j.fields || []).map(String).filter(Boolean);
+    if($fieldList) $fieldList.innerHTML = ALL_FIELDS.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');
+    _setSelCount($cntField, ALL_FIELDS.length);
+    _selApplyWidthForInput($f, ALL_FIELDS);
+    logSelectorLoad('field', ALL_FIELDS, { measurement_filter: m, friendly_name: String(($n && $n.value)||''), entity_id: String(($e && $e.value)||'') });
+    return true;
+  })();
+  try{
+    return await guard.inflight;
+  }finally{
+    if(guard.inflight && token === guard.token) guard.inflight = null;
+  }
 }
 
 async function refreshDashboardSuggestions(opts){
@@ -7350,6 +7392,12 @@ const ANALYSIS_STATE = {
 };
 let ANALYSIS_CHECKLIST_ITEMS = [];
 let ANALYSIS_CHUNK_LOG = [];
+const DASHBOARD_REQUEST_GUARDS = {
+  fields: { token: 0, inflight: null, key: '' },
+  measurementProfile: { token: 0, inflight: null, key: '' },
+  outlierStrategy: { token: 0, inflight: null, key: '' },
+  nameTimeline: { token: 0, inflight: null, key: '' },
+};
 const LOAD_STEP_ORDER = ['start', 'dash_plan', 'analysis_plan', 'areas', 'result'];
 const LOAD_STEP_LABELS = {
   start: 'Cache-Pruefung gestartet',
@@ -9356,20 +9404,33 @@ async function _outlierStrategySetMode(mode){
 async function refreshOutlierStrategyPanel(){
   try{
     const sel = _outlierStrategyCurrentSelection();
+    const guard = DASHBOARD_REQUEST_GUARDS.outlierStrategy;
     if(!(sel.measurement && sel.field && sel.entity_id)){
       LAST_OUTLIER_STRATEGY = { ok: false, error: 'Strategie wird sichtbar, sobald measurement, field und entity_id vorliegen.' };
       _outlierStrategyRenderInfo(LAST_OUTLIER_STRATEGY);
       return;
     }
-    const qp = new URLSearchParams(sel);
-    const j = await api('./api/outlier_strategy?' + qp.toString(), null, { key: 'outlier_strategy', status: 'Lade Strategiewahl...', silent: true });
-    LAST_OUTLIER_STRATEGY = j;
-    _outlierStrategySetTypes(j.effective_selected || []);
-    _outlierStrategyRenderInfo(j);
-    try{ saveGlobalDashboardSelection().catch(()=>{}); }catch(e){}
+    const guardKey = JSON.stringify(sel);
+    if(guard.inflight && guard.key === guardKey) return guard.inflight;
+    const token = ++guard.token;
+    guard.key = guardKey;
+    guard.inflight = (async ()=>{
+      const qp = new URLSearchParams(sel);
+      const j = await api('./api/outlier_strategy?' + qp.toString(), null, { key: 'outlier_strategy', status: 'Lade Strategiewahl...', silent: true });
+      if(token !== guard.token) return j;
+      LAST_OUTLIER_STRATEGY = j;
+      _outlierStrategySetTypes(j.effective_selected || []);
+      _outlierStrategyRenderInfo(j);
+      try{ saveGlobalDashboardSelection().catch(()=>{}); }catch(e){}
+      return j;
+    })();
+    return await guard.inflight;
   }catch(e){
     LAST_OUTLIER_STRATEGY = { ok: false, error: e && e.message ? e.message : String(e) };
     _outlierStrategyRenderInfo(LAST_OUTLIER_STRATEGY);
+  }finally{
+    const guard = DASHBOARD_REQUEST_GUARDS.outlierStrategy;
+    if(guard && guard.inflight) guard.inflight = null;
   }
 }
 
