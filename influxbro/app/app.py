@@ -33784,7 +33784,35 @@ def api_series_inventory():
     except _ApiError as e:
         return jsonify({"ok": False, "error": e.message}), int(e.status)
     except Exception as e:
-        return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+        msg = _short_influx_error(e)
+        is_timeout = ("timed out" in msg.lower()) or ("timeout" in msg.lower())
+        if not is_timeout:
+            return jsonify({"ok": False, "error": msg}), 500
+        try:
+            retry_days = min(max(1, days), 7)
+            retry_limit = min(limit, 100)
+            j = _build_series_inventory(
+                cfg,
+                days=retry_days,
+                limit=retry_limit,
+                offset=0,
+                state=state,
+                q=q,
+                field_filter=field_filter,
+                stale_days=min(stale_days, max(stale_days, retry_days)),
+                enrich_n=0,
+            )
+            j["warning"] = msg
+            j["timeout_fallback"] = {
+                "active": True,
+                "requested_days": days,
+                "fallback_days": retry_days,
+                "requested_limit": limit,
+                "fallback_limit": retry_limit,
+                "enrich_n": 0,
+            }
+        except Exception:
+            return jsonify({"ok": False, "error": msg}), 500
     return jsonify(j)
 
 

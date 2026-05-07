@@ -1786,6 +1786,29 @@ def test_storage_usage_delete_allows_only_safe_items(load_app_module, tmp_path):
     assert r2.status_code == 400
 
 
+def test_series_inventory_timeout_returns_fallback_instead_of_500(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    calls = []
+
+    def _fake_build(cfg, *, days, limit, offset, state, q, field_filter, stale_days, enrich_n):
+        calls.append({"days": days, "limit": limit, "offset": offset, "enrich_n": enrich_n})
+        if len(calls) == 1:
+            raise TimeoutError("simulated timeout")
+        return {"ok": True, "rows": [], "summary": {"rows": 0}, "filters": {"days": days, "limit": limit}}
+
+    monkeypatch.setattr(app_mod, "_build_series_inventory", _fake_build)
+    client = app_mod.app.test_client()
+    r = client.get('/api/series_inventory?days=30&limit=200&offset=0')
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j['ok'] is True
+    assert j['timeout_fallback']['active'] is True
+    assert j['timeout_fallback']['fallback_days'] == 7
+    assert j['timeout_fallback']['fallback_limit'] == 100
+    assert calls[0]['days'] == 30
+    assert calls[1]['days'] == 7
+
+
 def test_native_fullbackup_uses_explicit_host_and_org_flags(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     job_id = "job-fullbackup"

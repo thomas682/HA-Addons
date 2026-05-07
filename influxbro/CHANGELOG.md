@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.543
+
+### Fix
+
+- Diagnose / Series Inventory / Storage Advisor: Wenn `api/series_inventory` fuer den normalen Diagnose-Refresh in einen Influx-Timeout laeuft, liefert der Endpoint jetzt keinen 500er mehr an die UI, sondern schaltet automatisch auf einen kleineren Best-Effort-Fallback um (`max. 7 Tage`, kleineres Limit, ohne Enrichment). Die Antwort kennzeichnet diesen Modus ueber `timeout_fallback` und `warning`, sodass der Diagnose-Refresh und der Storage-Advisor weiterhin Eintraege/Auswertungen zeigen koennen, statt komplett mit einem Fehler abzubrechen. ([#508](https://github.com/thomas682/HA-Addons/issues/508))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.542
 
 ### Fix
