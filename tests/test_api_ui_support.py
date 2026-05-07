@@ -1814,11 +1814,17 @@ def test_raw_table_uses_outlier_type_labels_and_changes_button():
     index_html = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'id="raw_changes"' in index_html
+    assert 'id="raw_accept_time_gap"' in index_html
     assert 'data-ui="dashboard_raw.btn_aenderungen"' in index_html
+    assert 'data-ui="dashboard_raw.btn_zeitluecke_akzeptieren"' in index_html
     assert "const labels = types.map((t)=> OUTLIER_TYPE_LABELS[t] || t).filter(Boolean);" in index_html
     assert "function showRawChanges(){" in index_html
+    assert "function _formatOutlierStrategyHistory(rows){" in index_html
+    assert "./api/outlier_strategy/accept_time_gap" in index_html
+    assert "./api/outlier_strategy/history?" in index_html
     assert "types.map((t)=> OUTLIER_TYPE_LABELS[t] || t).join(', ')" in index_html
     assert "dashboard_raw.btn_aenderungen" in tooltips
+    assert "dashboard_raw.btn_zeitluecke_akzeptieren" in tooltips
 
 
 def test_global_button_logging_and_button_error_reporting_exist():

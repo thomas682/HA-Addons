@@ -1193,6 +1193,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           <span class="muted" style="font-weight:800;">Intelligente Korrektur</span>
            <button class="btn_sm" id="raw_linear_range" type="button" data-ui="dashboard_raw.btn_linear_range" data-ib-pickkey="dashboard_raw.btn_linear_range" title="dashboard_raw.btn_linear_range" disabled>Linearer Reihe</button>
            <button class="btn_sm" id="raw_copy_first_range" type="button" data-ui="dashboard_raw.btn_copy_first_range" data-ib-pickkey="dashboard_raw.btn_copy_first_range" title="dashboard_raw.btn_copy_first_range" disabled>Erstwert kopieren</button>
+           <button class="btn_sm" id="raw_accept_time_gap" type="button" data-ui="dashboard_raw.btn_zeitluecke_akzeptieren" data-ib-pickkey="dashboard_raw.btn_zeitluecke_akzeptieren" title="dashboard_raw.btn_zeitluecke_akzeptieren" disabled>Zeitlücke akzeptieren</button>
            <span id="raw_smart_status" class="muted" style="margin-left:6px;"></span>
          </div>
 
@@ -1766,6 +1767,7 @@ const $rawQueryOpen = document.getElementById('raw_query_open');
 const $rawCopiedInfo = document.getElementById('raw_copied_info');
 const $rawLinearRange = document.getElementById('raw_linear_range');
 const $rawCopyFirstRange = document.getElementById('raw_copy_first_range');
+const $rawAcceptTimeGap = document.getElementById('raw_accept_time_gap');
 const $rawAutoCorrect = document.getElementById('raw_auto_correct');
 const $rawRepairWizard = document.getElementById('raw_repair_wizard');
 const $rawSmartStatus = document.getElementById('raw_smart_status');
@@ -4102,6 +4104,34 @@ function _rawHistoryDetailsText(key){
     `Ausloeser: ${String(it.trigger_button || it.trigger_action || '-')}`,
     `Bereich: ${String(it.trigger_source || '-')}`,
     `Seite: ${String(it.trigger_page || '-')}`,
+  ].join('\n')).join('\n\n');
+}
+
+async function _loadOutlierStrategyHistoryForSelection(limit){
+  const sel = _outlierStrategyCurrentSelection();
+  if(!(sel.measurement && sel.field && sel.entity_id)) return [];
+  const qp = new URLSearchParams({
+    entity_id: sel.entity_id,
+    measurement: sel.measurement,
+    field: sel.field,
+    limit: String(limit || 20),
+  });
+  const j = await api('./api/outlier_strategy/history?' + qp.toString(), null, { key: 'outlier_strategy_history', silent: true });
+  return Array.isArray(j && j.rows) ? j.rows : [];
+}
+
+function _formatOutlierStrategyHistory(rows){
+  const xs = Array.isArray(rows) ? rows : [];
+  if(!xs.length) return 'Keine protokollierten Strategie-/Pruefungsänderungen vorhanden.';
+  return xs.map((it, idx)=>[
+    `#${idx + 1}`,
+    `Datum: ${fmtTs(it.created_at || '')}`,
+    `Ausreißertyp: ${_outlierStrategyTypeLabel(String(it.outlier_type || 'time_gap'))}`,
+    `Aktion: ${String(it.label || it.reason || 'Änderung')}`,
+    `Zeitpunkt: ${it.selected_time ? fmtTs(it.selected_time) : '-'}`,
+    `Messwertluecke alt/neu: ${(it.before_gap_seconds == null) ? '-' : fmtNum(it.before_gap_seconds)} -> ${(it.after_gap_seconds == null) ? '-' : fmtNum(it.after_gap_seconds)}`,
+    `Tatsächliche Luecke: ${(it.actual_gap_seconds == null) ? '-' : fmtNum(it.actual_gap_seconds)} s`,
+    `Undo verfuegbar: ${it.undo_available ? 'ja' : 'nein'}`,
   ].join('\n')).join('\n\n');
 }
 
@@ -12985,6 +13015,14 @@ function updateRawToolbarState(){
     const hasTarget = !!(RAW_ROW_SELECTED_KEY && String(RAW_ROW_SELECTED_KEY).trim());
     const selRow = hasTarget ? findRawRowByKey(RAW_ROW_SELECTED_KEY) : null;
     const undoable = selRow ? _rawUndoableEntry(rowTimeFull(selRow) || '') : null;
+    const selTypes = (()=>{
+      try{
+        const out = selRow ? _findOutlierInfoByTime(rowTimeFull(selRow) || String(selRow.time || '')) : null;
+        return (out && Array.isArray(out.types)) ? normalizeOutlierTypeKeys(out.types) : [];
+      }catch(e){
+        return [];
+      }
+    })();
     $rawPaste.disabled = !(hasCopied && hasTarget && String(RAW_ROW_SELECTED_KEY) !== String(RAW_COPIED && RAW_COPIED.key));
     $rawCopyValue.disabled = !hasTarget;
     if($rawCopyRow) $rawCopyRow.disabled = !hasTarget;
@@ -12992,7 +13030,7 @@ function updateRawToolbarState(){
     const canEdit = hasTarget || ((RAW_ROWS || []).length > 0);
     if($rawManual) $rawManual.disabled = !canEdit;
     if($rawApply) $rawApply.disabled = !(RAW_EDIT_MODE && RAW_EDIT_STAGED && RAW_EDIT_STAGED.size > 0);
-    if($rawUndo) $rawUndo.disabled = !undoable;
+    if($rawUndo) $rawUndo.disabled = !undoable && !selTypes.includes('time_gap');
     if($rawAbort) $rawAbort.disabled = !_RAW_INFLIGHT;
     if($rawChanges) $rawChanges.disabled = !hasTarget;
     if($rawInfoBtn) $rawInfoBtn.disabled = !hasTarget;
@@ -13014,6 +13052,7 @@ function updateRawToolbarState(){
         const disabled = !hasRows || _RAW_INFLIGHT;
         if($rawLinearRange) $rawLinearRange.disabled = disabled;
         if($rawCopyFirstRange) $rawCopyFirstRange.disabled = disabled;
+        if($rawAcceptTimeGap) $rawAcceptTimeGap.disabled = disabled || !hasTarget || !selTypes.includes('time_gap');
         if($rawRepairWizard) $rawRepairWizard.disabled = disabled;
         // Auto correction works on the selected row only
         if($rawAutoCorrect) $rawAutoCorrect.disabled = disabled || !hasTarget;
@@ -13042,13 +13081,26 @@ function showRawActionFeedback(title, text){
   }catch(e){}
 }
 
-function showRawChanges(){
+async function showRawChanges(){
   try{
     const key = String(RAW_ROW_SELECTED_KEY || '').trim();
     if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
     const row = findRawRowByKey(key);
     const histTxt = _rawHistoryDetailsText(rowTimeFull(row) || key);
-    showRawActionFeedback(row ? ('Änderungen: ' + fmtTs(row.time || '')) : 'Änderungen', histTxt);
+    let strategyTxt = 'Keine protokollierten Strategie-/Pruefungsänderungen vorhanden.';
+    try{
+      strategyTxt = _formatOutlierStrategyHistory(await _loadOutlierStrategyHistoryForSelection(20));
+    }catch(e){}
+    const txt = [
+      'Messpunkt-Änderungen',
+      '',
+      histTxt,
+      '',
+      'Prüfungs-/Strategie-Änderungen',
+      '',
+      strategyTxt,
+    ].join('\n');
+    showRawActionFeedback(row ? ('Änderungen: ' + fmtTs(row.time || '')) : 'Änderungen', txt);
   }catch(e){
     displayError(e);
   }
@@ -13352,6 +13404,77 @@ try{
   if($rawCopyFirstRange) $rawCopyFirstRange.addEventListener('click', (ev)=>{
     _stop(ev);
     rawSmartStart('copy_first');
+  });
+}catch(e){}
+
+try{
+  if($rawAcceptTimeGap) $rawAcceptTimeGap.addEventListener('click', async (ev)=>{
+    _stop(ev);
+    try{
+      const key = String(RAW_ROW_SELECTED_KEY || '').trim();
+      if(!key){ err('Bitte zuerst eine Raw-Zeile markieren.'); return; }
+      const row = findRawRowByKey(key);
+      if(!row){ err('Zeile nicht geladen.'); return; }
+      const out = _findOutlierInfoByTime(rowTimeFull(row) || String(row.time || ''));
+      const types = (out && Array.isArray(out.types)) ? normalizeOutlierTypeKeys(out.types) : [];
+      if(!types.includes('time_gap')){ err('Die selektierte Zeile ist keine Zeitlücke.'); return; }
+      const rows = Array.isArray(RAW_ROWS) ? RAW_ROWS : [];
+      const idx = rows.findIndex((it)=> String(rowKey(it) || '') === key);
+      if(idx < 0){ err('Selektierte Zeile nicht im Raw-Fenster gefunden.'); return; }
+      const curMs = Date.parse(String(row.time || ''));
+      let gapSec = 0;
+      const prevMs = idx > 0 ? Date.parse(String(rows[idx - 1] && rows[idx - 1].time ? rows[idx - 1].time : '')) : NaN;
+      const nextMs = idx + 1 < rows.length ? Date.parse(String(rows[idx + 1] && rows[idx + 1].time ? rows[idx + 1].time : '')) : NaN;
+      if(isFinite(prevMs) && isFinite(curMs)) gapSec = Math.max(gapSec, Math.abs(curMs - prevMs) / 1000);
+      if(isFinite(nextMs) && isFinite(curMs)) gapSec = Math.max(gapSec, Math.abs(nextMs - curMs) / 1000);
+      if(!(gapSec > 0)){ err('Die tatsächliche Zeitlücke konnte nicht bestimmt werden.'); return; }
+      const currentGap = Number((((LAST_OUTLIER_STRATEGY || {}).effective_params || {}).time_gap || {}).gap_seconds || 0) || 0;
+      const nextGap = Math.max(Math.ceil(gapSec), Math.ceil(currentGap), 1) + 1;
+      const txt = [
+        'Zeitlücke akzeptieren',
+        '',
+        'Zeile: ' + fmtTs(row.time || ''),
+        'Tatsächliche Lücke: ' + fmtNum(gapSec) + ' s',
+        'Aktuelle Grenze: ' + (currentGap > 0 ? (fmtNum(currentGap) + ' s') : '-'),
+        'Neue Grenze: ' + fmtNum(nextGap) + ' s',
+        '',
+        'Die Serie wird danach erneut auf Ausreißer geprüft.',
+      ].join('\n');
+      let want = false;
+      if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+        want = await window.InfluxBroConfirm.ask({ title: 'Zeitlücke akzeptieren', text: txt, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_raw_accept_time_gap.root', templateName: 'dialog_confirm_action' });
+      }else{
+        want = confirm(txt);
+      }
+      if(!want) return;
+      const sel = _outlierStrategyCurrentSelection();
+      _RAW_INFLIGHT = true;
+      updateRawToolbarState();
+      _rawStatusStart('Zeitlücke wird akzeptiert...');
+      await api('./api/outlier_strategy/accept_time_gap', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          entity_id: sel.entity_id,
+          measurement: sel.measurement,
+          field: sel.field,
+          friendly_name: sel.friendly_name || null,
+          selected_time: rowTimeFull(row) || String(row.time || ''),
+          actual_gap_seconds: gapSec,
+          new_gap_seconds: nextGap,
+        })
+      }, { silent:true });
+      await refreshOutlierStrategyPanel();
+      await refreshAfterDataMutation({ rerunOutliers: true, preferRawKey: key, preferRawMs: isFinite(curMs) ? curMs : null });
+      ok('Zeitlücke akzeptiert.');
+      showRawActionFeedback('Zeitlücke akzeptiert', `Zeile: ${fmtTs(row.time || '')}\nLücke: ${fmtNum(gapSec)} s\nNeue Grenze: ${fmtNum(nextGap)} s`);
+    }catch(e){
+      displayError(e);
+    }finally{
+      _RAW_INFLIGHT = false;
+      _rawStatusEnd(true, '');
+      updateRawToolbarState();
+    }
   });
 }catch(e){}
 
@@ -14128,7 +14251,31 @@ try{
       const selRow = findRawRowByKey(key);
       const hk = selRow ? rowTimeFull(selRow) : '';
       const entries = _rawHistoryEntries(hk).filter(h => h.action === 'overwrite' || h.action === 'delete');
-      if(!entries.length){ err('Keine direkte Raw-Aenderung fuer Undo vorhanden.'); return; }
+      if(!entries.length){
+        const strategyRows = await _loadOutlierStrategyHistoryForSelection(5);
+        const strategyUndo = (Array.isArray(strategyRows) ? strategyRows : []).find((it)=> !!it.undo_available);
+        if(!strategyUndo){ err('Keine direkte Raw-Aenderung fuer Undo vorhanden.'); return; }
+        const txt = [
+          'Undo: Strategie-/Prüfungsänderung zurücknehmen?',
+          '',
+          'Ausreißertyp: ' + _outlierStrategyTypeLabel(String(strategyUndo.outlier_type || 'time_gap')),
+          'Zeitpunkt: ' + (strategyUndo.selected_time ? fmtTs(strategyUndo.selected_time) : '-'),
+          'Messwertlücke: ' + ((strategyUndo.before_gap_seconds == null) ? '-' : fmtNum(strategyUndo.before_gap_seconds)) + ' -> ' + ((strategyUndo.after_gap_seconds == null) ? '-' : fmtNum(strategyUndo.after_gap_seconds)),
+        ].join('\n');
+        let want = false;
+        if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask){
+          want = await window.InfluxBroConfirm.ask({ title: 'Raw Undo', text: txt, okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_raw_undo_strategy_confirm.root', templateName: 'dialog_confirm_action' });
+        }else{
+          want = confirm(txt);
+        }
+        if(!want) return;
+        await api('./api/undo/undo', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) });
+        await refreshOutlierStrategyPanel();
+        await refreshAfterDataMutation({ rerunOutliers: true, preferRawKey: key });
+        setRawSelectedKey(key);
+        ok('Strategie-Änderung wurde rueckgaengig gemacht.');
+        return;
+      }
 
       // If the newest entry belongs to a change-block, roll back the whole block.
       try{
@@ -17608,7 +17755,7 @@ if($rawInfoBtn) $rawInfoBtn.addEventListener('click', async (ev)=>{
 });
 if($rawChanges) $rawChanges.addEventListener('click', (ev)=>{
   _stop(ev);
-  showRawChanges();
+  showRawChanges().catch(displayError);
 });
 if($rawAbort) $rawAbort.addEventListener('click', (ev)=>{
   _stop(ev);

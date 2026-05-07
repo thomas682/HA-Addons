@@ -1370,6 +1370,48 @@ def test_api_outlier_strategy_override_modes(load_app_module, tmp_path):
     assert j["override"]["manual_disable_types"] == []
 
 
+def test_api_outlier_strategy_accept_time_gap_and_undo(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    client = app_mod.app.test_client()
+
+    r = client.post(
+        "/api/outlier_strategy/accept_time_gap",
+        json={
+            "entity_id": "sensor.demo",
+            "measurement": "Wh",
+            "field": "value",
+            "friendly_name": "Demo",
+            "selected_time": "2026-01-01T00:15:00Z",
+            "actual_gap_seconds": 901,
+            "new_gap_seconds": 905,
+        },
+    )
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert j["after_gap_seconds"] == 905
+
+    store = app_mod._outlier_strategy_load_store()
+    key = app_mod._outlier_strategy_measurement_key("sensor.demo", "Wh", "value")
+    assert store["overrides"][key]["param_overrides"]["time_gap"]["gap_seconds"] == 905
+
+    hist = client.get("/api/outlier_strategy/history?entity_id=sensor.demo&measurement=Wh&field=value&limit=10")
+    assert hist.status_code == 200
+    h = hist.get_json()
+    assert h["ok"] is True
+    assert h["rows"]
+    assert h["rows"][0]["undo_available"] is True
+    assert h["rows"][0]["after_gap_seconds"] == 905
+
+    undo = client.post("/api/undo/undo", json={})
+    assert undo.status_code == 200
+    uj = undo.get_json()
+    assert uj["ok"] is True
+
+    store2 = app_mod._outlier_strategy_load_store()
+    assert key not in store2.get("overrides", {})
+
+
 def test_api_outlier_strategy_reads_legacy_keys_and_returns_new_keys(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "bucket": "homeassistant_db", "token": "t", "org": "o"})

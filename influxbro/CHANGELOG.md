@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.551
+
+### Fix
+
+- Dashboard / Raw / Zeitlücke: Für selektierte `Zeitlücke`-Zeilen gibt es jetzt den Button `Zeitlücke akzeptieren`. Er schreibt einen serienbezogenen `time_gap.gap_seconds`-Override, startet danach die Ausreißer-Prüfung neu und registriert die Änderung im Undo-Manager, sodass dieselbe Aktion über `Undo` wieder zurückgenommen werden kann. Der Button `Änderungen` zeigt zusätzlich die protokollierten Prüfungs-/Strategie-Änderungen der aktuellen Serie an. ([#518](https://github.com/thomas682/HA-Addons/issues/518))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.550
 
 ### Fix

@@ -14690,6 +14690,35 @@ def _outlier_strategy_measurement_key(entity_id: str, measurement: str, field: s
     return "|".join([str(entity_id or "").strip(), str(measurement or "").strip(), str(field or "").strip()])
 
 
+def _outlier_strategy_override_entry_norm(raw: Any) -> dict[str, Any] | None:
+    if raw is None:
+        return None
+    src = raw if isinstance(raw, dict) else {}
+    mode = _outlier_strategy_mode_norm(src.get("mode"))
+    return {
+        "mode": mode,
+        "manual_enable_types": _outlier_strategy_types_norm(src.get("manual_enable_types")) if mode == "manual" else [],
+        "manual_disable_types": _outlier_strategy_types_norm(src.get("manual_disable_types")) if mode == "manual" else [],
+        "param_overrides": _outlier_strategy_params_norm(src.get("param_overrides")),
+        "correction_overrides": _outlier_strategy_corrections_norm(src.get("correction_overrides")),
+        "updated_at": str(src.get("updated_at") or _utc_now_iso_ms()),
+    }
+
+
+def _outlier_strategy_override_gap_seconds(override: Any) -> float | None:
+    try:
+        ov = override if isinstance(override, dict) else {}
+        params = ov.get("param_overrides") if isinstance(ov.get("param_overrides"), dict) else {}
+        tg = params.get("time_gap") if isinstance(params.get("time_gap"), dict) else {}
+        val = tg.get("gap_seconds")
+        if val is None or str(val).strip() == "":
+            return None
+        num = float(val)
+        return num if math.isfinite(num) else None
+    except Exception:
+        return None
+
+
 def _outlier_strategy_match_profile(strategy: dict[str, Any], profile: dict[str, Any]) -> tuple[bool, int, list[str]]:
     match = _outlier_strategy_match_norm(strategy.get("match"))
     derived = profile.get("derived") if isinstance(profile.get("derived"), dict) else {}
@@ -14891,6 +14920,144 @@ def api_outlier_strategy_override_set():
     store["overrides"] = overrides
     _outlier_strategy_save_store(store)
     return jsonify({"ok": True, "override": overrides.get(key) if key in overrides else {"mode": "auto", "manual_enable_types": [], "manual_disable_types": [], "param_overrides": {}, "correction_overrides": {}}})
+
+
+@app.post("/api/outlier_strategy/accept_time_gap")
+def api_outlier_strategy_accept_time_gap():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    entity_id = str(body.get("entity_id") or "").strip()
+    measurement = str(body.get("measurement") or "").strip()
+    field = str(body.get("field") or "").strip() or "value"
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
+    selected_time = str(body.get("selected_time") or "").strip() or None
+    if not entity_id or not measurement or not field:
+        return jsonify({"ok": False, "error": "entity_id, measurement and field required"}), 400
+    try:
+        actual_gap_seconds = float(body.get("actual_gap_seconds") or 0)
+    except Exception:
+        actual_gap_seconds = 0.0
+    try:
+        new_gap_seconds = float(body.get("new_gap_seconds") or 0)
+    except Exception:
+        new_gap_seconds = 0.0
+    if not math.isfinite(actual_gap_seconds) or actual_gap_seconds <= 0:
+        return jsonify({"ok": False, "error": "actual_gap_seconds must be > 0"}), 400
+    if not math.isfinite(new_gap_seconds) or new_gap_seconds <= 0:
+        return jsonify({"ok": False, "error": "new_gap_seconds must be > 0"}), 400
+    new_gap_seconds = min(86400.0, max(actual_gap_seconds, new_gap_seconds))
+
+    key = _outlier_strategy_measurement_key(entity_id, measurement, field)
+    store = _outlier_strategy_load_store()
+    overrides = store.get("overrides") if isinstance(store.get("overrides"), dict) else {}
+    before_override = _outlier_strategy_override_entry_norm(overrides.get(key)) if key in overrides else None
+    current = _outlier_strategy_override_entry_norm(overrides.get(key) if key in overrides else {}) or {
+        "mode": "auto",
+        "manual_enable_types": [],
+        "manual_disable_types": [],
+        "param_overrides": {},
+        "correction_overrides": {},
+        "updated_at": _utc_now_iso_ms(),
+    }
+    next_override = json.loads(json.dumps(current))
+    params = next_override.get("param_overrides") if isinstance(next_override.get("param_overrides"), dict) else {}
+    tg = params.get("time_gap") if isinstance(params.get("time_gap"), dict) else {}
+    tg["gap_seconds"] = int(math.ceil(new_gap_seconds))
+    params["time_gap"] = tg
+    next_override["param_overrides"] = params
+    next_override["updated_at"] = _utc_now_iso_ms()
+    overrides[key] = next_override
+    store["overrides"] = overrides
+    _outlier_strategy_save_store(store)
+
+    _undo_mgr(cfg).register_action(
+        action_type="outlier_strategy_override",
+        bucket=str(cfg.get("bucket") or cfg.get("database") or ""),
+        measurement=measurement,
+        group_label="Zeitlücke akzeptieren",
+        before_rows=[],
+        after_rows=[],
+        meta={
+            "custom_action": "outlier_strategy_override",
+            "change_block_id": uuid.uuid4().hex,
+            "undo_supported": True,
+            "series_key": key,
+            "entity_id": entity_id,
+            "measurement": measurement,
+            "field": field,
+            "friendly_name": friendly_name,
+            "selected_time": selected_time,
+            "outlier_type": "time_gap",
+            "reason": "Zeitlücke akzeptieren",
+            "trigger_page": "dashboard",
+            "trigger_source": "raw",
+            "trigger_action": "accept_time_gap",
+            "trigger_button": "raw_accept_time_gap",
+            "before_override": before_override,
+            "after_override": next_override,
+            "before_gap_seconds": _outlier_strategy_override_gap_seconds(before_override),
+            "after_gap_seconds": _outlier_strategy_override_gap_seconds(next_override),
+            "actual_gap_seconds": actual_gap_seconds,
+        },
+    )
+
+    return jsonify({
+        "ok": True,
+        "series_key": key,
+        "override": next_override,
+        "before_gap_seconds": _outlier_strategy_override_gap_seconds(before_override),
+        "after_gap_seconds": _outlier_strategy_override_gap_seconds(next_override),
+        "actual_gap_seconds": actual_gap_seconds,
+    })
+
+
+@app.get("/api/outlier_strategy/history")
+def api_outlier_strategy_history():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    entity_id = str(request.args.get("entity_id") or "").strip()
+    measurement = str(request.args.get("measurement") or "").strip()
+    field = str(request.args.get("field") or "").strip() or "value"
+    if not entity_id or not measurement or not field:
+        return jsonify({"ok": False, "error": "entity_id, measurement and field required"}), 400
+    try:
+        limit = int(request.args.get("limit") or 20)
+    except Exception:
+        limit = 20
+    limit = max(1, min(200, limit))
+    key = _outlier_strategy_measurement_key(entity_id, measurement, field)
+    mgr = _undo_mgr(cfg)
+    status = mgr.status()
+    last_undo = status.last_undo_action if isinstance(status.last_undo_action, dict) else None
+    last_undo_id = str(last_undo.get("action_id") or "").strip() if last_undo else ""
+    rows = []
+    for action in mgr.history(limit=1000):
+        if not isinstance(action, dict):
+            continue
+        meta = action.get("meta") if isinstance(action.get("meta"), dict) else {}
+        if str(meta.get("custom_action") or "") != "outlier_strategy_override":
+            continue
+        if str(meta.get("series_key") or "") != key:
+            continue
+        rows.append({
+            "action_id": str(action.get("action_id") or ""),
+            "created_at": str(action.get("created_at") or ""),
+            "label": str(action.get("label") or ""),
+            "measurement": str(meta.get("measurement") or measurement),
+            "field": str(meta.get("field") or field),
+            "entity_id": str(meta.get("entity_id") or entity_id),
+            "friendly_name": str(meta.get("friendly_name") or "") or None,
+            "selected_time": str(meta.get("selected_time") or "") or None,
+            "outlier_type": str(meta.get("outlier_type") or "") or None,
+            "reason": str(meta.get("reason") or ""),
+            "trigger_button": str(meta.get("trigger_button") or ""),
+            "before_gap_seconds": meta.get("before_gap_seconds"),
+            "after_gap_seconds": meta.get("after_gap_seconds"),
+            "actual_gap_seconds": meta.get("actual_gap_seconds"),
+            "undo_available": bool(last_undo_id and last_undo_id == str(action.get("action_id") or "")),
+        })
+        if len(rows) >= limit:
+            break
+    return jsonify({"ok": True, "rows": rows})
 
 
 @app.get("/api/outlier_strategy/config")
@@ -39073,6 +39240,21 @@ def _undo_execute_action(cfg: dict[str, Any], action: dict[str, Any], direction:
     after_rows = action.get("after_rows") if isinstance(action.get("after_rows"), list) else []
 
     meta = action.get("meta") if isinstance(action.get("meta"), dict) else {}
+    if str(meta.get("custom_action") or "") == "outlier_strategy_override":
+        key = str(meta.get("series_key") or "").strip()
+        if not key:
+            raise RuntimeError("invalid outlier strategy undo action")
+        target = meta.get("before_override") if direction == "undo" else meta.get("after_override")
+        store = _outlier_strategy_load_store()
+        overrides = store.get("overrides") if isinstance(store.get("overrides"), dict) else {}
+        norm_target = _outlier_strategy_override_entry_norm(target)
+        if norm_target is None:
+            overrides.pop(key, None)
+        else:
+            overrides[key] = norm_target
+        store["overrides"] = overrides
+        _outlier_strategy_save_store(store)
+        return
     bid = str(meta.get("change_block_id") or action.get("change_block_id") or "").strip()
 
     # Preferred path: reuse the persisted ChangeBlock created by the write path.

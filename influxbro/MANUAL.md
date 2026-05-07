@@ -965,6 +965,8 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der markierte Punkt bleibt in der Raw-Liste farblich hervorgehoben, bis du einen anderen Punkt auswaehlst.
 - Die Raw-Aktionsleiste sitzt direkt ueber der Tabelle und enthaelt nur noch Tabellenfunktionen, `Wert kopieren`, `Einfügen` sowie `Refresh`.
 - `Refresh` bei den Raw-Daten laedt die angezeigten Punkte fuer den aktuellen Anker explizit erneut aus der Datenbank ueber `./api/raw_points` und nicht aus dem Analyse-/Session-Cache.
+- Für selektierte Raw-Zeilen mit Ausreißertyp `Zeitlücke` gibt es in der intelligenten Aktionsleiste den Button `Zeitlücke akzeptieren`. Er erhöht fuer die aktuelle Serie den erlaubten `time_gap.gap_seconds`-Override, startet die Ausreißer-Prüfung danach erneut und ist über denselben Undo-Mechanismus wieder rückgängig machbar.
+- Der Button `Änderungen` zeigt jetzt nicht nur Messpunkt-History, sondern auch protokollierte Prüfungs-/Strategie-Änderungen der aktuellen Serie.
 - Der fruehere Bereich `Statistik Zeitraum (Graph/Tabelle)` wurde entfernt; relevant bleiben die Gesamtstatistik im Dashboard und die Statistik-Seite.
 - Auf der Statistik-Seite nutzt `Statistik laden` zuerst einen passenden frischen Cache. Nur wenn kein passender Cache vorhanden oder dieser veraltet ist, startet ein neuer Hintergrundjob.
 - Fuer verankerte Zeitraeume wie `all` und `this_year` kann ein veralteter Statistik-Cache jetzt per Append aktualisiert werden: Es wird nur der fehlende rechte Zeitraum seit Cache-Ende nachgeladen und mit dem bestehenden Cache zusammengefuehrt.
