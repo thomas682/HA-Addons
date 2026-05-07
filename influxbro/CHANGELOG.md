@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.557
+
+### Fix
+
+- Dashboard / Console Errors: Der Friendly-Name-Prefetch in `api/tag_combo_ranges` zählt jetzt korrekt über `_value` statt fälschlich über die Zeitspalte `_time`. Dadurch verschwindet der 500er `count: unsupported aggregate column type time` für `group_tag=friendly_name` bei `range=all`. Zusätzlich wurde eine überzählige Wrapper-Schließung in der Dashboard-Ausreißer-/Raw-Sektion entfernt, damit die nachfolgenden Dashboard-Sektionsköpfe wieder im normalen Section-Layout mit Farbgebung gerendert werden. ([#523](https://github.com/thomas682/HA-Addons/issues/523))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.556
 
 ### Fix

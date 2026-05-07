@@ -1558,6 +1558,9 @@ def test_tag_combo_ranges_prefetches_names_for_friendly_name_entity_all(load_app
     assert 'first_last = join(tables: {a:first_row, b:last_row}, on:["friendly_name"])' in q_join
     assert 'first(column: "_time")' in q_join
     assert 'last(column: "_time")' in q_join
+    assert 'map(fn: (r) => ({_value: 1}))' in q_join
+    assert 'count(column: "_value")' in q_join
+    assert 'sum(column: "_value")' in q_join
     assert '|> join(tables: {x:count_row}, on:["friendly_name"])' not in q_join
     assert 'join(tables: {a:first_last, b:count_row}, on:["friendly_name"])' in q_join
 
