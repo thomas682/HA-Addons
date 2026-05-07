@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.554
+
+### Fix
+
+- Dashboard / Tabelle Ausreißer: Die Ausreißer-Tabelle folgt jetzt wieder dem Standard-Tabellen-Template mit sauberem `table_wrap`-/`table_head`-Aufbau, separatem Statuspanel und den bereits vorhandenen Template-Controls für Autobreite, Fensterbreite, Spalten, Umbruch, Spaltenfilter und Kopieraktionen. ([#521](https://github.com/thomas682/HA-Addons/issues/521))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.553
 
 ### Fix
