@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>InfluxBro – Backup</title>
   <style>
     :root {
@@ -14,7 +14,7 @@
       --ib-sel-manual-w: {{ (cfg.get('ui_sel_width_px') or 260) | int }}px;
     }
     body { font-family: system-ui, sans-serif; margin: 0; }
-    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100dvh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
     .sidebar { padding: 14px; border-right: 1px solid #eee; }
     @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
@@ -107,7 +107,6 @@
     <main class="content" data-ui="backup_page.main" data-ib-pickkey="backup_page.main" title="backup.page">
       <h2>Backup</h2>
       <div class="muted">Backups fuer einen einzelnen Messwert (immer alle Werte dieses Messwertes).</div>
-      <div class="row" style="margin-top:10px;"><button id="verify_open" class="btn_sm" style="width:auto;" data-ui="backup_verify.btn_open" data-ib-pickkey="backup_verify.btn_open">Backup verifizieren</button></div>
       <div class="space_box" id="space" data-ui="backup_main.panel_space" data-ib-pickkey="backup_main.panel_space" title="backup.space" style="display:none; margin-top:8px;"></div>
 
       <div class="row" style="margin-top: 10px; align-items:flex-end;" data-ui="backup_main.panel_storage_target" data-ib-pickkey="backup_main.panel_storage_target" title="backup.storage_target">
@@ -422,28 +421,6 @@
         </details>
       </div>
 
-      <div id="verify_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
-        <div style="background:#fff; border-radius:16px; padding:20px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;"><div><h3 style="margin:0 0 6px 0;">Backup verifizieren</h3><div class="muted" style="font-size:12px; line-height:1.45;">Prüft ein Backup durch Restore in einen temporären Prüf-Bucket. Originaldaten werden nicht verändert.</div></div><button id="verify_close" class="btn_sm" type="button" style="width:auto;">Schliessen</button></div>
-          <div class="grid" style="margin-top:0;">
-            <div><label>Prüfmodus</label><select id="verify_mode"><option value="measurement">Messwert-Backup verifizieren</option><option value="fullbackup">Fullbackup verifizieren</option></select></div>
-            <div><label>Backupquelle</label><select id="verify_backup_mode"><option value="existing">Vorhandenes Backup verwenden</option><option value="create_new">Neues Backup erstellen und danach verifizieren</option></select></div>
-            <div id="verify_existing_backup_wrap"><label>Vorhandenes Backup</label><select id="verify_existing_backup"></select></div>
-            <div><label>Prüfprofil</label><select id="verify_profile"><option value="fast">Fast</option><option value="deep">Deep</option></select></div>
-            <div><label>Erlaubte Abweichung (%)</label><input id="verify_delta_pct" type="number" step="0.1" min="0" value="0.1" /></div>
-            <div><label>Bucket (nur Fullbackup)</label><input id="verify_bucket" placeholder="homeassistant_db" /></div>
-          </div>
-          <div class="row" style="margin-top:10px;">
-            <label><input type="checkbox" id="verify_cleanup" checked /> Prüf-Bucket automatisch löschen</label>
-            <label><input type="checkbox" id="verify_compare_series" checked /> Serienvergleich</label>
-            <label><input type="checkbox" id="verify_compare_sizes" /> Größenvergleich</label>
-          </div>
-          <div class="row" style="margin-top:12px;"><button id="verify_start" class="btn_sm" type="button" style="width:auto;">Verifikation starten</button></div>
-          <div id="verify_status_box" class="space_box" style="display:none; margin-top:12px;"></div>
-          <div id="verify_result_box" class="space_box" style="display:none; margin-top:12px;"></div>
-        </div>
-      </div>
-
       <script>
       const LS_KEY = "influxbro_ui_state_v1";
       const SEL_AUTO_WIDTH = {{ 'true' if cfg.get('ui_sel_auto_width') else 'false' }};
@@ -532,36 +509,6 @@
       }
 
       try{ if($backupTarget) $backupTarget.addEventListener('change', ()=>{ _renderTargetInfo(); loadList().catch(()=>{}); }); }catch(e){}
-      try{ if($verifyOpen) $verifyOpen.addEventListener('click', ()=>{ if($verifyDialog) $verifyDialog.style.display = 'flex'; _verifyRefreshModeUi(); _verifyRenderStatus(null); _verifyRenderResult(null); }); }catch(e){}
-      try{ if($verifyClose) $verifyClose.addEventListener('click', ()=>{ if($verifyDialog) $verifyDialog.style.display = 'none'; }); }catch(e){}
-      try{ if($verifyMode) $verifyMode.addEventListener('change', _verifyRefreshModeUi); }catch(e){}
-      try{ if($verifyBackupMode) $verifyBackupMode.addEventListener('change', _verifyRefreshModeUi); }catch(e){}
-      try{ if($verifyStart) $verifyStart.addEventListener('click', async ()=>{
-        err(''); ok(''); _verifyRenderResult(null); _verifyRenderStatus({status:'queued', step:'queued', progress:0, verify_bucket:'', message:'Startet ...'});
-        const mode = String($verifyMode && $verifyMode.value || 'measurement');
-        const backupMode = String($verifyBackupMode && $verifyBackupMode.value || 'existing');
-        const payload = {
-          backup_mode: backupMode,
-          backup_id: $verifyExistingBackup ? String($verifyExistingBackup.value || '') : '',
-          profile: String($verifyProfile && $verifyProfile.value || 'fast'),
-          cleanup_verify_bucket: !!($verifyCleanup && $verifyCleanup.checked),
-          allowed_delta_pct: Number($verifyDeltaPct && $verifyDeltaPct.value || 0.1),
-          compare_series: !!($verifyCompareSeries && $verifyCompareSeries.checked),
-          compare_sizes: !!($verifyCompareSizes && $verifyCompareSizes.checked),
-          target: curTargetId(),
-        };
-        let resp;
-        if(mode === 'measurement'){
-          const sel = _verifyCurrentSelection();
-          Object.assign(payload, sel);
-          resp = await api('./api/verify/measurement', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        }else{
-          Object.assign(payload, { bucket: String($verifyBucket && $verifyBucket.value || '') || String((LAST_TARGET||{}).bucket || '') || 'homeassistant_db' });
-          resp = await api('./api/verify/fullbackup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        }
-        VERIFY_JOB_ID = String(resp.job_id || '');
-        _verifyPoll().catch(displayError);
-      }); }catch(e){}
       const $fullBackupRows = document.getElementById('fullbackup_rows');
       const $fullBackupQueryDetails = document.getElementById('fullbackup_query_details');
       const $fullBackupQueryPre = document.getElementById('fullbackup_query_pre');
@@ -602,23 +549,6 @@
       const $backupQueryOpen = document.getElementById('backup_query_open');
 
       const $space = document.getElementById('space');
-      const $verifyOpen = document.getElementById('verify_open');
-      const $verifyDialog = document.getElementById('verify_dialog');
-      const $verifyClose = document.getElementById('verify_close');
-      const $verifyMode = document.getElementById('verify_mode');
-      const $verifyBackupMode = document.getElementById('verify_backup_mode');
-      const $verifyExistingBackupWrap = document.getElementById('verify_existing_backup_wrap');
-      const $verifyExistingBackup = document.getElementById('verify_existing_backup');
-      const $verifyProfile = document.getElementById('verify_profile');
-      const $verifyDeltaPct = document.getElementById('verify_delta_pct');
-      const $verifyBucket = document.getElementById('verify_bucket');
-      const $verifyCleanup = document.getElementById('verify_cleanup');
-      const $verifyCompareSeries = document.getElementById('verify_compare_series');
-      const $verifyCompareSizes = document.getElementById('verify_compare_sizes');
-      const $verifyStart = document.getElementById('verify_start');
-      const $verifyStatusBox = document.getElementById('verify_status_box');
-      const $verifyResultBox = document.getElementById('verify_result_box');
-      let VERIFY_JOB_ID = '';
 
       const $qBackup = document.getElementById('q_backup');
       const $listInfo = document.getElementById('list_info');
@@ -831,90 +761,6 @@
         return (b/1024/1024/1024).toFixed(2) + ' GB';
       }
 
-      function _verifyCurrentSelection(){
-        const src = selection();
-        return {
-          entity_id: String(src.entity_id || '').trim(),
-          measurement: String(src.measurement || '').trim(),
-          field: String(src.field || '').trim() || 'value',
-          friendly_name: String(src.friendly_name || '').trim(),
-          range: String($range && $range.value || '24h'),
-          start: $start ? String($start.value || '') : '',
-          stop: $stop ? String($stop.value || '') : '',
-        };
-      }
-
-      function _verifyRenderStatus(job){
-        if(!$verifyStatusBox) return;
-        if(!job){ $verifyStatusBox.style.display = 'none'; return; }
-        $verifyStatusBox.style.display = 'block';
-        $verifyStatusBox.innerHTML = [
-          `<div><strong>Status:</strong> ${String(job.status || '')}</div>`,
-          `<div><strong>Schritt:</strong> ${String(job.step || '')}</div>`,
-          `<div><strong>Fortschritt:</strong> ${String(job.progress || 0)}%</div>`,
-          `<div><strong>Prüf-Bucket:</strong> ${String(job.verify_bucket || '')}</div>`,
-          `<div><strong>Nachricht:</strong> ${String(job.message || '')}</div>`,
-        ].join('');
-      }
-
-      function _verifyRenderResult(result){
-        if(!$verifyResultBox) return;
-        if(!result){ $verifyResultBox.style.display = 'none'; return; }
-        const pts = result.points || {};
-        const meas = result.measurements || {};
-        const card = result.cardinality || {};
-        $verifyResultBox.style.display = 'block';
-        $verifyResultBox.innerHTML = [
-          `<div><strong>Status:</strong> ${String(result.status || '')}</div>`,
-          `<div><strong>Punkte:</strong> src=${String(pts.src || 0)} · dst=${String(pts.dst || 0)} · delta=${String(pts.delta || 0)} · ${String(pts.delta_pct || 0)}%</div>`,
-          `<div><strong>Measurements:</strong> src=${String(meas.src_count || 0)} · dst=${String(meas.dst_count || 0)}</div>`,
-          `<div><strong>Fehlend:</strong> ${Array.isArray(meas.missing) ? meas.missing.join(', ') : ''}</div>`,
-          `<div><strong>Zusätzlich:</strong> ${Array.isArray(meas.additional) ? meas.additional.join(', ') : ''}</div>`,
-          `<div><strong>Kardinalität:</strong> src=${String(card.src || 0)} · dst=${String(card.dst || 0)} · drift=${String(card.drift || false)}</div>`,
-        ].join('');
-      }
-
-      function _verifyPopulateBackups(){
-        try{
-          if(!$verifyExistingBackup) return;
-          const mode = String($verifyMode && $verifyMode.value || 'measurement');
-          const rows = mode === 'measurement' ? (BACKUPS || []) : (FULLBACKUPS || []);
-          $verifyExistingBackup.innerHTML = '';
-          rows.forEach((b)=>{
-            const o = document.createElement('option');
-            o.value = String(b.id || '');
-            o.textContent = String((b.display_name || b.id || 'Backup') + ' | ' + (b.created_at || ''));
-            $verifyExistingBackup.appendChild(o);
-          });
-        }catch(e){}
-      }
-
-      function _verifyRefreshModeUi(){
-        try{
-          const mode = String($verifyMode && $verifyMode.value || 'measurement');
-          const backupMode = String($verifyBackupMode && $verifyBackupMode.value || 'existing');
-          if($verifyExistingBackupWrap) $verifyExistingBackupWrap.style.display = backupMode === 'existing' ? '' : 'none';
-          if($verifyBucket) $verifyBucket.disabled = mode !== 'fullbackup';
-          _verifyPopulateBackups();
-        }catch(e){}
-      }
-
-      async function _verifyPoll(){
-        if(!VERIFY_JOB_ID) return;
-        while(VERIFY_JOB_ID){
-          const j = await api('./api/verify/status/' + encodeURIComponent(VERIFY_JOB_ID));
-          _verifyRenderStatus(j.job || null);
-          const st = String((j.job || {}).status || '').toLowerCase();
-          if(['done','warning','failed'].includes(st)){
-            const r = await api('./api/verify/result/' + encodeURIComponent(VERIFY_JOB_ID));
-            _verifyRenderResult(r.result || null);
-            VERIFY_JOB_ID = '';
-            return;
-          }
-          await new Promise(r=>setTimeout(r, 1000));
-        }
-      }
-
       function _renderFullBackupSelectAll(list){
         try{
           if(!$fullBackupSelAll) return;
@@ -1033,7 +879,6 @@
 
       async function startFullBackup(){
         err(''); ok('');
-        const statusKey = 'backup.fullbackup';
         _startFullBackupUi('FullBackup laeuft...');
         try{
           try{
@@ -1048,7 +893,6 @@
           });
           FULL_JOB_ID = String(started.job_id || '');
           if(!FULL_JOB_ID) throw new Error('fullbackup job_id missing');
-          try{ window.InfluxBroStatus && window.InfluxBroStatus.start && window.InfluxBroStatus.start(statusKey, 'FullBackup laeuft...'); }catch(e){}
 
           try{
             const qs = new URLSearchParams();
@@ -1070,28 +914,24 @@
             const sz = String(st.written_human || '');
             const detail = [msg, (pc ? ('Punkte: ' + pc) : ''), (sz ? ('Groesse: ' + sz) : '')].filter(Boolean).join(' | ');
             _setFullBackupStatus(detail || msg);
-            try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress(statusKey, detail || msg); }catch(e){}
 
             const state = String(st.state || '');
             if(state === 'done'){
               ok('FullBackup erstellt: ' + String(st.backup_id || started.backup_id || ''));
               await loadFullBackupList().catch(()=>{});
               _stopFullBackupUi(true, 'Fertig.');
-              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'FullBackup fertig.'); }catch(e){}
               return;
             }
             if(state === 'cancelled'){
               ok('Abgebrochen.');
               await loadFullBackupList().catch(()=>{});
               _stopFullBackupUi(true, 'Abgebrochen.');
-              try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done(statusKey, 'FullBackup abgebrochen.'); }catch(e){}
               return;
             }
             if(state === 'error'){
               const em = String(st.error || st.message || 'Fehler');
               err(em);
               _stopFullBackupUi(false, 'Fehler.');
-              try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, 'FullBackup Fehler: ' + em); }catch(e){}
               throw new Error(em);
             }
 
@@ -1099,7 +939,6 @@
           }
         }catch(e){
           _stopFullBackupUi(false, 'Fehler.');
-          try{ window.InfluxBroStatus && window.InfluxBroStatus.fail && window.InfluxBroStatus.fail(statusKey, String(e && e.message ? e.message : e)); }catch(ex){}
           throw e;
         }
       }
@@ -1109,7 +948,6 @@
           if(!FULL_JOB_ID) return;
           err('');
           _setFullBackupStatus('Abbruch angefordert...');
-          try{ window.InfluxBroStatus && window.InfluxBroStatus.progress && window.InfluxBroStatus.progress('backup.fullbackup', 'Abbruch angefordert...'); }catch(e){}
           await api('./api/fullbackup_job/cancel', {
             method:'POST',
             headers:{'Content-Type':'application/json'},

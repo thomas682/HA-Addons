@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>InfluxBro</title>
   <style>
     :root {
@@ -32,7 +32,7 @@
 
     body { font-family: system-ui, sans-serif; margin: 0; font-size: var(--ui-font); }
 
-    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100dvh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
     .sidebar { padding: calc(14px * var(--ib-zoom-scale)); border-right: 1px solid #eee; }
     @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
@@ -500,10 +500,6 @@
       color: #9ca3af;
     }
     .ib-namepanel-list { display: flex; flex-direction: column; }
-    .ib-local-run-status { display:none; align-items:center; gap:8px; flex-wrap:wrap; margin:8px 0 0 0; font-size:12px; opacity:0.9; }
-    .ib-local-run-spinner { width:14px; height:14px; border-radius:50%; border:2px solid rgba(0,0,0,0.18); border-top-color:rgba(0,0,0,0.72); animation: ib_local_run_spin 0.9s linear infinite; }
-    .ib-local-run-time { opacity:0.85; white-space:nowrap; }
-    @keyframes ib_local_run_spin { to { transform: rotate(360deg); } }
     .ib-namepanel-row {
       display: grid;
       grid-template-columns: 28px 1fr 240px 90px 120px;
@@ -665,8 +661,6 @@
       background: #f0fdf4;
       color: #166534;
     }
-    .ib-ref-list { max-height: 300px; overflow:auto; display:flex; flex-direction:column; gap:8px; margin-top:10px; }
-    .ib-ref-item { border:1px solid #eee; border-radius:8px; padding:8px 10px; background:#fff; }
     .ib-strategy-panel {
       border-top: 1px solid #e5e7eb;
       background: #fafafa;
@@ -749,50 +743,6 @@
     .ib-chip.ib-chip-inactive .ib-chip-dot { background:#999; }
     .ib-chip-label { position:relative; z-index:1; font-family:inherit; }
     .ib-chip-strike .ib-chip-label { text-decoration: line-through; }
-    .ib-chip-info { position:relative; z-index:1; display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:999px; border:1px solid rgba(0,0,0,0.18); background:#fff; color:#111; font-size:11px; font-weight:700; line-height:1; cursor:pointer; flex:0 0 auto; }
-    .ib-chip:focus-visible, .ib-chip-info:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
-    .ib-chip-tooltip {
-      position: fixed;
-      z-index: 100050;
-      width: min(360px, calc(100vw - 24px));
-      background: #1f2937;
-      color: #f3f4f6;
-      border: 1px solid #374151;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.14), 0 12px 24px rgba(0,0,0,0.18), 0 24px 40px rgba(0,0,0,0.22);
-      padding: 12px 14px;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.16s ease;
-    }
-    .ib-chip-tooltip.is-open { opacity: 1; }
-    .ib-chip-tooltip.is-pinned { pointer-events: auto; border-color:#60a5fa; }
-    .ib-chip-tooltip::after {
-      content:'';
-      position:absolute;
-      width:12px; height:12px;
-      background:#1f2937;
-      border-left:1px solid #374151;
-      border-top:1px solid #374151;
-      transform:rotate(45deg);
-      top:-7px; left:24px;
-    }
-    .ib-chip-tooltip-head { display:flex; gap:10px; align-items:flex-start; margin-bottom:10px; }
-    .ib-chip-tooltip-icon { width:18px; height:18px; border-radius:999px; flex:0 0 auto; margin-top:1px; }
-    .ib-chip-tooltip-title { font-weight:700; font-size:14px; color:#f9fafb; }
-    .ib-chip-tooltip-key { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; color:#9ca3af; margin-top:2px; }
-    .ib-chip-tooltip-desc { font-size:12px; line-height:1.55; color:#e5e7eb; margin-bottom:10px; }
-    .ib-chip-tooltip-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:10px; }
-    .ib-chip-tooltip-meta-item { border:1px solid #374151; border-radius:8px; background:rgba(255,255,255,0.03); padding:8px 9px; }
-    .ib-chip-tooltip-meta-label { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:#9ca3af; margin-bottom:3px; }
-    .ib-chip-tooltip-meta-value { font-size:12px; color:#f3f4f6; }
-    .ib-chip-tooltip-meta-value .sev-dot { display:inline-block; width:8px; height:8px; border-radius:999px; margin-right:6px; vertical-align:middle; }
-    .ib-chip-tooltip-example { border:1px solid #374151; border-radius:8px; background:#111827; padding:10px 11px; margin-bottom:10px; }
-    .ib-chip-tooltip-example-label { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; color:#9ca3af; margin-bottom:5px; }
-    .ib-chip-tooltip-example code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; color:#d1fae5; white-space:pre-wrap; overflow-wrap:anywhere; }
-    .ib-chip-tooltip-foot { display:flex; justify-content:space-between; gap:12px; align-items:center; font-size:11px; color:#9ca3af; }
-    .ib-chip-tooltip-foot a { color:#93c5fd; text-decoration:none; }
-    .ib-chip-tooltip-foot a:hover { color:#bfdbfe; text-decoration:underline; }
 
     /* Outlier markers in cache timeline */
     .ib-ol-marker:hover { opacity:1 !important; width:6px !important; margin-left:-3px !important; z-index:2; }
@@ -962,11 +912,6 @@
   <details id="name_timeline_panel" class="section" open style="margin-top: 10px;" data-ui="dashboard_selection.panel_name_timeline" data-ib-pickkey="dashboard_selection.panel_name_timeline" title="dashboard_selection.panel_name_timeline">
     <summary><span class="ib_summary_row"><span data-ui="dashboard_selection.section_multi_name_title" data-ib-pickkey="dashboard_selection.section_multi_name_title">Messwertinfos von Homeassistant</span></span></summary>
     <div class="ib_section_desc_row" id="measurement_profile_desc">Home-Assistant-, YAML- und Influx-Infos zum aktuell gewaehlten Messwert sowie historische Messwertnamen.</div>
-    <div id="measurement_profile_run_status" class="ib-local-run-status" data-ui="dashboard_selection.panel_measurement_profile_run_status" data-ib-pickkey="dashboard_selection.panel_measurement_profile_run_status" title="dashboard_selection.panel_measurement_profile_run_status">
-      <span id="measurement_profile_run_spinner" class="ib-local-run-spinner" aria-hidden="true"></span>
-      <span id="measurement_profile_run_text">Messwertinfos werden geladen...</span>
-      <span id="measurement_profile_run_time" class="ib-local-run-time"></span>
-    </div>
     <div class="card_body">
       <div class="ib-namepanel">
         <div id="measurement_profile_panel" class="ib-profile-panel" data-ui="dashboard_selection.panel_measurement_profile" data-ib-pickkey="dashboard_selection.panel_measurement_profile">
@@ -1390,18 +1335,6 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </div>
 
-    <div id="reference_detail_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
-      <div style="background:#fff; border-radius:16px; padding:20px; max-width:1100px; width:min(1100px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;"><div><h3 style="margin:0 0 6px 0;">Referenzierung – Detailliste</h3><div id="reference_detail_meta" class="muted" style="font-size:12px; line-height:1.45;">Alle Einträge mit Dateiinhalt und Suche.</div></div><button id="reference_detail_close" class="btn_sm" type="button" style="width:auto;">Schliessen</button></div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
-          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Suche</span><input id="reference_detail_search" type="text" placeholder="Volltextsuche in Dateiinhalt/Referenzen" /></label>
-          <button id="reference_detail_prev" class="btn_sm" type="button" style="width:auto; align-self:end;">Zurück</button>
-          <button id="reference_detail_next" class="btn_sm" type="button" style="width:auto; align-self:end;">Weiter</button>
-        </div>
-        <div id="reference_detail_list" style="display:flex; flex-direction:column; gap:12px;"></div>
-      </div>
-    </div>
-
     <div id="analysis_strategy_json_help_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
       <div style="background:#fff; border-radius:16px; padding:16px; max-width:1080px; width:min(1080px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28); resize:both; overflow: auto; min-width:720px; min-height:520px;">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
@@ -1604,13 +1537,6 @@ const $analysisStrategyJsonHelpSearch = document.getElementById('analysis_strate
 const $analysisStrategyJsonHelpContent = document.getElementById('analysis_strategy_json_help_content');
 const $analysisStrategyJsonHelpClose = document.getElementById('analysis_strategy_json_help_close');
 const $analysisStrategyJsonHelpCopyAll = document.getElementById('analysis_strategy_json_help_copy_all');
-const $referenceDetailDialog = document.getElementById('reference_detail_dialog');
-const $referenceDetailMeta = document.getElementById('reference_detail_meta');
-const $referenceDetailClose = document.getElementById('reference_detail_close');
-const $referenceDetailSearch = document.getElementById('reference_detail_search');
-const $referenceDetailPrev = document.getElementById('reference_detail_prev');
-const $referenceDetailNext = document.getElementById('reference_detail_next');
-const $referenceDetailList = document.getElementById('reference_detail_list');
 const $btnCancelLoad = document.getElementById('cancel_load');
 const $loadStatus = document.getElementById('load_status');
 const $loadProgressFill = document.getElementById('load_progress_fill');
@@ -1649,10 +1575,6 @@ const $nameTimelineRows = document.getElementById('name_timeline_rows');
 const $nameMergeLatestBtn = document.getElementById('name_merge_latest_btn');
 const $measurementProfilePanel = document.getElementById('measurement_profile_panel');
 const $measurementProfileSections = document.getElementById('measurement_profile_sections');
-const $measurementProfileRunStatus = document.getElementById('measurement_profile_run_status');
-const $measurementProfileRunSpinner = document.getElementById('measurement_profile_run_spinner');
-const $measurementProfileRunText = document.getElementById('measurement_profile_run_text');
-const $measurementProfileRunTime = document.getElementById('measurement_profile_run_time');
 
 // Row details (before/after list) are rendered inline under the selected row.
 
@@ -2174,9 +2096,6 @@ function _normalizeDerivToggles(changedEl){
 let LAST_ROWS_RAW = null;
 let LAST_JUMP_SPANS = [];
 let LAST_TOTAL_POINTS = null;
-let MEASUREMENT_PROFILE_RUN_T0 = 0;
-let MEASUREMENT_PROFILE_RUN_DELAY_T = null;
-let MEASUREMENT_PROFILE_RUN_TIMER = null;
 
 let OUTLIER_SCANNED_TOTAL = null;
 let OUTLIER_FOUND_TOTAL = null;
@@ -2623,23 +2542,6 @@ function _graphCtxHoverText(point, aggName){
   }
 }
 
-function _graphTooltipShowFromPoint(pt, extra){
-  try{
-    if(!(window.InfluxBroUnifiedTooltip && window.InfluxBroUnifiedTooltip.show)) return;
-    const meta = {
-      title: (extra && extra.title) || String(pt && pt.data && pt.data.name ? pt.data.name : 'Graphwert'),
-      desc: (extra && extra.desc) || 'Werte an der aktuellen Graphposition.',
-      severity: 'low',
-      source: 'Graph',
-      active: 'Hover',
-      example: (extra && extra.example) || (`Zeit: ${String(pt && pt.x || '')}\nWert: ${String(pt && pt.y || '')}`),
-      doc: (extra && extra.doc) || 'graph-values'
-    };
-    const rect = { left: Number(pt && pt.event && pt.event.clientX || 20), bottom: Number(pt && pt.event && pt.event.clientY || 20) };
-    window.InfluxBroUnifiedTooltip.show(meta, rect);
-  }catch(e){}
-}
-
 function _ctxWindowFromRaw(bounds, centerMs){
   try{
     if(!bounds) return null;
@@ -2821,14 +2723,6 @@ async function refreshGraphContext(opts){
       }
       window.Plotly.react($graphCtxPlot, traces, layout, {displayModeBar:false, responsive:true, staticPlot:true});
       try{
-        $graphCtxPlot.on('plotly_hover', (ev)=>{
-          const pt = ev && ev.points && ev.points[0] ? ev.points[0] : null;
-          if(!pt) return;
-          _graphTooltipShowFromPoint(pt, { title: 'Kontext-Graph', desc: 'Kontextwerte an der aktuellen Cursorposition.', example: String(pt.text || '') });
-        });
-        $graphCtxPlot.on('plotly_unhover', ()=>{ try{ if(window.InfluxBroUnifiedTooltip) window.InfluxBroUnifiedTooltip.hide(); }catch(e){} });
-      }catch(e){}
-      try{
         if($graphCtxInfo){
           const s = fmtTs(startIso);
           const e = fmtTs(stopIso);
@@ -2861,7 +2755,8 @@ function _mainWindowIso(){
       const s = LAST_TOTAL_BOUNDS && LAST_TOTAL_BOUNDS.oldest_time ? String(LAST_TOTAL_BOUNDS.oldest_time) : '';
       const e = LAST_TOTAL_BOUNDS && LAST_TOTAL_BOUNDS.newest_time ? String(LAST_TOTAL_BOUNDS.newest_time) : '';
       if(s && e) return { start: new Date(Date.parse(s)).toISOString(), stop: new Date(Date.parse(e)).toISOString() };
-      return null;
+      // Fallback: allow API to decide for unbounded
+      return { start: '', stop: '' };
     }
     const start = (r && r.start) ? r.start : null;
     const stop = (r && r.stop) ? r.stop : null;
@@ -2869,20 +2764,6 @@ function _mainWindowIso(){
     return null;
   }catch(e){
     return null;
-  }
-}
-
-function _validIsoWindow(win){
-  try{
-    if(!win || typeof win !== 'object') return false;
-    const start = String(win.start || '').trim();
-    const stop = String(win.stop || '').trim();
-    if(!(start && stop)) return false;
-    const a = Date.parse(start);
-    const b = Date.parse(stop);
-    return isFinite(a) && isFinite(b) && b > a;
-  }catch(e){
-    return false;
   }
 }
 
@@ -2906,13 +2787,7 @@ async function refreshGraphMainAgg(opts){
     const base = currentFilters();
     if(!base || !base.measurement || !base.field || (!base.entity_id && !base.friendly_name)) return;
     const win = _mainWindowIso();
-    if(!_validIsoWindow(win)){
-      _GRAPH_MAIN_AGG.key = '';
-      _GRAPH_MAIN_AGG.min = null;
-      _GRAPH_MAIN_AGG.max = null;
-      try{ if($graphMainInfo) $graphMainInfo.textContent = ''; }catch(e){}
-      return;
-    }
+    if(!win) return;
     const maxPoints = _mainAggMaxPoints();
     const key = [base.measurement, base.field, base.entity_id || '', base.friendly_name || '', win.start || '', win.stop || '', maxPoints, wantMin, wantMax].join('|');
     if(!force && key === _GRAPH_MAIN_AGG.key && (_GRAPH_MAIN_AGG.min || _GRAPH_MAIN_AGG.max)) return;
@@ -3243,7 +3118,7 @@ function cacheRestoreIfAvailable(){
       draw(LAST_ROWS);
       autoScaleYFromWindow();
       try{ _updateGraphDetailUi(); _applyOverlays(); _updateGraphPointsInfo(); }catch(e){}
-      _deferDashboardWarmup(()=>loadStats(), 60);
+      loadStats().catch(()=>{});
     }
 
     // Best-effort: load the field list for the restored measurement so the dropdown is valid.
@@ -3354,7 +3229,6 @@ function cacheRestoreIfAvailable(){
 
                 $timeline.querySelectorAll('[data-cache-oltype]').forEach((btn)=>{
                   btn.addEventListener('click', ()=>{
-                    if(btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;
                     const t = String(btn.getAttribute('data-cache-oltype') || '');
                     if(!t) return;
                     _cacheTimelineToggleHiddenOutlierType(plan, t);
@@ -4414,7 +4288,6 @@ function _tryLoadZoomData(visStartMs, visStopMs){
 
   const startIso = new Date(visStartMs).toISOString();
   const stopIso = new Date(visStopMs).toISOString();
-  if(!_validIsoWindow({ start: startIso, stop: stopIso })) return;
   const everyMs = Math.max(1000, Math.round(visSpan / targetPoints));
 
   _ZOOM_LOADING = true;
@@ -4585,19 +4458,6 @@ function drawPlotly(rows){
 
   if(!_PLOTLY_EVENTS_BOUND && $plotly && typeof $plotly.on === "function"){
     _PLOTLY_EVENTS_BOUND = true;
-
-    try{
-      $plotly.on('plotly_hover', (ev)=>{
-        const pt = ev && ev.points && ev.points[0] ? ev.points[0] : null;
-        if(!pt) return;
-        const lines = [];
-        if(pt.x) lines.push('Zeit: ' + String(pt.x));
-        if(pt.data && pt.data.name) lines.push('Serie: ' + String(pt.data.name));
-        if(pt.y !== undefined) lines.push('Wert: ' + String(pt.y));
-        _graphTooltipShowFromPoint(pt, { title: 'Graphwert', desc: 'Werte an der aktuellen Cursorposition im Hauptgraphen.', example: lines.join('\n') });
-      });
-      $plotly.on('plotly_unhover', ()=>{ try{ if(window.InfluxBroUnifiedTooltip) window.InfluxBroUnifiedTooltip.hide(); }catch(e){} });
-    }catch(e){}
 
     $plotly.on("plotly_relayout", (ev) => {
       try{
@@ -5438,103 +5298,6 @@ function _profileSection(title, rows, extraHtml){
   return `<section class="ib-profile-section"><h4>${_profileEsc(title)}</h4><div class="ib-profile-table">${_profileRows(rows)}</div>${extraHtml || ''}</section>`;
 }
 
-function _profileValueWithTime(value, time){
-  const v = _profileEsc(value == null ? '' : value);
-  const t = _profileEsc(time == null ? '' : time);
-  if(!v) return '—';
-  return t ? `${v} <span class="muted" style="font-size:11px;">@ ${t}</span>` : v;
-}
-
-function _groupReferences(items){
-  const xs = Array.isArray(items) ? items : [];
-  const map = new Map();
-  xs.forEach((it)=>{
-    const kind = String(it && it.kind || '').trim();
-    const file = String(it && it.source_file || '').trim();
-    if(!(kind && file)) return;
-    const nm = String(it && it.name || '').trim();
-    const key = (kind === 'automation' || kind === 'script') ? (kind + '|' + file + '|' + nm) : (kind + '|' + file);
-    if(!map.has(key)) map.set(key, { kind, source_file: file, name: nm, open_target: String(it && it.open_target || '').trim() || null, first_line: Number(it && it.line || 1) || 1, count: 0, items: [] });
-    const row = map.get(key);
-    row.count += 1;
-    row.items.push(it);
-    if(!row.name && it && it.name) row.name = String(it.name || '').trim();
-    if(Number(it && it.line || 1) < row.first_line) row.first_line = Number(it.line || 1) || 1;
-  });
-  return Array.from(map.values());
-}
-
-async function _openReferenceDetail(groupOrItem, allItems){
-  if(!$referenceDetailDialog || !$referenceDetailList) return;
-  const rows = Array.isArray(allItems) ? allItems : [];
-  const group = groupOrItem || {};
-  const relPath = String(group.source_file || '').trim();
-  const line = Number(group.first_line || group.line || 1) || 1;
-  let source = null;
-  try{ source = await api('./api/reference_source?path=' + encodeURIComponent(relPath) + '&line=' + encodeURIComponent(String(line)), null, { silent:true }); }catch(e){ source = { ok:false, error: e && e.message ? e.message : String(e) }; }
-  if($referenceDetailMeta) $referenceDetailMeta.textContent = relPath ? (relPath + ':' + String(line)) : 'Keine Datei';
-  const fileText = String(source && source.text ? source.text : '');
-  const fileLines = fileText ? fileText.split(/\r?\n/) : [];
-  const excerptStart = Math.max(0, line - 6);
-  const excerptEnd = Math.min(fileLines.length, line + 10);
-  const excerpt = fileLines.slice(excerptStart, excerptEnd).map((ln, idx)=>`${String(excerptStart + idx + 1).padStart(4,' ')}: ${ln}`).join('\n');
-  const refs = rows.length ? rows : (group.items || []);
-  $referenceDetailList.innerHTML = [
-    `<section class="ib-profile-section"><h4>Dateiinhalt</h4><pre id="reference_detail_file_pre" style="margin:0; padding:10px 12px; border:1px solid #eee; border-radius:12px; background:#fafafa; overflow:auto; white-space:pre-wrap;">${_escHtml(excerpt || (source && source.error ? source.error : 'Kein Inhalt verfügbar'))}</pre></section>`,
-    `<section class="ib-profile-section"><h4>Einträge</h4><div class="ib-ref-list">${refs.map((it)=>`<div class="ib-ref-item"><div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div><div style="font-weight:700;">${_profileEsc(it.name || it.kind || 'Referenz')}</div><div class="muted" style="font-size:11px;">${_profileEsc(it.source_file || '')}:${_profileEsc(it.line || '')}</div></div><button type="button" class="btn_sm" data-ref-open="${_escHtml(String(it.source_file || ''))}" data-ref-line="${_escHtml(String(it.line || 1))}" style="width:auto;">Öffnen</button></div><div style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; margin-top:6px; overflow-wrap:anywhere;">${_profileEsc(it.snippet || '')}</div></div>`).join('')}</div></section>`
-  ].join('');
-  $referenceDetailDialog.style.display = 'flex';
-  try{
-    $referenceDetailList.querySelectorAll('[data-ref-open]').forEach((btn)=>{
-      btn.addEventListener('click', async ()=>{
-        const p = String(btn.getAttribute('data-ref-open') || '');
-        const ln = Number(btn.getAttribute('data-ref-line') || 1) || 1;
-        await _openReferenceDetail({ source_file: p, line: ln, first_line: ln }, refs.filter(x => String(x && x.source_file || '') === p));
-      });
-    });
-  }catch(e){}
-  _referenceDetailApplySearch();
-}
-
-function _referenceDetailApplySearch(){
-  try{
-    if(!$referenceDetailList) return;
-    Array.from($referenceDetailList.querySelectorAll('mark.ib_ref_mark')).forEach(m=>{ const txt = document.createTextNode(m.textContent || ''); m.replaceWith(txt); });
-    LAST_REFERENCE_DETAIL_MARKS = [];
-    LAST_REFERENCE_DETAIL_MARK_IDX = -1;
-    const q = String($referenceDetailSearch && $referenceDetailSearch.value || '').trim();
-    if(!q) return;
-    const walker = document.createTreeWalker($referenceDetailList, NodeFilter.SHOW_TEXT, null);
-    const nodes = []; let n;
-    while((n = walker.nextNode())) nodes.push(n);
-    const lower = q.toLowerCase();
-    nodes.forEach((node)=>{
-      const txt = String(node.nodeValue || '');
-      const idx = txt.toLowerCase().indexOf(lower);
-      if(idx < 0) return;
-      const frag = document.createDocumentFragment();
-      frag.appendChild(document.createTextNode(txt.slice(0, idx)));
-      const mark = document.createElement('mark');
-      mark.className = 'ib_ref_mark';
-      mark.textContent = txt.slice(idx, idx + q.length);
-      frag.appendChild(mark);
-      frag.appendChild(document.createTextNode(txt.slice(idx + q.length)));
-      node.parentNode.replaceChild(frag, node);
-    });
-    LAST_REFERENCE_DETAIL_MARKS = Array.from($referenceDetailList.querySelectorAll('mark.ib_ref_mark'));
-    if(LAST_REFERENCE_DETAIL_MARKS.length){ LAST_REFERENCE_DETAIL_MARK_IDX = 0; LAST_REFERENCE_DETAIL_MARKS[0].scrollIntoView({block:'center'}); }
-  }catch(e){}
-}
-
-function _referenceDetailJump(delta){
-  try{
-    const xs = LAST_REFERENCE_DETAIL_MARKS || [];
-    if(!xs.length) return;
-    LAST_REFERENCE_DETAIL_MARK_IDX = (LAST_REFERENCE_DETAIL_MARK_IDX + delta + xs.length) % xs.length;
-    xs[LAST_REFERENCE_DETAIL_MARK_IDX].scrollIntoView({block:'center', behavior:'smooth'});
-  }catch(e){}
-}
-
 function renderMeasurementProfilePanel(profile){
   if(!$measurementProfilePanel || !$measurementProfileSections) return;
   if(!profile){
@@ -5552,17 +5315,8 @@ function renderMeasurementProfilePanel(profile){
   const influx = profile.influx || {};
   const derived = profile.derived || {};
   const quality = profile.quality || {};
-  const references = profile.references || {};
   const yamlRows = Object.entries(yamlInfo.data || {}).slice(0, 14).map(([k,v]) => [k, typeof v === 'string' ? _profileEsc(v) : _profileEsc(JSON.stringify(v))]);
   const warnings = Array.isArray(quality.warnings) ? quality.warnings : [];
-  const refItems = Array.isArray(references.items) ? references.items : [];
-  const refGroups = _groupReferences(refItems);
-  const refHtml = refGroups.length
-    ? `<div><div class="ib-ref-list">${refGroups.map((it, idx)=>{
-        const title = _profileEsc(it.name || it.kind || 'Referenz');
-        return `<div class="ib-ref-item"><div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;"><div><div style="font-weight:700;">${title}</div><div class="muted" style="font-size:11px;">${_profileEsc(it.source_file || '')}:${_profileEsc(it.first_line || '')} · ${_profileEsc(it.count || 0)} Treffer</div></div><button type="button" class="btn_sm" data-ref-group-open="${idx}" style="width:auto;">Öffnen</button></div><div style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; margin-top:6px; overflow-wrap:anywhere;">${_profileEsc((it.items && it.items[0] && it.items[0].snippet) || '')}</div></div>`;
-      }).join('')}</div><div style="display:flex; justify-content:flex-end; margin-top:8px;"><button type="button" id="measurement_profile_references_detail" class="btn_sm" style="width:auto;">Detailliste</button></div></div>`
-    : `<div class="ib-profile-warnings"><div class="ib-profile-warning ib-profile-ok">Keine weiteren Referenzierungen gefunden.</div></div>`;
   const warningsHtml = warnings.length
     ? `<div class="ib-profile-warnings">${warnings.map(w => `<div class="ib-profile-warning">${_profileEsc(w)}</div>`).join('')}</div>`
     : `<div class="ib-profile-warnings"><div class="ib-profile-warning ib-profile-ok">Keine Warnungen</div></div>`;
@@ -5594,19 +5348,16 @@ function renderMeasurementProfilePanel(profile){
       ['Treffer', _profileEsc(yamlInfo.match_count || '')],
       ...yamlRows,
     ]),
-    _profileSection('Referenzierung', [
-      ['Gefundene Verwendungen', _profileEsc(references.count || 0)],
-    ], refHtml),
     _profileSection('InfluxDB', [
       ['Bucket', _profileEsc(influx.bucket || '')],
       ['Measurement', _profileCode(influx.measurement || '')],
       ['Field', _profileCode(influx.field || '')],
       ['Feldtyp', _profileEsc(influx.field_type || '')],
       ['Datenpunkte', _profileEsc(influx.count || '')],
-      ['Erster Wert', _profileValueWithTime(influx.first_value, influx.oldest_time)],
-      ['Letzter Wert', _profileValueWithTime(influx.last_value, influx.newest_time)],
-      ['Min', _profileValueWithTime(influx.min, influx.min_time)],
-      ['Max', _profileValueWithTime(influx.max, influx.max_time)],
+      ['Erster Wert', _profileEsc(influx.first_value || '')],
+      ['Letzter Wert', _profileEsc(influx.last_value || '')],
+      ['Min', _profileEsc(influx.min || '')],
+      ['Max', _profileEsc(influx.max || '')],
       ['Mittel', _profileEsc(influx.mean || '')],
       ['Nachkommastellen', _profileEsc(influx.decimal_places_detected || '')],
     ]),
@@ -5625,71 +5376,7 @@ function renderMeasurementProfilePanel(profile){
       ['field_type_consistent', _profileEsc(quality.field_type_consistent)],
     ], warningsHtml),
   ].join('');
-  try{
-    const btn = document.getElementById('measurement_profile_references_detail');
-    if(btn) btn.onclick = ()=>_openReferenceDetail({ source_file: (refGroups[0] || {}).source_file, first_line: (refGroups[0] || {}).first_line, items: refItems }, refItems);
-    Array.from(document.querySelectorAll('[data-ref-group-open]')).forEach((el)=>{
-      el.addEventListener('click', ()=>{
-        const idx = Number(el.getAttribute('data-ref-group-open') || -1);
-        const row = refGroups[idx];
-        if(row) _openReferenceDetail(row, row.items || []);
-      });
-    });
-  }catch(e){}
   $measurementProfilePanel.style.display = 'block';
-}
-
-function _measurementProfileThresholdMs(){
-  try{
-    if(window.InfluxBroLongWait && window.InfluxBroLongWait.thresholdMs) return Number(window.InfluxBroLongWait.thresholdMs() || 3000);
-  }catch(e){}
-  return 3000;
-}
-
-function _measurementProfileFmtRuntime(ms){
-  const n = Math.max(0, Number(ms || 0));
-  if(!isFinite(n)) return '';
-  const sec = Math.floor(n / 1000);
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = sec % 60;
-  const mm = String(m).padStart(2, '0');
-  const ss = String(s).padStart(2, '0');
-  return h > 0 ? (h + ':' + mm + ':' + ss) : (m + ':' + ss);
-}
-
-function _measurementProfileShowDelayed(text){
-  try{ if(MEASUREMENT_PROFILE_RUN_DELAY_T) clearTimeout(MEASUREMENT_PROFILE_RUN_DELAY_T); }catch(e){}
-  try{ if(MEASUREMENT_PROFILE_RUN_TIMER) clearInterval(MEASUREMENT_PROFILE_RUN_TIMER); }catch(e){}
-  MEASUREMENT_PROFILE_RUN_T0 = Date.now();
-  if($measurementProfileRunText) $measurementProfileRunText.textContent = String(text || 'Messwertinfos werden geladen...');
-  if($measurementProfileRunTime) $measurementProfileRunTime.textContent = '';
-  MEASUREMENT_PROFILE_RUN_DELAY_T = setTimeout(()=>{
-    try{
-      if($measurementProfileRunStatus) $measurementProfileRunStatus.style.display = 'flex';
-      if($measurementProfileRunSpinner) $measurementProfileRunSpinner.style.display = 'inline-block';
-      MEASUREMENT_PROFILE_RUN_TIMER = setInterval(()=>{
-        try{
-          if($measurementProfileRunTime && MEASUREMENT_PROFILE_RUN_T0) $measurementProfileRunTime.textContent = _measurementProfileFmtRuntime(Date.now() - MEASUREMENT_PROFILE_RUN_T0);
-        }catch(e){}
-      }, 250);
-    }catch(e){}
-  }, Math.max(500, _measurementProfileThresholdMs()));
-}
-
-function _measurementProfileStop(text, isError){
-  try{ if(MEASUREMENT_PROFILE_RUN_DELAY_T) clearTimeout(MEASUREMENT_PROFILE_RUN_DELAY_T); }catch(e){}
-  try{ if(MEASUREMENT_PROFILE_RUN_TIMER) clearInterval(MEASUREMENT_PROFILE_RUN_TIMER); }catch(e){}
-  MEASUREMENT_PROFILE_RUN_DELAY_T = null;
-  MEASUREMENT_PROFILE_RUN_TIMER = null;
-  const dur = MEASUREMENT_PROFILE_RUN_T0 ? (Date.now() - MEASUREMENT_PROFILE_RUN_T0) : 0;
-  MEASUREMENT_PROFILE_RUN_T0 = 0;
-  if($measurementProfileRunText && text) $measurementProfileRunText.textContent = String(text);
-  if($measurementProfileRunSpinner) $measurementProfileRunSpinner.style.display = 'none';
-  if($measurementProfileRunTime) $measurementProfileRunTime.textContent = dur > 0 ? _measurementProfileFmtRuntime(dur) : '';
-  if($measurementProfileRunStatus && !($measurementProfileRunStatus.style.display === 'flex')){
-    $measurementProfileRunStatus.style.display = (dur >= _measurementProfileThresholdMs() || isError) ? 'flex' : 'none';
-  }
 }
 
 async function refreshMeasurementProfilePanel(){
@@ -5700,10 +5387,8 @@ async function refreshMeasurementProfilePanel(){
     const friendlyName = String(($n && $n.value) || '').trim();
     if(!measurement || !field || !entityId){
       renderMeasurementProfilePanel(null);
-      try{ if($measurementProfileRunStatus) $measurementProfileRunStatus.style.display = 'none'; }catch(e){}
       return;
     }
-    _measurementProfileShowDelayed('Messwertinfos werden geladen...');
     const qp = new URLSearchParams({
       measurement,
       field,
@@ -5713,10 +5398,8 @@ async function refreshMeasurementProfilePanel(){
     });
     const j = await api('./api/measurement_profile?' + qp.toString(), null, { key: 'measurement_profile', status: 'Lade Messwertprofil...', silent: true });
     renderMeasurementProfilePanel(j);
-    _measurementProfileStop('Messwertinfos geladen.', false);
   }catch(e){
     renderMeasurementProfilePanel({ ok: false, error: e && e.message ? e.message : String(e) });
-    _measurementProfileStop(e && e.message ? e.message : 'Fehler beim Laden der Messwertinfos.', true);
   }
 }
 
@@ -5845,10 +5528,12 @@ async function refreshNameTimelinePanel(){
       hideNameTimelinePanel();
       return;
     }
+    try{ await refreshMeasurementProfilePanel(); }catch(e){}
     try{ await refreshOutlierStrategyPanel(); }catch(e){}
     const rows = await loadComboRanges('friendly_name', { entity_id: entityId, friendly_name: null });
     renderNameTimeline(rows || []);
   }catch(e){
+    try{ await refreshMeasurementProfilePanel(); }catch(x){}
     try{ await refreshOutlierStrategyPanel(); }catch(x){}
     hideNameTimelinePanel();
   }
@@ -6326,16 +6011,6 @@ function selectorQueryTimeParams(){
   }
 }
 
-function selectorSuggestionTimeParams(){
-  const out = selectorQueryTimeParams();
-  try{
-    const rk = String((out && out.range) || '').trim().toLowerCase();
-    const hasCustom = !!(out && out.start && out.stop);
-    if(!hasCustom && (!rk || rk === 'all')) return { range: '30d' };
-  }catch(e){}
-  return out;
-}
-
 function currentFilters(){
   const measurementValue = String(($mf && $mf.value) || ($m && $m.value) || "").trim();
   return {
@@ -6637,7 +6312,7 @@ function renderEntity(){
 async function loadMeasurements(opts){
   const o = opts || {};
   try{
-    const qs = new URLSearchParams(selectorSuggestionTimeParams()).toString();
+    const qs = new URLSearchParams(selectorQueryTimeParams()).toString();
     const j = await api("./api/measurements" + (qs ? ("?" + qs) : ""), null, { key: "measurements", status: "Lade Measurements...", silent: !!o.silent });
     ALL_MEASUREMENTS = (j.measurements || []).map(String);
     renderMeasurements();
@@ -6699,7 +6374,7 @@ async function loadDashboardFields(measurement, opts){
     if($f && !o.silent) $f.value = "";
     return true;
   }
-  const qp = new URLSearchParams({ measurement: m });
+  const qp = new URLSearchParams({ measurement: m, ...selectorQueryTimeParams() });
   const j = await api("./api/fields?" + qp.toString(), null, { key: "fields", status: "Lade Fields...", silent: !!o.silent });
   ALL_FIELDS = (j.fields || []).map(String).filter(Boolean);
   if($fieldList) $fieldList.innerHTML = ALL_FIELDS.map(x=>`<option value="${_escAttr(x)}"></option>`).join('');
@@ -6714,7 +6389,7 @@ async function refreshDashboardSuggestions(opts){
   const meas = String(s.measurement || '').trim();
   const eid = String(s.entity_id || '').trim();
   const fn = String(s.friendly_name || '').trim();
-  const common = selectorSuggestionTimeParams();
+  const common = selectorQueryTimeParams();
   if(meas) common.measurement = meas;
   try{
     ALL_ENTITY = await dashboardLoadTagValues('entity_id', {...common, friendly_name: fn || ''});
@@ -6968,84 +6643,12 @@ function normalizeOutlierRows(rows){
 }
 
 const OUTLIER_TYPE_LABELS = Object.fromEntries(ALL_OUTLIER_TYPES.map(t => [t.value, t.label]));
-const OUTLIER_TYPE_META = {
-  rate_jump: {
-    severity: 'medium',
-    description: 'Prüft, ob ein Zähler in zu kurzer Zeit unplausibel stark ansteigt. Entscheidend ist der Sprung pro Zeit, nicht der absolute Delta-Wert allein.',
-    source: 'Messwertprofil / Strategie',
-    example: 'delta / seconds > max_rate_per_second',
-    doc: 'rate-jump'
-  },
-  reset_event: {
-    severity: 'medium',
-    description: 'Prüft, ob ein negativer Sprung plausibel als legitimer Reset eines Zählers interpretiert werden kann.',
-    source: 'Messwertprofil / Strategie',
-    example: 'value drops near zero AND reset_detection_threshold matched',
-    doc: 'reset-event'
-  },
-  negative_jump: {
-    severity: 'high',
-    description: 'Erkennt unplausible Abfälle bei eigentlich monotonen Zählern. Für nicht resettable Counter ist das meist ein echter Fehler.',
-    source: 'Messwertprofil / Strategie',
-    example: 'delta < -drop_threshold WHERE counter must increase',
-    doc: 'negative-jump'
-  },
-  range_violation: {
-    severity: 'medium',
-    description: 'Prüft Werte außerhalb einer definierten Unter- oder Obergrenze und markiert fachlich unplausible Bereiche.',
-    source: 'Messwertprofil / Strategie',
-    example: 'value < min OR value > max',
-    doc: 'range-violation'
-  },
-  time_gap: {
-    severity: 'low',
-    description: 'Prüft, ob zwischen zwei Messpunkten eine zu große Zeitlücke liegt, die auf fehlende Daten oder Verbindungsprobleme hindeutet.',
-    source: 'Messwertprofil / Strategie',
-    example: 'time_diff_seconds > gap_seconds',
-    doc: 'time-gap'
-  },
-  fault_cluster: {
-    severity: 'high',
-    description: 'Erkennt zusammenhängende Störphasen statt einzelner Ausreißerpunkte und bewertet die Rückkehr in den Normalzustand separat.',
-    source: 'Messwertprofil / Strategie',
-    example: 'multiple adjacent faults until recovery_streak valid points',
-    doc: 'fault-cluster'
-  },
-  null_value: {
-    severity: 'medium',
-    description: 'Erfasst fehlende oder NULL-Werte, die auf Schreibfehler, Importlücken oder fehlerhafte Quellen hindeuten können.',
-    source: 'Messwertprofil / Strategie',
-    example: 'value == NULL OR no point for expected sample',
-    doc: 'null-value'
-  },
-  zero_value: {
-    severity: 'low',
-    description: 'Markiert 0-Werte dort, wo der Messwert fachlich normalerweise nicht 0 sein sollte oder nur nach Nicht-0-Vorgängern verdächtig ist.',
-    source: 'Messwertprofil / Strategie',
-    example: 'value == 0 WHERE expected > 0',
-    doc: 'zero-value'
-  },
-  ignored: {
-    severity: 'low',
-    description: 'Zeigt bewusst vom Nutzer ignorierte Treffer an. Dieser Status ist kein eigener Suchtyp, sondern ein Arbeitsstatus für Ausreißer.',
-    source: 'Benutzeraktion',
-    example: 'row manually marked as ignored',
-    doc: 'ignored'
-  }
-};
-let OUTLIER_CHIP_TOOLTIP = null;
-let OUTLIER_CHIP_TOOLTIP_PINNED = false;
-let OUTLIER_CHIP_TOOLTIP_TARGET = null;
-let OUTLIER_CHIP_TOOLTIP_SHOW_TIMER = null;
-let OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null;
 
 let ANALYSIS_SELECTED_TYPES = ['rate_jump', 'negative_jump', 'reset_event', 'range_violation', 'time_gap', 'fault_cluster', 'null_value', 'zero_value'];
 let ANALYSIS_UNSELECTED_TYPES = [];
 let ANALYSIS_SHOW_IGNORED = false;
 let LAST_OUTLIER_STRATEGY = null;
 let ANALYSIS_STRATEGY_JSON_HELP_PARENT_VISIBLE = false;
-let LAST_REFERENCE_DETAIL_MARKS = [];
-let LAST_REFERENCE_DETAIL_MARK_IDX = -1;
 
 const ANALYSIS_STRATEGY_JSON_HELP_INTRO = [
   'In diesem JSON-Feld definierst du benutzerdefinierte serverseitige Strategien für die automatische Auswahl von Ausreißertypen.',
@@ -8825,129 +8428,12 @@ function updateAnalysisUI(){
         const count = (s.foundByType || {})[t.value] || 0;
         return t.label + ': ' + count;
       });
-      const selectedOnly = ALL_OUTLIER_TYPES.filter(t => ANALYSIS_SELECTED_TYPES.includes(t.value)).map(t => t.label);
-      $found.innerHTML = '<div>Geprüfte Typen: ' + _escHtml(selectedOnly.join(', ') || '—') + '</div><div style="margin-top:4px;">Suchfilter: ' + filterParts.join(' | ') + '</div><div style="margin-top:4px;">Gefunden: ' + parts.join(' | ') + '</div>';
+      $found.innerHTML = '<div>Suchfilter: ' + filterParts.join(' | ') + '</div><div style="margin-top:4px;">Gefunden: ' + parts.join(' | ') + '</div>';
     }
 
     // 5. Render type selection lists
     renderAnalysisTypeLists();
   }catch(e){}
-}
-
-function _outlierChipSeverityColor(severity){
-  if(severity === 'high') return '#dc2626';
-  if(severity === 'medium') return '#ea580c';
-  return '#6b7280';
-}
-
-function _outlierChipDocUrl(docKey){
-  return '/docs/' + encodeURIComponent(String(docKey || ''));
-}
-
-function _ensureOutlierChipTooltip(){
-  if(OUTLIER_CHIP_TOOLTIP) return OUTLIER_CHIP_TOOLTIP;
-  const root = document.createElement('div');
-  root.id = 'analysis_chip_tooltip';
-  root.className = 'ib-chip-tooltip';
-  root.setAttribute('role', 'tooltip');
-  root.setAttribute('aria-hidden', 'true');
-  root.innerHTML = '<div id="analysis_chip_tooltip_content"></div>';
-  root.addEventListener('mouseenter', ()=>{
-    if(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER); OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null; }
-  });
-  root.addEventListener('mouseleave', ()=>{
-    if(OUTLIER_CHIP_TOOLTIP_PINNED) return;
-    _hideOutlierChipTooltip(180);
-  });
-  document.body.appendChild(root);
-  OUTLIER_CHIP_TOOLTIP = root;
-  return root;
-}
-
-function _positionOutlierChipTooltip(target){
-  const tip = _ensureOutlierChipTooltip();
-  const rect = target.getBoundingClientRect();
-  const w = tip.offsetWidth || 360;
-  const h = tip.offsetHeight || 220;
-  const vw = window.innerWidth || document.documentElement.clientWidth || 0;
-  const vh = window.innerHeight || document.documentElement.clientHeight || 0;
-  let left = rect.left;
-  let top = rect.bottom + 10;
-  if(left + w > vw - 12) left = Math.max(12, vw - w - 12);
-  if(top + h > vh - 12) top = Math.max(12, rect.top - h - 14);
-  tip.style.left = Math.round(left) + 'px';
-  tip.style.top = Math.round(top) + 'px';
-}
-
-function _renderOutlierChipTooltip(target){
-  const type = normalizeOutlierTypeKey(target && target.getAttribute('data-type'));
-  const active = String(target && target.getAttribute('data-active') || '') === '1';
-  const meta = OUTLIER_TYPE_META[type] || {};
-  const count = Number((ANALYSIS_STATE && ANALYSIS_STATE.foundByType && ANALYSIS_STATE.foundByType[type]) || 0) || 0;
-  const sev = String(meta.severity || 'low');
-  const sevColor = _outlierChipSeverityColor(sev);
-  const title = _escHtml(_outlierStrategyTypeLabel(type));
-  const ident = _escHtml('dashboard_analysis.chip_type.' + type);
-  const desc = _escHtml(String(meta.description || 'Keine Beschreibung vorhanden.'));
-  const source = _escHtml(String(meta.source || 'Strategie'));
-  const example = _escHtml(String(meta.example || '—'));
-  const status = active ? 'Aktiv' : 'Deaktiviert';
-  const docUrl = _outlierChipDocUrl(meta.doc || type);
-  const html = `
-    <div class="ib-chip-tooltip-head">
-      <div class="ib-chip-tooltip-icon" style="background:${sevColor};"></div>
-      <div>
-        <div class="ib-chip-tooltip-title">${title}</div>
-        <div class="ib-chip-tooltip-key">${ident}</div>
-      </div>
-    </div>
-    <div class="ib-chip-tooltip-desc">${desc}</div>
-    <div class="ib-chip-tooltip-meta">
-      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Schweregrad</div><div class="ib-chip-tooltip-meta-value"><span class="sev-dot" style="background:${sevColor};"></span>${_escHtml(sev === 'high' ? 'Hoch' : sev === 'medium' ? 'Mittel' : 'Niedrig')}</div></div>
-      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Datenquelle</div><div class="ib-chip-tooltip-meta-value">${source}</div></div>
-      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Status</div><div class="ib-chip-tooltip-meta-value">${_escHtml(status)}</div></div>
-      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Treffer</div><div class="ib-chip-tooltip-meta-value">${String(count)}</div></div>
-    </div>
-    <div class="ib-chip-tooltip-example"><div class="ib-chip-tooltip-example-label">Beispiel</div><code>${example}</code></div>
-    <div class="ib-chip-tooltip-foot"><a href="${_escAttr(docUrl)}" target="_blank" rel="noopener noreferrer" data-doc-link="1">Dokumentation öffnen</a><span>? öffnet Doku · Esc schließt</span></div>
-  `;
-  const tip = _ensureOutlierChipTooltip();
-  const content = tip.querySelector('#analysis_chip_tooltip_content');
-  if(content) content.innerHTML = html;
-  tip.classList.toggle('is-pinned', OUTLIER_CHIP_TOOLTIP_PINNED);
-  tip.classList.add('is-open');
-  tip.setAttribute('aria-hidden', 'false');
-  target.setAttribute('aria-describedby', 'analysis_chip_tooltip');
-  _positionOutlierChipTooltip(target);
-}
-
-function _showOutlierChipTooltip(target, pinned){
-  if(!target) return;
-  if(OUTLIER_CHIP_TOOLTIP_SHOW_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_SHOW_TIMER); OUTLIER_CHIP_TOOLTIP_SHOW_TIMER = null; }
-  if(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER); OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null; }
-  OUTLIER_CHIP_TOOLTIP_PINNED = !!pinned;
-  OUTLIER_CHIP_TOOLTIP_TARGET = target;
-  _renderOutlierChipTooltip(target);
-}
-
-function _hideOutlierChipTooltip(delay){
-  if(OUTLIER_CHIP_TOOLTIP_PINNED) return;
-  const tip = _ensureOutlierChipTooltip();
-  if(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER); OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null; }
-  OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = setTimeout(()=>{
-    tip.classList.remove('is-open', 'is-pinned');
-    tip.setAttribute('aria-hidden', 'true');
-    OUTLIER_CHIP_TOOLTIP_TARGET = null;
-  }, Math.max(0, Number(delay || 0)));
-}
-
-function _closePinnedOutlierChipTooltip(){
-  OUTLIER_CHIP_TOOLTIP_PINNED = false;
-  const tip = _ensureOutlierChipTooltip();
-  tip.classList.remove('is-pinned', 'is-open');
-  tip.setAttribute('aria-hidden', 'true');
-  try{ if(OUTLIER_CHIP_TOOLTIP_TARGET) OUTLIER_CHIP_TOOLTIP_TARGET.focus(); }catch(e){}
-  OUTLIER_CHIP_TOOLTIP_TARGET = null;
 }
 
 function renderAnalysisTypeLists(){
@@ -8959,11 +8445,7 @@ function renderAnalysisTypeLists(){
       function _chipHtml(t, label, active){
         const color = _chipColors[t] || '#5ea56a';
         const cls = active ? 'ib-chip ib-chip-active' : 'ib-chip ib-chip-inactive ib-chip-strike';
-        const meta = OUTLIER_TYPE_META[t] || {};
-        const desc = String(meta.description || ('Erklaert den Analyse-Typ ' + label + '.'));
-        const example = String(meta.example || '');
-        const count = Number((ANALYSIS_STATE && ANALYSIS_STATE.foundByType && ANALYSIS_STATE.foundByType[t]) || 0) || 0;
-        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-ui="dashboard_analysis.chip_type.' + t + '" data-ib-pickkey="dashboard_analysis.chip_type.' + t + '" data-type="' + t + '" data-active="' + (active ? '1' : '0') + '" data-doc="' + _escAttr(String(meta.doc || t)) + '" data-tooltip-title="' + _escAttr(String(label || t)) + '" data-tooltip-desc="' + _escAttr(desc) + '" data-tooltip-example="' + _escAttr(example) + '" data-tooltip-severity="' + _escAttr(String(meta.severity || 'low')) + '" data-tooltip-count="' + _escAttr(String(count)) + '" tabindex="0" role="button" aria-label="' + _escAttr(label + ' – ' + (active ? 'aktiv' : 'deaktiviert')) + '" title="' + _escAttr(desc) + '">'
+        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-ui="dashboard_analysis.chip_type.' + t + '" data-ib-pickkey="dashboard_analysis.chip_type.' + t + '" data-type="' + t + '" data-active="' + (active ? '1' : '0') + '" title="Klicken zum ' + (active ? 'Abwaehlen' : 'Auswaehlen') + '">'
           + '<div class="ib-chip-dot"></div>'
           + '<span class="ib-chip-label">' + label + '</span>'
           + '</div>';
@@ -8982,12 +8464,6 @@ function renderAnalysisTypeLists(){
 
       // Add click handlers (toggle active/unselected in one panel)
       $selected.querySelectorAll('[data-type]').forEach(el => {
-        el.addEventListener('keydown', (ev)=>{
-          const key = String(ev.key || '');
-          if(key === 'Enter' || key === ' '){
-            try{ ev.preventDefault(); }catch(e){}
-          }
-        });
         el.addEventListener('click', ()=>{
           const type = String(el.getAttribute('data-type') || '').trim();
           if(!type) return;
@@ -9085,9 +8561,7 @@ function renderOutlierStrategyParamCards(){
     const def = defs[type] || { label: _outlierStrategyTypeLabel(type), description: '', params: [], corrections: [] };
     const params = _outlierStrategyDefaultParamsForType(data, type);
     const corrections = _outlierStrategyDefaultCorrectionsForType(data, type);
-    const color = String((((OUTLIER_TYPE_META[type]||{}).severity === 'high') ? '#dc2626' : (((OUTLIER_TYPE_META[type]||{}).severity === 'medium') ? '#ea580c' : '#6b7280')));
-    const bg = color === '#dc2626' ? 'rgba(220,38,38,0.08)' : (color === '#ea580c' ? 'rgba(234,88,12,0.08)' : 'rgba(107,114,128,0.08)');
-    return `<section class="ib-strategy-card" style="border-color:${_escAttr(color)}; background:${_escAttr(bg)};" data-ui="dashboard_analysis.panel_strategy_type.${_escAttr(type)}" data-ib-pickkey="dashboard_analysis.panel_strategy_type.${_escAttr(type)}"><h4>${_escHtml(def.label || type)}</h4><div class="muted">${_escHtml(def.description || '')}</div><div class="ib-form-grid">${(Array.isArray(def.params)?def.params:[]).map((f)=>_outlierStrategyRenderParamField(type, f, params[f.key], 'param')).join('')}</div><div class="ib-form-grid">${(Array.isArray(def.corrections)?def.corrections:[]).map((f)=>_outlierStrategyRenderParamField(type, f, corrections[f.key], 'correction')).join('')}</div></section>`;
+    return `<section class="ib-strategy-card" data-ui="dashboard_analysis.panel_strategy_type.${_escAttr(type)}" data-ib-pickkey="dashboard_analysis.panel_strategy_type.${_escAttr(type)}"><h4>${_escHtml(def.label || type)}</h4><div class="muted">${_escHtml(def.description || '')}</div><div class="ib-form-grid">${(Array.isArray(def.params)?def.params:[]).map((f)=>_outlierStrategyRenderParamField(type, f, params[f.key], 'param')).join('')}</div><div class="ib-form-grid">${(Array.isArray(def.corrections)?def.corrections:[]).map((f)=>_outlierStrategyRenderParamField(type, f, corrections[f.key], 'correction')).join('')}</div></section>`;
   }).join('');
   $analysisStrategyParams.querySelectorAll('input, select').forEach((el)=>{
     el.addEventListener('change', ()=>{ saveOutlierStrategyOverride().catch(()=>{}); });
@@ -9325,7 +8799,7 @@ function getRawOutlierFilterTypes(){
 }
 
 function getAnalysisCacheTypes(){
-  return getRawOutlierFilterTypes().filter(t => t !== 'ignored');
+  return ['range_violation', 'rate_jump', 'negative_jump', 'reset_event', 'fault_cluster', 'null_value', 'zero_value'];
 }
 
 function _logAnalysis(step, data){
@@ -9729,7 +9203,6 @@ async function runAnalysis(){
     _logAnalysis('search_done', {count: count, dur: dur});
 
     // Count by type
-    const typeLabels = OUTLIER_TYPE_LABELS;
     const typeCounts = {};
     filteredResults.forEach(r => {
       const typesForCount = isIgnoredOutlier(r) ? ['ignored'] : (r.types || []);
@@ -10639,14 +10112,6 @@ function _cacheTimelineOutlierTypeLabels(){
   return OUTLIER_TYPE_LABELS;
 }
 
-function _cacheTimelineEffectiveOutlierTypeSet(){
-  try{
-    return new Set(getRawOutlierFilterTypes().map((t)=>String(t || '').trim()).filter(Boolean));
-  }catch(e){
-    return new Set();
-  }
-}
-
 function _cacheTimelineOutlierTypeColor(t){
   const type = normalizeOutlierTypeKey(t);
   const map = {
@@ -10703,20 +10168,17 @@ function _analysisCacheTimelineHtml(plan){
   const labels = [];
   const vis = _loadAnalysisCacheUiState(plan);
   const hiddenOlTypes = _cacheTimelineLoadHiddenOutlierTypes(plan);
-  const activeOlTypes = _cacheTimelineEffectiveOutlierTypeSet();
   const typeLabels = _cacheTimelineOutlierTypeLabels();
 
   // UI-only: outlier type visibility for the timeline markers.
   const typeBtns = _cacheTimelineOutlierTypes().map((t)=>{
-    const unavailable = !activeOlTypes.has(t);
-    const off = unavailable || hiddenOlTypes.has(t);
+    const off = hiddenOlTypes.has(t);
     const col = _cacheTimelineOutlierTypeColor(t);
     const lab = typeLabels[t] || t;
     const cls = off ? 'ib-chip ib-chip-inactive ib-chip-strike' : 'ib-chip ib-chip-active';
     return '<button type="button" class="' + cls + '" data-cache-oltype="' + _escAttr(t) + '" data-ui="cache_timeline.btn_oltype.' + _escAttr(t) + '" data-ib-pickkey="cache_timeline.btn_oltype.' + _escAttr(t) + '"'
       + ' style="--ib-chip-color:' + col + ';width:auto;padding:4px 12px 4px 10px;"'
-      + (unavailable ? ' disabled aria-disabled="true"' : '')
-      + ' title="' + (unavailable ? 'Outlier-Typ ist fuer den aktuellen Messwert nicht aktiv' : ('Outlier-Typ im Zeitstrahl ' + (off ? 'einblenden' : 'ausblenden'))) + '">'
+      + ' title="Outlier-Typ im Zeitstrahl ' + (off ? 'einblenden' : 'ausblenden') + '">'
       + '<span class="ib-chip-dot"></span>'
       + '<span class="ib-chip-label">' + _escHtml(lab) + '</span>'
       + '</button>';
@@ -10740,16 +10202,10 @@ function _analysisCacheTimelineHtml(plan){
         if(!(isFinite(ms) && stopMs > startMs)) return;
 
         const typesArr = Array.isArray(item.types) ? item.types : [];
-        const enabledByType = typesArr.length ? typesArr.some((t)=>{
-          const type = String(t || '').trim();
-          return activeOlTypes.has(type) && !hiddenOlTypes.has(type);
-        }) : true;
+        const enabledByType = typesArr.length ? typesArr.some((t)=>!hiddenOlTypes.has(String(t||'').trim())) : true;
         if(!enabledByType) return;
 
-        const primary = (typesArr.find((t)=>{
-          const type = String(t || '').trim();
-          return activeOlTypes.has(type) && !hiddenOlTypes.has(type);
-        }) || typesArr.find((t)=>activeOlTypes.has(String(t || '').trim())) || typesArr[0] || '').toString();
+        const primary = (typesArr.find((t)=>!hiddenOlTypes.has(String(t||'').trim())) || typesArr[0] || '').toString();
         const typeColor = _cacheTimelineOutlierTypeColor(primary);
 
         const left = Math.max(0, Math.min(100, ((ms - startMs) / (stopMs - startMs)) * 100));
@@ -11160,7 +10616,7 @@ function _ensureFilteredLogModal(){
   dlg.style.border = '0';
   dlg.style.borderRadius = '12px';
   dlg.style.padding = '0';
-  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:70vh; height:100%; max-height:85vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Gefiltertes Logging</div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="analysis_log_modal_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee;"><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Ausloeser</span><select id="analysis_log_filter_action" style="min-width:220px;"><option value="">Alle</option><option value="analysis_run_with_cache">Analyse mit Cache</option><option value="analysis_run_without_cache">Analyse ohne Cache</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Bereichsfilter</span><select id="analysis_log_filter_scope" style="min-width:220px;"><option value="">Alle</option><option value="dashboard_analysis">Dashboard Analyse</option><option value="dashboard_caching">Dashboard Cache</option><option value="dashboard_outliers">Dashboard Ausreisser</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 220px;"><span>Textsuche</span><input id="analysis_log_filter_text" type="text" placeholder="Volltextsuche in den Logzeilen" /></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 220px;"><span>Markieren</span><div class="ib_clear_row"><input id="analysis_log_filter_mark" type="text" placeholder="Text markieren..." /><button id="analysis_log_filter_mark_prev" type="button" class="btn_sm" style="width:auto;">Zurueck</button><button id="analysis_log_filter_mark_next" type="button" class="btn_sm" style="width:auto;">Weiter</button></div></label><button type="button" id="analysis_log_filter_refresh" class="btn_sm" style="width:auto; align-self:end;">Refresh</button></div><div style="padding:12px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 auto;"><div id="analysis_log_filter_meta" class="muted" style="font-size:12px;"></div><div id="analysis_log_filter_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space:pre-wrap;"></div><div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: analysis_log_modal.dialog | tpl: dialog_info_popup</div></div></div>';
+  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:70vh; height:100%; max-height:85vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Gefiltertes Logging</div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="analysis_log_modal_copy" class="btn_sm" style="width:auto;">In Zwischenablage kopieren</button><button type="button" id="analysis_log_modal_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee;"><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Ausloeser</span><select id="analysis_log_filter_action" style="min-width:220px;"><option value="">Alle</option><option value="analysis_run_with_cache">Analyse mit Cache</option><option value="analysis_run_without_cache">Analyse ohne Cache</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px;"><span>Bereichsfilter</span><select id="analysis_log_filter_scope" style="min-width:220px;"><option value="">Alle</option><option value="dashboard_analysis">Dashboard Analyse</option><option value="dashboard_caching">Dashboard Cache</option><option value="dashboard_outliers">Dashboard Ausreisser</option></select></label><label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Textsuche</span><input id="analysis_log_filter_text" type="text" placeholder="Volltextsuche in den Logzeilen" /></label><button type="button" id="analysis_log_filter_refresh" class="btn_sm" style="width:auto; align-self:end;">Refresh</button></div><div style="padding:12px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; flex:1 1 auto;"><div id="analysis_log_filter_meta" class="muted" style="font-size:12px;"></div><div id="analysis_log_filter_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space:pre-wrap;"></div><div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: analysis_log_modal.dialog | tpl: dialog_info_popup</div></div></div>';
   document.body.appendChild(dlg);
   try{
     const panel = dlg.firstElementChild;
@@ -11180,23 +10636,10 @@ function _ensureFilteredLogModal(){
       b.textContent = 'Performance Analyse';
       $refresh.parentElement.insertBefore(b, $refresh.nextSibling);
     }
-    if($refresh && !document.getElementById('analysis_log_filter_copy')){
-      const b2 = document.createElement('button');
-      b2.type = 'button';
-      b2.id = 'analysis_log_filter_copy';
-      b2.className = 'btn_sm';
-      b2.style.width = 'auto';
-      b2.style.alignSelf = 'end';
-      b2.textContent = 'In Zwischenablage kopieren';
-      const perf = document.getElementById('analysis_log_filter_perf');
-      const ref = perf && perf.nextSibling ? perf.nextSibling : $refresh.nextSibling;
-      $refresh.parentElement.insertBefore(b2, ref);
-    }
   }catch(e){}
 
   const close = document.getElementById('analysis_log_modal_close');
   const copy = document.getElementById('analysis_log_modal_copy');
-  const copyInline = document.getElementById('analysis_log_filter_copy');
   try{
     if(close){
       close.setAttribute('data-ui', 'analysis_log_modal.btn_close');
@@ -11220,13 +10663,6 @@ function _ensureFilteredLogModal(){
       if(txt) await navigator.clipboard.writeText(txt);
     }catch(e){}
   });
-  if(copyInline) copyInline.addEventListener('click', async ()=>{
-    try{
-      const el = document.getElementById('analysis_log_filter_pre');
-      const txt = String(el && (el.innerText || el.textContent) ? (el.innerText || el.textContent) : '').trim();
-      if(txt) await navigator.clipboard.writeText(txt);
-    }catch(e){}
-  });
   return dlg;
 }
 
@@ -11239,9 +10675,6 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
   const $pre = document.getElementById('analysis_log_filter_pre');
   const $refresh = document.getElementById('analysis_log_filter_refresh');
   const $perf = document.getElementById('analysis_log_filter_perf');
-  const $mark = document.getElementById('analysis_log_filter_mark');
-  const $markPrev = document.getElementById('analysis_log_filter_mark_prev');
-  const $markNext = document.getElementById('analysis_log_filter_mark_next');
   if($scope && defaultScope !== undefined) $scope.value = String(defaultScope || '');
   if($action && defaultAction !== undefined) $action.value = String(defaultAction || '');
 
@@ -11293,7 +10726,6 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
           return `<div style="padding:2px 0; color:${isErr ? '#b00020' : 'inherit'}; background:${isErr ? 'rgba(176,0,32,0.06)' : 'transparent'}; border-left:${isErr ? '3px solid #b00020' : '3px solid transparent'}; padding-left:8px;">${line}</div>`;
         }).join('') : 'Keine passenden Logeintraege gefunden.';
       }
-      try{ _analysisLogApplyMarkSearch(); }catch(e){}
     }catch(e){
       if($meta) $meta.textContent = 'Fehler beim Laden der Logs';
       if($pre) $pre.innerHTML = `<div style="color:#b00020; border-left:3px solid #b00020; background:rgba(176,0,32,0.06); padding:6px 8px;">${_escHtml(String(e && e.message ? e.message : e))}</div>`;
@@ -11304,7 +10736,6 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
     try{ if($scope) $scope['on' + evt] = renderLogs; }catch(e){}
     try{ if($action) $action['on' + evt] = renderLogs; }catch(e){}
     try{ if($text) $text['on' + evt] = renderLogs; }catch(e){}
-    try{ if($mark) $mark['on' + evt] = _analysisLogApplyMarkSearch; }catch(e){}
   });
   if($refresh) $refresh.onclick = renderLogs;
   if($perf) $perf.onclick = ()=>{
@@ -11318,51 +10749,6 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
       location.href = './performance?trace_id=' + encodeURIComponent(String(id));
     }catch(e){}
   };
-
-  function _analysisLogApplyMarkSearch(){
-    try{
-      if(!$pre) return;
-      Array.from($pre.querySelectorAll('mark.ib_search_mark')).forEach(m=>{
-        const txt = document.createTextNode(m.textContent || '');
-        m.replaceWith(txt);
-      });
-      const q = String($mark && $mark.value || '').trim();
-      if(!q) return;
-      const walker = document.createTreeWalker($pre, NodeFilter.SHOW_TEXT, null);
-      const nodes = [];
-      let n;
-      while((n = walker.nextNode())) nodes.push(n);
-      const lower = q.toLowerCase();
-      nodes.forEach((node)=>{
-        const txt = String(node.nodeValue || '');
-        const idx = txt.toLowerCase().indexOf(lower);
-        if(idx < 0) return;
-        const frag = document.createDocumentFragment();
-        frag.appendChild(document.createTextNode(txt.slice(0, idx)));
-        const mark = document.createElement('mark');
-        mark.className = 'ib_search_mark';
-        mark.textContent = txt.slice(idx, idx + q.length);
-        frag.appendChild(mark);
-        frag.appendChild(document.createTextNode(txt.slice(idx + q.length)));
-        node.parentNode.replaceChild(frag, node);
-      });
-    }catch(e){}
-  }
-
-  function _analysisLogJumpMarked(dir){
-    try{
-      const xs = Array.from(document.querySelectorAll('#analysis_log_filter_pre mark.ib_search_mark'));
-      if(!xs.length) return;
-      const current = xs.findIndex(x => x.classList.contains('ib_search_mark_current'));
-      xs.forEach(x => x.classList.remove('ib_search_mark_current'));
-      const next = current < 0 ? (dir > 0 ? 0 : xs.length - 1) : ((current + dir + xs.length) % xs.length);
-      xs[next].classList.add('ib_search_mark_current');
-      xs[next].scrollIntoView({block:'center', behavior:'smooth'});
-    }catch(e){}
-  }
-
-  if($markPrev) $markPrev.onclick = ()=>_analysisLogJumpMarked(-1);
-  if($markNext) $markNext.onclick = ()=>_analysisLogJumpMarked(1);
   await renderLogs();
   try{ if(typeof dlg.showModal === 'function') dlg.showModal(); else dlg.style.display = 'block'; }catch(e){ dlg.style.display = 'block'; }
 }
@@ -15452,7 +14838,6 @@ async function refreshEditGraph(){
     stop,
     max_points: UI_EDIT_GRAPH_MAX_POINTS,
   };
-  if(!base.measurement || !base.field || !_validIsoWindow({ start, stop })) return;
 
   const j = await api('./api/window_points', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)}, { key: 'edit_graph', status: 'Graph laeuft...', silent: true });
   try{
@@ -16886,7 +16271,7 @@ async function refreshCachingSection(){
         const gaps = analysisGaps;
         const dirty = analysisDirty;
         const typeCounts = analysisPlan.cached_outlier_type_counts || {};
-        const foundTxt = 'Geprüfte Typen: ' + typeNames + ' | Gefunden: Counter-Sprung pro Zeit: ' + String(typeCounts.rate_jump || 0)
+        const foundTxt = 'Gefunden: Counter-Sprung pro Zeit: ' + String(typeCounts.rate_jump || 0)
           + ' | Negativer Sprung: ' + String(typeCounts.negative_jump || 0)
           + ' | Counter-Reset: ' + String(typeCounts.reset_event || 0)
           + ' | Grenzverletzung: ' + String(typeCounts.range_violation || 0)
@@ -16969,7 +16354,6 @@ async function refreshCachingSection(){
 
           $timeline.querySelectorAll('[data-cache-oltype]').forEach((btn)=>{
             btn.addEventListener('click', ()=>{
-              if(btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;
               const t = String(btn.getAttribute('data-cache-oltype') || '');
               if(!t) return;
               _cacheTimelineToggleHiddenOutlierType(analysisPlan, t);
@@ -17376,13 +16760,6 @@ function autoSpanAll(){
 
 function _asyncNoThrow(fn){
   try{ fn(); }catch(e){}
-}
-
-function _deferDashboardWarmup(fn, delay){
-  const ms = Math.max(0, Number(delay) || 0);
-  setTimeout(()=>{
-    try{ Promise.resolve().then(()=>fn()).catch(()=>{}); }catch(e){}
-  }, ms);
 }
 
 const _debRefreshDashboardSrc = debounce(()=>{
@@ -17967,26 +17344,7 @@ if($analysisStrategyDialogJsonHelp) $analysisStrategyDialogJsonHelp.addEventList
 if($analysisStrategyJsonHelpClose) $analysisStrategyJsonHelpClose.addEventListener('click', ()=>{ _analysisStrategyJsonHelpClose(); });
 if($analysisStrategyJsonHelpSearch) $analysisStrategyJsonHelpSearch.addEventListener('input', ()=>{ _analysisStrategyJsonHelpRender(); });
 if($analysisStrategyJsonHelpCopyAll) $analysisStrategyJsonHelpCopyAll.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(ANALYSIS_STRATEGY_JSON_HELP_EXAMPLES.map(_analysisStrategyJsonHelpText).join('\n\n------------------------------\n\n')); }catch(e){} });
-if($referenceDetailClose) $referenceDetailClose.addEventListener('click', ()=>{ try{ if($referenceDetailDialog) $referenceDetailDialog.style.display = 'none'; }catch(e){}; });
-if($referenceDetailSearch) $referenceDetailSearch.addEventListener('input', ()=>{ _referenceDetailApplySearch(); });
-if($referenceDetailPrev) $referenceDetailPrev.addEventListener('click', ()=>{ _referenceDetailJump(-1); });
-if($referenceDetailNext) $referenceDetailNext.addEventListener('click', ()=>{ _referenceDetailJump(1); });
 if($nameMergeLatestBtn) $nameMergeLatestBtn.addEventListener("click", (ev)=>{ _stop(ev); mergeFriendlyNamesToLatest().catch(displayError); });
-document.addEventListener('keydown', (ev)=>{
-  const key = String(ev.key || '');
-  if(key === 'Escape' && OUTLIER_CHIP_TOOLTIP_PINNED){
-    try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-    _closePinnedOutlierChipTooltip();
-  }
-});
-document.addEventListener('mousedown', (ev)=>{
-  if(!OUTLIER_CHIP_TOOLTIP_PINNED) return;
-  const tip = _ensureOutlierChipTooltip();
-  const target = OUTLIER_CHIP_TOOLTIP_TARGET;
-  const t = ev.target;
-  if((tip && tip.contains(t)) || (target && target.contains && target.contains(t))) return;
-  _closePinnedOutlierChipTooltip();
-});
 
 // Analysis confirm dialog event listeners
 try{
@@ -18224,13 +17582,11 @@ try{
     if(globalSel.entity_id) $e.value = globalSel.entity_id;
 
     // Load measurements after restoring stored selector values.
-    const startupMeasurement = String(($mf && $mf.value) || '').trim();
-    if(startupMeasurement) _deferDashboardWarmup(()=>loadMeasurements({silent: true}), 0);
-    else await loadMeasurements({silent: true});
+    await loadMeasurements({silent: true});
 
     await loadDashboardFields(String(($mf && $mf.value) || '').trim(), {silent: true});
-    _deferDashboardWarmup(()=>refreshDashboardSuggestions({silent: true}), 40);
-    _deferDashboardWarmup(()=>refreshMeasurementProfilePanel(), 20);
+    await refreshDashboardSuggestions({silent: true});
+    try{ await refreshMeasurementProfilePanel(); }catch(e){}
     try{ if(!$measurementProfileSections || !$measurementProfileSections.innerHTML) renderMeasurementProfilePanel(null); }catch(e){}
     saveState();
 

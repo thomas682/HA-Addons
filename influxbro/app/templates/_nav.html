@@ -6,7 +6,7 @@
       Use minmax(0, 1fr) + min-width:0 so wide dashboard/stats content cannot push
       the main column out of view (common CSS Grid gotcha with overflow/1fr).
     */
-    .shell { display:grid; grid-template-columns: var(--ib-sidebar-w, 260px) minmax(0, 1fr); min-height: 100vh; padding-top: 20px; box-sizing: border-box; position: relative; }
+    .shell { display:grid; grid-template-columns: var(--ib-sidebar-w, 260px) minmax(0, 1fr); min-height: 100dvh; padding-top: 20px; box-sizing: border-box; position: relative; }
     .shell > main.content { min-width: 0; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
 
@@ -63,13 +63,13 @@
       */
       html, body { height: auto; }
       body { overflow: auto; }
-      .shell { height: auto; min-height: 100vh; }
+      .shell { height: auto; min-height: 100dvh; }
       .shell > nav.sidebar {
         grid-column: 1;
         grid-row: 1;
         position: sticky;
         top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px);
-        max-height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px));
+        max-height: calc(100dvh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px));
         overflow: auto;
       }
       .shell > main.content {
@@ -240,11 +240,6 @@
   <a class="nav_item {{ 'active' if nav == 'dbinfo' else '' }}" href="./dbinfo" data-ui="nav_main.panel_dbinfo" data-ib-pickkey="nav_main.panel_dbinfo" title="nav.dbinfo">
     <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 3 12 2.5-8 1.5 2H21"/></svg></span>
     <span>Diagnose</span>
-  </a>
-
-  <a class="nav_item {{ 'active' if nav == 'migration' else '' }}" href="./migration" data-ui="nav_main.panel_migration" data-ib-pickkey="nav_main.panel_migration" title="nav.migration">
-    <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h7"/><path d="M13 6h7" opacity=".35"/><path d="M4 12h4"/><path d="M10 12h10" opacity=".35"/><path d="M4 18h7"/><path d="M13 18h7" opacity=".35"/><path d="M9 4l3 2-3 2"/><path d="M15 16l-3 2 3 2"/></svg></span>
-    <span>Migration Datenbank</span>
   </a>
 
   <a class="nav_item {{ 'active' if nav == 'changelog' else '' }}" href="./info" data-ui="nav_main.panel_info" data-ib-pickkey="nav_main.panel_info" title="nav.info">
@@ -763,109 +758,6 @@
             stopTimerIfIdle();
           },
           clearCompleted,
-        };
-
-        const LONGWAIT_THRESHOLD_MS = {{ (cfg.get('ui_longwait_threshold_ms') or 3000) | int }};
-        const LONGWAIT_OVERRIDES = {{ (cfg.get('log_slow_events_overrides') or {}) | tojson }};
-        const LONGWAIT_LOGGING_ENABLED = {{ 'true' if cfg.get('log_slow_events_enabled', True) else 'false' }};
-        const longwaitItems = new Map();
-
-        function _longwaitEnabled(key, isError){
-          if(isError) return true;
-          try{
-            const k = String(key || '');
-            if(k && LONGWAIT_OVERRIDES && Object.prototype.hasOwnProperty.call(LONGWAIT_OVERRIDES, k)) return !!LONGWAIT_OVERRIDES[k];
-          }catch(e){}
-          return !!LONGWAIT_LOGGING_ENABLED;
-        }
-
-        function _longwaitLabel(meta){
-          try{
-            const m = meta && typeof meta === 'object' ? meta : {};
-            const text = String(m.text || '').trim();
-            if(text) return text;
-            const ui = String(m.ui || '').trim();
-            if(ui) return ui;
-            const detail = String(m.detail || '').trim();
-            if(detail) return detail;
-          }catch(e){}
-          return 'Warte auf Antwort...';
-        }
-
-        function _longwaitPost(meta, status, durMs, isError){
-          try{
-            const m = meta && typeof meta === 'object' ? meta : {};
-            const key = String(m.event_key || m.key || '');
-            if(!key) return;
-            if(key.includes('/api/perf_event') || key.includes('/api/perf_stats') || key.includes('/api/client_error') || key.includes('/api/client_log') || key.includes('/api/trace/client_span')) return;
-            if(!_longwaitEnabled(key, !!isError)) return;
-            fetch('./api/perf_event', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json', 'X-InfluxBro-Request': '1', 'X-Requested-With': 'InfluxBro', 'X-InfluxBro-Internal': '1'},
-              credentials: 'same-origin',
-              body: JSON.stringify({
-                event_key: key,
-                event_type: String(m.event_type || 'slow_wait'),
-                source: String(m.source || 'client'),
-                status: String(status || (isError ? 'err' : 'ok')),
-                page: String(m.page || ''),
-                ui: String(m.ui || ''),
-                detail: String(m.detail || _longwaitLabel(m)),
-                duration_ms: durMs,
-                toggle_allowed: m.toggle_allowed !== false,
-                is_error: !!isError,
-                extra: (m.extra && typeof m.extra === 'object') ? m.extra : {},
-              }),
-            }).catch(()=>{});
-          }catch(e){}
-        }
-
-        window.InfluxBroLongWait = {
-          thresholdMs: ()=>LONGWAIT_THRESHOLD_MS,
-          begin: (key, meta)=>{
-            const k = String(key || '');
-            if(!k) return null;
-            try{
-              const prev = longwaitItems.get(k);
-              if(prev && prev.timer) clearTimeout(prev.timer);
-            }catch(e){}
-            const startedAt = Date.now();
-            const item = { key: k, meta: (meta && typeof meta === 'object') ? meta : {}, startedAt, shown: false, done: false, timer: null };
-            item.timer = setTimeout(()=>{
-              try{
-                const cur = longwaitItems.get(k);
-                if(!cur || cur.done) return;
-                cur.shown = true;
-                window.InfluxBroStatus.start(k, _longwaitLabel(cur.meta));
-              }catch(e){}
-            }, LONGWAIT_THRESHOLD_MS);
-            longwaitItems.set(k, item);
-            return { key: k, started_at_ms: startedAt };
-          },
-          progress: (key, text)=>{
-            const k = String(key || '');
-            const item = longwaitItems.get(k);
-            if(!item) return;
-            try{ item.meta.text = String(text || item.meta.text || ''); }catch(e){}
-            if(item.shown) window.InfluxBroStatus.progress(k, _longwaitLabel(item.meta));
-          },
-          finish: (key, opts)=>{
-            const k = String(key || '');
-            const item = longwaitItems.get(k);
-            if(!item) return;
-            longwaitItems.delete(k);
-            try{ if(item.timer) clearTimeout(item.timer); }catch(e){}
-            item.done = true;
-            const o = opts && typeof opts === 'object' ? opts : {};
-            const isError = !!o.is_error || String(o.status || '') === 'err';
-            const durMs = Math.max(0, Date.now() - Number(item.startedAt || Date.now()));
-            if(item.shown){
-              if(isError) window.InfluxBroStatus.fail(k, String(o.text || _longwaitLabel(item.meta) || 'Fehler'));
-              else window.InfluxBroStatus.done(k, String(o.text || _longwaitLabel(item.meta) || 'Fertig'));
-            }
-            _longwaitPost(Object.assign({}, item.meta, o), String(o.status || (isError ? 'err' : 'ok')), durMs, isError);
-          },
-          enabledForKey: (key, isError)=>_longwaitEnabled(String(key || ''), !!isError),
         };
 
         // Optional sysinfo poll

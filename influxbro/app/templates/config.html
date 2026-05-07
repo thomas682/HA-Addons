@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>InfluxBro – Einstellungen</title>
   <script>
     (function(){
@@ -256,21 +256,9 @@
     <div class="card_body">
       <div class="grid">
         <div class="param_row">
-          <div class="param_label">Aktiver Datenbankmodus<span class="param_hint">v2 bleibt produktiv, bis explizit auf v3 umgeschaltet wird.</span></div>
-          <div class="param_control">
-            <select id="active_database_mode" data-ui="config_settings.select_active_database_mode" data-ib-pickkey="config_settings.select_active_database_mode" title="settings.active_database_mode"><option value="v2">v2 aktiv</option><option value="v3">v3 aktiv</option></select>
-          </div>
-        </div>
-        <div class="param_row">
-          <div class="param_label">Influx Versionsmodus<span class="param_hint">Manuell = feste Auswahl, Auto = best-effort Erkennung ueber Health-/Version-Antworten.</span></div>
-          <div class="param_control">
-            <select id="influx_version_mode" data-ui="config_settings.select_influx_version_mode" data-ib-pickkey="config_settings.select_influx_version_mode" title="settings.influx_version_mode"><option value="manual">manuell</option><option value="auto">auto</option></select>
-          </div>
-        </div>
-        <div class="param_row">
           <div class="param_label">Influx Version</div>
           <div class="param_control">
-            <select id="influx_version" data-ui="config_settings.select_influx_version" data-ib-pickkey="config_settings.select_influx_version" title="settings.influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option><option value="3">3 (mit Einschränkungen)</option></select>
+            <select id="influx_version" data-ui="config_settings.select_influx_version" data-ib-pickkey="config_settings.select_influx_version" title="settings.influx_version"><option value="2">2 (Flux)</option><option value="1">1 (InfluxQL)</option></select>
           </div>
         </div>
         <div class="param_row">
@@ -303,64 +291,8 @@
             <input id="timeout_seconds" type="number" />
           </div>
         </div>
-        <div class="param_row">
-          <div class="param_label">write_retry_enabled<span class="param_hint">Aktiviert zentrale Retries fuer InfluxDB-V2-Write-Operationen.</span></div>
-          <div class="param_control">
-            <label class="ib_chk_row"><input type="checkbox" id="write_retry_enabled" data-ui="config_settings.chk_write_retry_enabled" data-ib-pickkey="config_settings.chk_write_retry_enabled" title="settings.write_retry_enabled" /><span></span></label>
-          </div>
-        </div>
-        <div class="param_row">
-          <div class="param_label">write_retry_base_seconds<span class="param_hint">Basis-Delay fuer Exponential Backoff (Sekunden).</span></div>
-          <div class="param_control">
-            <input id="write_retry_base_seconds" type="number" />
-          </div>
-        </div>
-        <div class="param_row">
-          <div class="param_label">write_retry_max_retries<span class="param_hint">Maximale Anzahl zusaetzlicher Retry-Versuche.</span></div>
-          <div class="param_control">
-            <input id="write_retry_max_retries" type="number" />
-          </div>
-        </div>
-        <div class="param_row">
-          <div class="param_label">write_retry_jitter_ms<span class="param_hint">Zufaelliger Zusatz-Delay pro Retry (Millisekunden).</span></div>
-          <div class="param_control">
-            <input id="write_retry_jitter_ms" type="number" />
-          </div>
-        </div>
-        <div class="param_row">
-          <div class="param_label">write_gzip_enabled<span class="param_hint">Aktiviert gzip fuer InfluxDB-v2-HTTP-Requests und komprimierte LP-Payloads in Backup-ZIPs.</span></div>
-          <div class="param_control">
-            <label class="ib_chk_row"><input type="checkbox" id="write_gzip_enabled" data-ui="config_settings.chk_write_gzip_enabled" data-ib-pickkey="config_settings.chk_write_gzip_enabled" title="settings.write_gzip_enabled" /><span></span></label>
-          </div>
-        </div>
-        <div class="param_row">
-          <div class="param_label">write_gzip_level<span class="param_hint">gzip-Komprimierungsstufe fuer Write-/Backup-Payloads (1-9).</span></div>
-          <div class="param_control">
-            <input id="write_gzip_level" type="number" />
-          </div>
-        </div>
         <div class="section_note"><span class="muted">Hinweis: Diese Werte werden in <code>/data/influx_browser_config.json</code> gespeichert (persistent).</span></div>
       </div>
-    </div>
-  </details>
-
-  <details class="card" data-ui="config_settings.section_v3_target" data-ib-pickkey="config_settings.section_v3_target" title="settings.section.v3_target">
-    <summary><span class="ib_summary_row"><span>InfluxDB v3 Zielverbindung</span><button type="button" class="ib_info_icon" data-info-title="Einstellungen: InfluxDB v3 Zielverbindung" data-info-body="Separate Zielverbindung fuer Migration V2 -> V3. Diese Verbindung ersetzt die aktive v2-Verbindung nicht automatisch und wird erst nach ausdruecklicher Umschaltung produktiv."><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
-    <div class="card_body">
-      <div class="grid">
-        <div class="param_row"><div class="param_label">v3 Ziel aktiviert</div><div class="param_control"><label class="ib_chk_row"><input type="checkbox" id="v3_target_enabled" data-ui="config_settings.chk_v3_target_enabled" data-ib-pickkey="config_settings.chk_v3_target_enabled" title="settings.v3_target_enabled" /><span></span></label></div></div>
-        <div class="param_row"><div class="param_label">Scheme</div><div class="param_control"><select id="v3_target_scheme" data-ui="config_settings.select_v3_target_scheme" data-ib-pickkey="config_settings.select_v3_target_scheme" title="settings.v3_target_scheme"><option value="http">http</option><option value="https">https</option></select></div></div>
-        <div class="param_row"><div class="param_label">Host</div><div class="param_control"><input id="v3_target_host" /></div></div>
-        <div class="param_row"><div class="param_label">Port</div><div class="param_control"><input id="v3_target_port" type="number" /></div></div>
-        <div class="param_row"><div class="param_label">verify_ssl</div><div class="param_control"><select id="v3_target_verify_ssl" data-ui="config_settings.select_v3_target_verify_ssl" data-ib-pickkey="config_settings.select_v3_target_verify_ssl" title="settings.v3_target_verify_ssl"><option value="true">true</option><option value="false">false</option></select></div></div>
-        <div class="param_row"><div class="param_label">timeout_seconds</div><div class="param_control"><input id="v3_target_timeout_seconds" type="number" /></div></div>
-        <div class="param_row"><div class="param_label">token</div><div class="param_control"><input id="v3_target_token" /></div></div>
-        <div class="param_row"><div class="param_label">org<span class="param_hint">Optional fuer kompatible APIs.</span></div><div class="param_control"><input id="v3_target_org" /></div></div>
-        <div class="param_row"><div class="param_label">database</div><div class="param_control"><input id="v3_target_database" /></div></div>
-        <div class="param_row"><div class="param_label">batch_size</div><div class="param_control"><input id="v3_target_batch_size" type="number" /></div></div>
-        <div class="param_row"><div class="param_label">window_days</div><div class="param_control"><input id="v3_target_window_days" type="number" /></div></div>
-      </div>
-      <div class="section_note"><span class="muted">Hinweis: Diese Zielverbindung dient zunaechst nur der Migration nach v3. Die produktive Umschaltung erfolgt spaeter ausdruecklich ueber `Migration Datenbank`.</span></div>
     </div>
   </details>
 
@@ -1498,19 +1430,6 @@
           </div>
         </div>
         <div class="section_note"><span class="muted">Schreibt Cache-Nutzung (Jobs&Cache) ins Logfile (zusaetzlich zur Usage-Tabelle).</span></div>
-        <div class="param_row">
-          <div class="param_label">Langlauf-Schwelle (ms)<span class="param_hint">Ab dieser Dauer erscheinen user-relevante Wartezeiten global im Statusfeld und koennen als Langlauf protokolliert werden.</span></div>
-          <div class="param_control">
-            <input id="ui_longwait_threshold_ms" type="number" min="500" max="60000" data-ui="config_settings.input_ui_longwait_threshold_ms" data-ib-pickkey="config_settings.input_ui_longwait_threshold_ms" title="settings.ui_longwait_threshold_ms" />
-          </div>
-        </div>
-        <div class="param_row">
-          <div class="param_label">Zeitintensive Protokollierung aktiv</div>
-          <div class="param_control">
-            <label class="ib_chk_row"><input type="checkbox" id="log_slow_events_enabled" data-ui="config_settings.chk_log_slow_events_enabled" data-ib-pickkey="config_settings.chk_log_slow_events_enabled" title="settings.log_slow_events_enabled" /><span></span></label>
-          </div>
-        </div>
-        <div class="section_note"><span class="muted">Fehler bleiben immer aktiv und sind hiervon nicht betroffen. Einzelne Langlauf-Keys koennen auf der Logs-Seite separat aktiviert oder deaktiviert werden.</span></div>
 
         <div class="param_row">
           <div class="param_label">Tracing aktiv<span class="param_hint">Erzeugt Action-IDs (Trace) fuer Button-Aktionen und korreliert API/Queries. Grundlage fuer Performanceanalyse.</span></div>
@@ -1741,7 +1660,7 @@ const _isChecked = (node) => !!(node && node.checked);
 
 const ids = [
   "influx_yaml_path",
-  "active_database_mode","influx_version_mode","influx_version","scheme","host","port","verify_ssl","timeout_seconds","write_retry_enabled","write_retry_base_seconds","write_retry_max_retries","write_retry_jitter_ms","write_gzip_enabled","write_gzip_level","v3_target_enabled","v3_target_scheme","v3_target_host","v3_target_port","v3_target_verify_ssl","v3_target_timeout_seconds","v3_target_token","v3_target_org","v3_target_database","v3_target_batch_size","v3_target_window_days",
+  "influx_version","scheme","host","port","verify_ssl","timeout_seconds",
   "org","bucket","token","admin_token",
   "database","username","password",
   "ui_table_visible_rows","ui_outlier_visible_rows","ui_raw_outlier_display_limit_per_type","ui_raw_outlier_search_limit","ui_table_row_height_px","ui_table_header_bg","ui_table_header_fg","ui_table_min_empty_rows","ui_edit_neighbors_n","ui_edit_details_visible_rows","ui_edit_graph_buffer_minutes","ui_graph_ctx_before_minutes","ui_graph_ctx_after_minutes","ui_edit_graph_max_points","ui_decimals",
@@ -1771,7 +1690,6 @@ const ids = [
   ,"log_to_file","log_profile","log_max_mb","log_backup_count","log_max_age_days","bugreport_log_history_hours","log_http_requests"
   ,"log_influx_queries"
   ,"log_cache_usage"
-  ,"ui_longwait_threshold_ms","log_slow_events_enabled","log_slow_events_overrides"
   ,"trace_enabled","trace_persist","trace_max_entries","trace_max_days"
   ,"undo_history_max"
   ,"worklog_max_entries","worklog_max_days"
@@ -3027,31 +2945,12 @@ function _safeSetById(id, prop, value){
 function setForm(cfg){
   _safeSet(el.influx_yaml_path, 'value', cfg.influx_yaml_path ?? "homeassistant/influx.yaml");
 
-  _safeSet(el.active_database_mode, 'value', String(cfg.active_database_mode ?? 'v2'));
-  _safeSet(el.influx_version_mode, 'value', String(cfg.influx_version_mode ?? 'manual'));
   _safeSet(el.influx_version, 'value', String(cfg.influx_version ?? 2));
   _safeSet(el.scheme, 'value', cfg.scheme ?? "http");
   _safeSet(el.host, 'value', cfg.host ?? "");
   _safeSet(el.port, 'value', cfg.port ?? 8086);
   _safeSet(el.verify_ssl, 'value', String(!!cfg.verify_ssl));
   _safeSet(el.timeout_seconds, 'value', cfg.timeout_seconds ?? 10);
-  _setChecked(el.write_retry_enabled, (cfg.write_retry_enabled !== false));
-  _safeSet(el.write_retry_base_seconds, 'value', cfg.write_retry_base_seconds ?? 5);
-  _safeSet(el.write_retry_max_retries, 'value', cfg.write_retry_max_retries ?? 5);
-  _safeSet(el.write_retry_jitter_ms, 'value', cfg.write_retry_jitter_ms ?? 2000);
-  _setChecked(el.write_gzip_enabled, (cfg.write_gzip_enabled !== false));
-  _safeSet(el.write_gzip_level, 'value', cfg.write_gzip_level ?? 6);
-  _setChecked(el.v3_target_enabled, !!cfg.v3_target_enabled);
-  _safeSet(el.v3_target_scheme, 'value', String(cfg.v3_target_scheme ?? 'http'));
-  _safeSet(el.v3_target_host, 'value', cfg.v3_target_host ?? "");
-  _safeSet(el.v3_target_port, 'value', cfg.v3_target_port ?? 8086);
-  _safeSet(el.v3_target_verify_ssl, 'value', String(!!(cfg.v3_target_verify_ssl !== false)));
-  _safeSet(el.v3_target_timeout_seconds, 'value', cfg.v3_target_timeout_seconds ?? 10);
-  _safeSet(el.v3_target_token, 'value', cfg.v3_target_token ?? "");
-  _safeSet(el.v3_target_org, 'value', cfg.v3_target_org ?? "");
-  _safeSet(el.v3_target_database, 'value', cfg.v3_target_database ?? "");
-  _safeSet(el.v3_target_batch_size, 'value', cfg.v3_target_batch_size ?? 5000);
-  _safeSet(el.v3_target_window_days, 'value', cfg.v3_target_window_days ?? 7);
 
   _safeSet(el.org, 'value', cfg.org ?? "");
   _safeSet(el.bucket, 'value', cfg.bucket ?? "");
@@ -3180,9 +3079,6 @@ function setForm(cfg){
   _setChecked(el.log_http_requests, !!cfg.log_http_requests);
   _setChecked(el.log_influx_queries, !!cfg.log_influx_queries);
   _setChecked(el.log_cache_usage, !!cfg.log_cache_usage);
-  _safeSet(el.ui_longwait_threshold_ms, 'value', cfg.ui_longwait_threshold_ms ?? 3000);
-  _setChecked(el.log_slow_events_enabled, (cfg.log_slow_events_enabled !== false));
-  try{ window.__InfluxBroSlowEventOverrides = (cfg.log_slow_events_overrides && typeof cfg.log_slow_events_overrides === 'object') ? cfg.log_slow_events_overrides : {}; }catch(e){}
   _setChecked(el.trace_enabled, (cfg.trace_enabled !== false));
   _setChecked(el.trace_persist, (cfg.trace_persist !== false));
   _safeSet(el.trace_max_entries, 'value', cfg.trace_max_entries ?? 1000);
@@ -3228,31 +3124,12 @@ function getForm(){
   return {
     influx_yaml_path: (el.influx_yaml_path.value || "").trim(),
 
-    active_database_mode: String(el.active_database_mode.value || 'v2'),
-    influx_version_mode: String(el.influx_version_mode.value || 'manual'),
     influx_version: parseInt(el.influx_version.value,10),
     scheme: el.scheme.value,
     host: (el.host.value || "").trim(),
     port: parseInt(el.port.value,10),
     verify_ssl: el.verify_ssl.value === "true",
     timeout_seconds: parseInt(el.timeout_seconds.value,10),
-    write_retry_enabled: _isChecked(el.write_retry_enabled),
-    write_retry_base_seconds: parseInt(el.write_retry_base_seconds.value,10),
-    write_retry_max_retries: parseInt(el.write_retry_max_retries.value,10),
-    write_retry_jitter_ms: parseInt(el.write_retry_jitter_ms.value,10),
-    write_gzip_enabled: _isChecked(el.write_gzip_enabled),
-    write_gzip_level: parseInt(el.write_gzip_level.value,10),
-    v3_target_enabled: _isChecked(el.v3_target_enabled),
-    v3_target_scheme: String(el.v3_target_scheme.value || 'http'),
-    v3_target_host: (el.v3_target_host.value || '').trim(),
-    v3_target_port: parseInt(el.v3_target_port.value,10),
-    v3_target_verify_ssl: el.v3_target_verify_ssl.value === "true",
-    v3_target_timeout_seconds: parseInt(el.v3_target_timeout_seconds.value,10),
-    v3_target_token: (el.v3_target_token.value || '').trim(),
-    v3_target_org: (el.v3_target_org.value || '').trim(),
-    v3_target_database: (el.v3_target_database.value || '').trim(),
-    v3_target_batch_size: parseInt(el.v3_target_batch_size.value,10),
-    v3_target_window_days: parseInt(el.v3_target_window_days.value,10),
 
     org: (el.org.value || "").trim(),
     bucket: (el.bucket.value || "").trim(),
@@ -3374,9 +3251,6 @@ function getForm(){
     log_http_requests: _isChecked(el.log_http_requests),
     log_influx_queries: _isChecked(el.log_influx_queries),
     log_cache_usage: _isChecked(el.log_cache_usage),
-    ui_longwait_threshold_ms: parseInt(el.ui_longwait_threshold_ms.value, 10),
-    log_slow_events_enabled: _isChecked(el.log_slow_events_enabled),
-    log_slow_events_overrides: (window.__InfluxBroSlowEventOverrides && typeof window.__InfluxBroSlowEventOverrides === 'object') ? window.__InfluxBroSlowEventOverrides : {},
     trace_enabled: _isChecked(el.trace_enabled),
     trace_persist: _isChecked(el.trace_persist),
     trace_max_entries: parseInt(el.trace_max_entries.value, 10),

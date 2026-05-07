@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>InfluxBro – Statistik</title>
   <style>
     :root {
@@ -16,7 +16,7 @@
       --ib-sel-manual-w: {{ (cfg.get('ui_sel_width_px') or 260) | int }}px;
     }
     body { font-family: system-ui, sans-serif; margin: 0; }
-    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100dvh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
     .sidebar { padding: 14px; border-right: 1px solid #eee; }
     @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }
@@ -1186,12 +1186,10 @@
                 clearLastJobIds();
                 console.log('[stats] Stored global_stats job expired, falling back to cache/snapshot');
                 setStatus(['Vorheriger Statistik-Job abgelaufen, Cache wird geladen.', '']);
-                j = null;
-              } else {
-                throw jobErr;
               }
+              throw jobErr;
             }
-            if(j && j.ready){
+            if(j.ready){
               try{ if(j.cache_id) setLastCacheId(j.cache_id); }catch(e){}
               try{ syncLoadedCols(j.columns || BASE_COLS); }catch(e){}
               const rows = j.rows || [];
