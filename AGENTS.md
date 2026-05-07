@@ -359,6 +359,63 @@ Format:
 
 Beide Dateien sind lokal zu halten und NICHT zu committen.
 
+#### Queue-ID und Detaildateien (PFLICHT)
+
+Jeder Queue-Eintrag MUSS eine eindeutige fortlaufende Queue-ID erhalten.
+
+Format:
+
+- Plan-Queue: `PLAN-0001`, `PLAN-0002`, `PLAN-0003`, ...
+- Build-Queue: `BUILD-0001`, `BUILD-0002`, `BUILD-0003`, ...
+
+Die Nummerierung ist innerhalb der jeweiligen Queue fortlaufend und darf NICHT wiederverwendet werden, auch wenn ein Eintrag erledigt, blockiert oder logisch gelöscht wurde.
+
+In den Queue-Dateien steht nur eine Kurzzeile:
+
+```text
+- [ ] <QUEUE-ID> | <Kurzbeschreibung> | Eingegangen: <Zeitstempel> | Quelle: <Quelle> | Details: ./.opencode/queue_items/<QUEUE-ID>.md
+```
+
+Die vollständige ursprüngliche Nutzeranweisung wird NICHT dauerhaft in der sichtbaren Queue-Zeile angezeigt, sondern in einer Detaildatei gespeichert:
+
+```text
+./.opencode/queue_items/<QUEUE-ID>.md
+```
+
+Pflichtinhalt der Detaildatei:
+
+- Queue-ID
+- Kurzbeschreibung
+- Typ: Plan oder Build
+- Status: `ausstehend`, `in_progress`, `erledigt`, `blockiert` oder `gelöscht`
+- Eingangszeitpunkt
+- Quelle
+- vollständige ursprüngliche Nutzeranweisung
+- abgeleitete Aufgabe
+- offene Fragen oder Blocker, falls vorhanden
+
+Die ursprüngliche Nutzeranweisung darf in der Detaildatei nicht gekürzt, geglättet oder sinngemäß ersetzt werden. Sensible Daten, Zugangsdaten, Tokens, Passwörter oder private personenbezogene Daten MÜSSEN vor dem Speichern entfernt oder maskiert werden.
+
+#### Queue-Bedienbefehle (PFLICHT)
+
+Der Nutzer darf Queue-Einträge über ihre Queue-ID steuern.
+
+Erlaubte Befehle sind insbesondere:
+
+- `zeige PLAN-0001`
+- `Details zu BUILD-0002`
+- `lösche PLAN-0003`
+- `entferne BUILD-0004 aus der Queue`
+- `verschiebe PLAN-0002 nach Build`
+- `verschiebe BUILD-0001 nach Plan`
+- `setze PLAN-0005 auf erledigt`
+- `priorisiere BUILD-0003`
+- `verschiebe BUILD-0003 nach oben`
+
+Bei Detailabfragen zeigt der Agent die Detaildatei des Queue-Eintrags an, insbesondere die vollständige ursprüngliche Nutzeranweisung.
+
+Bei Löschbefehlen wird der Eintrag nicht physisch entfernt, sondern auf Status `gelöscht` gesetzt und aus der aktiven Queue-Anzeige ausgeblendet. Die Detaildatei bleibt zur Nachvollziehbarkeit erhalten.
+
 #### Sichtbarkeitsregel (PFLICHT)
 
 Beide Queues MÜSSEN im Chat sichtbar gehalten werden – genauso wie die aktive ToDo-Liste.
@@ -382,6 +439,7 @@ Der Agent zeigt alle drei Listen als Block** nach jedem abgeschlossenen Schritt,
 Anzeigeregeln:
 
 - Ist eine Queue leer, wird sie trotzdem angezeigt mit dem Eintrag `— leer —`.
+- Sichtbare Queue-Einträge werden mit Queue-ID und Kurzbeschreibung angezeigt; die vollständige ursprüngliche Anweisung wird nur auf Detailabfrage ausgegeben.
 - Der Block wird IMMER vollständig dargestellt – nie nur einzelne Listen.
 - Nach einem neuen Queue-Eintrag wird der Block sofort aktualisiert ausgegeben.
 - Nach Abschluss der aktiven Aufgabe ersetzt der Block den regulären Status (siehe Abschnitt 2.5).
