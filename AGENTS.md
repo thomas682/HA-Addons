@@ -797,11 +797,42 @@ Wächst der Kontext zu groß:
 
 Beim Validieren der HTML-Struktur Fokus auf:
 
-- Tag-Balance (`<div>`, `<main>`, `<section>`, `<details>`)
+- Tag-Balance (`<div>`, `<main>`, `<section>`, `<details>`) 
 - Korrekte Verschachtelung
 - Eltern-/Kind-Hierarchie
 
 Ignorieren: Styling, JavaScript, nicht zusammenhängender Inhalt.
+
+### 7.6.1 Pflicht-Strukturpruefung fuer `influxbro/app/templates/index.html`
+
+- Bei jeder Aenderung an `influxbro/app/templates/index.html` MUSS vor Abschluss der Aufgabe eine explizite Strukturpruefung durchgefuehrt werden.
+- Pflichtumfang:
+  - Balance und korrekte Verschachtelung von:
+    - `<details>`
+    - `<summary>`
+    - `<div>`
+    - Tabellencontainern wie:
+      - `table_wrap`
+      - `table_head`
+      - `table_box`
+- Besonders zu pruefen sind:
+  - Dashboard-Section-Grenzen
+  - Uebergaenge zwischen:
+    - `analysis_section`
+    - `outlier_section`
+    - `raw_section`
+    - `graph_section`
+- Ziel:
+  - keine fehlenden Closing-Tags
+  - keine ueberzaehligen Closing-Tags
+  - keine verschobenen Containergrenzen
+  - keine Strukturfehler, die Rendering, Picker, Dialoge oder den App-Start beeintraechtigen
+- Pflichtfolge:
+  - Aenderungen an `index.html` gelten NICHT als abgeschlossen, wenn diese Strukturpruefung nicht erfolgt ist.
+  - Der Abschlussbericht MUSS bei `index.html`-Aenderungen explizit nennen:
+    - dass die Strukturpruefung ausgefuehrt wurde
+    - welche Bereiche geprueft wurden
+    - ob Auffaelligkeiten gefunden wurden
 
 ### 7.7 Parallelausführungsstrategie
 

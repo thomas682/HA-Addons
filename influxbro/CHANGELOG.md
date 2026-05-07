@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.558
+
+### Fix
+
+- Dashboard / App-Start: Die White-Screen-Regression nach dem Dashboard-Render wurde durch eine bereinigte Containerstruktur in `influxbro/app/templates/index.html` behoben. Gleichzeitig erzwingt `AGENTS.md` bei zukünftigen `index.html`-Änderungen jetzt eine explizite Strukturprüfung für `details`-, `summary`-, `div`- und Tabellencontainer, damit vergleichbare Render-/Startfehler früh erkannt werden. ([#527](https://github.com/thomas682/HA-Addons/issues/527))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.557
 
 ### Fix
