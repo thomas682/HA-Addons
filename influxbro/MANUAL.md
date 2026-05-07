@@ -75,6 +75,12 @@ Neu: Sidebar (Desktop)
 - Wenn der Hauptbereich auf Desktop zeitweise leer wirkt: Ursache war ein Overlay-DIV, der als Grid-Child in `.shell` die rechte Spalte belegt hat. Das Overlay wird jetzt auf `body` gemountet.
 - Mobile: Die Navigation wird als Drawer (Hamburger) genutzt und ueber den Button in der Titelzeile ein-/ausgeblendet.
   - Hinweis: Der Drawer startet beim erneuten Oeffnen der App wieder geschlossen (damit der Inhalt sofort sichtbar ist).
+- iPhone / iOS Safari: Die App ist fuer iPhone und iPad vollstaendig optimiert.
+  - Alle Seiten verwenden `viewport-fit=cover`, damit der Inhalt auf Geraeten mit Notch oder Dynamic Island korrekt dargestellt wird.
+  - Die untere Statusleiste (Fehlerleiste) reicht bis zum Bildschirmrand und platziert ihren Inhalt oberhalb des Home-Indicators.
+  - Dialoge und Overlays beruecksichtigen die Safe-Area-Einschraenkungen (Notch, Home-Indicator, Seitenraender).
+  - Die virtuelle Tastatur verschiebt das Layout nicht mehr (dynamische Viewport-Hoehe `dvh`).
+  - Alle Buttons und Eingabefelder haben mindestens 44px Touch-Hoehe (Apple Human Interface Guidelines).
 
 Neu: Top-Leiste (Profil + Zoom)
 
@@ -173,287 +179,17 @@ Alle Felder, die frueher automatisch einen Clear-Button erhalten haben, besitzen
 
 Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id` verwenden dieselbe Kaskadenlogik wie auf der Backup-Seite. Wenn du eines der Felder aenderst, werden die anderen Listen sofort mit den gefilterten Datenbankwerten neu geladen. Die Vorschlagslisten respektieren jetzt auch den aktuell gewaehlten Dashboard-Zeitraum. Bei `All` wird standardmaessig ueber den gesamten verfuegbaren Zeitraum gesucht, damit auch historische `friendly_name`-/`entity_id`-Varianten gefunden werden. In `Einstellungen -> Dashboard -> Messwertauswahl` kannst du optional eine bewusste Einschraenkung auf X Tage aktivieren; ein explizit gesetzter benutzerdefinierter Start/Stop behaelt dabei Vorrang. Beim Dashboard-Start werden die Selector-Listen einmal deterministisch geladen; ein zusaetzlicher zeitversetzter Hintergrund-Reload wird nicht mehr gestartet.
 
-Fuer die reine `_field`-Liste eines bereits bekannten `_measurement` wird im Dashboard jedoch bewusst kein eigener Zeitfilter mehr an `/api/fields` mitgeschickt. Der Server nutzt dafuer den schnellen Measurement-FieldKey-Pfad statt einer All-Time-`distinct(_field)`-Abfrage, damit die normale Messwertauswahl nicht durch teure Feld-Scans gebremst wird.
-
-Fuer die übrigen sichtbaren Selector-Vorschläge des Dashboards (`Measurements`, `friendly_name`, `entity_id`) wird ein unbeschränktes `All` im normalen Messwertauswahl-Pfad ebenfalls nicht mehr blind an die Vorschlagsabfragen durchgereicht. Solange kein expliziter benutzerdefinierter Zeitraum vorliegt, nutzt die sichtbare Dashboard-Auswahl dafür einen leichten 30d-Scope.
-
-Die Bereichsanalyse fuer historische Tag-Kombinationen (`entity_id` <-> `friendly_name`) verwendet dabei denselben gueltigen Flux-Reduce-Pfad wie die restlichen Dashboard-Statistikabfragen. Im Spezialfall `friendly_name + entity_id + All` wird der Friendly-Name-Verlauf jetzt zusaetzlich ueber einen gueltigen zweistufigen Join aufgebaut. Dadurch funktionieren Vorschlaege und Namenszeitraeume auch bei `All` wieder ohne Parserfehler im Backend.
+Die Bereichsanalyse fuer historische Tag-Kombinationen (`entity_id` <-> `friendly_name`) verwendet dabei denselben gueltigen Flux-Reduce-Pfad wie die restlichen Dashboard-Statistikabfragen. Dadurch funktionieren Vorschlaege und Namenszeitraeume auch bei `All` wieder ohne Parserfehler im Backend.
 
 Wenn fuer den `friendly_name`-Selector bereits eine `entity_id` ausgewaehlt ist, wird zusaetzlich auch das aktuelle `_field` in die Hintergrundabfrage uebernommen. Der Selector bleibt dadurch weiterhin vollstaendig ueber den gesamten Datenbestand (`All`), muss aber nicht mehr unnoetig ueber andere Felder derselben Entity suchen.
 
 Gespeicherte Dashboard-Selectorwerte werden beim Seitenstart jetzt vor dem ersten Measurement-Refresh in die UI zurueckgeschrieben. Dadurch kann bereits die initiale Measurement-Liste vorhandene Einschraenkungen wie `field`, `entity_id` oder `friendly_name` direkt nutzen, statt erst breit zu laden und den gespeicherten Zustand danach wiederherzustellen.
 
-Zwischen `Messwertauswahl` und `Caching` erscheint die eigenstaendige, auf-/zuklappbare Section `Messwertinfos von Homeassistant`. Direkt unter dem Titel steht ein Infofeld zur Einordnung. Im oberen Profilbereich werden Home-Assistant-Metadaten, YAML-Fundstellen, InfluxDB-Basisstatistiken, der abgeleitete interne Messwerttyp sowie Qualitaetshinweise gruppiert angezeigt. Darunter folgt weiterhin die professionelle Mehrfachnamen-Ansicht `Mehrere Messwertnamen` mit Panel-Header, Summary-Bar, oberer Vergleichsachse sowie Listenzeilen mit Index, Name, Zeitraum, Punkte und Status. Mit `Auf letzten Namen vereinigen` werden aeltere Namensbereiche direkt auf den neuesten Namen umgeschrieben; die Aktion erzeugt einen Change-Block und bleibt dadurch in Verlauf/Undo sichtbar. Dauert die Profilermittlung laenger, erscheint direkt unterhalb der Infozeile zusaetzlich ein lokaler Laufstatus mit Spinner, Klartext und Laufzeit.
+Zwischen `Messwertauswahl` und `Caching` erscheint die eigenstaendige, auf-/zuklappbare Section `Messwertinfos von Homeassistant`. Direkt unter dem Titel steht ein Infofeld zur Einordnung. Im oberen Profilbereich werden Home-Assistant-Metadaten, YAML-Fundstellen, InfluxDB-Basisstatistiken, der abgeleitete interne Messwerttyp sowie Qualitaetshinweise gruppiert angezeigt. Darunter folgt weiterhin die professionelle Mehrfachnamen-Ansicht `Mehrere Messwertnamen` mit Panel-Header, Summary-Bar, oberer Vergleichsachse sowie Listenzeilen mit Index, Name, Zeitraum, Punkte und Status. Mit `Auf letzten Namen vereinigen` werden aeltere Namensbereiche direkt auf den neuesten Namen umgeschrieben; die Aktion erzeugt einen Change-Block und bleibt dadurch in Verlauf/Undo sichtbar.
 
 Das Messwertprofil bleibt sichtbar, sobald `measurement`, `field` und `entity_id` bekannt sind. Wenn keine oder nur eine historische Namensvariante vorliegt, wird nicht mehr die gesamte Section ausgeblendet; stattdessen bleibt das Profil sichtbar und der Timeline-Unterbereich zeigt einen neutralen Leer-/Einzelzustand.
 
 Das gefilterte Analyse-Logging (`analysis_log_modal`) folgt jetzt enger dem bestehenden Dialogmuster: Such-/Refresh-Leiste wie gehabt, zusaetzlicher Button `In Zwischenablage kopieren`, Dialog-Meta rechts unten, kein S-Picker und visuelle Hervorhebung von Fehlerzeilen. Die Laufzeit `dur_ms` wird aus den vorhandenen Eventdaten robuster abgeleitet und nicht mehr pauschal als `0` angezeigt, wenn bessere Informationen verfuegbar sind.
-
-Der zentrale Dialog-Button `Zwischenablage` kopiert in Popup-Fenstern jetzt bevorzugt den aktuell sichtbaren oder markierten Inhalt. Das betrifft insbesondere `Letzter Fehler` zusammen mit `Logs (5min)`, wo der angezeigte Logauszug wieder direkt kopierbar ist.
-
-Falls die Friendly-Name-Historie im Dashboard bei sehr grossen All-Time-Serien in ein Influx-Timeout laeuft, bleibt die Seite jetzt dennoch bedienbar: Die Namenshistorie faellt in diesem Spezialfall ohne 500er auf einen leeren/teilweisen Verlauf mit Warnhinweis zurueck. Zusaetzlich erzeugen reine `sysinfo`-Nebenpfade keine eigenen Client-Trace-Spans mehr, und die HTML-Tooltips werden nicht mehr auf Fine-Pointer-Geraete beschraenkt.
-
-Bei bereits bekannter Dashboard-Auswahl werden einige teure Nebenpfade (Measurement-Liste, Selector-Suggestions, Messwertprofil und Stats-Reload nach Cache-Restore) nur noch als Hintergrund-Warmup geladen. Die Seite wird dadurch frueher sichtbar, waehrend nicht-kritische Selector- und Statistikdaten kurz danach nachziehen.
-
-Zusätzlich blockiert der erste Dashboard-HTML-Render nicht mehr auf serverseitig vorberechneten Start-Suggestions fuer Measurement/Friendly Name/Entity ID. Die zugehoerigen Selector-Listen werden nach dem Seitenaufbau clientseitig geladen, sodass der kritische `GET /`-Pfad frueher sichtbar werden kann.
-
-Bekannte Host-/Ingress-Rejections aus dem eingebetteten HA-Panel werden zusaetzlich clientseitig gefiltert. Dazu gehoert neben `No Listener: tabs:outgoing.message.ready` jetzt auch der numerische Host-Code `3`, der andernfalls als minuetlicher Console-Fehler in `ha-panel-app.ts` auftauchen kann, ohne dass InfluxBro selbst einen fachlichen Fehler ausgeloest hat.
-
-Der Statistik-Cache behandelt fehlende Eintraege jetzt als erwarteten Leerzustand statt als harten HTTP-Fehler. Wenn ein alter `cache_id` bereits bereinigt wurde, kann die UI dadurch still auf Hintergrundjob oder frisches Ergebnis zurueckfallen, ohne einen irrefuehrenden `cache miss`-Consolefehler zu erzeugen.
-
-Der Smart Debug Assistant und zugehoerige Popup-/Tooltip-Pfade exportieren die Hilfsfunktion `_keyFromEl` jetzt auch global. Dadurch schlagen spaetere Host-/Dialogpfade nicht mehr mit `ReferenceError: _keyFromEl is not defined` fehl, wenn der Smart-Assistant aus dem Fehlerdialog oder Popup-Kontext gestartet wird.
-
-Bei expliziten Dashboard-Zeiträumen wie `range=all` verwendet die Feldliste jetzt ebenfalls den direkten Query-Pfad statt des Schema-Shortcuts. Zusätzlich funktioniert `Snapshot erzeugen` im Smart Debug Assistant wieder, weil die Snapshot-Erzeugung die Runtime-Konfiguration über einen vorhandenen Reader einliest statt auf ein undefiniertes Symbol zuzugreifen.
-
-Fuer synchrone InfluxDB-v2-Write-Operationen gibt es jetzt eine zentrale Retry-Strategie mit Exponential Backoff, Jitter und Retry-Limits. Die Parameter sind in den Verbindungseinstellungen persistent konfigurierbar (`write_retry_enabled`, `write_retry_base_seconds`, `write_retry_max_retries`, `write_retry_jitter_ms`). Ueber `api/write_manager/status` lassen sich ausserdem Retry-/Fehler-Metriken wie letzte Ursache, Retry-Rate und durchschnittliche Retry-Wartezeit abrufen.
-
-Auf dieser Basis gibt es jetzt einen zentralen `InfluxWriteManager`, der Batch-Flushes, Streaming-Zufuehrung und Health-/Fortschrittsdaten fuer synchrone V2-Write-Pfade buendelt. Verify-Writes und Change-Block-Writes laufen damit ueber dieselbe Schicht statt ueber verteilte Einzellogik.
-
-Zusätzlich kann InfluxBro zentrale V2-Write-Requests und Backup-Payloads jetzt per gzip komprimieren. Die Verbindungseinstellungen enthalten dafuer `write_gzip_enabled` und `write_gzip_level`. Backup-ZIPs duerfen Line-Protocol-Payloads als `.lp.gz` enthalten; Restore und Validierung erkennen diese komprimierten Payloads transparent.
-
-InfluxBro besitzt jetzt eine erste V3-/Migrationsschicht: In den Verbindungseinstellungen gibt es einen Versionsmodus (`manual` oder `auto`) und die manuelle Auswahl `1 / 2 / 3`. Die Diagnose-/Detect-APIs zeigen konfigurierte, erkannte und effektive Influx-Version sowie die Detection-Quelle an. Der neue Menuepunkt `Migration Datenbank` bietet einen sicheren Migrationsstatus mit Warnungen, Checkliste und vorhandenen Migration-Candidates. Produktive V3-Datenpfade sind weiterhin teilweise eingeschraenkt; diese Einschraenkungen werden jetzt jedoch sichtbar dokumentiert statt implizit zu bleiben.
-
-## Hochrüstung V2 auf V3 Influx DB in Home Assistant
-
-Unterschiede:
-- InfluxDB v2 basiert in InfluxBro auf den bestehenden Flux-/Bucket-Pfaden.
-- InfluxDB v3 benoetigt je nach Produktvariante andere Query-/Write-Pfade; nicht alle produktiven InfluxBro-Funktionen sind aktuell gleichwertig verfuegbar.
-
-Gründe fuer eine Hochrüstung:
-- modernere Serverbasis
-- neue Produktvarianten / Betriebsmodelle
-- potenziell bessere Skalierung fuer bestimmte Workloads
-
-Risiken:
-- Query-/Write-Kompatibilitaet nicht fuer jeden bestehenden InfluxBro-Datenpfad identisch
-- geaenderte Betriebs-/Auth-Modelle je nach V3-Deployment
-- Migration ohne vorheriges Backup ist nicht empfohlen
-
-Neue V3-Zielverbindung:
-- In `Einstellungen -> InfluxDB v3 Zielverbindung` kann eine separate Zielverbindung gespeichert werden.
-- Relevante Felder:
-  - `v3_target_enabled`
-  - `v3_target_scheme`
-  - `v3_target_host`
-  - `v3_target_port`
-  - `v3_target_verify_ssl`
-  - `v3_target_timeout_seconds`
-  - `v3_target_token`
-  - `v3_target_org`
-  - `v3_target_database`
-  - `v3_target_batch_size`
-  - `v3_target_window_days`
-- Diese Zielverbindung ersetzt die produktive V2-Verbindung nicht automatisch.
-
-Verbindungstest:
-- `POST /api/db/v3/test` prueft die konfigurierte Zielverbindung best-effort.
-- Der Test umfasst:
-  - Health-Endpunkt
-  - Authentifizierungs-/Erreichbarkeitspruefung
-  - Probe-Write in die konfigurierte oder sichere Ziel-Datenbank
-
-Migration V2 -> V3 starten:
-- Die Seite `Migration Datenbank` verwendet folgende APIs:
-  - `GET /api/migration/summary`
-  - `POST /api/migration/check`
-  - `POST /api/migration/start`
-  - `GET /api/migration/status`
-  - `POST /api/migration/validate`
-  - `GET /api/migration/report`
-  - `POST /api/migration/retry-window`
-  - `POST /api/migration/clear-target`
-  - `POST /api/database/switch-to-v3`
-- Vor dem Start wird geprueft:
-  - Quellkonfiguration v2 vorhanden
-  - Zielkonfiguration v3 vorhanden
-  - sicherer Zielname bestimmt
-  - Migrationszeitraum bestimmbar
-
-Wiederaufnahme / Delta-/Nachmigration:
-- Migrationszeitfenster werden persistent gespeichert.
-- Erfolgreiche Zeitfenster bleiben bei erneutem Start auf `done` und werden uebersprungen.
-- Ueber `retry-window` koennen gezielt unvollstaendige Zeitfenster erneut auf `pending` gesetzt werden.
-- Dadurch koennen nur fehlende/fehlerhafte Fenster erneut uebertragen werden, statt immer einen kompletten Vollabzug erneut zu starten.
-
-Zielbereinigung:
-- `POST /api/migration/clear-target` leert ausschliesslich das Zielsystem im konfigurierten Zieldatenbereich.
-- Das Quellsystem wird dabei nie veraendert.
-- Nach Zielbereinigung werden die gespeicherten Zeitfenster wieder auf `pending` gesetzt.
-
-Quellsystem-Schutz:
-- Das Quellsystem bleibt waehrend der gesamten Migration unveraendert.
-- Weder Daten noch Quell-Datenbank werden geloescht.
-- Die aktive Datenbank bleibt standardmaessig `v2`.
-- Erst `POST /api/database/switch-to-v3` schaltet den Modus explizit auf `v3`.
-
-Quelle und Ziel identisch:
-- Wenn Quelle und Ziel technisch auf dieselbe Datenbank zeigen, verwendet InfluxBro automatisch einen sicheren parallelen Zielnamen im Format `<quelle>_v3_migration`.
-- Dadurch wird nie direkt in dieselbe Quell-Datenbank migriert.
-
-Vorgehen:
-1. InfluxBro Verbindung pruefen
-2. Versionsmodus auf `auto` oder manuell `3` stellen
-3. Diagnose ueber `api/influx_info` / `api/influx_detect` pruefen
-4. V3-Zielverbindung speichern und testen
-5. Menuepunkt `Migration Datenbank` oeffnen
-6. Warnungen und Checklist durchgehen
-7. Vorher Backup erstellen
-8. Zuerst kleinen Testzeitraum pruefen
-9. Danach gestaffelte oder vollstaendige Migration starten
-10. Validierung und Bericht pruefen
-11. Erst danach explizit auf `v3` umschalten
-
-### A) Bestehende InfluxDB v2 nach v3 hochrüsten
-
-1. Bestehende V2-Umgebung erfassen
-- Quelle notieren: Host, Port, Scheme, Org, Bucket, Token, SSL-Modus, Timeout.
-- In InfluxBro `Einstellungen -> Verbindung` und `InfluxDB v2` pruefen.
-- Sicherstellen, dass Dashboard, Statistik, Backup und Restore unter v2 aktuell fehlerfrei arbeiten.
-
-2. Backup vor jeder Migration erstellen
-- In InfluxBro `Backup` oeffnen.
-- Fuer produktive Systeme mindestens ein FullBackup erstellen.
-- Wenn moeglich zusaetzlich ein range-basiertes Backup eines repräsentativen Zeitraums anlegen.
-
-3. Zielstrategie festlegen
-- Wenn Quelle und Ziel technisch getrennt sind:
-  - echtes externes V3-Ziel verwenden.
-- Wenn Quelle und Ziel auf derselben Instanz oder demselben Datenraum liegen:
-  - InfluxBro verwendet automatisch einen parallelen sicheren Zielnamen im Muster `<quelle>_v3_migration`.
-
-4. InfluxDB-v3-Zielverbindung in InfluxBro eintragen
-- `Einstellungen -> InfluxDB v3 Zielverbindung`
-- Folgende Felder pflegen:
-  - `v3_target_enabled`
-  - `v3_target_scheme`
-  - `v3_target_host`
-  - `v3_target_port`
-  - `v3_target_verify_ssl`
-  - `v3_target_timeout_seconds`
-  - `v3_target_token`
-  - `v3_target_org`
-  - `v3_target_database`
-  - `v3_target_batch_size`
-  - `v3_target_window_days`
-
-5. Versionserkennung aktivieren
-- Optional `influx_version_mode = auto` setzen.
-- Alternativ Quelle manuell auf `2` und Ziel konzeptionell auf `3` planen.
-- `api/influx_info` und `api/influx_detect` pruefen.
-
-6. Zielverbindung testen
-- In `Migration Datenbank` den Button fuer den V3-Verbindungstest ausfuehren.
-- Erwartung:
-  - Ziel erreichbar
-  - Token verwendbar
-  - Probe-Write moeglich
-
-7. Migration prüfen
-- In `Migration Datenbank` zuerst `Migration prüfen` ausführen.
-- Dabei werden mindestens geprueft:
-  - Quellkonfiguration
-  - Zielkonfiguration
-  - sichere Ziel-Datenbank
-  - bestimmbare Zeitgrenzen
-
-8. Migration starten
-- `Migration V2 → V3 starten`
-- Die Migration arbeitet in Zeitfenstern (`v3_target_window_days`) und schreibt in Batches (`v3_target_batch_size`).
-- Erfolgreiche Zeitfenster werden als `done` markiert.
-
-9. Migration validieren
-- Nach dem ersten Lauf `Migration validieren` ausführen.
-- InfluxBro vergleicht pro Zeitfenster mindestens Quell- und Zielanzahlen.
-- Fehlende Zeitfenster bleiben sichtbar markiert.
-
-10. Fehlende Fenster gezielt erneut migrieren
-- Wenn Zeitfenster fehlen oder unvollstaendig sind, diese gezielt erneut anstossen.
-- Erfolgreich verarbeitete Zeitfenster bleiben erhalten und werden uebersprungen.
-
-11. Optional Ziel bereinigen
-- Wenn der Lauf verworfen werden soll: `V3 Ziel leeren`.
-- Diese Aktion betrifft ausschliesslich das Zielsystem.
-- Das Quellsystem bleibt unveraendert.
-
-12. Erst nach erfolgreicher Prüfung umschalten
-- Wenn Checklist, Warnungen und Bericht sauber sind:
-  - `Aktive Datenbank auf InfluxDB v3 umstellen`
-- Vorher bleibt `active_database_mode = v2`.
-
-### B) Neues InfluxDB v3 System sauber aufsetzen
-
-1. Neue V3-Instanz bereitstellen
-- Host/URL, Port, Token, Datenbankname und SSL-Setup festlegen.
-
-2. InfluxBro unverändert auf v2 weiterlaufen lassen
-- Bestehende v2-Verbindung nicht ersetzen.
-- V3 nur als Zielverbindung eintragen.
-
-3. V3-Zielverbindung speichern und testen
-- In `Einstellungen -> InfluxDB v3 Zielverbindung` alle Felder pflegen.
-- Danach den V3-Test ausfuehren.
-
-4. Migrationsfenster konservativ wählen
-- Start mit kleinerem `v3_target_window_days`, z. B. 1 oder 7.
-- Start mit moderater `v3_target_batch_size`.
-
-5. Probe-/Teilmigration ausführen
-- Erst `Migration prüfen`
-- Dann kleinen Zeitraum migrieren
-- Danach validieren
-
-6. Ergebnis fachlich prüfen
-- Vergleich der Zeitfensteranzahl
-- Stichproben aus Dashboard/Statistik
-- Candidate-/Warnungslisten kontrollieren
-
-7. Vollständige Migration starten
-- Erst nach erfolgreichem Teiltest den gesamten Bereich migrieren.
-
-8. Umschalten erst nach Abschlussbericht
-- Die produktive Umschaltung auf v3 erfolgt erst nach sauberer Validierung und ausdrücklicher Nutzeraktion.
-
-### Alle Schritte in InfluxBro für saubere Datenübertragung von V2 auf V3
-
-1. `Einstellungen` öffnen
-2. V2-Verbindung prüfen
-3. V3-Zielverbindung pflegen
-4. V3-Verbindung testen
-5. `Backup` öffnen und Sicherung erstellen
-6. `Migration Datenbank` öffnen
-7. `Migration prüfen` ausführen
-8. Warnungen, Candidates und Checkliste prüfen
-9. `Migration V2 → V3 starten`
-10. Laufenden Status und Zeitfenster beobachten
-11. `Migration validieren`
-12. Bericht lesen
-13. Fehlende Fenster gezielt erneut starten
-14. Falls notwendig `V3 Ziel leeren`
-15. Nach erfolgreicher Validierung `Aktive Datenbank auf InfluxDB v3 umstellen`
-
-### Praktische Hinweise
-
-- V2 bleibt aktiv, bis du explizit umschaltest.
-- Die Quelle wird nie geloescht.
-- Die Quelle wird nicht beschrieben.
-- Bei identischer Quelle/Ziel-Konfiguration migriert InfluxBro in einen parallelen sicheren Zielnamen.
-- Bei Problemen zuerst validieren, dann gezielt wiederholen oder Ziel bereinigen.
-- Erst nach erfolgreichem Bericht produktiv auf v3 schalten.
-
-Rollback:
-- Vor Migration Backup erstellen
-- bei Abweichungen auf v2-Konfiguration/Backups zurueckgehen
-- die aktive V2-Konfiguration bleibt gespeichert
-
-Einschränkungen:
-- nicht alle produktiven InfluxBro-Datenpfade sind fuer V3 bereits gleichwertig umgesetzt
-- diese Einschraenkungen werden im Migrationsstatus und in Diagnoseinformationen explizit sichtbar gemacht
-
-## Native FullBackup (v2)
-
-- Fuer `Native v2 FullBackup` verwendet InfluxBro den Influx-CLI-Aufruf `influx backup`.
-- Host und Org werden dabei jetzt explizit als CLI-Parameter uebergeben und nicht nur indirekt ueber Umgebungsvariablen.
-- Wenn der CLI-Lauf fehlschlaegt, wird bevorzugt eine echte Fehlerzeile aus der CLI-Ausgabe in die UI uebernommen (z. B. `unauthorized`, `forbidden`, `failed`), statt nur eine beliebige Statuszeile wie `Downloading metadata snapshot` zu zeigen.
 
 Der Datenladepfad fuer `Analyse mit Cache` bleibt bei vorhandenen v2-Credentials auch in internen Query-Helfern robust im v2-Zweig. Ein frueherer Durchfall aus dem v2-Dynamic-Pfad in einen v1-Fehlerzustand (`database required`) wird damit vermieden.
 
@@ -473,24 +209,6 @@ Die Strategieinfo beschreibt den abgeleiteten Messwerttyp jetzt ausfuehrlicher. 
 Intern verwendet die Strategie- und Typenauswahl jetzt klarere technische Regel-Keys (`rate_jump`, `reset_event`, `negative_jump`, `range_violation`, `time_gap`, `fault_cluster`, `null_value`, `zero_value`). Aeltere gespeicherte Dashboard-/Strategie-Daten mit den frueheren Schluesseln werden beim Laden weiterhin akzeptiert und automatisch auf die neuen Namen normalisiert.
 
 Im Dialog `Strategieinfo` steht jetzt zusaetzlich der Button `JSON Aufbau und Beispiele` zur Verfuegung. Der Hilfedialog erklaert den Zweck des JSON-Feldes (wann JSON sinnvoll ist und wann nicht), beschreibt den Aufbau von Strategien und enthaelt mehrere direkt nutzbare Beispiele mit Copy-Funktion. Beim Schliessen springt die UI wieder in den zuvor geoeffneten `Strategieinfo`-Dialog zurueck.
-
-Fuer den Fall `friendly_name` + gesetzte `entity_id` + `range=all` verwendet die Bereichsanalyse jetzt einen spezialisierteren Namens-Lookup, bevor die Zeitbereiche je Name geladen werden. Der Smart-Bug-Dialog besitzt zusaetzlich kleinere technische Textfelder und denselben kleinen Meta-Footer unten rechts wie die übrigen `dialog_info_popup`-artigen Dialoge.
-
-Client- und Fetch-Fehler werden jetzt konsequenter in den sichtbaren Fehlerpuffer übernommen. Das betrifft insbesondere Verbindungs-/Fetch-Fehler wie `./api/influx_ping`, die dadurch nicht nur in Logs auftauchen, sondern auch als letzter Fehler in der Statusleiste und im Fehlerdialog sichtbar werden.
-
-Die Typ-Chips im Strategiebereich besitzen jetzt professionelle Tooltips mit Severity-Farbpunkt, technischer Kennung, Beschreibung, Meta-Grid, Beispielbedingung und Doku-Link. Hover/Fokus oeffnen den Tooltip kurzzeitig; Klick oder Touch pinnen ihn, damit der Dokumentationslink erreichbar bleibt. `Esc` schliesst einen gepinnten Tooltip, `?` auf einem fokussierten Chip oeffnet die zugehoerige Doku direkt in einem neuen Tab.
-
-Die Tooltip-Logik wurde in `_tooltips.html` weiter zentralisiert. Fuer Dashboard-Elemente steht damit eine gemeinsame Rich-Tooltip-Familie zur Verfuegung, die auch Graphwerte und Kontextinformationen im selben visuellen Stil darstellen kann. Neue UI-Elemente koennen ueber `data-tooltip-*` / `data-doc` / bestehende Tooltip-Metadaten an dieselbe Engine angebunden werden, statt auf Browser-`title`-Tooltips zurueckzufallen.
-
-`Analyse mit Cache` verwendet jetzt fuer die eigentliche Ausreißersuche nur noch die aktuell aktivierten Typen aus der Typenauswahl. Diese tatsächlich geprüften Typen werden sowohl im Bereich `txt_found_info` als auch in der Cache-/Analyse-Zeitleiste explizit angezeigt. Das gefilterte Analyse-Logging besitzt zusaetzlich eine markierende Volltextsuche mit `Zurueck`/`Weiter` und einen Copy-Button direkt in der Actionleiste. Bei der Feldauswahl (`/api/fields`) wird fuer einfache All-Time-Faelle wieder `schema.measurementFieldKeys(...)` verwendet, um unnötig schwere Distinct-Scans zu vermeiden.
-
-Im Messwertprofil enthaelt die Kachel `InfluxDB` jetzt auch die Zeitpunkte von `Erster Wert`, `Letzter Wert`, `Min` und `Max`. Darunter gibt es neu die Kachel `Referenzierung`, die weitere YAML-/JSON-Fundstellen des aktuellen Messwerts auflistet. Wo moeglich werden dazu Direktlinks (z. B. zu Dashboards, Automationen oder Skripten) angeboten; ansonsten bleibt die Fundstelle als Datei-/Zeilenhinweis sichtbar. Die Strategiekarten im Profilbereich werden zusaetzlich farblich an die zugehoerigen Typ-Chips angelehnt.
-
-Im Bereich `Backup` gibt es jetzt den neuen Dialog `Backup verifizieren`. Der MVP unterstuetzt zwei Modi: `Messwert-Backup verifizieren` und `Fullbackup verifizieren`. Die Verifikation erfolgt ueber einen temporären Verify-Bucket und vergleicht im ersten Schritt Punktanzahl, Measurement-Liste und Zeitbereiche. Originaldaten bleiben unverändert; der Prüf-Bucket kann optional automatisch gelöscht werden. Der Dialog zeigt Jobstatus, Schritt, Fortschritt, Verify-Bucket und einen kompakten Ergebnisbericht direkt in `backup.html` an.
-
-Fuer die strukturierte Fehleraufnahme gibt es jetzt den Einstieg `Fehler melden (Smart Assist)`. Der Assistent fuehrt durch grundlegende Fragen (`Wo`, `Wann`, `Was wurde erwartet`, `Was ist tatsächlich passiert`) und zeigt zusaetzlich rekonstruierte Schritte aus den vorhandenen UI-Aktionen und Analyse-/Worklog-Daten an. Optional kann direkt ein serverseitiger Support-Snapshot erzeugt werden; anschließend wird das Ergebnis in den bestehenden Bugreport-/Issue-Composer übergeben.
-
-Die Kachel `Referenzierung` verdichtet jetzt Mehrfachtreffer pro Automation, Script oder Datei auf jeweils eine kompakte Zeile. Über `Detailliste` lässt sich eine vollständige Detailansicht mit Dateiinhalt, Volltextsuche und direktem Sprung auf einzelne Fundstellen öffnen. Für Strategien gilt zusätzlich explizit: Eine Störphase (`fault_cluster`) kann nur entstehen, wenn mindestens ein dazugehöriger Primärtyp (z. B. Grenzverletzung, Zeitlücke oder negativer Sprung) aktiv ist und zuvor einen passenden Fehlerverlauf erzeugt hat.
 
 Der Profilbereich verarbeitet InfluxDB-v2-Ergebnisse jetzt ueber die echten `FluxTable.records`-Strukturen. Damit werden erste/letzte Werte, Min/Max/Mittel und Zeitstempel auch im produktiven v2-Pfad korrekt gelesen.
 
@@ -687,10 +405,8 @@ Raw Daten (DB):
   - Nur aktive (nicht durchgestrichene) Typen werden analysiert.
 - Die Button-Leiste der Analyse-Section verwendet jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern (siehe Template.md), damit Abstand/Design konsistent zu anderen Toolbars sind.
 - Der Analysecache-Zeitstrahl zeigt Ausreisser-Markierungen jetzt mit Tooltip: beim Hover erscheint ein kompakter Tooltip mit Zeitstempel, Typ(en) und Wert. Die Markierungen sind leicht vergroessert, abgerundet und zeigen einen weichen Uebergang beim Hovern.
-- Die Typ-Leiste direkt ueber dem Cache-Zeitstrahl folgt jetzt den fuer den aktuellen Messwert effektiv aktiven Strategietypen. Nicht aktive Typen bleiben sichtbar, erscheinen aber inaktiv/deaktiviert und werden nicht faelschlich wie gepruefte Counter-/Reset-Typen dargestellt.
 - Dashboard-Zustand beim Seitenwechsel: Beim Verlassen der Dashboard-Seite werden relevante Darstellungen/States im `sessionStorage` zwischengespeichert und beim erneuten Oeffnen sofort wiederhergestellt. Dazu gehoeren u.a. der Caching-Status (`load_status`), Analyse-Status/Checkliste, Ausreisser-Ergebnisliste/Selektion, Raw-Fenster sowie Graph-Detail-Settings. Das UI validiert im Hintergrund gegen den Server (Hybrid-Modus); bei veraenderten Serverdaten wird die Anzeige still aktualisiert.
   - Robustheit: InfluxBro ueberschreibt den letzten gueltigen Snapshot nicht mehr durch fruehe/leere Renders (z.B. direkt nach Navigation), und Snapshot-Daten sind groessenbegrenzt.
-- Main-Graph, Zoom-Nachladen und Bearbeitungsgraph schicken `window_points` nur noch mit gueltigem `start`/`stop`. Fehlen bei der Startphase noch Bounds oder eine belastbare Auswahl, wird der Request still uebersprungen statt mit einem fruehen Serverfehler die GUI-Initialisierung zu belasten.
 - Die Analyse-History (`Analyse-Verlauf`) zeigt die komplette Analyse inklusive Fortschritt, Chunks, Typ-Auswahl und Ergebnis-Zusammenfassung.
 - Die Analyse-Sektion besitzt jetzt eigene Buttons fuer `abbrechen`, `Query anzeigen`, `Query testen` und `Gesamtstatistik`.
   - `abbrechen` ist nur bei laufender Analyse aktiv und bricht sowohl Analyse mit Cache als auch ohne Cache ab.
@@ -776,11 +492,6 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
 ## Logs
 
 - Zeigt die Add-on Logs von InfluxBro.
-- Neue Section `Zeitintensive Protokollierung`: fuehrt eine gesonderte Analyse ueber haeufige und lange Events aus Client, Server, Tracing und Worklog zusammen.
-- Die Analyse besitzt zwei Top-10-Ansichten: `Haeufigkeit` und `Laufzeit`.
-- Der Analyse-Zeitraum ist waehlbar; Default ist `1h`. Zusaetzlich stehen dieselben Zeitmodi wie bei der Messwertauswahl zur Verfuegung (`range`, optional `Von/Bis` fuer Custom).
-- Nicht-fehlerhafte Langlauf-Keys koennen dort direkt aktiviert/deaktiviert werden. Fehler bleiben immer aktiv und sind bewusst nicht abschaltbar.
-- Interne Performance-Hilfsendpunkte (`perf_event`, `perf_stats`, Client-Log/Error und Trace-Span-POSTs) werden nicht erneut als eigene Langlauf-HTTP-Events instrumentiert. Dadurch bleibt die GUI-Startphase stabiler und das Log laeuft nicht in Selbsttreffer fuer diese internen Requests.
 - Typische Nutzung:
   - Follow/Refresh fuer Live-Ansicht
   - Buttons `aeltester`/`neuster` springen innerhalb der Ansicht nach oben/unten
@@ -794,22 +505,6 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
 - Support-Bundle: erstellt ein ZIP mit konfigurierbaren Inhalten (Zeitfenster, Logs, Aktionen, Jobs/History/Monitor, Cache-Meta, Settings Snapshot) inkl. serverseitiger Redaction. Vorschau zeigt Inhalt + Groessenschaetzung.
 - Default: `neuster` + `Follow: ein`.
 - Der `Follow`-Schalter wird beim erneuten Oeffnen der Seite mit seinem zuletzt gespeicherten Zustand wiederhergestellt.
-- Der Statusleisten-Button `5 min Logs` verwendet jetzt denselben direkten Popup-Pfad wie `Logs (5min)` im Fehlerdialog.
-- Im 5-Minuten-Logdialog werden `ERROR`-/`EXCEPTION`-/`TRACEBACK`-Zeilen rot hervorgehoben, Warnungen orange.
-- Auf der Logs-Seite gibt es jetzt eine temporaere Aufzeichnung:
-  - Name vergeben
-  - `Aufzeichnung starten`
-  - spaeter `Aufzeichnung stoppen`
-  - Auswahl der letzten 10 Aufzeichnungen
-  - `Komplettlog`, um den Filter wieder aufzuheben
-- Diese Aufzeichnung loescht keine Logs. Stattdessen merkt sich InfluxBro das Zeitfenster und zeigt nur Eintraege ab diesem Zeitpunkt bis zum Stoppen der Aufzeichnung.
-- Beim Start einer Aufzeichnung wird die Ansicht sofort auf Eintraege ab diesem Startzeitpunkt gefiltert.
-- Zusaetzlich gibt es in der Aktionsleiste jetzt einen expliziten Zeitbereichfilter mit:
-  - `Von`
-  - `Bis`
-  - `Löschen` zum Zuruecksetzen des Zeitfilters
-  - `filtern`, um den Zeitraum einer ausgewaehlten Aufzeichnung als aktiven Zeitfilter zu uebernehmen
-- Die Suchfunktion auf der Logs-Seite filtert mehrzeilige Query-/Trace-Eintraege jetzt blockweise statt zeilenweise. Wenn der Suchbegriff nur in einer Zeile eines Query-Blocks vorkommt, bleibt der gesamte Block sichtbar.
 
 ## Jobs & Cache
 
@@ -888,7 +583,6 @@ Timer Jobs:
 - Neu: `Speicherort` (Dropdown) schaltet zwischen konfigurierten Zielen (z.B. Lokal und `/share/...`). Nicht erreichbare Ziele sind ausgegraut.
 - Alle Aktionen auf der Backup-Seite (Liste, Erstellen, Download, Loeschen, FullBackup) beziehen sich immer auf den aktuell gewaehlten Speicherort.
 - Die Erstellung laeuft als Background-Job: du siehst Laufzeit und Groesse waehrend des Exports, und kannst per `Abbruch` stoppen.
-- Direkt bei den Backup-Aktionen gibt es genau einen sichtbaren Laufstatusbereich mit Spinner, Klartext und Laufzeit; derselbe Lauf erscheint parallel im globalen Sidebar-Statuspanel.
 - In der Backup-Liste siehst du:
   - Name des Messwertes
   - Zeitpunkt des Backups
@@ -908,7 +602,6 @@ Neu: FullBackup (InfluxDB komplett)
 - FullBackup sichert nicht nur einen einzelnen Messwert, sondern exportiert (best-effort) die komplette InfluxDB (v1: alle Measurements; v2: kompletter Bucket).
 - FullBackups werden in einer separaten Liste angezeigt (unabhaengig von den normalen Signal-Backups).
 - Aktionen: `FullBackup starten`, `Abbruch`, `Liste aktualisieren`, `Download` (ZIP), `Loeschen`.
-- Auch FullBackup nutzt denselben lokalen Laufstatusbereich direkt neben der Aktionssektion und spiegelt den aktuellen Stand in die globale Statusleiste.
 - Hinweis: `Liste aktualisieren` steht direkt ueber der FullBackupliste.
 - Modus:
   - In der UI heisst das Feld `Backupmodus`.
@@ -930,7 +623,6 @@ Neu: FullBackup (InfluxDB komplett)
 - Download: `Download` laedt das selektierte Backup als ZIP herunter (Meta + Line Protocol).
 - Restore schreibt die Werte zurueck, ohne doppelte Messpunkte zu erzeugen (idempotent, weil gleiche Zeitpunkte/Tags/Field ueberschrieben werden).
 - Restore fragt bei destruktiven Aktionen nur noch per Browser-Dialog nach Bestaetigung.
-- Restore und FullRestore zeigen waehrend laufender Aktionen jeweils einen abschnittsnahen Statusbereich mit Spinner, Klartext und Laufzeit; parallel bleibt der Lauf im globalen Sidebar-Statuspanel sichtbar.
 - Die Bereiche `Quelle (Backup)` und `Ziel (Messwert)` sind jetzt einklappbar.
 - Die Sektion `Ziel (Messwert)` bleibt strukturell sauber geschlossen; nachfolgende Restore- und FullRestore-Bereiche bleiben dadurch korrekt im Restore-Layout eingebettet.
 - Die Auswahlfelder in `Ziel (Messwert)` inklusive Zeitfilter besitzen jetzt dauerhaft sichtbare Buttons `Feld leeren`.
@@ -1030,7 +722,6 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Fuer `Messwertlücke` gibt es einen globalen Schwellwert `outlier_gap_seconds_default` in den Einstellungen sowie Dashboard-Overrides in der Ausreißer-Parametrierung und im Filter-Scan.
 - Die Statistik-Seite faengt abgelaufene `global_stats`-Jobs jetzt sauber ab. Alte Job-IDs werden lokal geloescht und die Ansicht faellt still auf Cache-/Snapshot-Daten zurueck, statt bei jedem Seitenaufruf mit einem 404 fuer ein altes Job-Ergebnis zu starten.
 - Tooltips sind bewusst kurz gehalten: oben eine Funktionsbeschreibung, unten der UI-Key in spitzen Klammern (z.B. `<dashboard_caching.btn_cache_pruefen>`).
-- Tooltips koennen jetzt global direkt im Tooltip-Kopf ueber eine Checkbox ein-/ausgeschaltet werden. Die Einstellung ist persistent und gilt seitenuebergreifend fuer alle Standard-Tooltips.
 - Unter der Cache-Summary des Dashboards wird jetzt zusaetzlich `Gefunden:` mit den im Cache bekannten Ausreißern je Typ angezeigt. Pro Cache-Segment gibt es daneben den Toggle `ol`, der vertikale Marker fuer alle Ausreißer-Zeitpunkte dieses Segments im Zeitstrahl einblendet.
 - Die `ol` Marker im Zeitstrahl sind jetzt nach Ausreisser-Typ eingefaerbt und koennen oberhalb des Zeitstrahls pro Typ ein-/ausgeblendet werden (wirkt nur auf den Zeitstrahl, nicht auf Tabellen/Counts).
 - Nach `Analyse mit Cache` oder `Analyse ohne Cache` werden zusammenhaengende Analyse-Cache-Segmente jetzt automatisch kombiniert. Das entspricht dem manuellen Dashboard-Button `kombinieren`.
@@ -1101,34 +792,6 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der Dialog `Ausreißer-Parameter` erklaert jeden Parameter direkt unter dem Eingabefeld. Die Werte werden global gespeichert (wie in den Einstellungen). Leere Felder deaktivieren optionale Grenzen oder setzen wieder den Default.
 - `Counter: Max Sprung` ist im Dialog getrennt nach Einheit editierbar (`W`, `kW`, `Wh`, `kWh`) und wird als globaler Default pro Einheit gespeichert.
 - `Recovery-Streak` wirkt auf die Dashboard-Ausreißeranalyse: Erst nach der eingestellten Anzahl gueltiger Werte in Folge gilt eine Stoerphase wieder als beendet.
-- Im Bereich `dashboard_analysis.panel_typen_gewaehlt` verwenden die Analyse-Typ-Chips nur noch den globalen Standard-Tooltip. Zusaetzliche `i`-Buttons in den Chips entfallen dort.
-- Der Standard-Tooltip fuer Analyse-Typ-Chips zeigt jetzt:
-  - den fachlichen Namen (z. B. `Stoerphase`)
-  - den technischen UI-Key (z. B. `dashboard_analysis.chip_type.fault_cluster`)
-  - eine Kurzbeschreibung
-  - optional ein Beispiel
-  - einen kleinen Button `Dokumentation oeffnen`
-- Die frueheren Meta-Anzeigen `Schweregrad`, `Datenquelle`, `Status` und die separate Dokumentations-Metabox werden dort nicht mehr angezeigt.
-- Solange `Shift` gedrueckt bleibt, verschwindet der Standard-Tooltip nicht automatisch. Das ermoeglicht die Interaktion mit Links oder Buttons im Tooltip; beim Loslassen von `Shift` schliesst der Tooltip wieder.
-
-### Analyse-Typen im Dashboard
-
-- `dashboard_analysis.chip_type.fault_cluster` / `Stoerphase`
-  - Erkennt zusammenhaengende Stoerphasen statt einzelner Ausreißerpunkte und bewertet die Rueckkehr in den Normalzustand separat.
-- `dashboard_analysis.chip_type.null_value` / `NULL-Wert`
-  - Erkennt fehlende oder als `NULL` gespeicherte Messwerte, damit Unterbrechungen oder unvollstaendige Daten sichtbar werden.
-- `dashboard_analysis.chip_type.zero_value` / `Unplausibler 0-Wert`
-  - Erkennt Nullwerte, die fachlich nicht plausibel sind und daher als potenzieller Fehlerzustand behandelt werden sollen.
-- `dashboard_analysis.chip_type.time_gap` / `Messwertluecke`
-  - Erkennt unplausibel grosse Zeitabstaende zwischen zwei Messpunkten.
-- `dashboard_analysis.chip_type.range_violation` / `Grenzverletzung`
-  - Erkennt Werte ausserhalb des erwarteten Wertebereichs.
-- `dashboard_analysis.chip_type.negative_jump` / `Negativer Sprung`
-  - Erkennt unplausible Rueckspruenge in Serien, die typischerweise nicht negativ springen sollten.
-- `dashboard_analysis.chip_type.rate_jump` / `Sprunghafter Anstieg`
-  - Erkennt ploetzliche positive Spruenge, die ueber dem erwarteten Schrittbereich liegen.
-- `dashboard_analysis.chip_type.reset_event` / `Reset-Ereignis`
-  - Erkennt Resets oder Neustarts eines Zaehler-/Messverlaufs.
 - Ueber der Raw-Tabelle gibt es zusaetzlich `Löschen`, `Undo` und `Info`. `Löschen` loescht den selektierten DB-Wert nach Rueckfrage. `Undo` macht genau die letzte direkte Button-Aenderung (`Einfügen` oder `Löschen`) fuer den selektierten Raw-Wert rueckgaengig. `Info` zeigt die komplette Aenderungshistorie des selektierten Raw-Werts im Popup.
 - Nach `Löschen` wird die Raw-Tabelle sofort neu geladen. Die Selektion springt dabei auf die naechste verbleibende Zeile, alternativ auf die vorherige, wenn die geloeschte Zeile am Ende stand.
 - Der Raw-Info-Button zeigt jetzt ein reines Icon statt der bisherigen Textbeschriftung `Info`.
@@ -1148,21 +811,6 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Die gemeinsame Popup-History arbeitet stabil ueber alle Query-Dialoge hinweg, weil Render-, Toggle- und Scope-Logik denselben geteilten Popup-Zustand verwenden.
 
 ## Diagnose
-
-- `Query testen` auf der Diagnose-Seite besitzt jetzt eine erweiterte Query-History.
-- Herkunftsmarkierung:
-  - `(manuell)` fuer Queries, die direkt im Diagnose-Dialog ausgefuehrt wurden
-  - `(system)` fuer automatisch protokollierte System-Queries
-- Die History ist als auswaehlbare Liste aufgebaut und bietet:
-  - Suche
-  - Filter `nur ERROR`
-  - `Kopieren`
-  - `Einfuegen oben`
-- Fehlerhafte manuelle Queries werden mit `ERROR` markiert und rot dargestellt.
-- In der Speicher-Tabelle `dbinfo_storage.tbl` markiert InfluxBro jetzt Dateien/Ordner, die sicher regenerierbar sind.
-- Diese Eintraege koennen selektiert und mit `Löschen` entfernt werden.
-- Das Loeschen ist auf eine feste serverseitige Whitelist begrenzt, z. B. fuer Laufzeitzustand, lokale UI-Zustaende und Cache-/Trace-/History-Dateien.
-- Produktive Backups, Quell-Datenbanken oder andere nicht explizit freigegebene Speicherziele werden ueber diesen Pfad nicht geloescht.
 
 - Menuepunkt `Diagnose` zeigt Best-effort Status (Add-on, Influx Verbindung, Systemlast) und einige KPIs.
 - Erweiterte KPIs werden aus InfluxDB `GET /metrics` gelesen (falls erreichbar). Wenn `/metrics` nicht verfuegbar ist, zeigt die Seite trotzdem die Basis-Infos.
@@ -1197,7 +845,6 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Seite `Export`: Auswahl wie im Dashboard; Measurement/Field wird best-effort aus friendly_name/entity_id aufgeloest.
 - Die `_field`-Liste wird dabei mit `_measurement`, `friendly_name`, `entity_id` und Zeitraum gemeinsam gefiltert. `value` wird nur noch dann automatisch gesetzt, wenn dieses Field in der gefilterten Auswahl wirklich existiert.
 - Export-Erzeugung laeuft als Hintergrund-Job und kann mit `Abbrechen` gestoppt werden.
-- Direkt unter den Export-Buttons zeigt ein eigener Laufstatusbereich mit Spinner, Klartext und Laufzeit, was gerade laeuft; derselbe Job bleibt parallel im globalen Sidebar-Statuspanel sichtbar.
 - Der Button `Export` oeffnet in Chromium-basierten Browsern einen klickbaren Client-Ordnerbrowser. Du waehlt zuerst einen lokalen Root-Ordner und kannst danach Unterordner direkt im Dialog mit der Maus auswaehlen. Die fertige Datei wird clientseitig dorthin geschrieben.
 - Buttons:
   - `Download`: startet den Export-Job und laedt die Datei herunter.
@@ -1212,7 +859,6 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Seite `Import`: Datei via Browser-Upload.
 - Button `Analysieren`: zeigt Zeilenanzahl, Zeitraum, Quell-Measurements, Quell-Fields und die ersten drei Datenzeilen; bei Problemen zusaetzlich eine kurze Diagnose + Beispielzeilen. Nach erfolgreicher Analyse erscheint zusaetzlich ein Popup mit Kurzfassung; bei Fehlern wird ein Fehler-Popup angezeigt.
-- Sowohl `Analysieren` als auch die Aktionssektion (`Transformation testen`, `Import starten`) besitzen je einen eigenen Laufstatusbereich mit Spinner, Klartext und Laufzeit direkt bei den ausloesenden Buttons.
 - Die Analyse listet jetzt auch Quellwerte und Leerzaehler fuer `entity_id` und `friendly_name` auf.
 - Bei eindeutiger Analyse werden `_measurement`, `_field`, `entity_id` und `friendly_name` automatisch in die Zielauswahl uebernommen.
 - Zielauswahl: wie Dashboard (Measurement/Field + optionale Tags).
@@ -1257,8 +903,6 @@ Hinweis (neu)
 Neu:
 
 - Status Schriftgroesse (Sidebar) ist konfigurierbar; Refresh loescht abgeschlossene Status-Eintraege.
-- Neu im Bereich `Logs`: `Langlauf-Schwelle (ms)` steuert, ab wann user-relevante Wartezeiten global im Statusfeld unter dem Menue auftauchen und als Langlauf gelten.
-- Neu im Bereich `Logs`: `Zeitintensive Protokollierung aktiv` schaltet die zusaetzlichen Langlauf-Logeintraege global fuer nicht-fehlerhafte Events an oder aus. Fehler bleiben davon unberuehrt und werden immer protokolliert.
 - Jobs: Max Job Laufzeit (Sekunden) fuer Auto-Abbruch; Job-Farben (running/done/error/cancelled).
 - Job-Farben koennen per Colorpicker oder per Hex (`#RRGGBB`) gesetzt werden.
 - Die Log-Farbfaelder in den Einstellungen (`ui_log_error_bg`, `ui_log_error_fg`, `ui_log_warn_bg`, `ui_log_warn_fg`) werden beim Laden und Speichern jetzt defensiv erneut im DOM aufgeloest. Dadurch bleibt die Settings-Seite auch bei spaet gebundenen oder kurzzeitig fehlenden Feldern benutzbar, statt mit einem Statusbar-TypeError abzubrechen.
