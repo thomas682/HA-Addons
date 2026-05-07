@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.567
+
+### Fix
+
+- Undo / History: Undo und Repeat zeigen jetzt vor der Ausführung eine typisierte Vorschau mit Bestätigung. Zusätzlich gibt es auf der History-Seite einen eigenen Bereich für Prüfungs-/Strategie-Änderungen, damit Parameteränderungen wie `time_gap.gap_seconds` sichtbar und vom normalen Messwert-Undo getrennt nachvollziehbar bleiben. ([#535](https://github.com/thomas682/HA-Addons/issues/535))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.566
 
 ### Fix

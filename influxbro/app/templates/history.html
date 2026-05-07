@@ -250,6 +250,49 @@
           </div>
         </div>
       </details>
+
+      <details class="card" open data-ui="history_param.section_root" data-ib-pickkey="history_param.section_root" title="history.parameter_changes">
+        <summary><span class="ib_summary_row"><span>Prüfungs-/Strategie-Änderungen</span><button type="button" class="ib_info_icon" data-info-title="History: Prüfungs-/Strategie-Änderungen" data-info-body="Dieser Bereich zeigt parameter- und strategiebezogene Änderungen, die über den Undo-Manager rückgängig gemacht werden können." ><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></span></summary>
+        <div class="card_body">
+          <div class="row" data-ui="history_param.panel_filters" data-ib-pickkey="history_param.panel_filters" title="history.parameter_changes.filters">
+            <div style="min-width:220px; flex:1 1 320px;">
+              <label>Suche</label>
+              <div class="ib_clear_row">
+                <input id="param_q" placeholder="Serie, Parameter, Grund..." data-ui="history_param.input_search" data-ib-pickkey="history_param.input_search" title="history.parameter_changes.search" style="width:100%;" />
+                <button type="button" class="ib_clear_btn" data-clear-for="param_q" aria-label="Feld leeren" title="Feld leeren"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9 7V5h6v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 7l1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 11v5M14 11v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+              </div>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button id="param_refresh" class="btn_sm" data-ui="history_param.btn_refresh" data-ib-pickkey="history_param.btn_refresh" title="history.parameter_changes.refresh">Refresh</button>
+            </div>
+            <div class="muted" id="param_info" style="min-width: 320px; flex:1; padding-top: 6px;">-</div>
+          </div>
+
+          <div class="table_wrap" data-ui="history_param_table.panel_wrap" data-ib-pickkey="history_param_table.panel_wrap" title="history.parameter_changes.table">
+            <div class="table_title">Parameter-/Strategie-History</div>
+            <div class="table_head" data-ui="history_param_table.panel_head" data-ib-pickkey="history_param_table.panel_head" title="history.parameter_changes.table.head">
+              <div class="muted">Typisierte Änderungen, getrennt von Messwertänderungen.</div>
+            </div>
+            <div class="table_box" id="param_box">
+              <table id="param_tbl" class="ib_tbl" data-ui="history_param.tbl_table" data-ib-pickkey="history_param.tbl_table" title="history.parameter_changes.table">
+                <thead>
+                  <tr>
+                    <th style="width: 170px;">Datum</th>
+                    <th style="width: 260px;">Serie</th>
+                    <th style="width: 180px;">Parameter</th>
+                    <th style="width: 110px;">Alt</th>
+                    <th style="width: 110px;">Neu</th>
+                    <th style="width: 160px;">Ausreißertyp</th>
+                    <th>Grund</th>
+                  </tr>
+                </thead>
+                <tbody id="param_rows"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </details>
     </main>
   </div>
 
@@ -294,10 +337,15 @@
     const $cbInfo = document.getElementById('cb_info');
     const $cbRows = document.getElementById('cb_rows');
     const $cbSelAll = document.getElementById('cb_sel_all');
+    const $paramQ = document.getElementById('param_q');
+    const $paramRefresh = document.getElementById('param_refresh');
+    const $paramInfo = document.getElementById('param_info');
+    const $paramRows = document.getElementById('param_rows');
 
     let CB_LIST = [];
     const CB_SELECTED = new Set();
     const CB_PREVIEWS = new Map(); // block_id -> {undo,repeat}
+    let PARAM_LIST = [];
 
     function _cbPickSelectedOne(){
       const a = Array.from(CB_SELECTED || []).filter(Boolean);
@@ -706,6 +754,88 @@
       $selAll.indeterminate = sel > 0 && sel < ids.length;
     }
 
+    function _paramMatchesQuery(row, q){
+      const s = String(q || '').trim().toLowerCase();
+      if(!s) return true;
+      const blob = [row.measurement, row.field, row.entity_id, row.friendly_name, row.parameter, row.reason, row.outlier_type].join(' ').toLowerCase();
+      return blob.indexOf(s) >= 0;
+    }
+
+    function paramRender(){
+      if(!$paramRows) return;
+      $paramRows.innerHTML = '';
+      const q = String($paramQ && $paramQ.value ? $paramQ.value : '').trim();
+      const shown = (PARAM_LIST || []).filter((r)=>_paramMatchesQuery(r, q));
+      shown.forEach((row)=>{
+        const tr = document.createElement('tr');
+        const tdAt = document.createElement('td'); tdAt.textContent = fmtTs(row.created_at || '');
+        const tdSeries = document.createElement('td'); tdSeries.textContent = [row.friendly_name || '-', row.entity_id || '-', row.measurement || '-', row.field || '-'].join(' | ');
+        const tdParam = document.createElement('td'); tdParam.textContent = String(row.parameter || '-');
+        const tdBefore = document.createElement('td'); tdBefore.textContent = row.before_value === null || row.before_value === undefined ? '-' : String(row.before_value);
+        const tdAfter = document.createElement('td'); tdAfter.textContent = row.after_value === null || row.after_value === undefined ? '-' : String(row.after_value);
+        const tdType = document.createElement('td'); tdType.textContent = String(row.outlier_type || '-');
+        const tdReason = document.createElement('td'); tdReason.textContent = String(row.reason || row.label || '');
+        tr.append(tdAt, tdSeries, tdParam, tdBefore, tdAfter, tdType, tdReason);
+        $paramRows.appendChild(tr);
+      });
+      if($paramInfo) $paramInfo.textContent = `Parameter-/Strategie-Änderungen: ${shown.length}`;
+    }
+
+    async function paramLoad(){
+      try{
+        const j = await api('./api/undo/history?limit=200');
+        const rows = Array.isArray(j.rows) ? j.rows : [];
+        PARAM_LIST = rows.map((it)=>{
+          const meta = (it && typeof it.meta === 'object' && it.meta) ? it.meta : {};
+          return {
+            created_at: String(it.created_at || ''),
+            label: String(it.label || ''),
+            measurement: String(meta.measurement || it.measurement || ''),
+            field: String(meta.field || ''),
+            entity_id: String(meta.entity_id || '') || null,
+            friendly_name: String(meta.friendly_name || '') || null,
+            parameter: String(meta.custom_action || '') === 'outlier_strategy_override' ? 'time_gap.gap_seconds' : '',
+            before_value: meta.before_gap_seconds,
+            after_value: meta.after_gap_seconds,
+            outlier_type: String(meta.outlier_type || '') || null,
+            reason: String(meta.reason || ''),
+          };
+        }).filter((r)=>!!r.parameter);
+        paramRender();
+      }catch(e){
+        if($paramInfo) $paramInfo.textContent = 'Parameter-History konnte nicht geladen werden.';
+      }
+    }
+
+    async function fetchUndoPreview(mode){
+      const path = mode === 'repeat' ? './api/undo/repeat_preview' : './api/undo/preview';
+      return await api(path, null, { silent:true });
+    }
+
+    function previewText(p){
+      if(!p) return 'Keine Vorschau verfügbar.';
+      if(String(p.undo_type || '') === 'strategy_override'){
+        return [
+          p.summary || 'Prüfungs-/Strategieänderung',
+          '',
+          'Serie: ' + [p.series && p.series.friendly_name || '-', p.series && p.series.entity_id || '-', p.series && p.series.measurement || '-', p.series && p.series.field || '-'].join(' | '),
+          'Parameter: ' + String(p.parameter || '-'),
+          'Alt: ' + (p.before_value === null || p.before_value === undefined ? '-' : String(p.before_value)),
+          'Neu: ' + (p.after_value === null || p.after_value === undefined ? '-' : String(p.after_value)),
+          'Ausreißertyp: ' + String(p.outlier_type || '-'),
+          'Grund: ' + String(p.reason || '-'),
+        ].join('\n');
+      }
+      const lines = [p.summary || 'Messwertänderung'];
+      lines.push('');
+      lines.push('Serie: ' + [p.series && p.series.friendly_name || '-', p.series && p.series.entity_id || '-', p.series && p.series.measurement || '-', p.series && p.series.field || '-'].join(' | '));
+      lines.push('Einträge: ' + String(p.row_count || 0));
+      (Array.isArray(p.changes) ? p.changes : []).slice(0, 8).forEach((c)=>{
+        lines.push('- ' + fmtTs(c.timestamp || '') + ' | ' + String(c.value === null || c.value === undefined ? '-' : c.value));
+      });
+      return lines.join('\n');
+    }
+
     async function load(){
       err(''); ok('');
       try{ await refreshUndoStatus(); }catch(e){}
@@ -748,19 +878,23 @@
     }
 
     async function doUndo(){
-      const msg = 'Letzte Schreibaktion rueckgaengig machen?';
+      const jPrev = await fetchUndoPreview('undo');
+      const msg = previewText(jPrev && jPrev.preview ? jPrev.preview : null) + '\n\nUndo wirklich ausführen?';
       if(!confirm(msg)) return;
       const j = await api('./api/undo/undo', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
       ok('Undo ausgefuehrt.');
       await refreshUndoStatus();
+      await paramLoad();
     }
 
     async function doRepeat(){
-      const msg = 'Letzte per Undo zurueckgenommene Aktion erneut ausfuehren (Repeat)?';
+      const jPrev = await fetchUndoPreview('repeat');
+      const msg = previewText(jPrev && jPrev.preview ? jPrev.preview : null) + '\n\nRepeat wirklich ausführen?';
       if(!confirm(msg)) return;
       const j = await api('./api/undo/repeat', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
       ok('Repeat ausgefuehrt.');
       await refreshUndoStatus();
+      await paramLoad();
     }
 
     async function rollbackIds(ids){
@@ -813,9 +947,12 @@
     if($cbOp) $cbOp.addEventListener('change', ()=>cbLoad().catch(()=>{}));
     if($cbStatus) $cbStatus.addEventListener('change', ()=>cbLoad().catch(()=>{}));
     if($cbLimit) $cbLimit.addEventListener('change', ()=>cbLoad().catch(()=>{}));
+    if($paramRefresh) $paramRefresh.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} paramLoad().catch(()=>{}); });
+    if($paramQ) $paramQ.addEventListener('input', ()=>paramRender());
 
     load().catch(()=>{});
     cbLoad().catch(()=>{});
+    paramLoad().catch(()=>{});
   </script>
 
   {% include "_table_cols.html" %}

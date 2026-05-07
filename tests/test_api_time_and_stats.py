@@ -1419,6 +1419,33 @@ def test_api_outlier_strategy_accept_time_gap_and_undo(load_app_module, tmp_path
     assert key not in store2.get("overrides", {})
 
 
+def test_api_undo_preview_for_strategy_override(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    client = app_mod.app.test_client()
+
+    r = client.post(
+        "/api/outlier_strategy/accept_time_gap",
+        json={
+            "entity_id": "sensor.demo",
+            "measurement": "Wh",
+            "field": "value",
+            "friendly_name": "Demo",
+            "selected_time": "2026-01-01T00:15:00Z",
+            "actual_gap_seconds": 901,
+            "new_gap_seconds": 905,
+        },
+    )
+    assert r.status_code == 200
+
+    prev = client.get("/api/undo/preview")
+    assert prev.status_code == 200
+    pj = prev.get_json()
+    assert pj["ok"] is True
+    assert pj["preview"]["undo_type"] == "strategy_override"
+    assert pj["preview"]["parameter"] == "time_gap.gap_seconds"
+    assert pj["preview"]["after_value"] == 905
+
+
 def test_api_outlier_strategy_reads_legacy_keys_and_returns_new_keys(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     monkeypatch.setattr(app_mod, "_overlay_from_yaml_if_enabled", lambda cfg: {**cfg, "influx_version": 2, "bucket": "homeassistant_db", "token": "t", "org": "o"})

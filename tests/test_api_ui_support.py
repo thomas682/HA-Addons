@@ -1026,6 +1026,18 @@ def test_template_documents_dialog_standards_and_inventory():
     assert '### Dialog-Matrix (komprimiert)' in template_md
 
 
+def test_history_page_contains_parameter_strategy_history_section_and_preview_logic():
+    history_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "history.html").read_text()
+    assert 'history_param.section_root' in history_body
+    assert 'id="param_q"' in history_body
+    assert 'id="param_refresh"' in history_body
+    assert 'id="param_rows"' in history_body
+    assert 'async function fetchUndoPreview(mode)' in history_body
+    assert 'function previewText(p)' in history_body
+    assert "./api/undo/preview" in history_body
+    assert "./api/undo/repeat_preview" in history_body
+
+
 def test_logs_recorder_controls_moved_to_header_and_filter_toolbar():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
     assert 'id="record_start_header"' in body

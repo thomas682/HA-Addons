@@ -39496,6 +39496,132 @@ def _undo_execute_action(cfg: dict[str, Any], action: dict[str, Any], direction:
         raise RuntimeError("undo/repeat conflict")
 
 
+def _undo_action_preview(action: dict[str, Any] | None, direction: str) -> dict[str, Any] | None:
+    if not isinstance(action, dict):
+        return None
+    direction = str(direction or "undo").strip().lower()
+    if direction not in ("undo", "repeat"):
+        direction = "undo"
+    meta = action.get("meta") if isinstance(action.get("meta"), dict) else {}
+    label = str(action.get("label") or meta.get("reason") or action.get("action_type") or "Änderung").strip() or "Änderung"
+    series = {
+        "measurement": str(meta.get("measurement") or action.get("measurement") or ""),
+        "field": str(meta.get("field") or ""),
+        "entity_id": str(meta.get("entity_id") or "") or None,
+        "friendly_name": str(meta.get("friendly_name") or "") or None,
+    }
+    if str(meta.get("custom_action") or "") == "outlier_strategy_override":
+        before_gap = meta.get("before_gap_seconds")
+        after_gap = meta.get("after_gap_seconds")
+        return {
+            "ok": True,
+            "preview": {
+                "mode": direction,
+                "undo_type": "strategy_override",
+                "action_id": str(action.get("action_id") or ""),
+                "created_at": str(action.get("created_at") or ""),
+                "label": label,
+                "series": series,
+                "parameter": "time_gap.gap_seconds",
+                "before_value": before_gap,
+                "after_value": after_gap,
+                "selected_time": str(meta.get("selected_time") or "") or None,
+                "outlier_type": str(meta.get("outlier_type") or "") or None,
+                "reason": str(meta.get("reason") or "") or None,
+                "summary": f"Prüfungs-/Strategieänderung: time_gap.gap_seconds {before_gap if before_gap is not None else '-'} -> {after_gap if after_gap is not None else '-'}",
+            },
+        }
+    before_rows = action.get("before_rows") if isinstance(action.get("before_rows"), list) else []
+    after_rows = action.get("after_rows") if isinstance(action.get("after_rows"), list) else []
+    rows = after_rows if direction == "undo" else before_rows
+    sample = rows[:8]
+    return {
+        "ok": True,
+        "preview": {
+            "mode": direction,
+            "undo_type": "value_change",
+            "action_id": str(action.get("action_id") or ""),
+            "created_at": str(action.get("created_at") or ""),
+            "label": label,
+            "series": series,
+            "row_count": max(len(before_rows), len(after_rows)),
+            "changes": [
+                {
+                    "timestamp": str(it.get("_time") or ""),
+                    "measurement": str(it.get("_measurement") or ""),
+                    "field": str(it.get("_field") or ""),
+                    "value": it.get("_value"),
+                }
+                for it in sample if isinstance(it, dict)
+            ],
+            "summary": f"Messwertänderung: {max(len(before_rows), len(after_rows))} Eintrag/Einträge würden {'rückgängig gemacht' if direction == 'undo' else 'erneut ausgeführt'}",
+        },
+    }
+
+
+def _undo_action_preview(action: dict[str, Any] | None, direction: str) -> dict[str, Any] | None:
+    if not isinstance(action, dict):
+        return None
+    direction = str(direction or "undo").strip().lower()
+    if direction not in ("undo", "repeat"):
+        direction = "undo"
+    meta = action.get("meta") if isinstance(action.get("meta"), dict) else {}
+    label = str(action.get("label") or meta.get("reason") or action.get("action_type") or "Änderung").strip() or "Änderung"
+    series = {
+        "measurement": str(meta.get("measurement") or action.get("measurement") or ""),
+        "field": str(meta.get("field") or ""),
+        "entity_id": str(meta.get("entity_id") or "") or None,
+        "friendly_name": str(meta.get("friendly_name") or "") or None,
+    }
+    if str(meta.get("custom_action") or "") == "outlier_strategy_override":
+        before_gap = meta.get("before_gap_seconds")
+        after_gap = meta.get("after_gap_seconds")
+        return {
+            "ok": True,
+            "preview": {
+                "mode": direction,
+                "undo_type": "strategy_override",
+                "action_id": str(action.get("action_id") or ""),
+                "created_at": str(action.get("created_at") or ""),
+                "label": label,
+                "series": series,
+                "parameter": "time_gap.gap_seconds",
+                "before_value": before_gap,
+                "after_value": after_gap,
+                "selected_time": str(meta.get("selected_time") or "") or None,
+                "outlier_type": str(meta.get("outlier_type") or "") or None,
+                "reason": str(meta.get("reason") or "") or None,
+                "summary": f"Prüfungs-/Strategieänderung: time_gap.gap_seconds {before_gap if before_gap is not None else '-'} -> {after_gap if after_gap is not None else '-'}",
+            },
+        }
+    before_rows = action.get("before_rows") if isinstance(action.get("before_rows"), list) else []
+    after_rows = action.get("after_rows") if isinstance(action.get("after_rows"), list) else []
+    rows = after_rows if direction == "undo" else before_rows
+    sample = rows[:10]
+    return {
+        "ok": True,
+        "preview": {
+            "mode": direction,
+            "undo_type": "value_change",
+            "action_id": str(action.get("action_id") or ""),
+            "created_at": str(action.get("created_at") or ""),
+            "label": label,
+            "series": series,
+            "row_count": max(len(before_rows), len(after_rows)),
+            "changes": [
+                {
+                    "timestamp": str(it.get("_time") or ""),
+                    "measurement": str(it.get("_measurement") or ""),
+                    "field": str(it.get("_field") or ""),
+                    "value": it.get("_value"),
+                }
+                for it in sample if isinstance(it, dict)
+            ],
+            "summary": f"Messwertänderung: {max(len(before_rows), len(after_rows))} Eintrag/Einträge würden {'rückgängig gemacht' if direction == 'undo' else 'erneut ausgeführt'}",
+        },
+    }
+
+
 @app.post("/api/undo/undo")
 def api_undo_undo():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
@@ -39515,6 +39641,17 @@ def api_undo_undo():
         return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 409
 
 
+@app.get("/api/undo/preview")
+def api_undo_preview():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    mgr = _undo_mgr(cfg)
+    st = mgr.status()
+    action = st.last_undo_action if isinstance(st.last_undo_action, dict) else None
+    if not action:
+        return jsonify({"ok": False, "error": "no undo available"}), 404
+    return jsonify(_undo_action_preview(action, "undo"))
+
+
 @app.post("/api/undo/repeat")
 def api_undo_repeat():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
@@ -39531,6 +39668,17 @@ def api_undo_repeat():
     except Exception as e:
         mgr.push_redo(action)
         return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 409
+
+
+@app.get("/api/undo/repeat_preview")
+def api_undo_repeat_preview():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    mgr = _undo_mgr(cfg)
+    st = mgr.status()
+    action = st.last_repeat_action if isinstance(st.last_repeat_action, dict) else None
+    if not action:
+        return jsonify({"ok": False, "error": "no repeat available"}), 404
+    return jsonify(_undo_action_preview(action, "repeat"))
 
 
 @app.get("/api/history_list")
