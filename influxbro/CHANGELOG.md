@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.549
+
+### Fix
+
+- Dashboard / Analyse mit Cache: `api/tag_combo_ranges` setzt im Friendly-Name-Prefetch fuer `first()` und `last()` jetzt explizit die `_time`-Spalte. Dadurch laeuft der `friendly_name`-Kombinationspfad auch fuer `range=all` wieder stabil, statt mit `runtime error ... first: no column` in einen 500er zu laufen. ([#515](https://github.com/thomas682/HA-Addons/issues/515))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.548
 
 ### Fix

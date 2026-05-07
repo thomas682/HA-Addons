@@ -25794,8 +25794,8 @@ base = from(bucket: "{bucket}")
   |> filter(fn: (r) => r._measurement == {_flux_str(measurement)} and r._field == {_flux_str(field)} and r.entity_id == {_flux_str(entity_id)} and r.friendly_name == {_flux_str(val)})
   |> keep(columns: ["_time"])
 
-first_row = base |> first() |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, oldest_time: r._time}}))
-last_row = base |> last() |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, newest_time: r._time}}))
+first_row = base |> first(column: "_time") |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, oldest_time: r._time}}))
+last_row = base |> last(column: "_time") |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, newest_time: r._time}}))
 count_row = base |> count(column: "_time") |> group() |> sum(column: "_time") |> map(fn: (r) => ({{friendly_name: {_flux_str(val)}, count: r._time}}))
 
 first_last = join(tables: {{a:first_row, b:last_row}}, on:["friendly_name"])

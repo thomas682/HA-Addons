@@ -1010,6 +1010,8 @@ def test_api_tag_combo_ranges_uses_flux_accumulator_name(load_app_module, tmp_pa
     assert "fn: (r, accumulator)" not in q
     assert 'first_last = join(tables: {a:first_row, b:last_row}, on:["friendly_name"])' in q
     assert 'join(tables: {a:first_last, b:count_row}, on:["friendly_name"])' in q
+    assert 'first(column: "_time")' in q
+    assert 'last(column: "_time")' in q
     assert "acc.oldest_time" not in q
 
 
@@ -1505,6 +1507,8 @@ def test_tag_combo_ranges_prefetches_names_for_friendly_name_entity_all(load_app
     q_join = next(q for q in captured if 'join(tables:' in q)
     assert 'start: time(v: "1970-01-01T00:00:00Z")' in q_prefetch
     assert 'first_last = join(tables: {a:first_row, b:last_row}, on:["friendly_name"])' in q_join
+    assert 'first(column: "_time")' in q_join
+    assert 'last(column: "_time")' in q_join
     assert '|> join(tables: {x:count_row}, on:["friendly_name"])' not in q_join
     assert 'join(tables: {a:first_last, b:count_row}, on:["friendly_name"])' in q_join
 
