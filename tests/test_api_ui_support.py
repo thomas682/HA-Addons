@@ -848,6 +848,10 @@ def test_dialog_standardization_avoids_generic_dialog_pickkeys():
     assert "name + '.btn_info'" in topbar
     assert 'data-dialog-panel="1"' in index_body
     assert 'data-dialog-panel' in tooltips
+    assert "dialog.issue_composer" in tooltips
+    assert "dialog.smart_bug_assistant" in tooltips
+    assert "dialog.confirm_action" in tooltips
+    assert "data-dialog-panel', '1'" in tooltips or 'data-dialog-panel="1"' in tooltips
 
 
 def test_bottom_statusbar_uses_ios_safe_area_layout_and_hides_influx_chip():

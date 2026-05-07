@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.564
+
+### Fix
+
+- Dialoge / Issue-/Smart-Bug-/Confirm-Overlays: Die dynamisch in `_tooltips.html` erzeugten Dialoge besitzen jetzt ebenfalls saubere Dialog-Wurzeln, Panel-Marker und eindeutige Dialog-Bezeichner. Dadurch verschwinden auch die letzten `dialog_unknown.btn_info`- und `dialog_unknown.btn_superpicker`-Kollisionen aus der globalen Dialog-Normalisierung. ([#532](https://github.com/thomas682/HA-Addons/issues/532))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.563
 
 ### Fix

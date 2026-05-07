@@ -1891,6 +1891,10 @@
 
     const confirmRoot = document.createElement('dialog');
     confirmRoot.id = 'influxbro_confirm_root';
+    confirmRoot.setAttribute('data-dialog-root', '1');
+    confirmRoot.setAttribute('data-dialog-name', 'dialog.confirm_action');
+    confirmRoot.setAttribute('data-dialog-template', 'dialog_confirm_action');
+    confirmRoot.setAttribute('data-dialog-trigger', 'InfluxBroConfirm.ask');
     confirmRoot.style.zIndex = '10055';
     confirmRoot.style.display = 'none';
     confirmRoot.style.background = 'transparent';
@@ -1903,7 +1907,7 @@
 
     const confirmCard = document.createElement('div');
     confirmCard.id = 'influxbro_confirm_card';
-    confirmCard.setAttribute('data-dialog-root', '1');
+    confirmCard.setAttribute('data-dialog-panel', '1');
     confirmCard.style.maxWidth = 'min(640px, calc(100vw - 24px))';
     confirmCard.style.margin = '10vh auto 12px auto';
     confirmCard.style.background = '#fff';
@@ -1972,6 +1976,10 @@
 
     const composer = document.createElement('div');
     composer.id = 'influxbro_issue_composer';
+    composer.setAttribute('data-dialog-root', '1');
+    composer.setAttribute('data-dialog-name', 'dialog.issue_composer');
+    composer.setAttribute('data-dialog-template', 'dialog_panel_workbench');
+    composer.setAttribute('data-dialog-trigger', 'errors_main.btn_bugreport');
     composer.style.position = 'fixed';
     composer.style.inset = '0';
     composer.style.zIndex = '10060';
@@ -1982,7 +1990,7 @@
     composer.style.overflow = 'auto';
 
     const composerCard = document.createElement('div');
-    composerCard.setAttribute('data-dialog-root', '1');
+    composerCard.setAttribute('data-dialog-panel', '1');
     composerCard.style.maxWidth = '860px';
     composerCard.style.margin = '0 auto 12px auto';
     composerCard.style.maxHeight = 'calc(100vh - 16vh - 24px)';
@@ -2062,6 +2070,10 @@
 
     const smart = document.createElement('div');
     smart.id = 'influxbro_smart_bug';
+    smart.setAttribute('data-dialog-root', '1');
+    smart.setAttribute('data-dialog-name', 'dialog.smart_bug_assistant');
+    smart.setAttribute('data-dialog-template', 'dialog_panel_workbench');
+    smart.setAttribute('data-dialog-trigger', 'errors_main.btn_smart_bugreport');
     smart.style.position = 'fixed';
     smart.style.inset = '0';
     smart.style.zIndex = '10070';
@@ -2072,7 +2084,7 @@
     smart.style.overflow = 'auto';
 
     const smartCard = document.createElement('div');
-    smartCard.setAttribute('data-dialog-root', '1');
+    smartCard.setAttribute('data-dialog-panel', '1');
     smartCard.style.maxWidth = '920px';
     smartCard.style.margin = '0 auto 12px auto';
     smartCard.style.maxHeight = 'calc(100vh - 16vh - 24px)';
@@ -2131,7 +2143,7 @@
         <button type="button" id="influxbro_sba_submit" style="cursor:pointer; padding:10px 12px;">An Bugreport übergeben</button>
         <span id="influxbro_sba_status" style="font-size:12px; opacity:0.75;"></span>
       </div>
-      <div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: unknown | tpl: dialog_info_popup</div>
+      <div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: dialog.smart_bug_assistant.dialog | tpl: dialog_panel_workbench</div>
     `;
     smart.appendChild(smartCard);
     document.body.appendChild(smart);
