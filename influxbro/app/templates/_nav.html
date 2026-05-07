@@ -454,7 +454,7 @@
       return 'influxbro_details:' + stablePath();
     }
 
-    function restoreDetailsState(root){
+    function restoreDetailsState(root, force){
       try{
         const raw = localStorage.getItem(detailsStorageKey());
         if(!raw) return;
@@ -464,9 +464,11 @@
         scope.querySelectorAll('details[id]').forEach(d => {
           const id = d.getAttribute('id');
           if(!id) return;
+          if(!force && d.dataset && d.dataset.ibDetailsRestored === '1') return;
           if(Object.prototype.hasOwnProperty.call(j, id)){
             d.open = !!j[id];
           }
+          try{ if(d.dataset) d.dataset.ibDetailsRestored = '1'; }catch(e){}
         });
       }catch(e){}
     }
@@ -494,6 +496,14 @@
       }
     }
 
+    try{
+      window.InfluxBroDetailsState = {
+        restore(root, force){ return restoreDetailsState(root, !!force); },
+        save(root){ return saveDetailsState(root); },
+        setAll(root, wantOpen){ return setAllDetailsOpen(root, !!wantOpen); },
+      };
+    }catch(e){}
+
     function setAllDetailsOpen(root, wantOpen){
       try{
         const scope = root || document;
@@ -505,7 +515,7 @@
       try{
         const main = document.querySelector('main.content');
         if(!main) return;
-        restoreDetailsState(main);
+        restoreDetailsState(main, false);
 
         // Auto-save <details> open/closed state on toggle.
         // This makes the UI remember the last expand/collapse state per page.

@@ -854,6 +854,16 @@ def test_dialog_standardization_avoids_generic_dialog_pickkeys():
     assert "data-dialog-panel', '1'" in tooltips or 'data-dialog-panel="1"' in tooltips
 
 
+def test_details_state_restore_is_one_shot_and_open_all_persists():
+    nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "function restoreDetailsState(root, force){" in nav
+    assert "if(!force && d.dataset && d.dataset.ibDetailsRestored === '1') return;" in nav
+    assert "if(d.dataset) d.dataset.ibDetailsRestored = '1';" in nav
+    assert "window.InfluxBroDetailsState = {" in nav
+    assert "window.InfluxBroDetailsState && window.InfluxBroDetailsState.save" in topbar
+
+
 def test_bottom_statusbar_uses_ios_safe_area_layout_and_hides_influx_chip():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'bottom: 0;' in topbar

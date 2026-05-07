@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.565
+
+### Fix
+
+- Sections / `Alle öffnen`: Das globale `<details>`-Restore in `_nav.html` überschreibt existierende Sections jetzt nicht mehr bei jeder nachfolgenden Mutation. Bereits restaurierte Bereiche werden nur einmal initial geladen, und `Alle öffnen` / `Alle schließen` speichern den neuen Zustand sofort zurück. Dadurch bleiben Dashboard-Sections und die entsprechenden Bereiche anderer Seiten stabil offen oder geschlossen, statt kurz aufzugehen und sofort wieder zurückzuspringen. ([#533](https://github.com/thomas682/HA-Addons/issues/533))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.564
 
 ### Fix

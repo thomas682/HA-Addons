@@ -1089,6 +1089,11 @@
         try{
           if(!root) return;
           root.querySelectorAll('details').forEach(d=>{ d.open = !!wantOpen; });
+          try{
+            if(window.InfluxBroDetailsState && window.InfluxBroDetailsState.save){
+              window.InfluxBroDetailsState.save(root);
+            }
+          }catch(e){}
         }catch(e){}
       }
       try{ if($open) $open.addEventListener('click', ()=>setAllDetailsOpen(main, true)); }catch(e){}
