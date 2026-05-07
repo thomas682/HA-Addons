@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.559
+
+### Fix
+
+- App-Start / Ingress: Background-Scheduler werden beim Start jetzt nicht mehr alle sofort ohne Vorlauf aktiv, sondern treten gestaffelt mit initialer Startverzögerung in ihre erste Arbeitsrunde ein. Zusätzlich wurden Startphasen-Logs für erste HTTP-Anfragen und Scheduler-Erstlaufereignisse ergänzt, damit sich hängende HA-/Ingress-Starts gezielter eingrenzen lassen. ([#528](https://github.com/thomas682/HA-Addons/issues/528))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.558
 
 ### Fix

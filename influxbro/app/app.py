@@ -57,6 +57,15 @@ SHARE_DIR = Path(os.environ.get("SHARE_DIR", "/share"))
 
 PROCESS_STARTED_AT = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 PROCESS_STARTED_MONO = time.monotonic()
+STARTUP_GRACE_SECONDS = 20
+STARTUP_SCHEDULER_DELAYS = {
+    "stats_cache": 10,
+    "dash_cache": 15,
+    "analysis_nightly": 20,
+    "watchlist": 25,
+    "rollup": 30,
+    "stats_full": 45,
+}
 
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_BACKUP_DIR = CONFIG_DIR / "influxbro" / "backup"
@@ -917,6 +926,56 @@ INFLUX_QUERY_LOGGING = False
 
 LOG = logging.getLogger("influxbro")
 DETAIL_LOG = logging.getLogger("influxbro.details")
+
+_STARTUP_LOG_LOCK = threading.RLock()
+_STARTUP_LOGGED_KEYS: set[str] = set()
+
+
+def _startup_elapsed_ms() -> int:
+    try:
+        return max(0, int(round((time.monotonic() - float(PROCESS_STARTED_MONO)) * 1000)))
+    except Exception:
+        return 0
+
+
+def _startup_log(event: str, **fields: Any) -> None:
+    try:
+        parts = [f"event={str(event or '').strip() or '-'}", f"uptime_ms={_startup_elapsed_ms()}"]
+        for k, v in fields.items():
+            if v is None:
+                continue
+            parts.append(f"{k}={str(v)}")
+        LOG.info("startup_event %s", " ".join(parts))
+    except Exception:
+        pass
+
+
+def _startup_log_once(key: str, event: str, **fields: Any) -> None:
+    try:
+        with _STARTUP_LOG_LOCK:
+            if key in _STARTUP_LOGGED_KEYS:
+                return
+            _STARTUP_LOGGED_KEYS.add(key)
+        _startup_log(event, **fields)
+    except Exception:
+        pass
+
+
+def _startup_wait_for_scheduler(name: str) -> None:
+    try:
+        delay = int(STARTUP_SCHEDULER_DELAYS.get(str(name or ""), STARTUP_GRACE_SECONDS))
+    except Exception:
+        delay = STARTUP_GRACE_SECONDS
+    delay = max(0, delay)
+    _startup_log_once(f"scheduler:{name}:thread", "scheduler_thread_enter", scheduler=name, delay_s=delay)
+    if delay > 0:
+        _startup_log_once(f"scheduler:{name}:delay", "scheduler_initial_delay", scheduler=name, delay_s=delay)
+        time.sleep(delay)
+        _startup_log_once(f"scheduler:{name}:active", "scheduler_delay_complete", scheduler=name, delay_s=delay)
+
+
+def _startup_first_tick(name: str, event: str, **fields: Any) -> None:
+    _startup_log_once(f"scheduler:{name}:{event}", event, scheduler=name, **fields)
 
 
 @app.before_request
@@ -9927,14 +9986,17 @@ def _initial_suggestions(cfg: dict[str, Any]) -> dict[str, list[str]]:
 
 @app.get("/")
 def index():
+    _startup_log_once("http:first_index_enter", "http_index_enter", path="/")
     cfg = load_cfg()
-    return render_template(
+    resp = render_template(
         "index.html",
         cfg=cfg,
         allow_delete=True,
         nav="dashboard",
         suggestions={"measurements": [], "friendly_name": [], "entity_id": []},
     )
+    _startup_log_once("http:first_index_rendered", "http_index_rendered", path="/")
+    return resp
 
 
 @app.get("/stats")
@@ -41023,15 +41085,23 @@ _STATS_CACHE_SCHED_STARTED = False
 def _stats_cache_scheduler_loop() -> None:
     """Nightly/incremental refresh loop for stats caches (best-effort)."""
 
+    _startup_wait_for_scheduler("stats_cache")
+    first_tick = True
     while True:
         try:
             cfg = _overlay_from_yaml_if_enabled(load_cfg())
             if not bool(cfg.get("stats_cache_enabled", True)) or not bool(cfg.get("stats_cache_auto_update", True)):
+                if first_tick:
+                    _startup_first_tick("stats_cache", "scheduler_first_tick_skip", reason="disabled")
+                    first_tick = False
                 time.sleep(60)
                 continue
 
             metas = _stats_cache_list_meta()
             if not metas:
+                if first_tick:
+                    _startup_first_tick("stats_cache", "scheduler_first_tick_skip", reason="no_meta")
+                    first_tick = False
                 time.sleep(60)
                 continue
 
@@ -41073,10 +41143,18 @@ def _stats_cache_scheduler_loop() -> None:
 
             if pick:
                 try:
+                    if first_tick:
+                        _startup_first_tick("stats_cache", "scheduler_first_tick_job_start", cache_id=pick)
                     job_id = _stats_cache_start_update_job(pick, trigger_page="scheduler", timer_id="stats_cache")
                     _timer_mark_started("stats_cache", job_id=job_id)
+                    if first_tick:
+                        _startup_first_tick("stats_cache", "scheduler_first_tick_job_started", job_id=job_id, cache_id=pick)
+                        first_tick = False
                 except Exception:
                     pass
+            elif first_tick:
+                _startup_first_tick("stats_cache", "scheduler_first_tick_skip", reason="nothing_due")
+                first_tick = False
         except Exception:
             pass
 
@@ -41108,15 +41186,23 @@ _DASH_CACHE_SCHED_STARTED = False
 def _dash_cache_scheduler_loop() -> None:
     """Background refresh loop for dashboard caches (best-effort)."""
 
+    _startup_wait_for_scheduler("dash_cache")
+    first_tick = True
     while True:
         try:
             cfg = _overlay_from_yaml_if_enabled(load_cfg())
             if not bool(cfg.get("dash_cache_enabled", True)) or not bool(cfg.get("dash_cache_auto_update", True)):
+                if first_tick:
+                    _startup_first_tick("dash_cache", "scheduler_first_tick_skip", reason="disabled")
+                    first_tick = False
                 time.sleep(60)
                 continue
 
             metas = _dash_cache_list_meta()
             if not metas:
+                if first_tick:
+                    _startup_first_tick("dash_cache", "scheduler_first_tick_skip", reason="no_meta")
+                    first_tick = False
                 time.sleep(60)
                 continue
 
@@ -41159,10 +41245,18 @@ def _dash_cache_scheduler_loop() -> None:
 
             if pick:
                 try:
+                    if first_tick:
+                        _startup_first_tick("dash_cache", "scheduler_first_tick_job_start", cache_id=pick)
                     job_id = _dash_cache_start_job("update", pick, trigger_page="scheduler", timer_id="dash_cache")
                     _timer_mark_started("dash_cache", job_id=job_id)
+                    if first_tick:
+                        _startup_first_tick("dash_cache", "scheduler_first_tick_job_started", job_id=job_id, cache_id=pick)
+                        first_tick = False
                 except Exception:
                     pass
+            elif first_tick:
+                _startup_first_tick("dash_cache", "scheduler_first_tick_skip", reason="nothing_due")
+                first_tick = False
         except Exception:
             # Never crash the loop
             pass
@@ -41252,13 +41346,21 @@ def _stats_full_inflight() -> bool:
 def _stats_full_scheduler_loop() -> None:
     """Scheduled trigger for stats_full global stats job (best-effort)."""
 
+    _startup_wait_for_scheduler("stats_full")
+    first_tick = True
     while True:
         try:
             cfg = _overlay_from_yaml_if_enabled(load_cfg())
             if not _stats_full_due_now(cfg):
+                if first_tick:
+                    _startup_first_tick("stats_full", "scheduler_first_tick_skip", reason="not_due")
+                    first_tick = False
                 time.sleep(30)
                 continue
             if _stats_full_inflight():
+                if first_tick:
+                    _startup_first_tick("stats_full", "scheduler_first_tick_skip", reason="inflight")
+                    first_tick = False
                 time.sleep(30)
                 continue
 
@@ -41271,6 +41373,8 @@ def _stats_full_scheduler_loop() -> None:
             max_days = min(36500, max(1, max_days))
             start_dt = stop_dt - timedelta(days=max_days)
             cols = ["last_value", "oldest_time", "newest_time", "count", "min", "max", "mean"]
+            if first_tick:
+                _startup_first_tick("stats_full", "scheduler_first_tick_job_start", mode="stats_full")
             job_id = _global_stats_start_job(
                 cfg=cfg,
                 start_dt=start_dt,
@@ -41288,6 +41392,9 @@ def _stats_full_scheduler_loop() -> None:
                 cache_key=None,
             )
             _timer_mark_started("stats_full", job_id=job_id)
+            if first_tick:
+                _startup_first_tick("stats_full", "scheduler_first_tick_job_started", job_id=job_id)
+                first_tick = False
         except Exception:
             pass
 
@@ -41319,16 +41426,23 @@ _ANALYSIS_NIGHTLY_SCHED_STARTED = False
 def _analysis_nightly_scheduler_loop() -> None:
     """Scheduled trigger for analysis_nightly series refresh (best-effort)."""
 
+    _startup_wait_for_scheduler("analysis_nightly")
+    first_tick = True
     while True:
         try:
             cfg = _overlay_from_yaml_if_enabled(load_cfg())
             if not bool(cfg.get("analysis_nightly_enabled", True)) or not bool(cfg.get("analysis_nightly_auto_update", True)):
+                if first_tick:
+                    _startup_first_tick("analysis_nightly", "scheduler_first_tick_skip", reason="disabled")
+                    first_tick = False
                 time.sleep(60)
                 continue
 
             pick = _analysis_nightly_pick_series(cfg)
             if pick:
                 try:
+                    if first_tick:
+                        _startup_first_tick("analysis_nightly", "scheduler_first_tick_job_start", series_key=str(pick.get("series_key") or ""))
                     job_id = _analysis_nightly_start_job(pick, trigger_page="scheduler", timer_id="analysis_nightly")
                     try:
                         _timer_event_append("analysis_nightly", "scheduler_start", {
@@ -41337,8 +41451,14 @@ def _analysis_nightly_scheduler_loop() -> None:
                         })
                     except Exception:
                         pass
+                    if first_tick:
+                        _startup_first_tick("analysis_nightly", "scheduler_first_tick_job_started", job_id=job_id, series_key=str(pick.get("series_key") or ""))
+                        first_tick = False
                 except Exception:
                     pass
+            elif first_tick:
+                _startup_first_tick("analysis_nightly", "scheduler_first_tick_skip", reason="nothing_due")
+                first_tick = False
         except Exception:
             pass
 
@@ -41425,25 +41545,42 @@ def _rollup_inflight() -> bool:
 def _rollup_scheduler_loop() -> None:
     """Scheduled trigger for rollup runs (best-effort)."""
 
+    _startup_wait_for_scheduler("rollup")
+    first_tick = True
     while True:
         try:
             cfg = _overlay_from_yaml_if_enabled(load_cfg())
             if not bool(cfg.get("rollup_enabled", True)) or not bool(cfg.get("rollup_auto_update", False)):
+                if first_tick:
+                    _startup_first_tick("rollup", "scheduler_first_tick_skip", reason="disabled")
+                    first_tick = False
                 time.sleep(60)
                 continue
             if int(cfg.get("influx_version", 2) or 2) != 2:
+                if first_tick:
+                    _startup_first_tick("rollup", "scheduler_first_tick_skip", reason="not_v2")
+                    first_tick = False
                 time.sleep(60)
                 continue
             if not _rollup_due_now(cfg):
+                if first_tick:
+                    _startup_first_tick("rollup", "scheduler_first_tick_skip", reason="not_due")
+                    first_tick = False
                 time.sleep(60)
                 continue
             if _rollup_inflight():
+                if first_tick:
+                    _startup_first_tick("rollup", "scheduler_first_tick_skip", reason="inflight")
+                    first_tick = False
                 time.sleep(60)
                 continue
 
             profiles = _rollup_profiles_load(cfg)
             prof = next((p for p in profiles if isinstance(p, dict) and bool(p.get("enabled", True))), None)
             if not prof:
+                if first_tick:
+                    _startup_first_tick("rollup", "scheduler_first_tick_skip", reason="no_profile")
+                    first_tick = False
                 time.sleep(60)
                 continue
             profile_id = str(prof.get("id") or "default").strip() or "default"
@@ -41457,9 +41594,14 @@ def _rollup_scheduler_loop() -> None:
                     stop_override=None,
                 )
             except Exception:
+                if first_tick:
+                    _startup_first_tick("rollup", "scheduler_first_tick_skip", reason="plan_failed")
+                    first_tick = False
                 time.sleep(60)
                 continue
 
+            if first_tick:
+                _startup_first_tick("rollup", "scheduler_first_tick_job_start", profile_id=profile_id)
             job_id = uuid.uuid4().hex
             run_id = uuid.uuid4().hex
             now_iso = _utc_now_iso_ms()
@@ -41495,6 +41637,9 @@ def _rollup_scheduler_loop() -> None:
                 _timer_event_append("rollup", "scheduler_start", {"job_id": job_id, "profile_id": profile_id})
             except Exception:
                 pass
+            if first_tick:
+                _startup_first_tick("rollup", "scheduler_first_tick_job_started", job_id=job_id, profile_id=profile_id)
+                first_tick = False
         except Exception:
             pass
         time.sleep(60)
@@ -41525,9 +41670,12 @@ _WATCHLIST_SCHED_STARTED = False
 def _watchlist_scheduler_loop() -> None:
     """Scheduled trigger for watchlist runs (best-effort)."""
 
+    _startup_wait_for_scheduler("watchlist")
+    first_tick = True
     while True:
         try:
             xs = _watchlists_load()
+            started = False
             for w in xs:
                 if not isinstance(w, dict):
                     continue
@@ -41542,13 +41690,22 @@ def _watchlist_scheduler_loop() -> None:
                 if _watchlist_run_inflight(tid):
                     continue
                 try:
+                    if first_tick:
+                        _startup_first_tick("watchlist", "scheduler_first_tick_job_start", watchlist_id=wid)
                     run_id = _watchlist_start_run(wid, trigger_page="scheduler", timer_id=tid)
                     try:
                         _timer_event_append(tid, "scheduler_start", {"run_id": run_id, "watchlist_id": wid})
                     except Exception:
                         pass
+                    if first_tick:
+                        _startup_first_tick("watchlist", "scheduler_first_tick_job_started", run_id=run_id, watchlist_id=wid)
+                        first_tick = False
+                    started = True
                 except Exception:
                     continue
+            if first_tick and not started:
+                _startup_first_tick("watchlist", "scheduler_first_tick_skip", reason="nothing_due")
+                first_tick = False
         except Exception:
             pass
         time.sleep(60)
@@ -41605,9 +41762,10 @@ def _inject_globals():
 
 @app.get("/api/info")
 def api_info():
+    _startup_log_once("http:first_api_info_enter", "http_api_info_enter", path="/api/info")
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
     eff_v, det_v, det_src = _effective_influx_version(cfg)
-    return jsonify({
+    resp = jsonify({
         "ok": True,
         "version": ADDON_VERSION,
         "ha_platform": _ha_platform(),
@@ -41619,6 +41777,8 @@ def api_info():
         "influx_detection_source": det_src,
         "influx_effective_version": eff_v,
     })
+    _startup_log_once("http:first_api_info_done", "http_api_info_done", path="/api/info")
+    return resp
 
 
 @app.get("/api/sysinfo")
