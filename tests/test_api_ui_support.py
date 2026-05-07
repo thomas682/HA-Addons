@@ -200,6 +200,12 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'log_slow_events_overrides' in config_body
     assert 'id="perf_range"' in logs_body
     assert 'id="perf_analyze"' in logs_body
+    assert 'id="record_start_header"' in logs_body
+    assert 'id="record_stop_header"' in logs_body
+    assert 'id="logs_record_start_dialog"' in logs_body
+    assert 'id="record_recent_filter"' in logs_body
+    assert 'id="record_recent_clear"' in logs_body
+    assert 'dialog.logs_record_start' in logs_body
     assert 'id="perf_top_count_rows"' in logs_body
     assert 'id="perf_top_duration_rows"' in logs_body
     assert 'id="measurement_profile_run_status"' in index_body
@@ -243,6 +249,8 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'function _shortcutMatches(ev){' in topbar
     assert 'async function _openConfiguredSuperpicker(){' in topbar
     assert 'window.InfluxBroSummaryConfigButtonMeta = function(detailsEl){' in topbar
+    assert 'let multiDrag = null;' in topbar
+    assert "id=\"ib_mp_drag\"" in topbar
     assert "cfgBtn.setAttribute('data-ib-pickkey'" in topbar
     assert 'if(window.InfluxBroEnsureSummarySettingsButtons){' in tooltips_body
     assert "card.setAttribute('data-dialog-template', 'dialog_info_popup');" in tooltips_body
@@ -980,7 +988,24 @@ def test_template_documents_dialog_standards_and_inventory():
     assert '### Dialog-Inventar und Ziel-Templates' in template_md
     assert 'dialog.measurement_profile_runtime' in template_md
     assert 'dialog.analysis_log' in template_md
+    assert 'dialog.logs_record_start' in template_md
+    assert 'dialog_panel_floating_workbench' in template_md
     assert '### Dialog-Matrix (komprimiert)' in template_md
+
+
+def test_logs_recorder_controls_moved_to_header_and_filter_toolbar():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
+    assert 'id="record_start_header"' in body
+    assert 'id="record_stop_header"' in body
+    assert 'id="logs_record_start_dialog"' in body
+    assert 'id="record_name_dialog"' in body
+    assert 'id="record_toggle_dialog"' in body
+    assert 'id="record_recent_filter"' in body
+    assert 'id="record_recent_clear"' in body
+    assert 'id="record_name"' not in body
+    assert 'id="record_toggle"' not in body
+    assert 'id="record_apply"' not in body
+    assert 'id="record_full"' not in body
 
 
 def test_dashboard_outlier_strategy_ui_exists():

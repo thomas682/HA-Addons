@@ -362,6 +362,7 @@ Beschreibung:
 |---|---|---|---|
 | `dialog.measurement_profile_runtime` | `dashboard_selection.btn_measurement_profile_runtime_info` | `dialog_info_popup` | Schrittliste, Inline-Details pro Schritt |
 | `dialog.analysis_log` | Dashboard Analyse/Cache Logs | `dialog_panel_workbench` | Logfilter, Markieren, Wrap, Copy |
+| `dialog.logs_record_start` | `logs_main.btn_record_start_header` | `dialog_panel_workbench` | Recorder-Startdialog mit Name, letzter Auswahl und Startaktion |
 | `dialog.query_info` | Query-/Info-Popups via `InfluxBroPopup.show(...)` | `dialog_info_popup` | Query-/Text-/History-Inhalte |
 | `dialog.analysis_strategy_help` | Hilfe im Strategiedialog | `dialog_info_popup` | JSON-Beispiele |
 | `dialog.reference_detail` | Referenzdetails | `dialog_info_popup` | Detailansicht |
@@ -384,7 +385,35 @@ Beschreibung:
 | `dialog.analysis_log` | x | x | x | x | x | x | x | x | x | x |  |
 | `dialog.query_info` | x | x | x | x | x | x | x | x |  | x | optional |
 | `dialog_panel_workbench` abgeleitete Arbeitsdialoge | x | x | x | optional | x | x | x | x | x | x | optional |
+| `dialog.logs_record_start` | x | x | x |  | x | x | x | x | x | x |  |
 | `dialog.confirm_action` | x | x | x |  | optional | x | optional | optional |  |  |  |
+
+### Spezialisierung `dialog_panel_floating_workbench`
+
+Verwendung:
+
+- kleine bewegliche Arbeitsdialoge/Floating Panels
+- z. B. Multi-Picker / Multi-Selection Bar
+
+Pflicht:
+
+- Kopf bzw. Griffbereich
+- Schliessen/Abbruch
+- beweglich/verschiebbar
+- visuell nahe an `dialog_panel_workbench`
+
+Optional:
+
+- Picker
+- Meta-Footer, wenn inhaltlich sinnvoll
+
+Beschreibung:
+
+- Spezialfall eines Workbench-Dialogs fuer kleine, bewegliche Arbeitsoberflächen mit Aktionen und Chips/Listen.
+
+Aktueller Einsatz:
+
+- `picker_multi.panel_bar` als beweglicher Multi-Picker-Dialog
 
 Regel:
 

@@ -46,8 +46,9 @@
     .perf_table th { background:#f8f8f8; position:sticky; top:0; z-index:1; }
     .perf_table tr:last-child td { border-bottom:none; }
     .perf_key { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; overflow-wrap:anywhere; }
-    .perf_badge { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-size:11px; background:#f3f4f6; }
-    .perf_badge.err { background:#ffe4e6; color:#9f1239; }
+      .perf_badge { display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-size:11px; background:#f3f4f6; }
+      .perf_badge.err { background:#ffe4e6; color:#9f1239; }
+      @keyframes ib_rec_blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   </style>
 </head>
 <body>
@@ -55,28 +56,45 @@
   <div class="shell">
     {% include "_nav.html" %}
     <main class="content" data-ui="logs_page.main" data-ib-pickkey="logs_page.main" title="logs.page">
-      <h2>Logs</h2>
-      <div class="muted">InfluxBro Add-on Logs (Supervisor)</div>
-      <div class="row" style="margin-top:8px;">
-        <div style="min-width:180px; flex:0 0 220px;">
-          <label>Name für Aufzeichnung</label>
-          <input id="record_name" data-ui="logs_main.input_record_name" data-ib-pickkey="logs_main.input_record_name" title="logs.record_name" placeholder="z.B. Dashboard Test" />
-        </div>
+      <div class="row" style="margin-top:4px; justify-content:space-between; align-items:center;">
         <div>
-          <label>&nbsp;</label>
-          <button id="record_toggle" type="button" data-ui="logs_main.btn_record_toggle" data-ib-pickkey="logs_main.btn_record_toggle" title="logs.record_toggle">Aufzeichnung starten</button>
+          <h2 style="margin:0;">Logs</h2>
+          <div class="muted">InfluxBro Add-on Logs (Supervisor)</div>
         </div>
-        <div style="min-width:220px; flex:1 1 260px;">
-          <label>Letzte 10 Aufzeichnungen</label>
-          <select id="record_recent" data-ui="logs_main.select_record_recent" data-ib-pickkey="logs_main.select_record_recent" title="logs.record_recent"><option value="">Komplettlog</option></select>
+        <div class="tbl_actions" style="align-self:center; gap:8px;" data-ui="logs_page.row_record_header_actions" data-ib-pickkey="logs_page.row_record_header_actions" title="logs_page.row_record_header_actions">
+          <button id="record_start_header" type="button" class="btn_sm" data-ui="logs_main.btn_record_start_header" data-ib-pickkey="logs_main.btn_record_start_header" title="logs_main.btn_record_start_header" aria-label="Aufzeichnung starten">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="6.5" fill="#d91f26" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
+          <button id="record_stop_header" type="button" class="btn_sm" data-ui="logs_main.btn_record_stop_header" data-ib-pickkey="logs_main.btn_record_stop_header" title="logs_main.btn_record_stop_header" aria-label="Aufzeichnung stoppen">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="7" y="7" width="10" height="10" rx="1.6" fill="#6b7280" stroke="currentColor" stroke-width="1.2"/></svg>
+          </button>
         </div>
-        <div>
-          <label>&nbsp;</label>
-          <button id="record_apply" type="button" data-ui="logs_main.btn_record_apply" data-ib-pickkey="logs_main.btn_record_apply" title="logs.record_apply">filtern</button>
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button id="record_full" type="button" data-ui="logs_main.btn_record_full" data-ib-pickkey="logs_main.btn_record_full" title="logs.record_full">Komplettlog</button>
+      </div>
+
+      <div id="logs_record_start_dialog" data-dialog-root="1" data-dialog-name="dialog.logs_record_start" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="logs_main.btn_record_start_header" style="display:none; position:fixed; inset:0; z-index:10020; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+        <div style="width:min(760px, calc(100vw - 32px)); max-width:760px; max-height:min(78vh, 760px); background:#fff; border-radius:16px; box-shadow:0 12px 60px rgba(0,0,0,0.28); display:flex; flex-direction:column; overflow:hidden;">
+          <div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div style="font-weight:700;">Aufzeichnung starten</div>
+            <div data-dialog-header-actions="1" style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button id="logs_record_start_close" type="button" class="btn_sm" style="width:auto;">Schliessen</button>
+            </div>
+          </div>
+          <div style="padding:12px 16px; overflow:auto; flex:1 1 auto; display:flex; flex-direction:column; gap:12px;">
+            <div class="grid" style="margin-top:0;">
+              <div>
+                <label data-ui="logs_page.auto.label_record_name" data-ib-pickkey="logs_page.auto.label_record_name" title="logs.record_name">Name für Aufzeichnung</label>
+                <input id="record_name_dialog" data-ui="logs_main.input_record_name" data-ib-pickkey="logs_main.input_record_name" title="logs.record_name" placeholder="z.B. Dashboard Test" />
+              </div>
+              <div>
+                <label data-ui="logs_page.auto.label_record_recent" data-ib-pickkey="logs_page.auto.label_record_recent" title="logs.record_recent">Letzte 10 Aufzeichnungen</label>
+                <select id="record_recent_dialog" data-ui="logs_main.select_record_recent_dialog" data-ib-pickkey="logs_main.select_record_recent_dialog" title="logs.record_recent_dialog"><option value="">Komplettlog</option></select>
+              </div>
+            </div>
+            <div class="tbl_actions" style="justify-content:flex-end; gap:8px;">
+              <button id="record_toggle_dialog" type="button" class="btn_sm" data-ui="logs_main.btn_record_toggle_dialog" data-ib-pickkey="logs_main.btn_record_toggle_dialog" title="logs.record_toggle_dialog">Aufzeichnung starten</button>
+            </div>
+            <div data-dialog-meta="1" style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: logs_record_start_dialog.dialog | tpl: dialog_panel_workbench</div>
+          </div>
         </div>
       </div>
 
@@ -246,6 +264,14 @@
           <label>&nbsp;</label>
           <button id="filter_clear" data-ui="logs_main.btn_filter_clear" data-ib-pickkey="logs_main.btn_filter_clear" title="logs.filter_clear" aria-label="Filter loeschen">Löschen</button>
         </div>
+        <div style="min-width:220px; flex:1 1 260px;">
+          <label data-ui="logs_page.auto.label_record_recent_filter" data-ib-pickkey="logs_page.auto.label_record_recent_filter" title="logs.record_recent_filter">Aufzeichnung</label>
+          <select id="record_recent_filter" data-ui="logs_main.select_record_recent" data-ib-pickkey="logs_main.select_record_recent" title="logs.record_recent"><option value="">Komplettlog</option></select>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="record_recent_clear" type="button" data-ui="logs_main.btn_record_recent_clear" data-ib-pickkey="logs_main.btn_record_recent_clear" title="logs.record_recent_clear" aria-label="Aufzeichnungsfilter löschen">Löschen</button>
+        </div>
         <div style="flex:1; min-width: 80px;">
           <label>Suche</label>
           <div class="ib_clear_row">
@@ -411,11 +437,15 @@
       const $copy = document.getElementById('copy');
       const $download = document.getElementById('download');
       const $clear = document.getElementById('clear');
-      const $recordName = document.getElementById('record_name');
-      const $recordToggle = document.getElementById('record_toggle');
-      const $recordRecent = document.getElementById('record_recent');
-      const $recordApply = document.getElementById('record_apply');
-      const $recordFull = document.getElementById('record_full');
+      const $recordStartHeader = document.getElementById('record_start_header');
+      const $recordStopHeader = document.getElementById('record_stop_header');
+      const $recordDialog = document.getElementById('logs_record_start_dialog');
+      const $recordDialogClose = document.getElementById('logs_record_start_close');
+      const $recordName = document.getElementById('record_name_dialog');
+      const $recordToggle = document.getElementById('record_toggle_dialog');
+      const $recordRecent = document.getElementById('record_recent_filter');
+      const $recordRecentDialog = document.getElementById('record_recent_dialog');
+      const $recordRecentClear = document.getElementById('record_recent_clear');
       const $filterStart = document.getElementById('filter_start');
       const $filterStop = document.getElementById('filter_stop');
       const $filterClear = document.getElementById('filter_clear');
@@ -516,6 +546,22 @@
       let ACTIVE_RECORDING_ID = '';
       let ACTIVE_FILTER = { start_at: '', stop_at: '' };
 
+      function openRecordDialog(){
+        try{
+          if($recordRecentDialog) _recordingsRenderInto($recordRecentDialog, false);
+          if($recordName && !$recordName.value){
+            $recordName.value = 'Aufzeichnung ' + new Date().toLocaleString();
+          }
+          if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance && $recordDialog){
+            window.InfluxBroDialogStandards.enhance($recordDialog, { name: 'dialog.logs_record_start', template: 'dialog_panel_workbench', trigger: 'logs_main.btn_record_start_header', closeSelector: '#logs_record_start_close', superpicker: true });
+          }
+          if($recordDialog) $recordDialog.style.display = 'flex';
+        }catch(e){}
+      }
+      function closeRecordDialog(){
+        try{ if($recordDialog) $recordDialog.style.display = 'none'; }catch(e){}
+      }
+
       function _localToIso(v){
         try{
           if(!v) return '';
@@ -557,19 +603,23 @@
       function _recordingsSave(){
         try{ localStorage.setItem(LS_REC, JSON.stringify(RECORDINGS.slice(-10))); }catch(e){}
       }
-      function _recordingsRender(){
-        if(!$recordRecent) return;
-        const prev = String(ACTIVE_RECORDING_ID || $recordRecent.value || '');
-        $recordRecent.innerHTML = '<option value="">Komplettlog</option>';
+      function _recordingsRenderInto(sel, keepCurrent){
+        if(!sel) return;
+        const prev = String(keepCurrent ? (ACTIVE_RECORDING_ID || sel.value || '') : sel.value || '');
+        sel.innerHTML = '<option value="">Komplettlog</option>';
         RECORDINGS.slice().reverse().forEach((r)=>{
           const opt = document.createElement('option');
           opt.value = String(r.id || '');
           const from = String(r.start_at || '').replace('T',' ').replace('Z','');
           const to = String(r.end_at || 'aktiv').replace('T',' ').replace('Z','');
           opt.textContent = String(r.name || 'Aufzeichnung') + ' | ' + from + ' -> ' + to;
-          $recordRecent.appendChild(opt);
+          sel.appendChild(opt);
         });
-        $recordRecent.value = prev;
+        sel.value = prev;
+      }
+      function _recordingsRender(){
+        _recordingsRenderInto($recordRecent, true);
+        _recordingsRenderInto($recordRecentDialog, false);
       }
       function _activeRecording(){
         const id = String(ACTIVE_RECORDING_ID || ($recordRecent && $recordRecent.value ? $recordRecent.value : '') || '');
@@ -612,8 +662,12 @@
       }
       function _recordingBtnSync(){
         const rec = RECORDINGS.find(r => !r.end_at) || null;
-        if(!rec){ if($recordToggle) $recordToggle.textContent = 'Aufzeichnung starten'; return; }
-        if($recordToggle) $recordToggle.textContent = 'Aufzeichnung stoppen';
+        if($recordToggle) $recordToggle.textContent = 'Aufzeichnung starten';
+        if($recordStartHeader){
+          $recordStartHeader.style.opacity = rec ? '1' : '0.75';
+          $recordStartHeader.style.animation = rec ? 'ib_rec_blink 1.2s ease-in-out infinite' : 'none';
+        }
+        if($recordStopHeader) $recordStopHeader.style.opacity = rec ? '1' : '0.55';
       }
       function _startRecording(){
         const open = RECORDINGS.find(r => !r.end_at);
@@ -630,6 +684,7 @@
         _filterUiSync();
         _recordingBtnSync();
         applySearch();
+        closeRecordDialog();
       }
       function _stopRecording(){
         const rec = RECORDINGS.find(r => !r.end_at);
@@ -643,6 +698,19 @@
         _filterUiSync();
         _recordingBtnSync();
         applySearch();
+      }
+      function _applyRecordingFilterById(id){
+        const rec = RECORDINGS.find(r => String(r.id || '') === String(id || '')) || null;
+        ACTIVE_RECORDING_ID = rec ? String(rec.id || '') : '';
+        if(rec){
+          ACTIVE_FILTER = { start_at: String(rec.start_at || ''), stop_at: String(rec.end_at || '') };
+        }else{
+          ACTIVE_FILTER = { start_at:'', stop_at:'' };
+        }
+        _filterSave();
+        _filterUiSync();
+        applySearch();
+        _recordingBtnSync();
       }
 
       const LS_VIEW = "influxbro_logs_view_profile_v1";
@@ -1365,17 +1433,27 @@
       if($qMarkPrev) $qMarkPrev.addEventListener('click', ()=>jumpMark(-1));
       if($qMarkNext) $qMarkNext.addEventListener('click', ()=>jumpMark(1));
       $clear.addEventListener('click', ()=>{ RAW = ""; $logpre.innerHTML = ""; err(""); });
-      if($recordToggle) $recordToggle.addEventListener('click', ()=>{ const open = RECORDINGS.find(r => !r.end_at); if(open) _stopRecording(); else _startRecording(); });
-      if($recordRecent) $recordRecent.addEventListener('change', ()=>{ ACTIVE_RECORDING_ID = String($recordRecent.value || ''); applySearch(); _recordingBtnSync(); });
-      if($recordApply) $recordApply.addEventListener('click', ()=>{
-        const rec = _activeRecording();
-        if(!rec) return;
-        ACTIVE_FILTER = { start_at: String(rec.start_at || ''), stop_at: String(rec.end_at || '') };
-        _filterSave();
-        _filterUiSync();
-        applySearch();
+      if($recordStartHeader) $recordStartHeader.addEventListener('click', ()=>openRecordDialog());
+      if($recordDialogClose) $recordDialogClose.addEventListener('click', ()=>closeRecordDialog());
+      if($recordDialog) $recordDialog.addEventListener('click', (ev)=>{ try{ if(ev && ev.target === $recordDialog) closeRecordDialog(); }catch(e){} });
+      if($recordToggle) $recordToggle.addEventListener('click', ()=>_startRecording());
+      if($recordStopHeader) $recordStopHeader.addEventListener('click', async ()=>{
+        const open = RECORDINGS.find(r => !r.end_at);
+        if(!open) return;
+        _stopRecording();
+        let want = false;
+        const txt = 'Die Aufzeichnung wurde gestoppt. Zu den Logs springen?';
+        try{
+          if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask) want = await window.InfluxBroConfirm.ask({ title: 'Aufzeichnung stoppen', text: txt, okLabel: 'Ja', cancelLabel: 'Nein', pickerKey: 'dialog.logs_record_stop_confirm', templateName: 'dialog_confirm_action' });
+          else want = confirm(txt);
+        }catch(e){}
+        if(want){
+          try{ document.getElementById('log_card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }catch(e){}
+        }
       });
-      if($recordFull) $recordFull.addEventListener('click', ()=>{ ACTIVE_RECORDING_ID = ''; ACTIVE_FILTER = { start_at:'', stop_at:'' }; if($recordRecent) $recordRecent.value = ''; _filterSave(); _filterUiSync(); applySearch(); _recordingBtnSync(); });
+      if($recordRecent) $recordRecent.addEventListener('change', ()=>_applyRecordingFilterById(String($recordRecent.value || '')));
+      if($recordRecentDialog) $recordRecentDialog.addEventListener('change', ()=>{ ACTIVE_RECORDING_ID = String($recordRecentDialog.value || ''); });
+      if($recordRecentClear) $recordRecentClear.addEventListener('click', ()=>{ if($recordRecent) $recordRecent.value = ''; _applyRecordingFilterById(''); });
       if($filterStart) $filterStart.addEventListener('change', ()=>{ ACTIVE_FILTER.start_at = _localToIso($filterStart.value); _filterSave(); applySearch(); });
       if($filterStop) $filterStop.addEventListener('change', ()=>{ ACTIVE_FILTER.stop_at = _localToIso($filterStop.value); _filterSave(); applySearch(); });
       if($filterClear) $filterClear.addEventListener('click', ()=>{ ACTIVE_FILTER = { start_at:'', stop_at:'' }; _filterSave(); _filterUiSync(); applySearch(); });

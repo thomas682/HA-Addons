@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.560
+
+### Fix
+
+- Logs / Recorder / Multi-Picker: Die Recorder-Steuerung sitzt jetzt in der Logs-Titelzeile mit separatem Startdialog auf Basis `dialog_panel_workbench`, während bestehende Aufzeichnungen direkt über einen Filter neben `logs_main.btn_filter_clear` auf den Log-Zeitraum gelegt werden. Zusätzlich ist die Multi-Picker-Bar jetzt als beweglicher Floating-Workbench-Dialog bedienbar. ([#525](https://github.com/thomas682/HA-Addons/issues/525))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.559
 
 ### Fix

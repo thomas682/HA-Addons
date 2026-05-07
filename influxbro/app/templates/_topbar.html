@@ -1750,6 +1750,7 @@
       let multiBar = null;
       let multiItems = []; // [{ key, display, el, outlineEl }]
       let _handledMouseDownPick = false;
+      let multiDrag = null;
       const MULTI_OUTLINE_ATTR = 'data-ib-multipick-outline';
 
       // Picker outline config (loaded best-effort from /api/config on start)
@@ -2255,8 +2256,10 @@
       // Placed below pagecard (sticky topbar). Uses existing CSS vars for spacing.
       multiBar.style.position = 'fixed';
       multiBar.style.left = '12px';
-      multiBar.style.right = '12px';
+      multiBar.style.right = 'auto';
       multiBar.style.top = 'calc(var(--ib-topbar-h, 52px) + var(--ib-pagecard-live-h, 0px) + 4px)';
+      multiBar.style.width = 'min(900px, calc(100vw - 24px))';
+      multiBar.style.maxWidth = 'calc(100vw - 24px)';
       // Must be above scrim (99999) and overlay (100000) so chip/button clicks reach it.
       multiBar.style.zIndex = '100002';
       multiBar.style.background = '#1a1a2e';
@@ -2290,7 +2293,7 @@
       const count = multiItems.length;
       multiBar.innerHTML =
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
-        + '<strong data-ui="picker_multi.lbl_title" data-ib-pickkey="picker_multi.lbl_title">Multi-Pick (' + count + ')</strong>'
+        + '<strong id="ib_mp_drag" data-ui="picker_multi.lbl_title" data-ib-pickkey="picker_multi.lbl_title" style="cursor:move; user-select:none;">Multi-Pick (' + count + ')</strong>'
         + '<div id="ib_mp_chips" style="flex:1 1 auto;min-width:0;">' + (chips || '<em style="opacity:0.6;">Noch kein Element ausgewaehlt</em>') + '</div>'
         + '<button type="button" id="ib_mp_end" class="btn_sm" data-ui="picker_multi.btn_ende" data-ib-pickkey="picker_multi.btn_ende" style="width:auto;">Ende</button>'
         + '<button type="button" id="ib_mp_pop" class="btn_sm" data-ui="picker_multi.btn_letztes_loeschen" data-ib-pickkey="picker_multi.btn_letztes_loeschen" style="width:auto;">Letztes loeschen</button>'
@@ -2315,9 +2318,15 @@
       // Wire action buttons.
       try{
         const _b = (id)=>multiBar.querySelector('#' + id);
+        const drag = _b('ib_mp_drag');
         const endBtn = _b('ib_mp_end');
         const popBtn = _b('ib_mp_pop');
         const cancelBtn = _b('ib_mp_cancel');
+        if(drag) drag.addEventListener('mousedown', (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          const rect = multiBar.getBoundingClientRect();
+          multiDrag = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+        });
         if(endBtn) endBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _multiFinish(); });
         if(popBtn) popBtn.addEventListener('click', (ev)=>{
           try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
@@ -2359,6 +2368,7 @@
       try{ _multiOutlineRemoveAll(); }catch(e){}
       multiItems = [];
       multiMode = false;
+      multiDrag = null;
       _multiBarHide();
       stop();
     }
@@ -2425,6 +2435,13 @@
 
     function onMove(ev){
       if(!active) return;
+      if(multiDrag && multiBar){
+        const nextLeft = Math.max(12, Math.min(window.innerWidth - Math.max(320, multiBar.offsetWidth || 320) - 12, ev.clientX - multiDrag.x));
+        const nextTop = Math.max(12, Math.min(window.innerHeight - 80, ev.clientY - multiDrag.y));
+        multiBar.style.left = nextLeft + 'px';
+        multiBar.style.top = nextTop + 'px';
+        return;
+      }
       // Do not track pointer hover over our own multi-pick bar.
       try{ if(ev && ev.target && ev.target.closest && ev.target.closest('#ib_multipick_bar')){ overlay.style.display='none'; badge.style.display='none'; return; } }catch(e){}
       lastPointer = { x: ev.clientX, y: ev.clientY };
@@ -2589,6 +2606,8 @@
         }
       }catch(e){}
     }
+
+      window.addEventListener('mouseup', ()=>{ multiDrag = null; });
 
       async function _openConfiguredSuperpicker(){
         try{ await _loadPickerCfg(); }catch(e){}
