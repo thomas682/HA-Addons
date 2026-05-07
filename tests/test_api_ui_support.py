@@ -1802,6 +1802,14 @@ def test_nav_status_panel_uses_single_list_and_delete_button():
     assert "function completeAllAndClear(){" in nav
 
 
+def test_raw_refresh_is_documented_as_db_reload_without_cache():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    manual = (Path(__file__).resolve().parents[1] / "influxbro" / "MANUAL.md").read_text()
+    assert "dashboard_raw.btn_aktualisieren" in tooltips
+    assert "explizit erneut aus der Datenbank neu und nicht aus dem Cache" in tooltips
+    assert "`Refresh` bei den Raw-Daten laedt die angezeigten Punkte fuer den aktuellen Anker explizit erneut aus der Datenbank ueber `./api/raw_points`" in manual
+
+
 def test_global_button_logging_and_button_error_reporting_exist():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'window.InfluxBroDecodeInfoText' in tooltips

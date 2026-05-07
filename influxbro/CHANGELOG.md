@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.548
+
+### Fix
+
+- Dashboard / Raw-Daten: Tooltip und Handbuchtext fuer `dashboard_raw.btn_aktualisieren` stellen jetzt explizit klar, dass `Refresh` die Raw-Punkte erneut ueber `./api/raw_points` direkt aus der Datenbank laedt und dabei nicht den Analyse-/Session-Cache verwendet. ([#516](https://github.com/thomas682/HA-Addons/issues/516))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.547
 
 ### Fix
