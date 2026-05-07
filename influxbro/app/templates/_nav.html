@@ -679,10 +679,7 @@
             const l1 = (s.loadavg_1 !== null && s.loadavg_1 !== undefined) ? String(s.loadavg_1) : '';
             const cpu = s.cpu_count ? String(s.cpu_count) : '';
             const parts = [];
-            if(mem) parts.push('Mem: ' + mem);
-            if(data) parts.push('Data: ' + data);
-            if(df || dt) parts.push('Disk: ' + (df || '?') + ' / ' + (dt || '?'));
-            if(l1) parts.push('Load1: ' + l1 + (cpu ? (' (CPU ' + cpu + ')') : ''));
+            if(df || dt) parts.push((df || '?') + ' / ' + (dt || '?'));
             if($sysTxt) $sysTxt.textContent = parts.join(' | ');
             if($sys) $sys.style.display = parts.length ? 'flex' : 'none';
           }catch(e){}

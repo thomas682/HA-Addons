@@ -97,13 +97,14 @@
       position: fixed;
       left: 0;
       right: 0;
-      bottom: env(safe-area-inset-bottom, 0px);
+      bottom: 0;
       z-index: 9999;
-      height: calc(var(--ib-bottombar-h) * var(--ib-zoom-scale));
+      height: calc(var(--ib-bottombar-h) * var(--ib-zoom-scale) + env(safe-area-inset-bottom, 0px));
       display: flex;
       align-items: center;
       gap: calc(10px * var(--ib-zoom-scale));
       padding: calc(6px * var(--ib-zoom-scale)) calc(12px * var(--ib-zoom-scale));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
       padding-left: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-left, 0px));
       padding-right: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-right, 0px));
       box-sizing: border-box;
@@ -2836,8 +2837,6 @@
   <span class="lbl">Letzter Fehler:</span>
   <span class="time" id="ib_error_time"></span>
   <span class="msg" id="ib_error_msg"></span>
-  <span class="lbl">Influx:</span>
-  <span class="chip unk" id="ib_influx_chip" title="Influx Verbindung: unbekannt">?</span>
   <button id="ib_error_last" type="button" data-ui="errors_main.btn_last" data-ib-pickkey="errors_main.btn_last" title="errors.last" style="width:auto;">Letzter Fehler</button>
   <button id="ib_error_dialog" type="button" data-ui="errors_main.btn_dialog" data-ib-pickkey="errors_main.btn_dialog" title="errors.dialog" style="width:auto;">Fehlerdialog</button>
   <button id="ib_error_bugreport" type="button" data-ui="errors_main.btn_bugreport" data-ib-pickkey="errors_main.btn_bugreport" title="errors.bugreport" style="width:auto;">Bugreport</button>
@@ -2852,7 +2851,6 @@
   const $bar = document.getElementById('ib_error_bar');
   const $t = document.getElementById('ib_error_time');
   const $m = document.getElementById('ib_error_msg');
-  const $influx = document.getElementById('ib_influx_chip');
   const $bLast = document.getElementById('ib_error_last');
   const $bDlg = document.getElementById('ib_error_dialog');
   const $bBug = document.getElementById('ib_error_bugreport');
@@ -2906,50 +2904,6 @@
 
   try{ window.addEventListener('influxbro:error', ()=>{ render(); }); }catch(e){}
   setTimeout(()=>{ try{ render(); }catch(e){} }, 0);
-
-  async function pollInflux(){
-    if(!$influx) return;
-    try{
-      const r = await fetch('./api/influx_ping');
-      const j = await r.json().catch(()=>null);
-      if(!j || !j.ok){
-        const msg = (j && j.message) ? String(j.message) : ('HTTP ' + r.status);
-        $influx.className = 'chip err';
-        $influx.textContent = 'ERR';
-        $influx.title = 'Influx Verbindung: Fehler: ' + msg;
-        try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add('Influx Verbindung: Fehler: ' + msg, { kind:'influx_ping', url:'./api/influx_ping' }); }catch(e){}
-        return;
-      }
-      const c = (j.connected === true) ? true : ((j.connected === false) ? false : null);
-      if(c === true){
-        $influx.className = 'chip ok';
-        $influx.textContent = 'OK';
-        $influx.title = 'Influx Verbindung: OK';
-      }else if(c === false){
-        const msg = String(j.message || 'Fehler');
-        $influx.className = 'chip err';
-        $influx.textContent = 'ERR';
-        $influx.title = 'Influx Verbindung: ' + msg;
-        try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add('Influx Verbindung: ' + msg, { kind:'influx_ping', url:'./api/influx_ping' }); }catch(e){}
-      }else{
-        const msg = String(j.message || 'unbekannt');
-        $influx.className = 'chip unk';
-        $influx.textContent = '?';
-        $influx.title = 'Influx Verbindung: ' + msg;
-      }
-    }catch(e){
-      try{ window.InfluxBroClientLog && window.InfluxBroClientLog.fetchError && window.InfluxBroClientLog.fetchError('./api/influx_ping', {}, e); }catch(x){}
-      try{
-        $influx.className = 'chip err';
-        $influx.textContent = 'ERR';
-        $influx.title = 'Influx Verbindung: Failed to fetch';
-        try{ window.InfluxBroErrors && window.InfluxBroErrors.add && window.InfluxBroErrors.add('Influx Verbindung: Failed to fetch', { kind:'influx_ping', url:'./api/influx_ping' }); }catch(y){}
-      }catch(x){}
-    }
-  }
-
-  try{ setTimeout(()=>{ pollInflux().catch(()=>{}); }, 200); }catch(e){}
-  try{ setInterval(()=>{ pollInflux().catch(()=>{}); }, 30000); }catch(e){}
 
   async function pollInbox(){
     const $btn = document.getElementById('ib_inbox_btn');

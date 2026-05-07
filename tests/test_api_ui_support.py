@@ -786,6 +786,29 @@ def test_dbinfo_storage_table_exposes_safe_delete_selection():
     assert "./api/storage_usage/delete" in dbinfo
 
 
+def test_bottom_statusbar_uses_ios_safe_area_layout_and_hides_influx_chip():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'bottom: 0;' in topbar
+    assert 'height: calc(var(--ib-bottombar-h) * var(--ib-zoom-scale) + env(safe-area-inset-bottom, 0px));' in topbar
+    assert 'padding-bottom: env(safe-area-inset-bottom, 0px);' in topbar
+    assert 'id="ib_influx_chip"' not in topbar
+    assert 'async function pollInflux()' not in topbar
+
+
+def test_all_main_pages_use_viewport_fit_cover_and_sysinfo_is_disk_only():
+    templates = [
+        'index.html','dbinfo.html','logs.html','migration.html','config.html','import.html','restore.html','backup.html','export.html','stats.html','audit.html','jobs.html','history.html','performance.html','rollup.html','quality.html','profiles.html','monitor.html','manual.html','info.html','dq.html','combine.html'
+    ]
+    root = Path(__file__).resolve().parents[1] / 'influxbro' / 'app' / 'templates'
+    for name in templates:
+      txt = (root / name).read_text()
+      assert '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>' in txt
+    nav = (root / '_nav.html').read_text()
+    assert "parts.push((df || '?') + ' / ' + (dt || '?'));" in nav
+    assert "parts.push('Mem: ' + mem);" not in nav
+    assert "parts.push('Load1: ' + l1" not in nav
+
+
 def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-ib-tooltip-toggle="1"' in tooltips

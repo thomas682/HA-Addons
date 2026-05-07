@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.544
+
+### Fix
+
+- Statusleisten / Mobile / Dashboard: Die untere Statusleiste verwendet jetzt auf iPhone/iOS Safari eine saubere Safe-Area-Strategie (`viewport-fit=cover`, `bottom: 0`, Safe-Area ueber `height`/`padding-bottom`), damit sie nicht vom Home-Indicator ueberdeckt wird. Gleichzeitig wurde die untere Influx-Chip-Anzeige entfernt und die linke Sysinfo-Anzeige auf `frei / gesamt` reduziert. Dadurch bleibt die Statusleiste kompakter und auf kleinen Screens besser sichtbar und bedienbar. ([#510](https://github.com/thomas682/HA-Addons/issues/510), [#507](https://github.com/thomas682/HA-Addons/issues/507))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.543
 
 ### Fix

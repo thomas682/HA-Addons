@@ -1172,6 +1172,12 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Diagnose-Tabellen: Kopfzeile, Zeilen- und Spaltenlinien sind sichtbar.
 - Trendansicht (Speicher): solid Linie + X-/Y-Achsenbeschriftung.
 
+## Statusleisten
+
+- Die untere Statusleiste ist fuer iPhone/iOS Safari jetzt Safe-Area-tauglich. Sie verwendet `viewport-fit=cover` sowie eine feste Unterkante mit Safe-Area ueber `height` und `padding-bottom`, damit Buttons nicht vom Home-Indicator verdeckt werden.
+- In der unteren Statusleiste wurde die separate Influx-Chip-Anzeige entfernt.
+- Die linke Sysinfo-Anzeige zeigt nur noch den freien und gesamten Platz auf der Platte (`frei / gesamt`).
+
 ## Kombinieren
 
 - Seite `Kombinieren`: kopiert Datenpunkte zwischen zwei Messwerten (z.B. bei Entity-ID Umbenennung).
