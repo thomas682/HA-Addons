@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.545
+
+### Fix
+
+- Dialog / Zwischenablage: Der Button `influxbro_popup_copy` verwendet jetzt priorisiert den aktuell sichtbaren Text aus `#influxbro_popup_pre`, bevor gespeicherte Fallbacktexte genutzt werden. Dadurch kopiert `Zwischenablage` im Popup immer den aktuell angezeigten Inhalt des Dialogs, auch wenn dieser zuvor dynamisch zwischen Basistext und Log-/Spezialansicht gewechselt hat. ([#509](https://github.com/thomas682/HA-Addons/issues/509))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.544
 
 ### Fix

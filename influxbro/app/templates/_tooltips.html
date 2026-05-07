@@ -2470,6 +2470,10 @@
         if(sel) return sel;
       }catch(e){}
       try{
+        const visiblePre = String((pre && typeof pre.textContent === 'string') ? pre.textContent : '').trim();
+        if(visiblePre) return visiblePre;
+      }catch(e){}
+      try{
         const visible = String(CURRENT_POPUP_VISIBLE_TEXT || '').trim();
         if(visible) return visible;
       }catch(e){}

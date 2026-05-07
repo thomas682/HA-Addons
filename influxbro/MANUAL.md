@@ -811,6 +811,10 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
   - `filtern`, um den Zeitraum einer ausgewaehlten Aufzeichnung als aktiven Zeitfilter zu uebernehmen
 - Die Suchfunktion auf der Logs-Seite filtert mehrzeilige Query-/Trace-Eintraege jetzt blockweise statt zeilenweise. Wenn der Suchbegriff nur in einer Zeile eines Query-Blocks vorkommt, bleibt der gesamte Block sichtbar.
 
+## Popup-Dialoge
+
+- Der Button `Zwischenablage` verwendet jetzt priorisiert den aktuell sichtbaren Inhalt des Dialogfelds `influxbro_popup_pre`. Dadurch wird im Fehler-/Logdialog immer genau der gerade angezeigte Text kopiert, auch wenn innerhalb desselben Popups zwischen verschiedenen Ansichten umgeschaltet wurde.
+
 ## Jobs & Cache
 
 - Zeigt laufende Background-Jobs (z.B. Statistik laden, Restore/Copy) und die letzten abgeschlossenen Jobs aus der Historie.

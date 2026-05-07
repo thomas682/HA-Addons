@@ -738,6 +738,15 @@ def test_popup_recent_logs_renders_error_lines_in_red():
     assert "window.InfluxBroRecentLogs = { open5min: ()=>_openRecentLogs(5) };" in tooltips
 
 
+def test_popup_copy_prefers_current_visible_pre_text():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    start = tooltips.index('function _popupCurrentCopyText(){')
+    end = tooltips.index('async function doCopy(){')
+    block = tooltips[start:end]
+    assert "const visiblePre = String((pre && typeof pre.textContent === 'string') ? pre.textContent : '').trim();" in block
+    assert "if(visiblePre) return visiblePre;" in block
+
+
 def test_logs_page_exposes_temporary_recording_controls():
     logs = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
     assert 'id="record_name"' in logs
