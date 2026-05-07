@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.550
+
+### Fix
+
+- Dashboard / Raw-Tabelle: Die Ausreißer-Spalte und der Raw-Info-Dialog verwenden jetzt dieselben deutschen Typ-Bezeichnungen wie die Analyse-Strategie. Zusaetzlich gibt es in der Raw-Aktionsleiste einen neuen Button `Änderungen`, der die protokollierte History des selektierten Raw-Messpunkts direkt anzeigt. ([#518](https://github.com/thomas682/HA-Addons/issues/518))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.549
 
 ### Fix
