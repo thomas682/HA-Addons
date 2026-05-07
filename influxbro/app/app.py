@@ -14073,6 +14073,7 @@ from(bucket: "{bucket}")
         "measurement": measurement,
         "field": field,
         "tags": {"entity_id": entity_id, "friendly_name": friendly_name},
+        "queries": {},
         "field_type": None,
         "count": 0,
         "first_value": None,
@@ -14095,6 +14096,14 @@ from(bucket: "{bucket}")
         q_min = log_query("api.measurement_profile min (flux)", base + "  |> min()\n")
         q_max = log_query("api.measurement_profile max (flux)", base + "  |> max()\n")
         q_mean = log_query("api.measurement_profile mean (flux)", base + "  |> mean()\n")
+        out["queries"] = {
+            "count": q_count,
+            "first": q_first,
+            "last": q_last,
+            "min": q_min,
+            "max": q_max,
+            "mean": q_mean,
+        }
         rec = _first_record_from_tables(qapi.query(q_count, org=cfg["org"]))
         if rec is not None:
             try:
@@ -14164,6 +14173,7 @@ def _measurement_profile_influx_v1(
         "measurement": measurement,
         "field": field,
         "tags": {"entity_id": entity_id, "friendly_name": friendly_name},
+        "queries": {},
         "field_type": None,
         "count": 0,
         "first_value": None,
@@ -14211,6 +14221,7 @@ def _measurement_profile_influx_v1(
         for label, query in queries.items():
             try:
                 log_query(f"api.measurement_profile {label} (influxql)", query)
+                out["queries"][label] = query
                 pt = _first_point(c.query(query))
                 if not pt:
                     continue
@@ -15100,11 +15111,12 @@ def api_measurement_profile():
     t0 = time.perf_counter()
     runtime_steps: list[dict[str, Any]] = []
 
-    def _step(name: str, label: str, started_at: float) -> None:
+    def _step(name: str, label: str, started_at: float, details: list[str] | None = None) -> None:
         runtime_steps.append({
             "step": name,
             "label": label,
             "dur_ms": max(0, int(round((time.perf_counter() - started_at) * 1000))),
+            "details": [str(x) for x in (details or []) if str(x).strip()],
         })
 
     entity_id = str(request.args.get("entity_id") or "").strip()
@@ -15122,14 +15134,29 @@ def api_measurement_profile():
     }
     ts = time.perf_counter()
     selector_range, start_dt, stop_dt = _measurement_profile_range(cfg, body)
-    _step("range", "Analysefenster bestimmen", ts)
+    _step("range", "Analysefenster bestimmen", ts, [
+        f"range={selector_range or '-'}",
+        f"start={_iso_utc(start_dt) if start_dt else '-'}",
+        f"stop={_iso_utc(stop_dt) if stop_dt else '-'}",
+    ])
 
     ts = time.perf_counter()
     ha = _measurement_profile_ha(entity_id)
-    _step("ha", "Home Assistant Infos laden", ts)
+    _step("ha", "Home Assistant Infos laden", ts, [
+        f"entity_id={entity_id}",
+        f"friendly_name={ha.get('friendly_name') or '-'}",
+        f"domain={ha.get('domain') or '-'}",
+        f"device_class={ha.get('device_class') or '-'}",
+        f"state_class={ha.get('state_class') or '-'}",
+    ])
     ts = time.perf_counter()
     yaml_info = _measurement_profile_yaml_search(entity_id, ha.get("friendly_name"), ha.get("unique_id"))
-    _step("yaml", "YAML Treffer suchen", ts)
+    _step("yaml", "YAML Treffer suchen", ts, [
+        f"found={bool(yaml_info.get('found'))}",
+        f"path={yaml_info.get('path') or '-'}",
+        f"domain={yaml_info.get('domain') or '-'}",
+        f"platform={yaml_info.get('platform') or '-'}",
+    ])
     try:
         ts = time.perf_counter()
         if int(cfg.get("influx_version", 2) or 2) == 2:
@@ -15155,18 +15182,43 @@ def api_measurement_profile():
                 start_dt=start_dt,
                 stop_dt=stop_dt,
             )
-        _step("influx", "Influx Messwertinfos laden", ts)
+        _step("influx", "Influx Messwertinfos laden", ts, [
+            f"bucket={influx.get('bucket') or cfg.get('bucket') or cfg.get('database') or '-'}",
+            f"count={influx.get('count')}",
+            f"field_type={influx.get('field_type') or '-'}",
+            "query[count]:\n" + str(((influx.get('queries') or {}) if isinstance(influx.get('queries'), dict) else {}).get('count') or '-'),
+            "query[first]:\n" + str(((influx.get('queries') or {}) if isinstance(influx.get('queries'), dict) else {}).get('first') or '-'),
+            "query[last]:\n" + str(((influx.get('queries') or {}) if isinstance(influx.get('queries'), dict) else {}).get('last') or '-'),
+            "query[min]:\n" + str(((influx.get('queries') or {}) if isinstance(influx.get('queries'), dict) else {}).get('min') or '-'),
+            "query[max]:\n" + str(((influx.get('queries') or {}) if isinstance(influx.get('queries'), dict) else {}).get('max') or '-'),
+            "query[mean]:\n" + str(((influx.get('queries') or {}) if isinstance(influx.get('queries'), dict) else {}).get('mean') or '-'),
+        ])
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
     ts = time.perf_counter()
     derived = _measurement_profile_derived(ha, influx, yaml_info)
-    _step("derived", "Messwerttyp ableiten", ts)
+    _step("derived", "Messwerttyp ableiten", ts, [
+        f"internal_type={derived.get('internal_type') or '-'}",
+        f"strategy={derived.get('correction_strategy') or '-'}",
+        f"confidence={derived.get('confidence') or '-'}",
+        f"unit_group={derived.get('unit_group') or '-'}",
+    ])
     ts = time.perf_counter()
     quality = _measurement_profile_quality(ha, yaml_info, influx, derived)
-    _step("quality", "Qualitätshinweise berechnen", ts)
+    _step("quality", "Qualitätshinweise berechnen", ts, [
+        f"classification_complete={quality.get('classification_complete')}",
+        f"unit_consistent={quality.get('unit_consistent')}",
+        f"yaml_source_found={quality.get('yaml_source_found')}",
+        f"warnings={len(quality.get('warnings') or [])}",
+    ] + [f"warning: {w}" for w in (quality.get('warnings') or [])])
     ts = time.perf_counter()
     references = _measurement_profile_references(entity_id, ha.get("friendly_name"), measurement, ha.get("unique_id"))
-    _step("references", "Referenzen durchsuchen", ts)
+    _step("references", "Referenzen durchsuchen", ts, [
+        f"entity_id_count={len(references.get('entity_id_matches') or [])}",
+        f"friendly_name_count={len(references.get('friendly_name_matches') or [])}",
+        f"measurement_count={len(references.get('measurement_matches') or [])}",
+        f"unique_id_count={len(references.get('unique_id_matches') or [])}",
+    ])
     return jsonify(
         {
             "ok": True,
@@ -25110,6 +25162,14 @@ def api_set_config():
     _bool("ui_status_show_sysinfo", False)
 
     _bool("ui_picker_outline_auto", True)
+
+    try:
+        s = str(cfg.get("ui_superpicker_shortcut") or "ctrl+s").strip().lower()
+    except Exception:
+        s = "ctrl+s"
+    if not re.match(r"^[a-z0-9+_-]{3,40}$", s):
+        s = "ctrl+s"
+    cfg["ui_superpicker_shortcut"] = s
 
     _bool("ui_tooltips_enabled", True)
 

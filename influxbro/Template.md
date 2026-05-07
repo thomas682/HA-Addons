@@ -248,6 +248,150 @@ Rule
 
 ## Other GUI elements (future)
 
+## Dialog Standards
+
+Ziel:
+
+- Gleichartige Dialoge sollen mit wenigen Standarddialogen abgedeckt werden.
+- Neue Dialoge sollen zuerst auf einem Standarddialog basieren und nur bei Bedarf gezielt erweitert werden.
+- Jeder Dialog bekommt eine stabile Dialog-Bezeichnung, damit OpenCode neue Dialoge ueber diese Bezeichner konsistent anlegen kann.
+
+### Globale Pflichtregeln fuer alle Dialoge
+
+- Jeder Dialog hat immer einen Kopfbereich.
+- Jeder Dialog hat einen eindeutigen Dialog-Bezeichner, z. B. `dialog.measurement_profile_runtime`.
+- Jeder Dialog zeigt rechts unten eine Meta-Info im Format:
+  - `pk: <pickkey> | tpl: <template> | dlg: <dialog-name>`
+- Jeder Dialog hat standardmäßig einen `(i)`-Button im Kopf.
+  - Der `(i)`-Button zeigt:
+    - a) welches Template verwendet wird
+    - b) was Pflicht ist und was dialogspezifisch ist
+    - c) die eindeutige Dialog-Bezeichnung
+    - d) die Beschreibung des Templates aus dieser Template-Definition
+- Jeder Dialog soll optisch möglichst ähnlich aufgebaut sein.
+- Wenn der Inhalt größer ist: scrollbarer Inhaltsbereich.
+- Wenn der Dialog funktionale Controls/Filter hat: Toolbar.
+- Info- und Arbeitsdialoge sollen resizebar sein (rechte untere Ecke).
+- S-Picker ist standardmäßig vorgesehen.
+  - Standard-Shortcut: konfigurierbar, Default `ctrl+s`
+  - Kontextsensitiv: wenn ein sichtbarer modaler Dialog offen ist, dann dessen S-Picker; sonst der Seiten-S-Picker.
+
+### Standard `dialog_info_popup`
+
+Verwendung:
+
+- Query-/Info-/Diagnose-/Detaildialoge
+- Laufzeitdialoge
+- Referenzdetails
+- Hilfetexte
+
+Pflicht:
+
+- Kopf
+- `(i)`-Button
+- Close
+- Meta-Footer
+- Scrollbereich
+- Resize
+
+Optional:
+
+- Copy
+- S-Picker
+- Inline-Details
+- kleine Toolbar
+
+Beschreibung:
+
+- Informationsdialog mit einheitlichem Kopf, Meta-Footer, Resize und optionalen Detailbereichen.
+
+### Standard `dialog_panel_workbench`
+
+Verwendung:
+
+- Logs
+- Wizards
+- Such-/Filterdialoge
+- Arbeitsdialoge mit mehreren Controls
+
+Pflicht:
+
+- Kopf
+- `(i)`-Button
+- Close
+- Meta-Footer
+- Scrollbereich
+- Resize
+
+Optional:
+
+- Toolbar
+- Copy
+- S-Picker
+- Inline-Details
+- Split-/Mehrbereichslayout
+
+Beschreibung:
+
+- Arbeitsdialog mit einheitlicher Toolbar-/Content-Struktur für Listen, Logs, Filter und gesteuerte Bearbeitungsabläufe.
+
+### Standard `dialog_confirm_action`
+
+Verwendung:
+
+- Bestätigungsdialoge
+
+Pflicht:
+
+- Kopf
+- `(i)`-Button
+- OK / Abbrechen
+- Meta-Footer
+
+Optional:
+
+- S-Picker
+
+Beschreibung:
+
+- Kompakter Aktionsdialog für Bestätigungen, Warnungen und sichere Freigaben.
+
+### Dialog-Inventar und Ziel-Templates
+
+| Dialog-Bezeichner | Trigger | Ziel-Template | Besonderheiten |
+|---|---|---|---|
+| `dialog.measurement_profile_runtime` | `dashboard_selection.btn_measurement_profile_runtime_info` | `dialog_info_popup` | Schrittliste, Inline-Details pro Schritt |
+| `dialog.analysis_log` | Dashboard Analyse/Cache Logs | `dialog_panel_workbench` | Logfilter, Markieren, Wrap, Copy |
+| `dialog.query_info` | Query-/Info-Popups via `InfluxBroPopup.show(...)` | `dialog_info_popup` | Query-/Text-/History-Inhalte |
+| `dialog.analysis_strategy_help` | Hilfe im Strategiedialog | `dialog_info_popup` | JSON-Beispiele |
+| `dialog.reference_detail` | Referenzdetails | `dialog_info_popup` | Detailansicht |
+| `dialog.raw_outlier_params` | Raw Outlier Parameter | `dialog_panel_workbench` | Parameter-/Formdialog |
+| `dialog.analysis_strategy` | Strategiedialog | `dialog_panel_workbench` | Chips, JSON, Strategieauswahl |
+| `dialog.change_preview` | Change Preview | `dialog_panel_workbench` | Vorschau/Änderungsliste |
+| `dialog.repair_wizard` | Repair Wizard | `dialog_panel_workbench` | Wizard-Ablauf |
+| `dialog.page_search` | Seitensuche | `dialog_panel_workbench` | Suche, Treffer, Picker |
+| `dialog.settings_organizer` | Settings Organizer | `dialog_panel_workbench` | Arbeitsdialog |
+| `dialog.jobs_timers_history` | Jobs Timer History | `dialog_panel_workbench` | Tabellen-/Historydialog |
+| `dialog.dq_detail` | DQ Detail | `dialog_panel_workbench` | Detail-/Analysebereich |
+| `dialog.export_target` | Export Ziel | `dialog_panel_workbench` | Formular-/Zielauswahl |
+| `dialog.confirm_action` | Confirm-Dialoge | `dialog_confirm_action` | kompakt |
+
+### Dialog-Matrix (komprimiert)
+
+| Dialog | Kopf | (i) | Close | Copy | S-Picker | Meta | Resize | Scroll | Toolbar | Struktur | Inline-Details |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `dialog.measurement_profile_runtime` | x | x | x | x | x | x | x | x |  | x | x |
+| `dialog.analysis_log` | x | x | x | x | x | x | x | x | x | x |  |
+| `dialog.query_info` | x | x | x | x | x | x | x | x |  | x | optional |
+| `dialog_panel_workbench` abgeleitete Arbeitsdialoge | x | x | x | optional | x | x | x | x | x | x | optional |
+| `dialog.confirm_action` | x | x | x |  | optional | x | optional | optional |  |  |  |
+
+Regel:
+
+- Erst Standarddialog waehlen.
+- Danach nur additive dialogspezifische Erweiterungen ergaenzen.
+- Keine freie Sonderstruktur ohne begründeten Bedarf.
+
 ## `data-ui` Naming
 
 Applies to all interactive and inspectable GUI elements.

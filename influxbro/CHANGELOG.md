@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.556
+
+### Fix
+
+- Dashboard / Dialoge / Picker: Der Messwertinfo-Laufzeitdialog verwendet jetzt eine strukturierte Schrittliste mit Inline-Details pro Server-Schritt, Dialog-Selbstbeschreibung `(i)`, Meta-Footer und resizebarem Standardlayout. Gleichzeitig erhalten Analyse-Log- und weitere Dialoge denselben globalen Resize-/Info-Unterbau. Zusaetzlich ist der S-Picker nun standardmäßig über einen konfigurierbaren Shortcut (Default `ctrl+s`) kontextsensitiv nutzbar: bei sichtbarem modalem Dialog dessen S-Picker, sonst der Seiten-S-Picker. ([#524](https://github.com/thomas682/HA-Addons/issues/524))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.555
 
 ### Fix

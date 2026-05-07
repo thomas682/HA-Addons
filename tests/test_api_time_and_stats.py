@@ -1259,6 +1259,9 @@ def test_api_measurement_profile_returns_grouped_payload(load_app_module, tmp_pa
     assert j["runtime"]["request"]["measurement"] == "Wh"
     assert isinstance(j["runtime"]["steps"], list)
     assert {it["step"] for it in j["runtime"]["steps"]} >= {"range", "ha", "yaml", "influx", "derived", "quality", "references"}
+    influx_step = next(it for it in j["runtime"]["steps"] if it["step"] == "influx")
+    assert any("query[count]:" in line for line in influx_step["details"])
+    assert "|> count()" in "\n".join(influx_step["details"])
 
 
 def test_query_payload_prefers_v2_when_v1_database_missing(load_app_module, tmp_path, monkeypatch):

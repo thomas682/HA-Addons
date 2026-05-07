@@ -206,6 +206,8 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'id="measurement_profile_runtime_info"' in index_body
     assert 'function _measurementProfileShowDelayed(text)' in index_body
     assert 'function _measurementProfileTraceText()' in index_body
+    assert 'function _measurementProfileRenderRuntimeSteps()' in index_body
+    assert 'id="measurement_profile_runtime_steps"' in index_body
     assert 'function _ensureMeasurementProfileRuntimeDialog()' in index_body
     assert 'function openMeasurementProfileRuntimeDialog()' in index_body
     assert 'function _cacheTimelineEffectiveOutlierTypeSet()' in index_body
@@ -236,10 +238,16 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "if(u.includes('/api/perf_stats')) return false;" in tooltips_body
     assert "if(u.includes('/api/sysinfo')) return false;" in tooltips_body
     assert 'window.InfluxBroEnsureSummarySettingsButtons = function(){' in topbar
+    assert 'window.InfluxBroDialogStandards = {' in topbar
+    assert "ui_superpicker_shortcut: 'ctrl+s'" in topbar
+    assert 'function _shortcutMatches(ev){' in topbar
+    assert 'async function _openConfiguredSuperpicker(){' in topbar
     assert 'window.InfluxBroSummaryConfigButtonMeta = function(detailsEl){' in topbar
     assert "cfgBtn.setAttribute('data-ib-pickkey'" in topbar
     assert 'if(window.InfluxBroEnsureSummarySettingsButtons){' in tooltips_body
+    assert "card.setAttribute('data-dialog-template', 'dialog_info_popup');" in tooltips_body
     assert "m.includes('signal is aborted without reason')" in tooltips_body
+    assert 'id="ui_superpicker_shortcut"' in config_body
     assert "function _shouldTrackLongWait(url, headers)" in tooltips_body
     assert "_shouldTrackLongWait(u, headers0)" in tooltips_body
 
@@ -949,18 +957,30 @@ def test_cache_restore_defers_stats_reload_off_critical_start_path():
     assert "_deferDashboardWarmup(()=>loadStats(), 60);" in body
 
 
-def test_analysis_log_modal_has_copy_button_and_error_highlight_and_no_superpicker():
+def test_analysis_log_modal_has_copy_button_error_highlight_and_workbench_metadata():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert "b2.id = 'analysis_log_filter_copy';" in body
     assert 'In Zwischenablage kopieren' in body
-    assert 'pk: analysis_log_modal.dialog | tpl: dialog_info_popup' in body
-    assert 'analysis_log_modal.btn_superpicker' not in body
+    assert 'dialog.analysis_log' in body
+    assert 'dialog_panel_workbench' in body
     assert "color:${isErr ? '#b00020' : 'inherit'}" in body
     assert 'id="analysis_log_filter_mark"' in body
     assert 'id="analysis_log_filter_mark_prev"' in body
     assert 'id="analysis_log_filter_mark_next"' in body
     assert 'function _analysisLogApplyMarkSearch()' in body
     assert 'function _analysisLogJumpMarked(dir)' in body
+
+
+def test_template_documents_dialog_standards_and_inventory():
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    assert '## Dialog Standards' in template_md
+    assert '### Standard `dialog_info_popup`' in template_md
+    assert '### Standard `dialog_panel_workbench`' in template_md
+    assert '### Standard `dialog_confirm_action`' in template_md
+    assert '### Dialog-Inventar und Ziel-Templates' in template_md
+    assert 'dialog.measurement_profile_runtime' in template_md
+    assert 'dialog.analysis_log' in template_md
+    assert '### Dialog-Matrix (komprimiert)' in template_md
 
 
 def test_dashboard_outlier_strategy_ui_exists():

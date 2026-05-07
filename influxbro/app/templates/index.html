@@ -5782,30 +5782,93 @@ function _measurementProfileTraceText(){
   return lines.join('\n');
 }
 
+function _measurementProfileStepDetailText(step){
+  try{
+    const lines = Array.isArray(step && step.details) ? step.details : [];
+    if(!lines.length) return 'Keine weiteren Details verfügbar.';
+    return lines.join('\n\n');
+  }catch(e){ return 'Keine weiteren Details verfügbar.'; }
+}
+
+function _measurementProfileRenderRuntimeSteps(){
+  try{
+    const tr = LAST_MEASUREMENT_PROFILE_TRACE;
+    const server = tr && tr.server_runtime ? tr.server_runtime : null;
+    const steps = Array.isArray(server && server.steps) ? server.steps : [];
+    const host = document.getElementById('measurement_profile_runtime_steps');
+    if(!host) return;
+    if(!steps.length){
+      host.innerHTML = '<div class="checklist_item"><span class="checklist_icon" style="background:#eef2ff;color:#5d86d6;">i</span><span class="checklist_label">Noch keine Laufzeitschritte vorhanden.</span></div>';
+      return;
+    }
+    host.innerHTML = steps.map((step, idx)=>{
+      const infoTitle = 'Messwertinfos: ' + String(step.label || step.step || ('Schritt ' + (idx + 1)));
+      const detail = _measurementProfileStepDetailText(step);
+      const key = 'measurement_profile_runtime_step_' + String(step.step || idx);
+      return '<div class="checklist_item">'
+        + '<span class="checklist_icon ok">✓</span>'
+        + '<span class="checklist_dur">' + _escHtml(_measurementProfileFmtRuntime(Number(step && step.dur_ms || 0))) + '</span>'
+        + '<span class="checklist_main">'
+        + '<span class="checklist_label">' + _escHtml(String(idx + 1) + '. ' + String(step.label || step.step || 'Schritt')) + '</span>'
+        + '<button type="button" class="ib_info_icon" data-measurement-profile-step="' + _escAttr(key) + '" data-info-title="' + _escAttr(infoTitle) + '" data-info-body="' + _escAttr(detail) + '">' + ANALYSIS_INFO_ICON_SVG + '</button>'
+        + '</span>'
+        + '</div>'
+        + '<div class="checklist_sub" id="' + _escAttr(key) + '" style="display:none; white-space:pre-wrap;">' + _checklistSubHtml(detail) + '</div>';
+    }).join('');
+    host.querySelectorAll('[data-measurement-profile-step]').forEach((btn)=>{
+      btn.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        const id = String(btn.getAttribute('data-measurement-profile-step') || '').trim();
+        const box = id ? document.getElementById(id) : null;
+        if(!box) return;
+        const open = box.style.display !== 'none';
+        box.style.display = open ? 'none' : 'block';
+      });
+    });
+  }catch(e){}
+}
+
 function _ensureMeasurementProfileRuntimeDialog(){
   let dlg = document.getElementById('measurement_profile_runtime_modal');
   if(dlg) return dlg;
   dlg = document.createElement('dialog');
   dlg.id = 'measurement_profile_runtime_modal';
+  dlg.setAttribute('data-dialog-name', 'dialog.measurement_profile_runtime');
+  dlg.setAttribute('data-dialog-template', 'dialog_info_popup');
+  dlg.setAttribute('data-dialog-trigger', 'dashboard_selection.btn_measurement_profile_runtime_info');
   dlg.style.width = 'min(1100px, calc(100vw - 32px))';
   dlg.style.maxWidth = '1100px';
   dlg.style.height = 'min(82vh, 820px)';
   dlg.style.border = '0';
   dlg.style.borderRadius = '12px';
   dlg.style.padding = '0';
-  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:60vh; height:100%; max-height:82vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Messwertinfos Laufzeitdetails</div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="measurement_profile_runtime_copy" class="btn_sm" style="width:auto;">In Zwischenablage kopieren</button><button type="button" id="measurement_profile_runtime_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; border-bottom:1px solid #eee; font-size:12px; color:#555;">Dieser Dialog zeigt die komplette Abfolge zur Ermittlung der Messwertinfos inklusive Server-Teilschritten.</div><div style="padding:12px 16px; overflow:auto; flex:1 1 auto;"><pre id="measurement_profile_runtime_pre" style="margin:0; white-space:pre-wrap; font-size:12px; line-height:1.45;"></pre><div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: measurement_profile_runtime_modal.dialog | tpl: dialog_info_popup</div></div></div>';
+  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:60vh; height:100%; max-height:82vh; background:#fff; box-shadow:0 12px 60px rgba(0,0,0,0.28); border-radius:16px;" data-dialog-root="1"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Messwertinfos Laufzeitdetails</div><div data-dialog-header-actions="1" style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="measurement_profile_runtime_copy" class="btn_sm" style="width:auto;">In Zwischenablage kopieren</button><button type="button" id="measurement_profile_runtime_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; border-bottom:1px solid #eee; font-size:12px; color:#555;">Dieser Dialog zeigt die komplette Abfolge zur Ermittlung der Messwertinfos inklusive Server-Teilschritten.</div><div style="padding:12px 16px; overflow:auto; flex:1 1 auto;"><div id="measurement_profile_runtime_meta" class="checklist_sub" style="padding-left:0; white-space:pre-wrap;"></div><div id="measurement_profile_runtime_steps" style="margin-top:8px;"></div><div data-dialog-meta="1" style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: measurement_profile_runtime_modal.dialog | tpl: dialog_info_popup</div></div></div>';
   document.body.appendChild(dlg);
   const close = document.getElementById('measurement_profile_runtime_close');
   const copy = document.getElementById('measurement_profile_runtime_copy');
   if(close) close.addEventListener('click', ()=>{ try{ dlg.close(); }catch(e){ dlg.style.display = 'none'; } });
   if(copy) copy.addEventListener('click', async ()=>{ try{ await copyTextToClipboard(_measurementProfileTraceText()); }catch(e){} });
+  try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance) window.InfluxBroDialogStandards.enhance(dlg, { name: 'dialog.measurement_profile_runtime', template: 'dialog_info_popup', trigger: 'dashboard_selection.btn_measurement_profile_runtime_info' }); }catch(e){}
   return dlg;
 }
 
 async function openMeasurementProfileRuntimeDialog(){
   const dlg = _ensureMeasurementProfileRuntimeDialog();
-  const pre = document.getElementById('measurement_profile_runtime_pre');
-  if(pre) pre.textContent = _measurementProfileTraceText();
+  const meta = document.getElementById('measurement_profile_runtime_meta');
+  if(meta){
+    const tr = LAST_MEASUREMENT_PROFILE_TRACE || {};
+    const req = tr.request || {};
+    const server = tr.server_runtime || {};
+    meta.textContent = [
+      'Anfrage: ' + String(req.measurement || '-') + ' / ' + String(req.field || '-'),
+      'Entity: ' + String(req.entity_id || '-'),
+      'Friendly Name: ' + String(req.friendly_name || '-'),
+      'Range: ' + String(req.range || '-'),
+      'Client gesamt: ' + _measurementProfileFmtRuntime(Number(tr.client_total_ms || 0)),
+      'Server gesamt: ' + _measurementProfileFmtRuntime(Number(server.total_ms || 0)),
+    ].join('\n');
+  }
+  _measurementProfileRenderRuntimeSteps();
   try{ if(typeof dlg.showModal === 'function') dlg.showModal(); else dlg.style.display = 'block'; }catch(e){ dlg.style.display = 'block'; }
 }
 
@@ -11388,6 +11451,9 @@ function _ensureFilteredLogModal(){
   if(dlg) return dlg;
   dlg = document.createElement('dialog');
   dlg.id = 'analysis_log_modal';
+  dlg.setAttribute('data-dialog-name', 'dialog.analysis_log');
+  dlg.setAttribute('data-dialog-template', 'dialog_panel_workbench');
+  dlg.setAttribute('data-dialog-trigger', 'dashboard_analysis.btn_logs');
   dlg.style.width = 'min(1200px, calc(100vw - 32px))';
   dlg.style.maxWidth = '1200px';
   dlg.style.height = 'min(85vh, 900px)';
@@ -11398,7 +11464,14 @@ function _ensureFilteredLogModal(){
   document.body.appendChild(dlg);
   try{
     const panel = dlg.firstElementChild;
-    if(panel) panel.setAttribute('data-dialog-root', '1');
+    if(panel){
+      panel.setAttribute('data-dialog-root', '1');
+      panel.style.background = '#fff';
+      panel.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
+      panel.style.borderRadius = '16px';
+      const header = panel.firstElementChild;
+      if(header && header.children && header.children[1]) header.children[1].setAttribute('data-dialog-header-actions', '1');
+    }
   }catch(e){}
 
   // Insert a convenience button without rewriting the big HTML string.
@@ -11496,6 +11569,7 @@ function _ensureFilteredLogModal(){
       if(txt) await navigator.clipboard.writeText(txt);
     }catch(e){}
   });
+  try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance) window.InfluxBroDialogStandards.enhance(dlg, { name: 'dialog.analysis_log', template: 'dialog_panel_workbench', trigger: 'dashboard_analysis.btn_logs', superpicker: true, closeSelector: '#analysis_log_modal_close' }); }catch(e){}
   return dlg;
 }
 

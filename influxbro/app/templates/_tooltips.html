@@ -1608,6 +1608,10 @@
 
     const card = document.createElement('div');
     card.id = 'influxbro_popup_card';
+    card.setAttribute('data-dialog-root', '1');
+    card.setAttribute('data-dialog-name', 'dialog.query_info');
+    card.setAttribute('data-dialog-template', 'dialog_info_popup');
+    card.setAttribute('data-dialog-trigger', 'InfluxBroPopup.show');
     card.style.maxWidth = 'calc(100vw - 24px)';
     card.style.margin = '8vh auto 12px auto';
     card.style.background = '#fff';
@@ -1644,8 +1648,25 @@
     btn.style.cursor = 'pointer';
     btn.style.padding = '10px 12px';
 
+    const infoBtn = document.createElement('button');
+    infoBtn.id = 'influxbro_popup_info';
+    infoBtn.type = 'button';
+    infoBtn.className = 'ib_info_icon';
+    infoBtn.setAttribute('aria-label', 'Dialog Info');
+    infoBtn.setAttribute('title', 'Dialog Info');
+    infoBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+
+    const headActions = document.createElement('div');
+    headActions.id = 'influxbro_popup_head_actions';
+    headActions.setAttribute('data-dialog-header-actions', '1');
+    headActions.style.display = 'flex';
+    headActions.style.alignItems = 'center';
+    headActions.style.gap = '8px';
+    headActions.appendChild(infoBtn);
+    headActions.appendChild(btn);
+
     head.appendChild(title);
-    head.appendChild(btn);
+    head.appendChild(headActions);
 
     const controls = document.createElement('div');
     controls.id = 'influxbro_popup_controls';
@@ -1858,6 +1879,7 @@
     card.appendChild(contentWrap);
     const popupMetaFooter = document.createElement('div');
     popupMetaFooter.id = 'influxbro_popup_meta_footer';
+    popupMetaFooter.setAttribute('data-dialog-meta', '1');
     popupMetaFooter.style.fontSize = '10px';
     popupMetaFooter.style.opacity = '0.65';
     popupMetaFooter.style.textAlign = 'right';
@@ -1865,6 +1887,7 @@
     popupMetaFooter.style.marginTop = '4px';
     card.appendChild(popupMetaFooter);
     root.appendChild(card);
+    try{ infoBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.openInfo) window.InfluxBroDialogStandards.openInfo(card); }); }catch(e){}
 
     const confirmRoot = document.createElement('dialog');
     confirmRoot.id = 'influxbro_confirm_root';
@@ -3205,6 +3228,21 @@
       try{
         const metaFooter = refs.metaFooter || document.getElementById('influxbro_popup_meta_footer');
         if(metaFooter) metaFooter.textContent = _dialogMetaText(opts && opts.pickerKey, opts && opts.templateName ? opts.templateName : 'dialog_info_popup');
+      }catch(e){}
+      try{
+        if(root){
+          card.setAttribute('data-dialog-name', String(opts && opts.dialogName ? opts.dialogName : 'dialog.query_info'));
+          card.setAttribute('data-dialog-template', String(opts && opts.templateName ? opts.templateName : 'dialog_info_popup'));
+          card.setAttribute('data-dialog-trigger', String(opts && opts.trigger ? opts.trigger : 'InfluxBroPopup.show'));
+          if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance){
+            window.InfluxBroDialogStandards.enhance(card, {
+              name: String(opts && opts.dialogName ? opts.dialogName : 'dialog.query_info'),
+              template: String(opts && opts.templateName ? opts.templateName : 'dialog_info_popup'),
+              trigger: String(opts && opts.trigger ? opts.trigger : 'InfluxBroPopup.show'),
+              closeSelector: '#influxbro_popup_close',
+            });
+          }
+        }
       }catch(e){}
       try{
         if(settingsBtn){
