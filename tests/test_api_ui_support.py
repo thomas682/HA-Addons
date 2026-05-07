@@ -251,6 +251,9 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'function _shortcutMatches(ev){' in topbar
     assert 'async function _openConfiguredSuperpicker(){' in topbar
     assert 'window.InfluxBroSummaryConfigButtonMeta = function(detailsEl){' in topbar
+    assert 'function _dialogName(root){' in topbar
+    assert "data-dialog-enhanced', '1'" in topbar
+    assert "data-dialog-panel=\"1\"" in index_body
     assert 'let multiDrag = null;' in topbar
     assert "id=\"ib_mp_drag\"" in topbar
     assert "cfgBtn.setAttribute('data-ib-pickkey'" in topbar
@@ -834,6 +837,17 @@ def test_dbinfo_storage_table_exposes_safe_delete_selection():
     assert "let SELECTED_STORAGE_NAME = '';" in dbinfo
     assert dbinfo.rstrip().endswith("</html>")
     assert dbinfo.count("<script") == dbinfo.count("</script>")
+
+
+def test_dialog_standardization_avoids_generic_dialog_pickkeys():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "return 'dialog_unknown';" in topbar
+    assert "key + '.btn_superpicker'" in topbar
+    assert "name + '.btn_info'" in topbar
+    assert 'data-dialog-panel="1"' in index_body
+    assert 'data-dialog-panel' in tooltips
 
 
 def test_bottom_statusbar_uses_ios_safe_area_layout_and_hides_influx_chip():

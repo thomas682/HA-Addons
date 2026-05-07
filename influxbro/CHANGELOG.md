@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.562
+
+### Fix
+
+- Dialoge / S-Picker: Die globale Dialog-Normalisierung unterscheidet jetzt sauber zwischen echter Dialog-Wurzel und innerem Dialog-Panel. Dadurch entstehen beim Messwertinfo-Dialog und anderen Standarddialogen keine generischen Pickkey-/Instancekey-Kollisionen mehr wie `dialog.btn_info` oder `dialog.btn_superpicker`, wenn `(i)` oder `S-Picker` verwendet werden. ([#530](https://github.com/thomas682/HA-Addons/issues/530))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.561
 
 ### Fix

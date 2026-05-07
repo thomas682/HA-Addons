@@ -2732,8 +2732,22 @@
         if(!root) return null;
         if(root.tagName === 'DIALOG') return root.firstElementChild || root;
         if(root.getAttribute && root.getAttribute('data-dialog-root') === '1') return root;
-        return root.querySelector('[data-dialog-root="1"]') || root.firstElementChild || root;
+        return root.querySelector('[data-dialog-panel="1"]') || root.firstElementChild || root;
       }catch(e){ return null; }
+    }
+    function _dialogName(root){
+      try{
+        const own = String(root && root.getAttribute ? (root.getAttribute('data-dialog-name') || '') : '').trim();
+        if(own) return own;
+        const ownId = String(root && root.id ? root.id : '').trim();
+        if(ownId) return ownId;
+        const parent = root && root.closest ? root.closest('dialog,[data-dialog-root="1"],[role="dialog"]') : null;
+        const pName = String(parent && parent.getAttribute ? (parent.getAttribute('data-dialog-name') || '') : '').trim();
+        if(pName) return pName;
+        const pId = String(parent && parent.id ? parent.id : '').trim();
+        if(pId) return pId;
+      }catch(e){}
+      return 'dialog_unknown';
     }
     function _dialogFooter(root){
       try{
@@ -2787,7 +2801,7 @@
       try{
         if(window.InfluxBroPopup && window.InfluxBroPopup.show){
           const tpl = String(root && root.getAttribute ? (root.getAttribute('data-dialog-template') || 'dialog_info_popup') : 'dialog_info_popup');
-          const name = String(root && root.getAttribute ? (root.getAttribute('data-dialog-name') || root.id || 'unknown') : 'unknown');
+          const name = _dialogName(root);
           window.InfluxBroPopup.show('Dialog Info', _dialogInfoText(root), {
             copyText: _dialogInfoText(root),
             pickerKey: name + '.btn_info',
@@ -2809,7 +2823,7 @@
           meta.style.marginTop = '4px';
           panel.appendChild(meta);
         }
-        meta.textContent = _dialogMetaText(root.getAttribute('data-ib-pickkey') || root.getAttribute('data-ui') || root.id, root.getAttribute('data-dialog-template'), root.getAttribute('data-dialog-name') || root.id);
+        meta.textContent = _dialogMetaText(root.getAttribute('data-ib-pickkey') || root.getAttribute('data-ui') || root.id, root.getAttribute('data-dialog-template'), _dialogName(root));
       }catch(e){}
     }
     function _ensureDialogInfoButton(root, panel){
@@ -2825,8 +2839,9 @@
         btn.type = 'button';
         btn.className = 'ib_info_icon';
         btn.setAttribute('data-dialog-info-btn', '1');
-        btn.setAttribute('data-ui', String(root.getAttribute('data-dialog-name') || root.id || 'dialog') + '.btn_info');
-        btn.setAttribute('data-ib-pickkey', String(root.getAttribute('data-dialog-name') || root.id || 'dialog') + '.btn_info');
+        const name = _dialogName(root);
+        btn.setAttribute('data-ui', name + '.btn_info');
+        btn.setAttribute('data-ib-pickkey', name + '.btn_info');
         btn.setAttribute('title', 'Dialog Info');
         btn.setAttribute('aria-label', 'Dialog Info');
         btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
@@ -2845,6 +2860,7 @@
     function _enhanceDialog(root, opts){
       try{
         if(!root) return;
+        if(root.getAttribute && root.getAttribute('data-dialog-enhanced') === '1') return;
         const panel = _dialogPanel(root);
         if(!panel) return;
         root.setAttribute('data-dialog-root', '1');
@@ -2855,6 +2871,7 @@
         _ensureDialogMeta(root, panel);
         _ensureDialogInfoButton(root, panel);
         _ensureDialogFooter(root, opts && opts.closeSelector ? opts.closeSelector : null, { buttonClass: 'btn_sm ib_dialog_superpicker', superpicker: !(opts && opts.superpicker === false) });
+        root.setAttribute('data-dialog-enhanced', '1');
       }catch(e){}
     }
     window.InfluxBroDialogStandards = {
@@ -2875,9 +2892,9 @@
     };
     function _superpickerKey(root){
       try{
-        const raw = String((root && root.id) || 'dialog').trim().replace(/[^a-zA-Z0-9_-]+/g, '_');
-        return raw || 'dialog';
-      }catch(e){ return 'dialog'; }
+        const raw = _dialogName(root).replace(/[^a-zA-Z0-9_.-]+/g, '_');
+        return raw || 'dialog_unknown';
+      }catch(e){ return 'dialog_unknown'; }
     }
     function _ensureDialogFooter(rootOrSelector, closeSelector, opts){
       try{
@@ -2923,7 +2940,7 @@
         document.querySelectorAll('dialog,[data-dialog-root="1"]').forEach((root)=>{
           try{
             _enhanceDialog(root, {
-              name: String(root.getAttribute('data-dialog-name') || root.id || 'dialog'),
+              name: _dialogName(root),
               template: String(root.getAttribute('data-dialog-template') || 'dialog_info_popup'),
               trigger: String(root.getAttribute('data-dialog-trigger') || '-'),
               superpicker: String(root.id || '') !== 'analysis_log_modal' ? undefined : true,
