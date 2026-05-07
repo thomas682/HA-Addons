@@ -966,6 +966,7 @@
       <span id="measurement_profile_run_spinner" class="ib-local-run-spinner" aria-hidden="true"></span>
       <span id="measurement_profile_run_text">Messwertinfos werden geladen...</span>
       <span id="measurement_profile_run_time" class="ib-local-run-time"></span>
+      <button type="button" class="ib_info_icon" id="measurement_profile_runtime_info" data-ui="dashboard_selection.btn_measurement_profile_runtime_info" data-ib-pickkey="dashboard_selection.btn_measurement_profile_runtime_info" title="dashboard_selection.btn_measurement_profile_runtime_info" aria-label="Messwertinfo-Laufzeitdetails"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
     </div>
     <div class="card_body">
       <div class="ib-namepanel">
@@ -1655,6 +1656,7 @@ const $measurementProfileRunStatus = document.getElementById('measurement_profil
 const $measurementProfileRunSpinner = document.getElementById('measurement_profile_run_spinner');
 const $measurementProfileRunText = document.getElementById('measurement_profile_run_text');
 const $measurementProfileRunTime = document.getElementById('measurement_profile_run_time');
+const $measurementProfileRuntimeInfo = document.getElementById('measurement_profile_runtime_info');
 
 // Row details (before/after list) are rendered inline under the selected row.
 
@@ -2181,6 +2183,7 @@ let LAST_TOTAL_POINTS = null;
 let MEASUREMENT_PROFILE_RUN_T0 = 0;
 let MEASUREMENT_PROFILE_RUN_DELAY_T = null;
 let MEASUREMENT_PROFILE_RUN_TIMER = null;
+let LAST_MEASUREMENT_PROFILE_TRACE = null;
 
 let OUTLIER_SCANNED_TOTAL = null;
 let OUTLIER_FOUND_TOTAL = null;
@@ -5722,6 +5725,73 @@ function _measurementProfileStop(text, isError){
   if($measurementProfileRunStatus && !($measurementProfileRunStatus.style.display === 'flex')){
     $measurementProfileRunStatus.style.display = (dur >= _measurementProfileThresholdMs() || isError) ? 'flex' : 'none';
   }
+  try{ if($measurementProfileRuntimeInfo) $measurementProfileRuntimeInfo.disabled = !LAST_MEASUREMENT_PROFILE_TRACE; }catch(e){}
+}
+
+function _measurementProfileTraceText(){
+  const tr = LAST_MEASUREMENT_PROFILE_TRACE;
+  if(!tr) return 'Noch keine Laufzeitdetails vorhanden.';
+  const req = tr.request || {};
+  const server = tr.server_runtime || {};
+  const steps = Array.isArray(server.steps) ? server.steps : [];
+  const lines = [
+    'Messwertinfos: Laufzeitdetails',
+    '',
+    'Anfrage',
+    'measurement: ' + String(req.measurement || '-'),
+    'field: ' + String(req.field || '-'),
+    'entity_id: ' + String(req.entity_id || '-'),
+    'friendly_name: ' + String(req.friendly_name || '-'),
+    'range: ' + String(req.range || '-'),
+    'start: ' + String(req.start || '-'),
+    'stop: ' + String(req.stop || '-'),
+    'bucket: ' + String(req.bucket || '-'),
+    'Influx-Version: ' + String(req.influx_version || '-'),
+    '',
+    'Laufzeiten',
+    'Client gesamt: ' + _measurementProfileFmtRuntime(Number(tr.client_total_ms || 0)),
+    'Server gesamt: ' + _measurementProfileFmtRuntime(Number(server.total_ms || 0)),
+  ];
+  if(steps.length){
+    lines.push('');
+    lines.push('Server-Schritte');
+    steps.forEach((it, idx)=>{
+      lines.push(`${idx + 1}. ${String(it.label || it.step || 'Schritt')}: ${_measurementProfileFmtRuntime(Number(it.dur_ms || 0))}`);
+    });
+  }
+  if(tr.error){
+    lines.push('');
+    lines.push('Fehler');
+    lines.push(String(tr.error));
+  }
+  return lines.join('\n');
+}
+
+function _ensureMeasurementProfileRuntimeDialog(){
+  let dlg = document.getElementById('measurement_profile_runtime_modal');
+  if(dlg) return dlg;
+  dlg = document.createElement('dialog');
+  dlg.id = 'measurement_profile_runtime_modal';
+  dlg.style.width = 'min(1100px, calc(100vw - 32px))';
+  dlg.style.maxWidth = '1100px';
+  dlg.style.height = 'min(82vh, 820px)';
+  dlg.style.border = '0';
+  dlg.style.borderRadius = '12px';
+  dlg.style.padding = '0';
+  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:60vh; height:100%; max-height:82vh;"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Messwertinfos Laufzeitdetails</div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="measurement_profile_runtime_copy" class="btn_sm" style="width:auto;">In Zwischenablage kopieren</button><button type="button" id="measurement_profile_runtime_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; border-bottom:1px solid #eee; font-size:12px; color:#555;">Dieser Dialog zeigt die komplette Abfolge zur Ermittlung der Messwertinfos inklusive Server-Teilschritten.</div><div style="padding:12px 16px; overflow:auto; flex:1 1 auto;"><pre id="measurement_profile_runtime_pre" style="margin:0; white-space:pre-wrap; font-size:12px; line-height:1.45;"></pre><div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: measurement_profile_runtime_modal.dialog | tpl: dialog_info_popup</div></div></div>';
+  document.body.appendChild(dlg);
+  const close = document.getElementById('measurement_profile_runtime_close');
+  const copy = document.getElementById('measurement_profile_runtime_copy');
+  if(close) close.addEventListener('click', ()=>{ try{ dlg.close(); }catch(e){ dlg.style.display = 'none'; } });
+  if(copy) copy.addEventListener('click', async ()=>{ try{ await copyTextToClipboard(_measurementProfileTraceText()); }catch(e){} });
+  return dlg;
+}
+
+async function openMeasurementProfileRuntimeDialog(){
+  const dlg = _ensureMeasurementProfileRuntimeDialog();
+  const pre = document.getElementById('measurement_profile_runtime_pre');
+  if(pre) pre.textContent = _measurementProfileTraceText();
+  try{ if(typeof dlg.showModal === 'function') dlg.showModal(); else dlg.style.display = 'block'; }catch(e){ dlg.style.display = 'block'; }
 }
 
 async function refreshMeasurementProfilePanel(){
@@ -5736,6 +5806,7 @@ async function refreshMeasurementProfilePanel(){
       return;
     }
     _measurementProfileShowDelayed('Messwertinfos werden geladen...');
+    const clientT0 = Date.now();
     const qp = new URLSearchParams({
       measurement,
       field,
@@ -5744,9 +5815,21 @@ async function refreshMeasurementProfilePanel(){
       ...selectorQueryTimeParams(),
     });
     const j = await api('./api/measurement_profile?' + qp.toString(), null, { key: 'measurement_profile', status: 'Lade Messwertprofil...', silent: true });
+    LAST_MEASUREMENT_PROFILE_TRACE = {
+      client_total_ms: Math.max(0, Date.now() - clientT0),
+      server_runtime: j && j.runtime ? j.runtime : null,
+      request: (j && j.runtime && j.runtime.request) ? j.runtime.request : { measurement, field, entity_id: entityId, friendly_name: friendlyName },
+      error: null,
+    };
     renderMeasurementProfilePanel(j);
     _measurementProfileStop('Messwertinfos geladen.', false);
   }catch(e){
+    LAST_MEASUREMENT_PROFILE_TRACE = {
+      client_total_ms: MEASUREMENT_PROFILE_RUN_T0 ? Math.max(0, Date.now() - MEASUREMENT_PROFILE_RUN_T0) : 0,
+      server_runtime: null,
+      request: null,
+      error: e && e.message ? e.message : String(e),
+    };
     renderMeasurementProfilePanel({ ok: false, error: e && e.message ? e.message : String(e) });
     _measurementProfileStop(e && e.message ? e.message : 'Fehler beim Laden der Messwertinfos.', true);
   }
@@ -13364,6 +13447,13 @@ async function triggerRawOverwrite(sourceKey, targetKey, opts){
   showRawActionFeedback('Wert kopieren', `Quelle: ${fmtTs(sourceRow.time)} | ${fmtNum(sourceRow.value)}\nZiel: ${fmtTs(targetRow.time)} | ${fmtNum(targetValue)}`);
   return true;
 }
+
+try{
+  if($measurementProfileRuntimeInfo) $measurementProfileRuntimeInfo.addEventListener('click', (ev)=>{
+    _stop(ev);
+    openMeasurementProfileRuntimeDialog().catch(displayError);
+  });
+}catch(e){}
 
 try{
   if($rawCopyValue) $rawCopyValue.addEventListener('click', async (ev)=>{

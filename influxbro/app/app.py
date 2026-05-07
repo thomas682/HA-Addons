@@ -15097,6 +15097,16 @@ def api_outlier_strategy_config_set():
 @app.get("/api/measurement_profile")
 def api_measurement_profile():
     cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    t0 = time.perf_counter()
+    runtime_steps: list[dict[str, Any]] = []
+
+    def _step(name: str, label: str, started_at: float) -> None:
+        runtime_steps.append({
+            "step": name,
+            "label": label,
+            "dur_ms": max(0, int(round((time.perf_counter() - started_at) * 1000))),
+        })
+
     entity_id = str(request.args.get("entity_id") or "").strip()
     measurement = str(request.args.get("measurement") or "").strip()
     field = str(request.args.get("field") or "").strip() or "value"
@@ -15110,11 +15120,18 @@ def api_measurement_profile():
         "start": request.args.get("start"),
         "stop": request.args.get("stop"),
     }
+    ts = time.perf_counter()
     selector_range, start_dt, stop_dt = _measurement_profile_range(cfg, body)
+    _step("range", "Analysefenster bestimmen", ts)
 
+    ts = time.perf_counter()
     ha = _measurement_profile_ha(entity_id)
+    _step("ha", "Home Assistant Infos laden", ts)
+    ts = time.perf_counter()
     yaml_info = _measurement_profile_yaml_search(entity_id, ha.get("friendly_name"), ha.get("unique_id"))
+    _step("yaml", "YAML Treffer suchen", ts)
     try:
+        ts = time.perf_counter()
         if int(cfg.get("influx_version", 2) or 2) == 2:
             influx = _measurement_profile_influx_v2(
                 cfg,
@@ -15138,11 +15155,18 @@ def api_measurement_profile():
                 start_dt=start_dt,
                 stop_dt=stop_dt,
             )
+        _step("influx", "Influx Messwertinfos laden", ts)
     except Exception as e:
         return jsonify({"ok": False, "error": _short_influx_error(e)}), 500
+    ts = time.perf_counter()
     derived = _measurement_profile_derived(ha, influx, yaml_info)
+    _step("derived", "Messwerttyp ableiten", ts)
+    ts = time.perf_counter()
     quality = _measurement_profile_quality(ha, yaml_info, influx, derived)
+    _step("quality", "Qualitätshinweise berechnen", ts)
+    ts = time.perf_counter()
     references = _measurement_profile_references(entity_id, ha.get("friendly_name"), measurement, ha.get("unique_id"))
+    _step("references", "Referenzen durchsuchen", ts)
     return jsonify(
         {
             "ok": True,
@@ -15153,6 +15177,21 @@ def api_measurement_profile():
             "influx": influx,
             "derived": derived,
             "quality": quality,
+            "runtime": {
+                "total_ms": max(0, int(round((time.perf_counter() - t0) * 1000))),
+                "steps": runtime_steps,
+                "request": {
+                    "entity_id": entity_id,
+                    "measurement": measurement,
+                    "field": field,
+                    "friendly_name": friendly_name,
+                    "range": selector_range,
+                    "start": _iso_utc(start_dt) if start_dt else None,
+                    "stop": _iso_utc(stop_dt) if stop_dt else None,
+                    "bucket": bucket,
+                    "influx_version": int(cfg.get("influx_version", 2) or 2),
+                },
+            },
         }
     )
 

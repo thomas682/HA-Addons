@@ -963,6 +963,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 
 - Klick auf einen Graph-Punkt springt in der Raw-Datenliste zum naechsten passenden Zeitstempel.
 - Der markierte Punkt bleibt in der Raw-Liste farblich hervorgehoben, bis du einen anderen Punkt auswaehlst.
+- Im Bereich `Messwertinfos von Homeassistant` gibt es neben `Messwertinfos geladen.` einen Infobutton. Er öffnet einen Laufzeitdialog mit Anfrageparametern sowie den einzelnen Client-/Server-Schritten der Messwertinfo-Ermittlung, damit lange Ladezeiten direkt nachvollziehbar bleiben.
 - Die Raw-Aktionsleiste sitzt direkt ueber der Tabelle und enthaelt nur noch Tabellenfunktionen, `Wert kopieren`, `Einfügen` sowie `Refresh`.
 - `Refresh` bei den Raw-Daten laedt die angezeigten Punkte fuer den aktuellen Anker explizit erneut aus der Datenbank ueber `./api/raw_points` und nicht aus dem Analyse-/Session-Cache.
 - Für selektierte Raw-Zeilen mit Ausreißertyp `Zeitlücke` gibt es in der intelligenten Aktionsleiste den Button `Zeitlücke akzeptieren`. Er erhöht fuer die aktuelle Serie den erlaubten `time_gap.gap_seconds`-Override, startet die Ausreißer-Prüfung danach erneut und ist über denselben Undo-Mechanismus wieder rückgängig machbar.

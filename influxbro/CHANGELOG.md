@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.552
+
+### Fix
+
+- Dashboard / Messwertinfos: Neben `Messwertinfos geladen.` gibt es jetzt einen Infobutton mit einem eigenen Laufzeitdialog. Der Dialog zeigt lückenlos die Anfrageparameter, die gesamte Client-/Server-Laufzeit und die einzelnen Server-Schritte zur Ermittlung der Messwertinfos, damit lange Ladezeiten direkt nachvollziehbar werden. ([#519](https://github.com/thomas682/HA-Addons/issues/519))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.551
 
 ### Fix
