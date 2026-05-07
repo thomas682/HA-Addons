@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.546
+
+### Fix
+
+- Snapshots / Verify / Undo: Neue MVP-Seite `Snapshots` eingefuehrt. Sie fuehrt vorhandene Support-Snapshots und Backup-Artefakte in einer gemeinsamen Liste zusammen und bietet Wrapper-APIs fuer `list`, `create` (Support Snapshot), `preview`, `verify`, `delete`, `export` sowie `undo_status`. Damit sind Snapshot-Browser, Integritaetspruefung, Restore-Preview-Metadaten und Undo-Status erstmals unter einer gemeinsamen UI/API-Klammer verfuegbar und koennen als Sicherheitsfundament fuer weitere destruktive Workflows dienen. ([#512](https://github.com/thomas682/HA-Addons/issues/512))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.545
 
 ### Fix

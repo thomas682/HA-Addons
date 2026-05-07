@@ -1182,6 +1182,32 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - In der unteren Statusleiste wurde die separate Influx-Chip-Anzeige entfernt.
 - Die linke Sysinfo-Anzeige zeigt nur noch den freien und gesamten Platz auf der Platte (`frei / gesamt`).
 
+## Snapshots
+
+- Neue Seite `Snapshots` als gemeinsamer MVP-Browser fuer Snapshot-/Backup-/Undo-Sicherheit.
+- Enthalten:
+  - gemeinsame Liste aus Support-Snapshots und vorhandenen Backup-Artefakten
+  - `Create Snapshot` (Support Snapshot MVP)
+  - `Restore Preview` (Metadaten-/Restore-Relevanz-Vorschau)
+  - `Verify Snapshot` (Integritaets-/Lesbarkeitspruefung)
+  - `Delete Snapshot`
+  - `Export Snapshot`
+  - `Undo Status`
+- Neue Wrapper-APIs:
+  - `GET /api/snapshots`
+  - `POST /api/snapshots/create`
+  - `GET /api/snapshots/preview`
+  - `POST /api/snapshots/verify`
+  - `POST /api/snapshots/delete`
+  - `GET /api/snapshots/export`
+  - `GET /api/snapshots/undo_status`
+- Dieser MVP nutzt bestehende Bausteine aus:
+  - Support Snapshot
+  - Backup-Metadaten
+  - Verify/Restore-Simulator-Bausteine
+  - Undo-Status
+- Die weitergehende automatische Restore-Validierung und vollstaendige transaktionale Undo-Verkettung fuer alle Snapshot-Typen bleibt als naechste Ausbaustufe offen; die gemeinsame Sicherheitsoberflaeche und API-Klammer ist jetzt jedoch vorhanden.
+
 ## Kombinieren
 
 - Seite `Kombinieren`: kopiert Datenpunkte zwischen zwei Messwerten (z.B. bei Entity-ID Umbenennung).

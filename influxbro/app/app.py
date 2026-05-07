@@ -10089,6 +10089,18 @@ def migration_page():
     )
 
 
+@app.get("/snapshots")
+def snapshots_page():
+    cfg = load_cfg()
+    return render_template(
+        "snapshots.html",
+        cfg=cfg,
+        allow_delete=True,
+        nav="snapshots",
+        repo_url=FIXED_REPO_URL,
+    )
+
+
 @app.get("/manual")
 def manual_page():
     cfg = load_cfg()
@@ -16120,6 +16132,97 @@ def api_support_bundle_snapshot_create():
         return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 500
 
 
+@app.get("/api/snapshots")
+def api_snapshots():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    return jsonify({"ok": True, "rows": _snapshot_rows(cfg)})
+
+
+@app.post("/api/snapshots/create")
+def api_snapshots_create():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    typ = str(body.get("type") or "support_snapshot").strip()
+    if typ != "support_snapshot":
+        return jsonify({"ok": False, "error": "only support_snapshot is supported in this MVP"}), 400
+    row = _support_snapshot_create(cfg)
+    return jsonify({"ok": True, "row": row})
+
+
+@app.get("/api/snapshots/preview")
+def api_snapshots_preview():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    sid = str(request.args.get("id") or "").strip()
+    source = str(request.args.get("source") or "").strip() or "backup"
+    if not sid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    try:
+        return jsonify({"ok": True, **_snapshot_preview(cfg, source, sid)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 404
+
+
+@app.post("/api/snapshots/verify")
+def api_snapshots_verify():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    sid = str(body.get("id") or "").strip()
+    source = str(body.get("source") or "").strip() or "backup"
+    if not sid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    try:
+        return jsonify({"ok": True, **_snapshot_verify(cfg, source, sid)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+
+@app.post("/api/snapshots/delete")
+def api_snapshots_delete():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    body = request.get_json(force=True) or {}
+    if not bool(body.get("confirm")):
+        return jsonify({"ok": False, "error": "confirmation required"}), 400
+    sid = str(body.get("id") or "").strip()
+    source = str(body.get("source") or "").strip() or "backup"
+    if not sid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    try:
+        _snapshot_delete(cfg, source, sid)
+        return jsonify({"ok": True, "deleted": sid, "source": source})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e) or e.__class__.__name__}), 400
+
+
+@app.get("/api/snapshots/export")
+def api_snapshots_export():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
+    sid = str(request.args.get("id") or "").strip()
+    source = str(request.args.get("source") or "").strip() or "backup"
+    if not sid:
+        return jsonify({"ok": False, "error": "id required"}), 400
+    if source == "support_snapshot":
+        p = _support_snapshot_path(sid)
+        if not p.exists():
+            return jsonify({"ok": False, "error": "snapshot not found"}), 404
+        resp = make_response(p.read_bytes())
+        resp.headers["Content-Type"] = "application/json; charset=utf-8"
+        resp.headers["Content-Disposition"] = f'attachment; filename="{p.name}"'
+        return resp
+    bdir = backup_dir(cfg)
+    zpath = _backup_zip_path(bdir, sid)
+    if zpath.exists():
+        resp = make_response(zpath.read_bytes())
+        resp.headers["Content-Type"] = "application/zip"
+        resp.headers["Content-Disposition"] = f'attachment; filename="{zpath.name}"'
+        return resp
+    return jsonify({"ok": False, "error": "export not found"}), 404
+
+
+@app.get("/api/snapshots/undo_status")
+def api_snapshots_undo_status():
+    return api_undo_status()
+
+
 def _backup_safe(s: str) -> str:
     out = re.sub(r"[^A-Za-z0-9_.-]+", "_", (s or "").strip())
     out = out.strip("_.-")
@@ -16288,6 +16391,86 @@ def _support_snapshot_create(cfg: dict[str, Any]) -> dict[str, Any]:
     tmp.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
     return {"id": sid, "created_at": created, "label": snap["label"], "path": str(path)}
+
+
+def _snapshot_rows(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for row in _support_snapshot_list():
+        p = Path(str(row.get("path") or ""))
+        out.append({
+            "id": str(row.get("id") or ""),
+            "label": str(row.get("label") or ""),
+            "created_at": str(row.get("created_at") or ""),
+            "source": "support_snapshot",
+            "snapshot_type": "snapshot",
+            "bytes": int(p.stat().st_size) if p.exists() else 0,
+            "meta": row,
+        })
+    for row in _list_backups(backup_dir(cfg), include_db_full=True):
+        kind = str(row.get("kind") or "")
+        out.append({
+            "id": str(row.get("id") or ""),
+            "label": str(row.get("display_name") or row.get("id") or ""),
+            "created_at": str(row.get("created_at") or ""),
+            "source": "backup",
+            "snapshot_type": "full" if kind == "db_full" else "measurement",
+            "bytes": int(row.get("zip_bytes") or row.get("bytes") or 0),
+            "meta": row,
+        })
+    out.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+    return out
+
+
+def _snapshot_preview(cfg: dict[str, Any], source: str, sid: str) -> dict[str, Any]:
+    if source == "support_snapshot":
+        p = _support_snapshot_path(sid)
+        if not p.exists():
+            raise FileNotFoundError("snapshot not found")
+        raw = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise RuntimeError("invalid snapshot")
+        return {"source": source, "id": sid, "meta": raw, "restorable": False, "preview": {"settings": bool(raw.get("settings")), "monitor": bool(raw.get("monitor")), "app_state": bool(raw.get("app_state"))}}
+    meta = _read_backup_meta(backup_dir(cfg), sid)
+    if not meta:
+        raise FileNotFoundError("backup not found")
+    return {"source": source, "id": sid, "meta": meta, "restorable": True, "preview": {"measurement": meta.get("measurement"), "field": meta.get("field"), "entity_id": meta.get("entity_id"), "friendly_name": meta.get("friendly_name"), "kind": meta.get("kind"), "bytes": meta.get("bytes")}}
+
+
+def _snapshot_delete(cfg: dict[str, Any], source: str, sid: str) -> None:
+    if source == "support_snapshot":
+        p = _support_snapshot_path(sid)
+        p.unlink(missing_ok=True)
+        return
+    bdir = backup_dir(cfg)
+    bid = _backup_safe(sid)
+    if bid != sid:
+        raise RuntimeError("invalid snapshot id")
+    zpath = _backup_zip_path(bdir, bid)
+    meta_path, lp_path = _backup_files(bdir, bid)
+    zpath.unlink(missing_ok=True)
+    meta_path.unlink(missing_ok=True)
+    lp_path.unlink(missing_ok=True)
+
+
+def _snapshot_verify(cfg: dict[str, Any], source: str, sid: str) -> dict[str, Any]:
+    if source == "support_snapshot":
+        p = _support_snapshot_path(sid)
+        if not p.exists():
+            raise FileNotFoundError("snapshot not found")
+        raw = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise RuntimeError("invalid snapshot")
+        return {"source": source, "id": sid, "verified": True, "checks": {"readable": True, "json": True, "settings": bool(raw.get("settings")), "monitor": bool(raw.get("monitor")), "app_state": bool(raw.get("app_state"))}}
+    meta = _read_backup_meta(backup_dir(cfg), sid)
+    if not meta:
+        raise FileNotFoundError("backup not found")
+    lines = 0
+    with _open_backup_lp_text(backup_dir(cfg), sid, is_fullbackup=(str(meta.get("kind") or "") == "db_full")) as fh:
+        for _ln in fh:
+            lines += 1
+            if lines >= 2000:
+                break
+    return {"source": source, "id": sid, "verified": True, "checks": {"meta": True, "payload_readable": True, "sample_lines": lines, "kind": str(meta.get("kind") or "")}}
 
 
 def _backup_create_range(

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>InfluxBro – Snapshots</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
+    .content { padding: 16px; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:end; margin-top:10px; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-top:12px; }
+    .muted { opacity:0.72; font-size:12px; }
+    .err { color:#b00020; white-space:pre-wrap; }
+    .ok { color:#0a7a28; white-space:pre-wrap; }
+    table { border-collapse: collapse; width:100%; margin-top:10px; }
+    th, td { border:1px solid #eee; padding:6px 8px; font-size:12px; vertical-align:top; }
+    th { background:#f6f6f6; text-align:left; }
+    tr.sel { background:#eef3ff; }
+    pre { white-space: pre-wrap; background:#fafafa; border:1px solid #eee; border-radius:12px; padding:10px; }
+    button, select { padding:10px 12px; height:40px; box-sizing:border-box; }
+  </style>
+</head>
+<body>
+  {% include "_topbar.html" %}
+  <div class="shell">
+    {% include "_nav.html" %}
+    <main class="content" data-ui="snapshots_page.main" data-ib-pickkey="snapshots_page.main" title="snapshots.page">
+      <h2>Snapshots</h2>
+      <div class="muted">MVP fuer verifizierte Snapshots, Backup-Preview, Integritaetspruefung und Undo-Status auf Basis der vorhandenen Backup-/Verify-/Undo-Bausteine.</div>
+
+      <div class="row">
+        <div><label>Typ</label><select id="snap_type" data-ui="snapshots_main.select_type" data-ib-pickkey="snapshots_main.select_type"><option value="">alle</option><option value="snapshot">Snapshot</option><option value="measurement">Measurement</option><option value="full">Full</option></select></div>
+        <div><label>&nbsp;</label><button id="refresh" data-ui="snapshots_main.btn_refresh" data-ib-pickkey="snapshots_main.btn_refresh">Refresh</button></div>
+        <div><label>&nbsp;</label><button id="create_support" data-ui="snapshots_main.btn_create_support" data-ib-pickkey="snapshots_main.btn_create_support">Create Snapshot</button></div>
+        <div><label>&nbsp;</label><button id="verify" data-ui="snapshots_main.btn_verify" data-ib-pickkey="snapshots_main.btn_verify">Verify Snapshot</button></div>
+        <div><label>&nbsp;</label><button id="preview" data-ui="snapshots_main.btn_preview" data-ib-pickkey="snapshots_main.btn_preview">Restore Preview</button></div>
+        <div><label>&nbsp;</label><button id="export_btn" data-ui="snapshots_main.btn_export" data-ib-pickkey="snapshots_main.btn_export">Export Snapshot</button></div>
+        <div><label>&nbsp;</label><button id="delete_btn" data-ui="snapshots_main.btn_delete" data-ib-pickkey="snapshots_main.btn_delete">Delete Snapshot</button></div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:800;">Snapshot Browser</div>
+        <table id="snap_tbl" data-ui="snapshots_main.tbl" data-ib-pickkey="snapshots_main.tbl">
+          <thead><tr><th>Label</th><th>Typ</th><th>Quelle</th><th>Erstellt</th><th>Größe</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:800;">Preview / Verify / Report</div>
+        <pre id="preview_box">-</pre>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:800;">Undo Status</div>
+        <pre id="undo_box">-</pre>
+      </div>
+
+      <div id="err" class="err"></div>
+      <div id="ok" class="ok"></div>
+    </main>
+  </div>
+  <script>
+    const q = (id)=>document.getElementById(id);
+    const err = (s)=>{ q('err').textContent = String(s || ''); };
+    const ok = (s)=>{ q('ok').textContent = String(s || ''); };
+    let ROWS = [];
+    let SEL = null;
+
+    async function api(url, opts){
+      const r = await fetch(url, opts);
+      const j = await r.json().catch(()=>({ok:false,error:'Invalid JSON'}));
+      if(!r.ok || !j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      return j;
+    }
+    function selected(){ return SEL; }
+    function render(){
+      const tbody = q('snap_tbl').querySelector('tbody');
+      tbody.innerHTML = '';
+      const typ = String(q('snap_type').value || '');
+      const rows = ROWS.filter(r => !typ || String(r.snapshot_type || '') === typ);
+      rows.forEach((r)=>{
+        const tr = document.createElement('tr');
+        if(SEL && SEL.id === r.id && SEL.source === r.source) tr.className = 'sel';
+        tr.onclick = ()=>{ SEL = { id: String(r.id || ''), source: String(r.source || '') }; render(); };
+        tr.innerHTML = `<td>${String(r.label || '')}</td><td>${String(r.snapshot_type || '')}</td><td>${String(r.source || '')}</td><td>${String(r.created_at || '')}</td><td>${String(r.bytes || 0)}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    async function load(){
+      err(''); ok('');
+      const j = await api('./api/snapshots');
+      ROWS = Array.isArray(j.rows) ? j.rows : [];
+      render();
+      const u = await api('./api/snapshots/undo_status');
+      q('undo_box').textContent = JSON.stringify(u, null, 2);
+    }
+    async function doPreview(){ const s = selected(); if(!s) return; const j = await api('./api/snapshots/preview?id=' + encodeURIComponent(s.id) + '&source=' + encodeURIComponent(s.source)); q('preview_box').textContent = JSON.stringify(j, null, 2); }
+    async function doVerify(){ const s = selected(); if(!s) return; const j = await api('./api/snapshots/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(s) }); q('preview_box').textContent = JSON.stringify(j, null, 2); }
+    async function doCreate(){ const j = await api('./api/snapshots/create', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'support_snapshot' }) }); ok('Snapshot erstellt: ' + String(j.row && j.row.id || '')); await load(); }
+    async function doDelete(){ const s = selected(); if(!s) return; await api('./api/snapshots/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...s, confirm:true }) }); ok('Snapshot gelöscht.'); SEL = null; await load(); }
+    function doExport(){ const s = selected(); if(!s) return; window.location.href = './api/snapshots/export?id=' + encodeURIComponent(s.id) + '&source=' + encodeURIComponent(s.source); }
+    q('refresh').addEventListener('click', ()=>load().catch(e=>err(e.message)));
+    q('snap_type').addEventListener('change', render);
+    q('preview').addEventListener('click', ()=>doPreview().catch(e=>err(e.message)));
+    q('verify').addEventListener('click', ()=>doVerify().catch(e=>err(e.message)));
+    q('create_support').addEventListener('click', ()=>doCreate().catch(e=>err(e.message)));
+    q('delete_btn').addEventListener('click', ()=>doDelete().catch(e=>err(e.message)));
+    q('export_btn').addEventListener('click', doExport);
+    load().catch(e=>err(e.message));
+  </script>
+</body>
+</html>

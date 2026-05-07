@@ -818,6 +818,17 @@ def test_all_main_pages_use_viewport_fit_cover_and_sysinfo_is_disk_only():
     assert "parts.push('Load1: ' + l1" not in nav
 
 
+def test_snapshots_page_and_nav_exist():
+    nav = (Path(__file__).resolve().parents[1] / 'influxbro' / 'app' / 'templates' / '_nav.html').read_text()
+    page = (Path(__file__).resolve().parents[1] / 'influxbro' / 'app' / 'templates' / 'snapshots.html').read_text()
+    assert 'href="./snapshots"' in nav
+    assert 'Snapshots' in nav
+    assert 'data-ui="snapshots_page.main"' in page
+    assert './api/snapshots' in page
+    assert './api/snapshots/create' in page
+    assert './api/snapshots/verify' in page
+
+
 def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-ib-tooltip-toggle="1"' in tooltips

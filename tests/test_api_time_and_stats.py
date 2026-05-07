@@ -1809,6 +1809,35 @@ def test_series_inventory_timeout_returns_fallback_instead_of_500(load_app_modul
     assert calls[1]['days'] == 7
 
 
+def test_snapshots_list_and_preview_support_snapshot(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_monitor_template_snapshot", lambda: {"ok": True})
+    monkeypatch.setattr(app_mod, "_app_state_load", lambda: {"state": "ok"})
+    row = app_mod._support_snapshot_create(app_mod.load_cfg())
+    client = app_mod.app.test_client()
+    r = client.get('/api/snapshots')
+    j = r.get_json()
+    assert r.status_code == 200
+    assert j['ok'] is True
+    assert any(str(x.get('id') or '') == str(row['id']) for x in j['rows'])
+    r2 = client.get('/api/snapshots/preview?id=' + row['id'] + '&source=support_snapshot')
+    j2 = r2.get_json()
+    assert r2.status_code == 200
+    assert j2['ok'] is True
+    assert j2['source'] == 'support_snapshot'
+
+
+def test_snapshots_delete_support_snapshot(load_app_module, tmp_path, monkeypatch):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    monkeypatch.setattr(app_mod, "_monitor_template_snapshot", lambda: {"ok": True})
+    monkeypatch.setattr(app_mod, "_app_state_load", lambda: {"state": "ok"})
+    row = app_mod._support_snapshot_create(app_mod.load_cfg())
+    client = app_mod.app.test_client()
+    r = client.post('/api/snapshots/delete', json={'id': row['id'], 'source': 'support_snapshot', 'confirm': True})
+    assert r.status_code == 200
+    assert not app_mod._support_snapshot_path(row['id']).exists()
+
+
 def test_native_fullbackup_uses_explicit_host_and_org_flags(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     job_id = "job-fullbackup"
