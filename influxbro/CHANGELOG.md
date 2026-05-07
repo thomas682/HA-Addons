@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.561
+
+### Fix
+
+- White-Screen / globale Seiteninitialisierung: `dbinfo.html` rendert keinen JavaScript-Rest mehr nach `</html>`; `SELECTED_STORAGE_NAME` liegt jetzt korrekt im bestehenden Scriptblock. Zusätzlich gibt es einen globalen `safeReveal`-Fallback in `_topbar.html`, damit ein optionaler Initialisierungsfehler die Hauptinhalte nicht dauerhaft weiß lässt, sondern Mobile-Overlay und Hauptinhalt wieder sichtbar gemacht werden. ([#529](https://github.com/thomas682/HA-Addons/issues/529))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.560
 
 ### Fix

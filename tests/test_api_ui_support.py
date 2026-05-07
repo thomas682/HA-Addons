@@ -245,6 +245,8 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "if(u.includes('/api/sysinfo')) return false;" in tooltips_body
     assert 'window.InfluxBroEnsureSummarySettingsButtons = function(){' in topbar
     assert 'window.InfluxBroDialogStandards = {' in topbar
+    assert 'window.InfluxBroSafeReveal = safeReveal;' in topbar
+    assert "window.addEventListener('unhandledrejection'" in topbar
     assert "ui_superpicker_shortcut: 'ctrl+s'" in topbar
     assert 'function _shortcutMatches(ev){' in topbar
     assert 'async function _openConfiguredSuperpicker(){' in topbar
@@ -829,6 +831,9 @@ def test_dbinfo_storage_table_exposes_safe_delete_selection():
     assert 'safe_del' in dbinfo
     assert 'tr.className = it.safe_delete ? \'selectable\' : \'\';' in dbinfo
     assert "./api/storage_usage/delete" in dbinfo
+    assert "let SELECTED_STORAGE_NAME = '';" in dbinfo
+    assert dbinfo.rstrip().endswith("</html>")
+    assert dbinfo.count("<script") == dbinfo.count("</script>")
 
 
 def test_bottom_statusbar_uses_ios_safe_area_layout_and_hides_influx_chip():

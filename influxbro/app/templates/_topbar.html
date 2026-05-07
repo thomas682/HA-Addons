@@ -2915,6 +2915,8 @@
       }catch(e){}
     }
     function _normalizeDialogFooters(){
+      if(window.__ib_dialog_footer_busy) return;
+      window.__ib_dialog_footer_busy = true;
       try{
         _ensureDialogFooter('#ib_page_search_modal', '#ib_page_search_modal_close');
         _ensureDialogFooter('#analysis_log_modal', '#analysis_log_modal_close', { buttonClass: 'btn_sm ib_dialog_superpicker', superpicker: true });
@@ -2929,11 +2931,24 @@
           }catch(e){}
         });
       }catch(e){}
+      finally{ try{ window.__ib_dialog_footer_busy = false; }catch(e){} }
     }
     try{
-      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _normalizeDialogFooters, { once: true });
-      else _normalizeDialogFooters();
-      new MutationObserver(_normalizeDialogFooters).observe(document.body, { childList: true, subtree: true });
+      const _scheduleDialogFooterNormalize = (()=>{
+        let raf = 0;
+        return ()=>{
+          try{
+            if(raf) cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(()=>{
+              raf = 0;
+              _normalizeDialogFooters();
+            });
+          }catch(e){ _normalizeDialogFooters(); }
+        };
+      })();
+      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _scheduleDialogFooterNormalize, { once: true });
+      else _scheduleDialogFooterNormalize();
+      new MutationObserver(_scheduleDialogFooterNormalize).observe(document.body, { childList: true, subtree: true });
     }catch(e){}
   })();
   </script>
@@ -2941,6 +2956,7 @@
   // Keep CSS var --ib-topbar-h in sync with actual topbar height (responsive)
   (function(){
     let _ibTopbarRaf = 0;
+    let _ibTopbarBusy = false;
     function _measurePagecardHeight(pc){
       try{
         if(!pc) return 0;
@@ -2956,6 +2972,8 @@
       }catch(e){ return 0; }
     }
     function _updateTopbarHeight(){
+      if(_ibTopbarBusy) return;
+      _ibTopbarBusy = true;
       try{
         const el = document.querySelector('.ib_topbar');
         if(!el) return;
@@ -2969,6 +2987,7 @@
         const bb = document.querySelector('.ib_bottombar');
         if(bb){ const bh = Math.ceil(bb.getBoundingClientRect().height); document.documentElement.style.setProperty('--ib-bottombar-h', String(bh) + 'px'); }
       }catch(e){}
+      finally{ _ibTopbarBusy = false; }
     }
     function _scheduleTopbarHeightUpdate(){
       try{
@@ -2980,10 +2999,48 @@
       }catch(e){ _updateTopbarHeight(); }
     }
     try{ window.InfluxBroTopbarLayout = { update: _scheduleTopbarHeightUpdate }; }catch(e){}
-    try{ _scheduleTopbarHeightUpdate(); window.addEventListener('resize', _scheduleTopbarHeightUpdate); new MutationObserver(_scheduleTopbarHeightUpdate).observe(document.body, { childList: true, subtree: true, attributes: true }); }catch(e){}
+    try{ _scheduleTopbarHeightUpdate(); window.addEventListener('resize', _scheduleTopbarHeightUpdate); new MutationObserver(_scheduleTopbarHeightUpdate).observe(document.body, { childList: true, subtree: true }); }catch(e){}
   })();
   </script>
 </header>
+
+<script>
+(function(){
+  function safeReveal(reason){
+    try{
+      const main = document.querySelector('main.content');
+      const shell = document.querySelector('.shell');
+      if(document.documentElement){
+        document.documentElement.style.visibility = 'visible';
+        document.documentElement.style.opacity = '1';
+      }
+      if(document.body){
+        document.body.style.visibility = 'visible';
+        document.body.style.opacity = '1';
+      }
+      if(shell){
+        shell.style.visibility = 'visible';
+        shell.style.opacity = '1';
+      }
+      if(main){
+        main.hidden = false;
+        main.style.display = '';
+        main.style.visibility = 'visible';
+        main.style.opacity = '1';
+      }
+      const navOverlay = document.getElementById('ib_nav_mobile_overlay');
+      if(navOverlay) navOverlay.style.display = 'none';
+      if(document.body) document.body.classList.remove('ib_nav_mobile_open');
+      try{ console.warn('[InfluxBro] safeReveal', reason || 'unknown'); }catch(e){}
+    }catch(e){}
+  }
+  window.InfluxBroSafeReveal = safeReveal;
+  window.addEventListener('error', ()=>safeReveal('window.error'));
+  window.addEventListener('unhandledrejection', ()=>safeReveal('unhandledrejection'));
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=>setTimeout(()=>safeReveal('DOMContentLoaded'), 1500), { once: true });
+  else setTimeout(()=>safeReveal('ready'), 1500);
+})();
+</script>
 
 <div class="ib_pagecard" id="ib_pagecard" data-ui="page_title.panel_card" data-ib-pickkey="page_title.panel_card" title="page.title.card">
   <div class="brandwrap">
