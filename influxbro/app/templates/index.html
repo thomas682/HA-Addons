@@ -7348,6 +7348,8 @@ const LOAD_STEP_LABELS = {
 };
 let LOAD_CHECKLIST_ITEMS = [];
 let ANALYSIS_CACHE_PLAN_CHOICE = { cacheStrategy: 'reuse', plan: null };
+let ANALYSIS_WINDOW_OVERRIDE = null;
+let LAST_ANALYSIS_CACHE_REUSE = null;
 let ANALYSIS_ACTIVE_SCOPE = 'dashboard_analysis';
 let ANALYSIS_ACTIVE_ACTION = '';
 let ANALYSIS_INFLIGHT = false;
@@ -8509,6 +8511,47 @@ function _analysisCacheKey(base, win, types){
     sortedTypes,
     _analysisCacheParamsKey(),
   ].join('|');
+}
+
+function _analysisReuseSelectionKey(base, types){
+  const rangeKey = $r ? String($r.value || '24h') : '24h';
+  const sortedTypes = Array.isArray(types) ? types.slice().sort().join(',') : '';
+  return [
+    String(base && base.measurement || ''),
+    String(base && base.field || ''),
+    String(base && base.entity_id || ''),
+    String(base && base.friendly_name || ''),
+    rangeKey,
+    sortedTypes,
+    _analysisCacheParamsKey(),
+  ].join('|');
+}
+
+function _analysisMaybeReuseWindow(base, types, cacheStrategy){
+  try{
+    if(String(cacheStrategy || 'reuse') === 'refresh') return null;
+    const rangeKey = $r ? String($r.value || '24h') : '24h';
+    if(String(rangeKey || '').trim().toLowerCase() === 'custom') return null;
+    const info = LAST_ANALYSIS_CACHE_REUSE;
+    if(!info || !info.win) return null;
+    if(String(info.key || '') !== _analysisReuseSelectionKey(base, types)) return null;
+    if((Date.now() - Number(info.saved_at || 0)) > 90000) return null;
+    if(!(info.win.start && info.win.stop)) return null;
+    return { start: String(info.win.start || ''), stop: String(info.win.stop || '') };
+  }catch(e){
+    return null;
+  }
+}
+
+function _analysisRememberWindow(base, types, win){
+  try{
+    if(!(win && win.start && win.stop)) return;
+    LAST_ANALYSIS_CACHE_REUSE = {
+      key: _analysisReuseSelectionKey(base, types),
+      win: { start: String(win.start || ''), stop: String(win.stop || '') },
+      saved_at: Date.now(),
+    };
+  }catch(e){}
 }
 
 /* Legacy duplicate kept only for reference.
@@ -9690,7 +9733,9 @@ async function runAnalysis(){
   err(""); ok("");
   const base = currentFilters();
   const types = getRawOutlierFilterTypes();
-  const win = await resolveEffectiveAnalysisWindow();
+  const win = (ANALYSIS_WINDOW_OVERRIDE && ANALYSIS_WINDOW_OVERRIDE.start && ANALYSIS_WINDOW_OVERRIDE.stop)
+    ? { start: String(ANALYSIS_WINDOW_OVERRIDE.start || ''), stop: String(ANALYSIS_WINDOW_OVERRIDE.stop || '') }
+    : await resolveEffectiveAnalysisWindow();
   ANALYSIS_CHUNK_LOG = [];
   if(!(Array.isArray(ANALYSIS_CHECKLIST_ITEMS) && ANALYSIS_CHECKLIST_ITEMS.length)){
     _analysisChecklistReset();
@@ -11251,11 +11296,10 @@ function _analysisEventToTextLine(row){
     const status = String(r.status || '');
     const detail = String(r.detail || '');
     return [
-      at,
+      at + ' | dur_ms=' + String(Math.max(0, Math.round(Number(durMs) || 0))),
       scope,
       action,
       'trace_id=' + (traceId || '-'),
-      'dur_ms=' + String(Math.max(0, Math.round(Number(durMs) || 0))),
       kind,
       step,
       status,
@@ -11287,6 +11331,8 @@ function _ensureFilteredLogModal(){
   // Insert a convenience button without rewriting the big HTML string.
   try{
     const $refresh = document.getElementById('analysis_log_filter_refresh');
+    const $text = document.getElementById('analysis_log_filter_text');
+    const $mark = document.getElementById('analysis_log_filter_mark');
     if($refresh && !document.getElementById('analysis_log_filter_perf')){
       const b = document.createElement('button');
       b.type = 'button';
@@ -11308,6 +11354,39 @@ function _ensureFilteredLogModal(){
       const perf = document.getElementById('analysis_log_filter_perf');
       const ref = perf && perf.nextSibling ? perf.nextSibling : $refresh.nextSibling;
       $refresh.parentElement.insertBefore(b2, ref);
+    }
+    if($text && $text.parentElement && !document.getElementById('analysis_log_filter_text_clear')){
+      const wrap = document.createElement('div');
+      wrap.className = 'ib_clear_row';
+      $text.replaceWith(wrap);
+      wrap.appendChild($text);
+      const b3 = document.createElement('button');
+      b3.type = 'button';
+      b3.id = 'analysis_log_filter_text_clear';
+      b3.className = 'btn_sm';
+      b3.style.width = 'auto';
+      b3.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 7h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 7V5.8C9 4.81 9.81 4 10.8 4h2.4C14.19 4 15 4.81 15 5.8V7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 10v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 10v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 10v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M6 7l.7 11.2c.07 1.03.92 1.8 1.95 1.8h6.7c1.03 0 1.88-.77 1.95-1.8L18 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      wrap.appendChild(b3);
+    }
+    if($mark && $mark.parentElement && !$mark.parentElement.querySelector('#analysis_log_filter_mark_clear')){
+      const b4 = document.createElement('button');
+      b4.type = 'button';
+      b4.id = 'analysis_log_filter_mark_clear';
+      b4.className = 'btn_sm';
+      b4.style.width = 'auto';
+      b4.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 7h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 7V5.8C9 4.81 9.81 4 10.8 4h2.4C14.19 4 15 4.81 15 5.8V7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 10v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 10v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M16 10v7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M6 7l.7 11.2c.07 1.03.92 1.8 1.95 1.8h6.7c1.03 0 1.88-.77 1.95-1.8L18 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      $mark.parentElement.appendChild(b4);
+    }
+    if($refresh && !document.getElementById('analysis_log_filter_wrap')){
+      const label = document.createElement('label');
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.gap = '6px';
+      label.style.fontSize = '12px';
+      label.style.alignSelf = 'end';
+      label.innerHTML = '<input id="analysis_log_filter_wrap" type="checkbox" checked /> <span>Umbruch</span>';
+      const ref2 = document.getElementById('analysis_log_filter_copy') || document.getElementById('analysis_log_filter_perf') || $refresh;
+      ref2.parentElement.insertBefore(label, ref2);
     }
   }catch(e){}
 
@@ -11359,6 +11438,9 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
   const $mark = document.getElementById('analysis_log_filter_mark');
   const $markPrev = document.getElementById('analysis_log_filter_mark_prev');
   const $markNext = document.getElementById('analysis_log_filter_mark_next');
+  const $textClear = document.getElementById('analysis_log_filter_text_clear');
+  const $markClear = document.getElementById('analysis_log_filter_mark_clear');
+  const $wrap = document.getElementById('analysis_log_filter_wrap');
   if($scope && defaultScope !== undefined) $scope.value = String(defaultScope || '');
   if($action && defaultAction !== undefined) $action.value = String(defaultAction || '');
 
@@ -11402,6 +11484,7 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
       const out = outRows.map(_analysisEventToTextLine).filter(Boolean);
       if($meta) $meta.textContent = 'Eintraege: ' + out.length + ' | Bereich: ' + (scopeVal || 'alle') + ' | Ausloeser: ' + (actionVal || 'alle');
       if($pre){
+        $pre.style.whiteSpace = ($wrap && !$wrap.checked) ? 'pre' : 'pre-wrap';
         $pre.innerHTML = outRows.length ? outRows.map((row)=>{
           const status = String(row && row.status || '').toLowerCase();
           const extra = (row && row.extra && typeof row.extra === 'object') ? row.extra : {};
@@ -11424,6 +11507,9 @@ async function openFilteredAnalysisLogsDialog(defaultScope, defaultAction){
     try{ if($mark) $mark['on' + evt] = _analysisLogApplyMarkSearch; }catch(e){}
   });
   if($refresh) $refresh.onclick = renderLogs;
+  if($textClear) $textClear.onclick = ()=>{ try{ if($text) $text.value = ''; }catch(e){} renderLogs(); };
+  if($markClear) $markClear.onclick = ()=>{ try{ if($mark) $mark.value = ''; }catch(e){} _analysisLogApplyMarkSearch(); };
+  if($wrap) $wrap.onchange = renderLogs;
   if($perf) $perf.onclick = ()=>{
     try{
       const id = _currentTraceId();
@@ -17362,6 +17448,7 @@ async function startDashboardAnalysis(cacheStrategy){
   try{ updateAnalysisUI(); }catch(e){}
   try{
     const base = currentFilters();
+    const types = getRawOutlierFilterTypes();
     ANALYSIS_ACTIVE_SCOPE = 'dashboard_analysis';
     ANALYSIS_ACTIVE_ACTION = (cacheStrategy === 'refresh') ? 'analysis_run_without_cache' : 'analysis_run_with_cache';
     _saveAnalysisEvent({
@@ -17388,8 +17475,10 @@ async function startDashboardAnalysis(cacheStrategy){
     }
     let freshPlan = null;
     const win = await _prepareStep('prepare_resolve_window', 'Analysefenster bestimmen', async ()=>{
-      return await resolveEffectiveAnalysisWindow();
+      const reused = _analysisMaybeReuseWindow(base, types, cacheStrategy);
+      return reused || await resolveEffectiveAnalysisWindow();
     });
+    ANALYSIS_WINDOW_OVERRIDE = win && win.start && win.stop ? { start: String(win.start || ''), stop: String(win.stop || '') } : null;
     try{
       freshPlan = (win && win.start && win.stop) ? await fetchAnalysisCachePlan(base, win) : null;
       const listRows = await fetchAnalysisCacheList();
@@ -17414,6 +17503,7 @@ async function startDashboardAnalysis(cacheStrategy){
     }
     ANALYSIS_CACHE_PLAN_CHOICE = Object.assign({}, ANALYSIS_CACHE_PLAN_CHOICE || {}, { cacheStrategy: cacheStrategy || 'reuse', plan: freshPlan });
     await runDashboardAnalysisFlow();
+    _analysisRememberWindow(base, types, win);
     try{
       const verifyPlan = (win && win.start && win.stop) ? await fetchAnalysisCachePlan(base, win) : null;
       const verifyList = await fetchAnalysisCacheList();
@@ -17451,6 +17541,7 @@ async function startDashboardAnalysis(cacheStrategy){
     _analysisChecklistSet('complete', {status: 'err', sub: e && e.message ? e.message : String(e)});
     displayError(e);
   }finally{
+    ANALYSIS_WINDOW_OVERRIDE = null;
     ANALYSIS_INFLIGHT = false;
     _setAnalysisRunButtonsDisabled(false);
     try{ updateAnalysisUI(); }catch(e){}

@@ -214,6 +214,12 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'const common = selectorSuggestionTimeParams();' in index_body
     assert 'const qp = new URLSearchParams({ measurement: m });' in index_body
     assert 'dashboard_selection.btn_measurement_profile_runtime_info' in tooltips_body
+    assert 'let LAST_ANALYSIS_CACHE_REUSE = null;' in index_body
+    assert 'function _analysisMaybeReuseWindow(base, types, cacheStrategy){' in index_body
+    assert 'id="analysis_log_filter_wrap"' in index_body or 'analysis_log_filter_wrap' in index_body
+    assert 'analysis_log_filter_text_clear' in index_body
+    assert 'analysis_log_filter_mark_clear' in index_body
+    assert "at + ' | dur_ms='" in index_body
     assert 'function _validIsoWindow(win)' in index_body
     assert 'if(!_validIsoWindow(win)){' in index_body
     assert "if(!_validIsoWindow({ start: startIso, stop: stopIso })) return;" in index_body

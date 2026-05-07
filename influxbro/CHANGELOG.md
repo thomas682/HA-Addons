@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.553
+
+### Fix
+
+- Dashboard / Analyse mit Cache: Ein unmittelbarer zweiter Klick auf `Analyse mit Cache` verwendet für dieselbe Auswahl jetzt ein stabiles zuletzt bestimmtes Analysefenster weiter, statt den Cache durch minimale relative Zeitverschiebungen sofort wieder großflächig nachladen zu lassen. Zusätzlich zeigt der Analyse-Logs-Dialog `dur_ms` direkt neben der Uhrzeit an und bietet `Umbruch` sowie Lösch-Buttons für `Textsuche` und `Markieren`. ([#520](https://github.com/thomas682/HA-Addons/issues/520))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.552
 
 ### Fix
