@@ -1,5 +1,5 @@
 
-# AGENTS v3.1 – Stand: 2026-04-29
+# AGENTS v3.1 – Stand: 2026-05-07
 
 Sprache: Deutsch · Repository: influxbro · Typ: Home Assistant Add-on
 
