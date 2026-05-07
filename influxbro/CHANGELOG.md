@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.563
+
+### Fix
+
+- Dialoge / S-Picker: Weitere Standarddialoge besitzen jetzt explizite `data-dialog-name`-/`data-dialog-template`-Metadaten, und die verbliebenen inneren Panels verwenden keine Root-Marker mehr. Dadurch verschwinden auch die späteren `dialog_unknown.btn_info`- und `dialog_unknown.btn_superpicker`-Kollisionen beim Öffnen bzw. beim S-Picker in Standarddialogen. ([#531](https://github.com/thomas682/HA-Addons/issues/531))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.562
 
 ### Fix

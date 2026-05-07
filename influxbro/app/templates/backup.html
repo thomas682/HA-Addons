@@ -422,7 +422,7 @@
         </details>
       </div>
 
-      <div id="verify_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+      <div id="verify_dialog" data-dialog-root="1" data-dialog-name="dialog.backup_verify" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="backup_verify.btn_open" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
         <div style="background:#fff; border-radius:16px; padding:20px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
           <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;"><div><h3 style="margin:0 0 6px 0;">Backup verifizieren</h3><div class="muted" style="font-size:12px; line-height:1.45;">Prüft ein Backup durch Restore in einen temporären Prüf-Bucket. Originaldaten werden nicht verändert.</div></div><button id="verify_close" class="btn_sm" type="button" style="width:auto;">Schliessen</button></div>
           <div class="grid" style="margin-top:0;">

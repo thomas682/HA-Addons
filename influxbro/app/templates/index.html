@@ -1308,7 +1308,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div class="muted" id="graph_points_info" style="margin-top: 6px;" data-ui="dashboard_graph.txt_points" title="dashboard_graph.txt_points" data-ib-pickkey="dashboard_graph.txt_points"></div>
     </details>
 
-    <div id="raw_outlier_params_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+    <div id="raw_outlier_params_dialog" data-dialog-root="1" data-dialog-name="dialog.raw_outlier_params" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dashboard_outliers.btn_params" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
       <div style="background:#fff; border-radius:16px; padding:20px; max-width:760px; width:min(760px, 100%); max-height:88vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;">
           <div>
@@ -1369,7 +1369,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </div>
 
-    <div id="analysis_strategy_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+    <div id="analysis_strategy_dialog" data-dialog-root="1" data-dialog-name="dialog.analysis_strategy" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dashboard_analysis.btn_strategy_info" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
       <div style="background:#fff; border-radius:16px; padding:20px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;">
           <div>
@@ -1403,7 +1403,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </div>
 
-    <div id="reference_detail_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+    <div id="reference_detail_dialog" data-dialog-root="1" data-dialog-name="dialog.reference_detail" data-dialog-template="dialog_info_popup" data-dialog-trigger="dashboard_selection.btn_reference_detail" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
       <div style="background:#fff; border-radius:16px; padding:20px; max-width:1100px; width:min(1100px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;"><div><h3 style="margin:0 0 6px 0;">Referenzierung – Detailliste</h3><div id="reference_detail_meta" class="muted" style="font-size:12px; line-height:1.45;">Alle Einträge mit Dateiinhalt und Suche.</div></div><button id="reference_detail_close" class="btn_sm" type="button" style="width:auto;">Schliessen</button></div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
@@ -1415,7 +1415,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </div>
 
-    <div id="analysis_strategy_json_help_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+    <div id="analysis_strategy_json_help_dialog" data-dialog-root="1" data-dialog-name="dialog.analysis_strategy_help" data-dialog-template="dialog_info_popup" data-dialog-trigger="dialog_analysis_strategy.btn_json_help" style="display:none; position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
       <div style="background:#fff; border-radius:16px; padding:16px; max-width:1080px; width:min(1080px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28); resize:both; overflow: auto; min-width:720px; min-height:520px;">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
           <div>
@@ -1433,7 +1433,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
     </div>
 
     <!-- Generic change preview / undo preview dialog (Issue #395) -->
-    <div id="change_preview_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_change_preview.root" data-ib-pickkey="dialog_change_preview.root">
+    <div id="change_preview_dialog" data-dialog-root="1" data-dialog-name="dialog.change_preview" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dialog_change_preview.btn_open" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_change_preview.root" data-ib-pickkey="dialog_change_preview.root">
       <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
           <div>
@@ -1460,7 +1460,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
     </div>
 
     <!-- Repair wizard (Issue #385) -->
-    <div id="repair_wizard_dialog" data-dialog-root="1" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_repair_wizard.root" data-ib-pickkey="dialog_repair_wizard.root">
+    <div id="repair_wizard_dialog" data-dialog-root="1" data-dialog-name="dialog.repair_wizard" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dashboard_raw.btn_repair_wizard" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_repair_wizard.root" data-ib-pickkey="dialog_repair_wizard.root">
       <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
           <div>
@@ -14885,7 +14885,7 @@ try{
       modal.style.zIndex = '10000';
       modal.style.background = 'rgba(0,0,0,0.45)';
       modal.innerHTML = `
-        <div style="max-width:900px;margin:6vh auto;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 12px 60px rgba(0,0,0,0.28);" data-dialog-root="1">
+        <div style="max-width:900px;margin:6vh auto;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 12px 60px rgba(0,0,0,0.28);" data-dialog-panel="1">
           <div style="display:flex;align-items:center;gap:12px;">
             <div style="font-weight:800;font-size:16px;">Git Bugreport</div>
           </div>
