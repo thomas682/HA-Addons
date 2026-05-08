@@ -99,6 +99,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Zoom wird im Browser gespeichert (pro Browser/Client) und skaliert die komplette UI proportional (auch Tabellen/Graphen/Buttongroessen).
 - Neu: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden automatisch eine passende Default-Zoomstufe je nach Viewport-Breite gesetzt (z.B. iPhone groesser, Desktop 100%). Danach kannst du wie gewohnt mit `-`/`+` anpassen.
 - Der globale Start-Fallback `safeReveal` bleibt aktiv, meldet normale Start-Enthuellungen aber nicht mehr als Warnung. Warnungen erscheinen nur noch bei echten Browserfehlern oder unbehandelten Promise-Fehlern.
+- Standard-Tooltips besitzen oben rechts einen eigenen `Tooltips`-Schalter. Wenn du bei einem sichtbaren Tooltip `Shift` gedrueckt haeltst, bleibt dieser offen, damit du den kleinen Button `Dokumentation oeffnen` oder andere interaktive Inhalte direkt im Tooltip benutzen kannst.
 
 ## Installation in Home Assistant
 

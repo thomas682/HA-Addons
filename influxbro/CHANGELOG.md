@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.573
+
+### Fix
+
+- Tooltips / Dashboard-Typen-Chips: Die globalen Standard-Tooltips haben jetzt wieder den globalen Toggle direkt im Tooltip-Kopf, liefern fuer technische Button-/Chip-Namen immer eine Kurzbeschreibung plus Dokumentationsbutton und halten bei gedrueckter `Shift`-Taste interaktive Inhalte offen. Gleichzeitig ist der separate Spezial-Tooltip fuer die Analyse-Typen-Chips entfernt, sodass dort nur noch der einheitliche Standard-Tooltip ohne Zusatzfelder wie `Schweregrad`, `Datenquelle` oder `Status` verwendet wird. ([#494](https://github.com/thomas682/HA-Addons/issues/494))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.572
 
 ### Fix

@@ -1127,18 +1127,12 @@ def test_analysis_uses_selected_types_for_cache_and_status():
 def test_analysis_type_chips_use_professional_tooltips_with_docs():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'const OUTLIER_TYPE_META = {' in body
-    assert 'function _ensureOutlierChipTooltip()' in body
-    assert 'role="tooltip"' in body or "setAttribute('role', 'tooltip')" in body
-    assert 'function _renderOutlierChipTooltip(target)' in body
-    assert 'function _showOutlierChipTooltip(target, pinned)' in body
-    assert 'function _closePinnedOutlierChipTooltip()' in body
     assert "data-doc=\"" in body or "data-doc=\'" in body or "data-doc=\"'" not in body
-    assert "window.open(_outlierChipDocUrl(docKey), '_blank', 'noopener')" in body
-    assert "setTimeout(()=>{ _showOutlierChipTooltip(el, false); }, 350);" in body
-    assert "_hideOutlierChipTooltip(200);" in body
-    assert "key === 'Enter' || key === ' '" in body
-    assert "key === 'Escape'" in body
-    assert "key === '?' || key === '/'" in body
+    assert 'function _ensureOutlierChipTooltip()' not in body
+    assert 'function _renderOutlierChipTooltip(target)' not in body
+    assert 'function _showOutlierChipTooltip(target, pinned)' not in body
+    assert 'function _closePinnedOutlierChipTooltip()' not in body
+    assert '? öffnet Doku' not in body
 
 
 def test_unified_tooltip_engine_and_graph_adapter_exist():

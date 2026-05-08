@@ -7325,12 +7325,6 @@ const OUTLIER_TYPE_META = {
     doc: 'ignored'
   }
 };
-let OUTLIER_CHIP_TOOLTIP = null;
-let OUTLIER_CHIP_TOOLTIP_PINNED = false;
-let OUTLIER_CHIP_TOOLTIP_TARGET = null;
-let OUTLIER_CHIP_TOOLTIP_SHOW_TIMER = null;
-let OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null;
-
 let ANALYSIS_SELECTED_TYPES = ['rate_jump', 'negative_jump', 'reset_event', 'range_violation', 'time_gap', 'fault_cluster', 'null_value', 'zero_value'];
 let ANALYSIS_UNSELECTED_TYPES = [];
 let ANALYSIS_SHOW_IGNORED = false;
@@ -9288,116 +9282,6 @@ function _outlierChipSeverityColor(severity){
   if(severity === 'high') return '#dc2626';
   if(severity === 'medium') return '#ea580c';
   return '#6b7280';
-}
-
-function _outlierChipDocUrl(docKey){
-  return '/docs/' + encodeURIComponent(String(docKey || ''));
-}
-
-function _ensureOutlierChipTooltip(){
-  if(OUTLIER_CHIP_TOOLTIP) return OUTLIER_CHIP_TOOLTIP;
-  const root = document.createElement('div');
-  root.id = 'analysis_chip_tooltip';
-  root.className = 'ib-chip-tooltip';
-  root.setAttribute('role', 'tooltip');
-  root.setAttribute('aria-hidden', 'true');
-  root.innerHTML = '<div id="analysis_chip_tooltip_content"></div>';
-  root.addEventListener('mouseenter', ()=>{
-    if(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER); OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null; }
-  });
-  root.addEventListener('mouseleave', ()=>{
-    if(OUTLIER_CHIP_TOOLTIP_PINNED) return;
-    _hideOutlierChipTooltip(180);
-  });
-  document.body.appendChild(root);
-  OUTLIER_CHIP_TOOLTIP = root;
-  return root;
-}
-
-function _positionOutlierChipTooltip(target){
-  const tip = _ensureOutlierChipTooltip();
-  const rect = target.getBoundingClientRect();
-  const w = tip.offsetWidth || 360;
-  const h = tip.offsetHeight || 220;
-  const vw = window.innerWidth || document.documentElement.clientWidth || 0;
-  const vh = window.innerHeight || document.documentElement.clientHeight || 0;
-  let left = rect.left;
-  let top = rect.bottom + 10;
-  if(left + w > vw - 12) left = Math.max(12, vw - w - 12);
-  if(top + h > vh - 12) top = Math.max(12, rect.top - h - 14);
-  tip.style.left = Math.round(left) + 'px';
-  tip.style.top = Math.round(top) + 'px';
-}
-
-function _renderOutlierChipTooltip(target){
-  const type = normalizeOutlierTypeKey(target && target.getAttribute('data-type'));
-  const active = String(target && target.getAttribute('data-active') || '') === '1';
-  const meta = OUTLIER_TYPE_META[type] || {};
-  const count = Number((ANALYSIS_STATE && ANALYSIS_STATE.foundByType && ANALYSIS_STATE.foundByType[type]) || 0) || 0;
-  const sev = String(meta.severity || 'low');
-  const sevColor = _outlierChipSeverityColor(sev);
-  const title = _escHtml(_outlierStrategyTypeLabel(type));
-  const ident = _escHtml('dashboard_analysis.chip_type.' + type);
-  const desc = _escHtml(String(meta.description || 'Keine Beschreibung vorhanden.'));
-  const source = _escHtml(String(meta.source || 'Strategie'));
-  const example = _escHtml(String(meta.example || '—'));
-  const status = active ? 'Aktiv' : 'Deaktiviert';
-  const docUrl = _outlierChipDocUrl(meta.doc || type);
-  const html = `
-    <div class="ib-chip-tooltip-head">
-      <div class="ib-chip-tooltip-icon" style="background:${sevColor};"></div>
-      <div>
-        <div class="ib-chip-tooltip-title">${title}</div>
-        <div class="ib-chip-tooltip-key">${ident}</div>
-      </div>
-    </div>
-    <div class="ib-chip-tooltip-desc">${desc}</div>
-    <div class="ib-chip-tooltip-meta">
-      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Schweregrad</div><div class="ib-chip-tooltip-meta-value"><span class="sev-dot" style="background:${sevColor};"></span>${_escHtml(sev === 'high' ? 'Hoch' : sev === 'medium' ? 'Mittel' : 'Niedrig')}</div></div>
-      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Datenquelle</div><div class="ib-chip-tooltip-meta-value">${source}</div></div>
-      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Status</div><div class="ib-chip-tooltip-meta-value">${_escHtml(status)}</div></div>
-      <div class="ib-chip-tooltip-meta-item"><div class="ib-chip-tooltip-meta-label">Treffer</div><div class="ib-chip-tooltip-meta-value">${String(count)}</div></div>
-    </div>
-    <div class="ib-chip-tooltip-example"><div class="ib-chip-tooltip-example-label">Beispiel</div><code>${example}</code></div>
-    <div class="ib-chip-tooltip-foot"><a href="${_escAttr(docUrl)}" target="_blank" rel="noopener noreferrer" data-doc-link="1">Dokumentation öffnen</a><span>? öffnet Doku · Esc schließt</span></div>
-  `;
-  const tip = _ensureOutlierChipTooltip();
-  const content = tip.querySelector('#analysis_chip_tooltip_content');
-  if(content) content.innerHTML = html;
-  tip.classList.toggle('is-pinned', OUTLIER_CHIP_TOOLTIP_PINNED);
-  tip.classList.add('is-open');
-  tip.setAttribute('aria-hidden', 'false');
-  target.setAttribute('aria-describedby', 'analysis_chip_tooltip');
-  _positionOutlierChipTooltip(target);
-}
-
-function _showOutlierChipTooltip(target, pinned){
-  if(!target) return;
-  if(OUTLIER_CHIP_TOOLTIP_SHOW_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_SHOW_TIMER); OUTLIER_CHIP_TOOLTIP_SHOW_TIMER = null; }
-  if(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER); OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null; }
-  OUTLIER_CHIP_TOOLTIP_PINNED = !!pinned;
-  OUTLIER_CHIP_TOOLTIP_TARGET = target;
-  _renderOutlierChipTooltip(target);
-}
-
-function _hideOutlierChipTooltip(delay){
-  if(OUTLIER_CHIP_TOOLTIP_PINNED) return;
-  const tip = _ensureOutlierChipTooltip();
-  if(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER){ clearTimeout(OUTLIER_CHIP_TOOLTIP_HIDE_TIMER); OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = null; }
-  OUTLIER_CHIP_TOOLTIP_HIDE_TIMER = setTimeout(()=>{
-    tip.classList.remove('is-open', 'is-pinned');
-    tip.setAttribute('aria-hidden', 'true');
-    OUTLIER_CHIP_TOOLTIP_TARGET = null;
-  }, Math.max(0, Number(delay || 0)));
-}
-
-function _closePinnedOutlierChipTooltip(){
-  OUTLIER_CHIP_TOOLTIP_PINNED = false;
-  const tip = _ensureOutlierChipTooltip();
-  tip.classList.remove('is-pinned', 'is-open');
-  tip.setAttribute('aria-hidden', 'true');
-  try{ if(OUTLIER_CHIP_TOOLTIP_TARGET) OUTLIER_CHIP_TOOLTIP_TARGET.focus(); }catch(e){}
-  OUTLIER_CHIP_TOOLTIP_TARGET = null;
 }
 
 function renderAnalysisTypeLists(){
@@ -18708,22 +18592,6 @@ if($referenceDetailSearch) $referenceDetailSearch.addEventListener('input', ()=>
 if($referenceDetailPrev) $referenceDetailPrev.addEventListener('click', ()=>{ _referenceDetailJump(-1); });
 if($referenceDetailNext) $referenceDetailNext.addEventListener('click', ()=>{ _referenceDetailJump(1); });
 if($nameMergeLatestBtn) $nameMergeLatestBtn.addEventListener("click", (ev)=>{ _stop(ev); mergeFriendlyNamesToLatest().catch(displayError); });
-document.addEventListener('keydown', (ev)=>{
-  const key = String(ev.key || '');
-  if(key === 'Escape' && OUTLIER_CHIP_TOOLTIP_PINNED){
-    try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-    _closePinnedOutlierChipTooltip();
-  }
-});
-document.addEventListener('mousedown', (ev)=>{
-  if(!OUTLIER_CHIP_TOOLTIP_PINNED) return;
-  const tip = _ensureOutlierChipTooltip();
-  const target = OUTLIER_CHIP_TOOLTIP_TARGET;
-  const t = ev.target;
-  if((tip && tip.contains(t)) || (target && target.contains && target.contains(t))) return;
-  _closePinnedOutlierChipTooltip();
-});
-
 // Analysis confirm dialog event listeners
 try{
   const $analysisConfirmDlg = document.getElementById('analysis_confirm_dialog');

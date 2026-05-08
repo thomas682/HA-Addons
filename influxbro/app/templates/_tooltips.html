@@ -789,7 +789,7 @@
       tip.style.color = '#f3f4f6';
       tip.style.fontSize = '12px';
       tip.style.lineHeight = '1.45';
-      tip.style.border = '1px solid #374151';
+      tip.style.border = '1px solid #60a5fa';
       tip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.14), 0 12px 24px rgba(0,0,0,0.18), 0 24px 40px rgba(0,0,0,0.22)';
       tip.style.pointerEvents = 'none';
       tip.style.opacity = '0';
@@ -908,17 +908,32 @@
       return '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#cbd5e1;user-select:none;"><input type="checkbox" data-ib-tooltip-toggle="1" ' + (TOOLTIPS_ENABLED ? 'checked' : '') + ' style="accent-color:#60a5fa;" />Tooltips</label>';
     }
 
+    function _fallbackTooltipDesc(el, title, desc, key){
+      const raw = _norm(desc);
+      if(raw && raw !== _norm(title) && raw !== _norm(key)) return raw;
+      const label = _norm(title) || _norm(key) || 'dieses Element';
+      try{
+        if(el && el.matches){
+          if(el.matches('button, [role="button"]')) return 'Fuehrt die Aktion fuer ' + label + ' aus.';
+          if(el.matches('input, select, textarea')) return 'Steuert die Eingabe oder Auswahl fuer ' + label + '.';
+          if(el.matches('a')) return 'Oeffnet den Bereich oder die Dokumentation zu ' + label + '.';
+        }
+      }catch(e){}
+      return 'Zeigt Details und Dokumentation zu ' + label + '.';
+    }
+
     function _metaFor(el, title, desc){
       const doc = _norm(el && (el.getAttribute('data-tooltip-doc') || el.getAttribute('data-doc') || _keyFromEl(el) || ''));
       const severity = _norm(el && (el.getAttribute('data-tooltip-severity') || 'low')) || 'low';
       const example = _norm(el && (el.getAttribute('data-tooltip-example') || ''));
       const count = _norm(el && (el.getAttribute('data-tooltip-count') || ''));
       const displayTitle = _norm(el && (el.getAttribute('data-tooltip-title') || title || '')) || _norm(_keyFromEl(el)) || 'Info';
-      const displayDesc = _norm(el && (el.getAttribute('data-tooltip-desc') || desc || ''));
+      const displayKey = _norm(_keyFromEl(el));
+      const displayDesc = _fallbackTooltipDesc(el, displayTitle, _norm(el && (el.getAttribute('data-tooltip-desc') || desc || '')), displayKey);
       return {
         title: displayTitle,
         desc: displayDesc,
-        key: _norm(_keyFromEl(el)),
+        key: displayKey,
         severity,
         count,
         example,
@@ -932,7 +947,7 @@
       try{ if(hideT) clearTimeout(hideT); }catch(e){}
       showT = null;
       hideT = null;
-      try{ if(tip){ tip.style.opacity = '0'; tip.style.visibility = 'hidden'; tip.style.pointerEvents = 'none'; tip.style.borderColor = '#374151'; } }catch(e){}
+      try{ if(tip){ tip.style.opacity = '0'; tip.style.visibility = 'hidden'; tip.style.pointerEvents = 'none'; tip.style.borderColor = '#60a5fa'; } }catch(e){}
       lastEl = null;
       lastTitle = '';
       pinned = false;
@@ -961,7 +976,7 @@
       const docKey = _esc(String(m.doc || m.key || keyRaw || ''));
       const docBtn = docKey ? '<button type="button" data-ib-doc-key="' + docKey + '" style="display:inline-flex;align-items:center;gap:6px;border:1px solid #60a5fa;background:#1e3a8a;color:#dbeafe;border-radius:999px;padding:6px 10px;font-size:11px;cursor:pointer;">' + DOC_SVG + '<span>Dokumentation öffnen</span></button>' : '';
       const keyHtml = _esc(keyRaw ? '<' + keyRaw + '>' : (m.key || ''));
-      const descHtml = '<div style="font-size:12px; line-height:1.55; color:#e5e7eb; margin:0 0 10px 0;">' + _esc(String(m.desc || desc || 'Keine Kurzbeschreibung hinterlegt.')) + '</div>';
+      const descHtml = '<div style="font-size:12px; line-height:1.55; color:#e5e7eb; margin:0 0 10px 0;">' + _esc(String(m.desc || desc || 'Zeigt Details und Dokumentation zu diesem Element.')) + '</div>';
       const countHtml = m.count ? '<div style="display:inline-flex;align-items:center;gap:8px;border:1px solid #374151;border-radius:10px;background:rgba(255,255,255,0.03);padding:8px 10px;margin:0 0 10px 0;font-size:12px;color:#f3f4f6;"><span style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;">Treffer</span><strong>' + _esc(String(m.count || '0')) + '</strong></div>' : '';
       const exampleHtml = m.example ? '<div style="border:1px solid #374151; border-radius:10px; background:#111827; padding:10px 11px; margin-bottom:10px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;margin-bottom:5px;">Beispiel</div><code style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#d1fae5;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
       const head = '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px;"><div style="display:flex; gap:10px; align-items:flex-start; min-width:0;"><span style="display:inline-block;width:18px;height:18px;border-radius:999px;background:' + sevColor + ';flex:0 0 auto;margin-top:2px;"></span><div style="min-width:0;"><div style="font-weight:800;font-size:14px;color:#f9fafb;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#9ca3af;margin-top:2px;">' + keyHtml + '</div></div></div><div style="flex:0 0 auto;">' + _tooltipToggleMarkup() + '</div></div>';
@@ -1087,6 +1102,14 @@
       if(!el || !el.getAttribute) return;
       const title = _norm(el.getAttribute('data-tooltip-desc')) || _storedTitle(el) || _stealTitle(el);
       if(!title) return;
+      if(key === '?' || key === '/'){
+        const meta = _metaFor(el, title.split('\n')[0], title);
+        if(meta && meta.doc){
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          _openDoc(meta.doc);
+        }
+        return;
+      }
       if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = false; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
     }, true);
     document.addEventListener('keyup', (ev)=>{
