@@ -785,21 +785,30 @@
       try{
         const j = await api('./api/undo/history?limit=200');
         const rows = Array.isArray(j.rows) ? j.rows : [];
-        PARAM_LIST = rows.map((it)=>{
+        PARAM_LIST = rows.flatMap((it)=>{
           const meta = (it && typeof it.meta === 'object' && it.meta) ? it.meta : {};
-          return {
+          if(String(meta.custom_action || '') !== 'outlier_strategy_override') return [];
+          const items = Array.isArray(meta.change_items) && meta.change_items.length
+            ? meta.change_items
+            : [{
+                parameter: 'time_gap.gap_seconds',
+                before_value: meta.before_gap_seconds,
+                after_value: meta.after_gap_seconds,
+                outlier_type: meta.outlier_type || null,
+              }];
+          return items.map((chg)=>({
             created_at: String(it.created_at || ''),
             label: String(it.label || ''),
             measurement: String(meta.measurement || it.measurement || ''),
             field: String(meta.field || ''),
             entity_id: String(meta.entity_id || '') || null,
             friendly_name: String(meta.friendly_name || '') || null,
-            parameter: String(meta.custom_action || '') === 'outlier_strategy_override' ? 'time_gap.gap_seconds' : '',
-            before_value: meta.before_gap_seconds,
-            after_value: meta.after_gap_seconds,
-            outlier_type: String(meta.outlier_type || '') || null,
+            parameter: String((chg && chg.parameter) || ''),
+            before_value: chg ? chg.before_value : null,
+            after_value: chg ? chg.after_value : null,
+            outlier_type: String((chg && chg.outlier_type) || '') || null,
             reason: String(meta.reason || ''),
-          };
+          }));
         }).filter((r)=>!!r.parameter);
         paramRender();
       }catch(e){
@@ -815,7 +824,8 @@
     function previewText(p){
       if(!p) return 'Keine Vorschau verfügbar.';
       if(String(p.undo_type || '') === 'strategy_override'){
-        return [
+        const items = Array.isArray(p.items) ? p.items : [];
+        const lines = [
           p.summary || 'Prüfungs-/Strategieänderung',
           '',
           'Serie: ' + [p.series && p.series.friendly_name || '-', p.series && p.series.entity_id || '-', p.series && p.series.measurement || '-', p.series && p.series.field || '-'].join(' | '),
@@ -824,7 +834,15 @@
           'Neu: ' + (p.after_value === null || p.after_value === undefined ? '-' : String(p.after_value)),
           'Ausreißertyp: ' + String(p.outlier_type || '-'),
           'Grund: ' + String(p.reason || '-'),
-        ].join('\n');
+        ];
+        if(items.length){
+          lines.push('');
+          lines.push('Änderungen:');
+          items.forEach((it)=>{
+            lines.push('- ' + String(it && it.parameter || '-') + ': ' + ((it && it.before_value) === null || (it && it.before_value) === undefined ? '-' : String(it.before_value)) + ' -> ' + ((it && it.after_value) === null || (it && it.after_value) === undefined ? '-' : String(it.after_value)) + (it && it.outlier_type ? (' | Typ: ' + String(it.outlier_type)) : ''));
+          });
+        }
+        return lines.join('\n');
       }
       const lines = [p.summary || 'Messwertänderung'];
       lines.push('');
@@ -834,6 +852,26 @@
         lines.push('- ' + fmtTs(c.timestamp || '') + ' | ' + String(c.value === null || c.value === undefined ? '-' : c.value));
       });
       return lines.join('\n');
+    }
+
+    async function openUndoPreviewStep(mode, preview){
+      const title = mode === 'repeat' ? 'Repeat Vorschau' : 'Undo Vorschau';
+      const txt = previewText(preview);
+      if(window.InfluxBroPopup && window.InfluxBroPopup.show){
+        return await new Promise((resolve)=>{
+          window.InfluxBroPopup.show(title, txt, {
+            actions: [
+              { label: 'Abbrechen', title: 'Abbrechen', onClick: ()=>resolve(false) },
+              { label: 'Weiter', title: 'Weiter', onClick: ()=>resolve(true) },
+            ],
+            copyText: txt,
+            copyTitle: 'Zwischenablage',
+            dialogName: 'dialog.query_info',
+            templateName: 'dialog_info_popup',
+          });
+        });
+      }
+      return confirm(txt + '\n\nVorschau gelesen und weiter zur Bestätigung?');
     }
 
     async function load(){
@@ -879,8 +917,12 @@
 
     async function doUndo(){
       const jPrev = await fetchUndoPreview('undo');
-      const msg = previewText(jPrev && jPrev.preview ? jPrev.preview : null) + '\n\nUndo wirklich ausführen?';
-      if(!confirm(msg)) return;
+      const preview = jPrev && jPrev.preview ? jPrev.preview : null;
+      if(!(await openUndoPreviewStep('undo', preview))) return;
+      let want = false;
+      if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask) want = await window.InfluxBroConfirm.ask({ title: 'Undo bestätigen', text: 'Undo jetzt ausführen?', okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_history_undo_confirm.root', templateName: 'dialog_confirm_action' });
+      else want = confirm('Undo jetzt ausführen?');
+      if(!want) return;
       const j = await api('./api/undo/undo', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
       ok('Undo ausgefuehrt.');
       await refreshUndoStatus();
@@ -889,8 +931,12 @@
 
     async function doRepeat(){
       const jPrev = await fetchUndoPreview('repeat');
-      const msg = previewText(jPrev && jPrev.preview ? jPrev.preview : null) + '\n\nRepeat wirklich ausführen?';
-      if(!confirm(msg)) return;
+      const preview = jPrev && jPrev.preview ? jPrev.preview : null;
+      if(!(await openUndoPreviewStep('repeat', preview))) return;
+      let want = false;
+      if(window.InfluxBroConfirm && window.InfluxBroConfirm.ask) want = await window.InfluxBroConfirm.ask({ title: 'Repeat bestätigen', text: 'Repeat jetzt ausführen?', okLabel: 'OK', cancelLabel: 'Abbrechen', pickerKey: 'dialog_history_repeat_confirm.root', templateName: 'dialog_confirm_action' });
+      else want = confirm('Repeat jetzt ausführen?');
+      if(!want) return;
       const j = await api('./api/undo/repeat', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
       ok('Repeat ausgefuehrt.');
       await refreshUndoStatus();

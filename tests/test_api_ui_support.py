@@ -1050,6 +1050,7 @@ def test_history_page_contains_parameter_strategy_history_section_and_preview_lo
     assert 'id="param_rows"' in history_body
     assert 'async function fetchUndoPreview(mode)' in history_body
     assert 'function previewText(p)' in history_body
+    assert 'async function openUndoPreviewStep(mode, preview)' in history_body
     assert "./api/undo/preview" in history_body
     assert "./api/undo/repeat_preview" in history_body
 
@@ -1956,6 +1957,16 @@ def test_raw_table_uses_outlier_type_labels_and_changes_button():
     assert 'id="raw_accept_time_gap"' in index_html
     assert 'data-ui="dashboard_raw.btn_aenderungen"' in index_html
     assert 'data-ui="dashboard_raw.btn_zeitluecke_akzeptieren"' in index_html
+
+
+def test_dashboard_raw_table_contains_delta_column_and_info_metadata():
+    index_html = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert '<th style="min-width: 120px;">Delta</th>' in index_html
+    assert 'function _formatDeltaMs(ms){' in index_html
+    assert 'Delta min/max/avg:' in index_html
+    assert 'Messstellentyp:' in index_html
+    assert 'Gepruefte Ausreißertypen:' in index_html
     assert "const labels = types.map((t)=> OUTLIER_TYPE_LABELS[t] || t).filter(Boolean);" in index_html
     assert "function showRawChanges(){" in index_html
     assert "function _formatOutlierStrategyHistory(rows){" in index_html

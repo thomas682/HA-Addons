@@ -1444,6 +1444,38 @@ def test_api_undo_preview_for_strategy_override(load_app_module, tmp_path):
     assert pj["preview"]["undo_type"] == "strategy_override"
     assert pj["preview"]["parameter"] == "time_gap.gap_seconds"
     assert pj["preview"]["after_value"] == 905
+    assert pj["preview"]["items"][0]["parameter"] == "time_gap.gap_seconds"
+
+
+def test_api_strategy_override_registers_general_change_items(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    client = app_mod.app.test_client()
+
+    r = client.post(
+        "/api/outlier_strategy/override",
+        json={
+            "entity_id": "sensor.demo",
+            "measurement": "Wh",
+            "field": "value",
+            "friendly_name": "Demo",
+            "mode": "manual",
+            "manual_enable_types": ["time_gap"],
+            "manual_disable_types": ["zero_value"],
+            "param_overrides": {"time_gap": {"gap_seconds": 901}},
+        },
+    )
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j["ok"] is True
+    assert any(item["parameter"] == "time_gap.gap_seconds" for item in j["change_items"])
+
+    hist = client.get("/api/undo/history?limit=10")
+    assert hist.status_code == 200
+    rows = hist.get_json()["rows"]
+    assert rows
+    meta = rows[0]["meta"]
+    assert meta["custom_action"] == "outlier_strategy_override"
+    assert any(item["parameter"] == "time_gap.gap_seconds" for item in meta["change_items"])
 
 
 def test_api_outlier_strategy_reads_legacy_keys_and_returns_new_keys(load_app_module, tmp_path, monkeypatch):

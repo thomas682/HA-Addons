@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.571
+
+### Fix
+
+- Raw / Strategy-History / Undo: Die Raw-Tabelle zeigt jetzt eine Delta-Spalte plus Delta-/Typ-/Einheiten-Metadaten im Kopfbereich. Zusätzlich protokolliert die Strategie-Override-History jetzt auch allgemeine Parameter- und Strategiewechsel, und Undo/Repeat auf der History-Seite laufen als typisierte Vorschau mit nachgelagerter Bestätigung statt als direkter Browser-Confirm. ([#538](https://github.com/thomas682/HA-Addons/issues/538))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.570
 
 ### Fix

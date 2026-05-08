@@ -14792,6 +14792,82 @@ def _outlier_strategy_override_gap_seconds(override: Any) -> float | None:
         return None
 
 
+def _outlier_strategy_public_value(value: Any) -> Any:
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, dict)):
+        try:
+            return json.loads(json.dumps(value))
+        except Exception:
+            return str(value)
+    return str(value)
+
+
+def _outlier_strategy_change_items(before: Any, after: Any) -> list[dict[str, Any]]:
+    prev = _outlier_strategy_override_entry_norm(before)
+    nxt = _outlier_strategy_override_entry_norm(after)
+    out: list[dict[str, Any]] = []
+
+    def _same(a: Any, b: Any) -> bool:
+        try:
+            return json.dumps(_outlier_strategy_public_value(a), sort_keys=True, ensure_ascii=True) == json.dumps(
+                _outlier_strategy_public_value(b), sort_keys=True, ensure_ascii=True
+            )
+        except Exception:
+            return str(a) == str(b)
+
+    def _push(parameter: str, before_value: Any, after_value: Any, *, outlier_type: str | None = None, group: str = "parameter") -> None:
+        if not parameter or _same(before_value, after_value):
+            return
+        out.append({
+            "group": group,
+            "parameter": parameter,
+            "before_value": _outlier_strategy_public_value(before_value),
+            "after_value": _outlier_strategy_public_value(after_value),
+            "outlier_type": outlier_type or None,
+        })
+
+    prev_mode = str(prev.get("mode") or "auto") if isinstance(prev, dict) else "auto"
+    next_mode = str(nxt.get("mode") or "auto") if isinstance(nxt, dict) else "auto"
+    _push("strategy.mode", prev_mode, next_mode, group="strategy")
+    _push(
+        "strategy.manual_enable_types",
+        (prev.get("manual_enable_types") if isinstance(prev, dict) else []) or [],
+        (nxt.get("manual_enable_types") if isinstance(nxt, dict) else []) or [],
+        group="strategy",
+    )
+    _push(
+        "strategy.manual_disable_types",
+        (prev.get("manual_disable_types") if isinstance(prev, dict) else []) or [],
+        (nxt.get("manual_disable_types") if isinstance(nxt, dict) else []) or [],
+        group="strategy",
+    )
+
+    prev_params = prev.get("param_overrides") if isinstance(prev, dict) and isinstance(prev.get("param_overrides"), dict) else {}
+    next_params = nxt.get("param_overrides") if isinstance(nxt, dict) and isinstance(nxt.get("param_overrides"), dict) else {}
+    for outlier_type in sorted(set(prev_params.keys()) | set(next_params.keys())):
+        prev_type = prev_params.get(outlier_type) if isinstance(prev_params.get(outlier_type), dict) else {}
+        next_type = next_params.get(outlier_type) if isinstance(next_params.get(outlier_type), dict) else {}
+        for key in sorted(set(prev_type.keys()) | set(next_type.keys())):
+            _push(f"{outlier_type}.{key}", prev_type.get(key), next_type.get(key), outlier_type=outlier_type, group="parameter")
+
+    prev_corr = prev.get("correction_overrides") if isinstance(prev, dict) and isinstance(prev.get("correction_overrides"), dict) else {}
+    next_corr = nxt.get("correction_overrides") if isinstance(nxt, dict) and isinstance(nxt.get("correction_overrides"), dict) else {}
+    for outlier_type in sorted(set(prev_corr.keys()) | set(next_corr.keys())):
+        prev_type = prev_corr.get(outlier_type) if isinstance(prev_corr.get(outlier_type), dict) else {}
+        next_type = next_corr.get(outlier_type) if isinstance(next_corr.get(outlier_type), dict) else {}
+        for key in sorted(set(prev_type.keys()) | set(next_type.keys())):
+            _push(
+                f"{outlier_type}.correction.{key}",
+                prev_type.get(key),
+                next_type.get(key),
+                outlier_type=outlier_type,
+                group="correction",
+            )
+
+    return out
+
+
 def _outlier_strategy_match_profile(strategy: dict[str, Any], profile: dict[str, Any]) -> tuple[bool, int, list[str]]:
     match = _outlier_strategy_match_norm(strategy.get("match"))
     derived = profile.get("derived") if isinstance(profile.get("derived"), dict) else {}
@@ -14963,10 +15039,12 @@ def api_outlier_strategy_get():
 
 @app.post("/api/outlier_strategy/override")
 def api_outlier_strategy_override_set():
+    cfg = _overlay_from_yaml_if_enabled(load_cfg())
     body = request.get_json(force=True) or {}
     entity_id = str(body.get("entity_id") or "").strip()
     measurement = str(body.get("measurement") or "").strip()
     field = str(body.get("field") or "").strip() or "value"
+    friendly_name = str(body.get("friendly_name") or "").strip() or None
     if not entity_id or not measurement or not field:
         return jsonify({"ok": False, "error": "entity_id, measurement and field required"}), 400
     key = _outlier_strategy_measurement_key(entity_id, measurement, field)
@@ -14979,6 +15057,7 @@ def api_outlier_strategy_override_set():
     correction_overrides = _outlier_strategy_corrections_norm(body.get("correction_overrides"))
     store = _outlier_strategy_load_store()
     overrides = store.get("overrides") if isinstance(store.get("overrides"), dict) else {}
+    before_override = _outlier_strategy_override_entry_norm(overrides.get(key)) if key in overrides else None
     if mode == "auto" and not manual_enable and not manual_disable and not param_overrides and not correction_overrides:
         overrides.pop(key, None)
     else:
@@ -14992,7 +15071,42 @@ def api_outlier_strategy_override_set():
         }
     store["overrides"] = overrides
     _outlier_strategy_save_store(store)
-    return jsonify({"ok": True, "override": overrides.get(key) if key in overrides else {"mode": "auto", "manual_enable_types": [], "manual_disable_types": [], "param_overrides": {}, "correction_overrides": {}}})
+    after_override = overrides.get(key) if key in overrides else None
+    change_items = _outlier_strategy_change_items(before_override, after_override)
+    if change_items:
+        reason = str(body.get("reason") or "").strip() or "Strategiewahl gespeichert"
+        trigger_action = str(body.get("trigger_action") or "strategy_override").strip() or "strategy_override"
+        trigger_button = str(body.get("trigger_button") or "dashboard_analysis.btn_strategy_info").strip() or "dashboard_analysis.btn_strategy_info"
+        _undo_mgr(cfg).register_action(
+            action_type="outlier_strategy_override",
+            bucket=str(cfg.get("bucket") or cfg.get("database") or ""),
+            measurement=measurement,
+            group_label=reason,
+            before_rows=[],
+            after_rows=[],
+            meta={
+                "custom_action": "outlier_strategy_override",
+                "change_block_id": uuid.uuid4().hex,
+                "undo_supported": True,
+                "series_key": key,
+                "entity_id": entity_id,
+                "measurement": measurement,
+                "field": field,
+                "friendly_name": friendly_name,
+                "reason": reason,
+                "trigger_page": "dashboard",
+                "trigger_source": "analysis_strategy",
+                "trigger_action": trigger_action,
+                "trigger_button": trigger_button,
+                "before_override": before_override,
+                "after_override": after_override,
+                "before_gap_seconds": _outlier_strategy_override_gap_seconds(before_override),
+                "after_gap_seconds": _outlier_strategy_override_gap_seconds(after_override),
+                "outlier_type": str(change_items[0].get("outlier_type") or "") or None,
+                "change_items": change_items,
+            },
+        )
+    return jsonify({"ok": True, "override": after_override if after_override is not None else {"mode": "auto", "manual_enable_types": [], "manual_disable_types": [], "param_overrides": {}, "correction_overrides": {}}, "change_items": change_items})
 
 
 @app.post("/api/outlier_strategy/accept_time_gap")
@@ -15071,6 +15185,7 @@ def api_outlier_strategy_accept_time_gap():
             "before_gap_seconds": _outlier_strategy_override_gap_seconds(before_override),
             "after_gap_seconds": _outlier_strategy_override_gap_seconds(next_override),
             "actual_gap_seconds": actual_gap_seconds,
+            "change_items": _outlier_strategy_change_items(before_override, next_override),
         },
     )
 
@@ -15126,6 +15241,7 @@ def api_outlier_strategy_history():
             "before_gap_seconds": meta.get("before_gap_seconds"),
             "after_gap_seconds": meta.get("after_gap_seconds"),
             "actual_gap_seconds": meta.get("actual_gap_seconds"),
+            "change_items": meta.get("change_items") if isinstance(meta.get("change_items"), list) else [],
             "undo_available": bool(last_undo_id and last_undo_id == str(action.get("action_id") or "")),
         })
         if len(rows) >= limit:
@@ -39513,6 +39629,17 @@ def _undo_action_preview(action: dict[str, Any] | None, direction: str) -> dict[
     if str(meta.get("custom_action") or "") == "outlier_strategy_override":
         before_gap = meta.get("before_gap_seconds")
         after_gap = meta.get("after_gap_seconds")
+        change_items = meta.get("change_items") if isinstance(meta.get("change_items"), list) else []
+        parameter = "time_gap.gap_seconds"
+        before_value = before_gap
+        after_value = after_gap
+        outlier_type = str(meta.get("outlier_type") or "") or None
+        if change_items:
+            first = change_items[0] if isinstance(change_items[0], dict) else {}
+            parameter = str(first.get("parameter") or parameter)
+            before_value = first.get("before_value")
+            after_value = first.get("after_value")
+            outlier_type = str(first.get("outlier_type") or outlier_type or "") or None
         return {
             "ok": True,
             "preview": {
@@ -39522,13 +39649,14 @@ def _undo_action_preview(action: dict[str, Any] | None, direction: str) -> dict[
                 "created_at": str(action.get("created_at") or ""),
                 "label": label,
                 "series": series,
-                "parameter": "time_gap.gap_seconds",
-                "before_value": before_gap,
-                "after_value": after_gap,
+                "parameter": parameter,
+                "before_value": before_value,
+                "after_value": after_value,
                 "selected_time": str(meta.get("selected_time") or "") or None,
-                "outlier_type": str(meta.get("outlier_type") or "") or None,
+                "outlier_type": outlier_type,
                 "reason": str(meta.get("reason") or "") or None,
-                "summary": f"Prüfungs-/Strategieänderung: time_gap.gap_seconds {before_gap if before_gap is not None else '-'} -> {after_gap if after_gap is not None else '-'}",
+                "items": change_items,
+                "summary": f"Prüfungs-/Strategieänderung: {parameter} {before_value if before_value is not None else '-'} -> {after_value if after_value is not None else '-'}",
             },
         }
     before_rows = action.get("before_rows") if isinstance(action.get("before_rows"), list) else []
@@ -39576,6 +39704,17 @@ def _undo_action_preview(action: dict[str, Any] | None, direction: str) -> dict[
     if str(meta.get("custom_action") or "") == "outlier_strategy_override":
         before_gap = meta.get("before_gap_seconds")
         after_gap = meta.get("after_gap_seconds")
+        change_items = meta.get("change_items") if isinstance(meta.get("change_items"), list) else []
+        parameter = "time_gap.gap_seconds"
+        before_value = before_gap
+        after_value = after_gap
+        outlier_type = str(meta.get("outlier_type") or "") or None
+        if change_items:
+            first = change_items[0] if isinstance(change_items[0], dict) else {}
+            parameter = str(first.get("parameter") or parameter)
+            before_value = first.get("before_value")
+            after_value = first.get("after_value")
+            outlier_type = str(first.get("outlier_type") or outlier_type or "") or None
         return {
             "ok": True,
             "preview": {
@@ -39585,13 +39724,14 @@ def _undo_action_preview(action: dict[str, Any] | None, direction: str) -> dict[
                 "created_at": str(action.get("created_at") or ""),
                 "label": label,
                 "series": series,
-                "parameter": "time_gap.gap_seconds",
-                "before_value": before_gap,
-                "after_value": after_gap,
+                "parameter": parameter,
+                "before_value": before_value,
+                "after_value": after_value,
                 "selected_time": str(meta.get("selected_time") or "") or None,
-                "outlier_type": str(meta.get("outlier_type") or "") or None,
+                "outlier_type": outlier_type,
                 "reason": str(meta.get("reason") or "") or None,
-                "summary": f"Prüfungs-/Strategieänderung: time_gap.gap_seconds {before_gap if before_gap is not None else '-'} -> {after_gap if after_gap is not None else '-'}",
+                "items": change_items,
+                "summary": f"Prüfungs-/Strategieänderung: {parameter} {before_value if before_value is not None else '-'} -> {after_value if after_value is not None else '-'}",
             },
         }
     before_rows = action.get("before_rows") if isinstance(action.get("before_rows"), list) else []

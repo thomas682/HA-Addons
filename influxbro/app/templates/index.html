@@ -1212,7 +1212,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
        <div id="raw_row_count" style="font-size:12px; opacity:0.7; margin-bottom:4px;"></div>
       <div class="table_box" id="raw_box" style="--max-rows: 5;">
       <table id="raw_tbl" class="list_tbl ib_tbl" data-ui="dashboard_raw.tbl_rohdaten" data-ib-pickkey="dashboard_raw.tbl_rohdaten" title="dashboard_raw.tbl_rohdaten">
-        <thead><tr><th style="min-width: 170px;">Zeit</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th></tr></thead>
+        <thead><tr><th style="min-width: 170px;">Zeit</th><th style="min-width: 120px;">Delta</th><th>Wert</th><th style="min-width: 220px;">Änderung</th><th style="min-width: 140px;">Ausreisser</th></tr></thead>
         <tbody id="raw_body"></tbody>
       </table>
     </div>
@@ -4204,7 +4204,7 @@ function _formatOutlierStrategyHistory(rows){
     `Ausreißertyp: ${_outlierStrategyTypeLabel(String(it.outlier_type || 'time_gap'))}`,
     `Aktion: ${String(it.label || it.reason || 'Änderung')}`,
     `Zeitpunkt: ${it.selected_time ? fmtTs(it.selected_time) : '-'}`,
-    `Messwertluecke alt/neu: ${(it.before_gap_seconds == null) ? '-' : fmtNum(it.before_gap_seconds)} -> ${(it.after_gap_seconds == null) ? '-' : fmtNum(it.after_gap_seconds)}`,
+    `Änderungen: ${Array.isArray(it.change_items) && it.change_items.length ? it.change_items.map((chg)=> String(chg.parameter || '-') + ' ' + ((chg.before_value == null) ? '-' : String(chg.before_value)) + ' -> ' + ((chg.after_value == null) ? '-' : String(chg.after_value))).join(' | ') : (((it.before_gap_seconds == null) ? '-' : fmtNum(it.before_gap_seconds)) + ' -> ' + ((it.after_gap_seconds == null) ? '-' : fmtNum(it.after_gap_seconds)))}`,
     `Tatsächliche Luecke: ${(it.actual_gap_seconds == null) ? '-' : fmtNum(it.actual_gap_seconds)} s`,
     `Undo verfuegbar: ${it.undo_available ? 'ja' : 'nein'}`,
   ].join('\n')).join('\n\n');
@@ -7828,6 +7828,99 @@ function _rawKey(base, win, anchorIso){
   return k;
 }
 
+function _rawRowTimeMs(row){
+  try{
+    const ms = Date.parse(String(row && row.time ? row.time : ''));
+    return isFinite(ms) ? ms : NaN;
+  }catch(e){
+    return NaN;
+  }
+}
+
+function _formatDeltaMs(ms){
+  const num = Number(ms);
+  if(!(isFinite(num) && num > 0)) return '-';
+  if(num < 1000) return Math.round(num) + ' ms';
+  const sec = num / 1000;
+  if(sec < 60) return (Math.round(sec * 10) / 10).toString().replace('.', ',') + ' s';
+  const min = sec / 60;
+  if(min < 60) return (Math.round(min * 10) / 10).toString().replace('.', ',') + ' min';
+  const hrs = min / 60;
+  if(hrs < 24) return (Math.round(hrs * 10) / 10).toString().replace('.', ',') + ' h';
+  const days = hrs / 24;
+  return (Math.round(days * 10) / 10).toString().replace('.', ',') + ' d';
+}
+
+function _rawDeltaMsAt(rows, idx){
+  try{
+    const list = Array.isArray(rows) ? rows : [];
+    if(idx <= 0 || idx >= list.length) return null;
+    const cur = _rawRowTimeMs(list[idx]);
+    const prev = _rawRowTimeMs(list[idx - 1]);
+    if(!(isFinite(cur) && isFinite(prev) && cur > prev)) return null;
+    return cur - prev;
+  }catch(e){
+    return null;
+  }
+}
+
+function _rawDeltaStats(rows){
+  const vals = [];
+  (Array.isArray(rows) ? rows : []).forEach((row, idx)=>{
+    const ms = _rawDeltaMsAt(rows, idx);
+    if(isFinite(ms) && ms > 0) vals.push(ms);
+  });
+  if(!vals.length) return { count: 0, min_ms: null, max_ms: null, avg_ms: null };
+  const sum = vals.reduce((acc, v)=>acc + v, 0);
+  return {
+    count: vals.length,
+    min_ms: Math.min(...vals),
+    max_ms: Math.max(...vals),
+    avg_ms: sum / vals.length,
+  };
+}
+
+function _rawMeasurementTypeSummary(){
+  try{
+    const parts = [];
+    const derived = LAST_OUTLIER_STRATEGY && LAST_OUTLIER_STRATEGY.profile && LAST_OUTLIER_STRATEGY.profile.derived ? LAST_OUTLIER_STRATEGY.profile.derived : {};
+    const ent = HA_ENTITY_INFO && HA_ENTITY_INFO.entity ? HA_ENTITY_INFO.entity : {};
+    if(derived && derived.internal_type) parts.push(String(derived.internal_type));
+    if(ent && ent.device_class) parts.push(String(ent.device_class));
+    if(ent && ent.state_class) parts.push(String(ent.state_class));
+    return parts.join(' / ');
+  }catch(e){
+    return '';
+  }
+}
+
+function _rawCheckedTypeSummary(){
+  try{
+    const xs = Array.isArray(ANALYSIS_SELECTED_TYPES) ? ANALYSIS_SELECTED_TYPES.slice() : [];
+    return xs.map((t)=> OUTLIER_TYPE_LABELS[t] || t).join(', ');
+  }catch(e){
+    return '';
+  }
+}
+
+function _rawSelectedOutlierSummary(){
+  try{
+    const key = String(RAW_ROW_SELECTED_KEY || '').trim();
+    if(!key) return '';
+    const row = findRawRowByKey(key);
+    if(!row) return '';
+    const out = _findOutlierInfoByTime(rowTimeFull(row) || String(row.time || ''));
+    if(!out) return '';
+    const types = Array.isArray(out.types) ? out.types.map((t)=> OUTLIER_TYPE_LABELS[t] || t).filter(Boolean) : [];
+    const parts = [];
+    if(types.length) parts.push(types.join(', '));
+    if(out.reason) parts.push(String(out.reason));
+    return parts.join(' | ');
+  }catch(e){
+    return '';
+  }
+}
+
 function renderRawTable(){
   if(!$rawBody || !$rawInfo) return;
   $rawBody.innerHTML = "";
@@ -7837,6 +7930,11 @@ function renderRawTable(){
   const eTxt = win ? fmtTs(win.stop) : "";
   const loaded = (RAW_ROWS || []).length;
   const total = RAW_META && (RAW_META.total_count !== null && RAW_META.total_count !== undefined) ? Number(RAW_META.total_count) : null;
+  const deltaStats = _rawDeltaStats(RAW_ROWS || []);
+  const unit = _currentEntityUnit();
+  const measurementType = _rawMeasurementTypeSummary();
+  const checkedTypes = _rawCheckedTypeSummary();
+  const selectedOutlier = _rawSelectedOutlierSummary();
 
   let info = "";
   if(isFinite(total)) info += `Eintraege: ${loaded} / ${total}`; else info += `Eintraege: ${loaded}`;
@@ -7852,6 +7950,11 @@ function renderRawTable(){
     const afterPts = Math.max(0, Math.trunc(Number(RAW_META.after_points || 0)));
     info += ` | Vorher/Nachher: ${beforePts}/${afterPts}`;
   }
+  if(deltaStats.count) info += ` | Delta min/max/avg: ${_formatDeltaMs(deltaStats.min_ms)} / ${_formatDeltaMs(deltaStats.max_ms)} / ${_formatDeltaMs(deltaStats.avg_ms)}`;
+  if(unit) info += ` | Einheit: ${unit}`;
+  if(measurementType) info += ` | Messstellentyp: ${measurementType}`;
+  if(checkedTypes) info += ` | Gepruefte Ausreißertypen: ${checkedTypes}`;
+  if(selectedOutlier) info += ` | Selektierter Ausreißer: ${selectedOutlier}`;
   if($rawInfo) $rawInfo.textContent = info;
   if($rawInfoInline) $rawInfoInline.textContent = info;
 
@@ -7884,14 +7987,14 @@ function renderRawTable(){
   if((RAW_ROWS || []).length === 0){
     for(let i = 0; i < 3; i++){
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td></td><td></td><td></td><td></td>';
+      tr.innerHTML = '<td></td><td></td><td></td><td></td><td></td>';
       $rawBody.appendChild(tr);
     }
     updateRawToolbarState();
     return;
   }
 
-  (RAW_ROWS || []).forEach(r => {
+  (RAW_ROWS || []).forEach((r, idx) => {
     const tr = document.createElement('tr');
     try{
       const ms = Date.parse(String(r.time || ''));
@@ -7908,17 +8011,20 @@ function renderRawTable(){
     }catch(e){}
     const tdT = document.createElement('td');
     tdT.textContent = fmtTs(r.time);
-  const tdV = document.createElement('td');
-  tdV.textContent = fmtNum(r.value);
-  tdV.style.cursor = 'pointer';
-  tdV.title = 'Doppelklick zum Bearbeiten';
-  tdV.addEventListener('dblclick', async (ev)=>{
-    try{ ev.stopPropagation(); }catch(e){}
-    // Double click enters edit mode and stages changes locally.
-    RAW_EDIT_MODE = true;
-    updateRawToolbarState();
-    await editRawValueInline(tr, r, tdV);
-  });
+    const tdD = document.createElement('td');
+    const deltaMs = _rawDeltaMsAt(RAW_ROWS || [], idx);
+    tdD.textContent = _formatDeltaMs(deltaMs);
+    const tdV = document.createElement('td');
+    tdV.textContent = fmtNum(r.value);
+    tdV.style.cursor = 'pointer';
+    tdV.title = 'Doppelklick zum Bearbeiten';
+    tdV.addEventListener('dblclick', async (ev)=>{
+      try{ ev.stopPropagation(); }catch(e){}
+      // Double click enters edit mode and stages changes locally.
+      RAW_EDIT_MODE = true;
+      updateRawToolbarState();
+      await editRawValueInline(tr, r, tdV);
+    });
     const tdH = document.createElement('td');
     try{
       const k = rowKey(r);
@@ -7943,6 +8049,7 @@ function renderRawTable(){
       tdO.style.color = '#b00020';
     }
     tr.appendChild(tdT);
+    tr.appendChild(tdD);
     tr.appendChild(tdV);
     tr.appendChild(tdH);
     tr.appendChild(tdO);
@@ -9494,9 +9601,13 @@ async function saveOutlierStrategyOverride(){
         entity_id: sel.entity_id,
         measurement: sel.measurement,
         field: sel.field,
+        friendly_name: sel.friendly_name || null,
         mode: 'manual',
         manual_enable_types: manualEnable,
         manual_disable_types: manualDisable,
+        reason: 'Strategiewahl gespeichert',
+        trigger_action: 'strategy_override_save',
+        trigger_button: 'dashboard_analysis.btn_strategy_info',
         ...extra,
       })
     }, {silent:true});
@@ -9518,7 +9629,7 @@ async function _outlierStrategySetMode(mode){
     await api('./api/outlier_strategy/override', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ entity_id: sel.entity_id, measurement: sel.measurement, field: sel.field, mode })
+      body: JSON.stringify({ entity_id: sel.entity_id, measurement: sel.measurement, field: sel.field, friendly_name: sel.friendly_name || null, mode, reason: 'Strategiemodus geändert', trigger_action: 'strategy_mode_change', trigger_button: 'dashboard_analysis.btn_strategy_info' })
     }, { silent:true });
     await refreshOutlierStrategyPanel();
   }catch(e){ displayError(e); }
@@ -18173,7 +18284,16 @@ if($rawInfoBtn) $rawInfoBtn.addEventListener('click', async (ev)=>{
     out.push('Raw Info');
     out.push('');
     out.push('Zeit: ' + (row && row.time ? fmtTs(row.time) : fmtTs(key)));
+    out.push('Delta zum vorherigen Punkt: ' + _formatDeltaMs(_rawDeltaMsAt(RAW_ROWS || [], Math.max(0, (RAW_ROWS || []).findIndex((it)=> String(rowKey(it) || '') === String(RAW_ROW_SELECTED_KEY || ''))))));
     out.push('Wert: ' + (row ? fmtNum(row.value) : '-'));
+    const stats = _rawDeltaStats(RAW_ROWS || []);
+    if(stats.count) out.push('Delta min/max/avg: ' + _formatDeltaMs(stats.min_ms) + ' / ' + _formatDeltaMs(stats.max_ms) + ' / ' + _formatDeltaMs(stats.avg_ms));
+    const unit = _currentEntityUnit();
+    if(unit) out.push('Einheit: ' + unit);
+    const measurementType = _rawMeasurementTypeSummary();
+    if(measurementType) out.push('Messstellentyp: ' + measurementType);
+    const checkedTypes = _rawCheckedTypeSummary();
+    if(checkedTypes) out.push('Gepruefte Ausreißertypen: ' + checkedTypes);
     try{
       const it = RAW_OUTLIER_MAP && RAW_OUTLIER_MAP[key] ? RAW_OUTLIER_MAP[key] : null;
       if(it){
@@ -18960,12 +19080,15 @@ try{
     purpose: 'Raw Daten zeigt einzelne DB-Punkte (Zeit/Wert) im ausgewaehlten Zeitraum. Dient zur Detailkontrolle und zum exakten Springen zu Zeitpunkten.',
     columns: {
       'Zeit': 'Zeitstempel des Datenpunkts (lokal angezeigt, inkl. Millisekunden).',
+      'Delta': 'Zeitabstand zum vorherigen Datenpunkt im aktuell geladenen Raw-Fenster, adaptiv als ms/s/min/h/d formatiert.',
       'Wert': 'Numerischer Wert des Datenpunkts.',
+      'Änderung': 'Kurzinfo zu lokalen oder historischen Raw-Änderungen an genau diesem Punkt.',
+      'Ausreisser': 'Erkannte Ausreißertypen für den Punkt, falls der Wert Teil einer aktuellen Ausreißeranalyse ist.',
     },
     actions: [
       'Tagesnavigation (aeltester/juengster, +/-1d, +/-7d): springt innerhalb der Tabelle; bei Bedarf wird automatisch nachgeladen.',
       'Mehr laden: laedt die naechste Seite Raw Punkte nach (append).',
-      'Kopieren: kopiert die aktuell geladenen Raw Zeilen (Zeit\tWert).',
+      'Kopieren: kopiert die aktuell geladenen Raw Zeilen inklusive Delta-Spalte.',
       'Query kopieren: kopiert die Raw Query in die Zwischenablage.',
     ],
   };

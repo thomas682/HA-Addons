@@ -970,6 +970,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - `Refresh` bei den Raw-Daten laedt die angezeigten Punkte fuer den aktuellen Anker explizit erneut aus der Datenbank ueber `./api/raw_points` und nicht aus dem Analyse-/Session-Cache.
 - Für selektierte Raw-Zeilen mit Ausreißertyp `Zeitlücke` gibt es in der intelligenten Aktionsleiste den Button `Zeitlücke akzeptieren`. Er erhöht fuer die aktuelle Serie den erlaubten `time_gap.gap_seconds`-Override, startet die Ausreißer-Prüfung danach erneut und ist über denselben Undo-Mechanismus wieder rückgängig machbar.
 - Der Button `Änderungen` zeigt jetzt nicht nur Messpunkt-History, sondern auch protokollierte Prüfungs-/Strategie-Änderungen der aktuellen Serie.
+- Die Raw-Tabelle besitzt jetzt zusätzlich die Spalte `Delta` für den Zeitabstand zum vorherigen Punkt. Im Raw-Infotext stehen dazu auch Delta-Min/Max/Durchschnitt sowie Einheit, Messstellentyp, geprüfte Ausreißertypen und die aktuell selektierte Ausreißer-Info.
 - Der fruehere Bereich `Statistik Zeitraum (Graph/Tabelle)` wurde entfernt; relevant bleiben die Gesamtstatistik im Dashboard und die Statistik-Seite.
 - Auf der Statistik-Seite nutzt `Statistik laden` zuerst einen passenden frischen Cache. Nur wenn kein passender Cache vorhanden oder dieser veraltet ist, startet ein neuer Hintergrundjob.
 - Der Analyse-Logs-Dialog zeigt die Laufzeit jetzt direkt rechts neben der Uhrzeit. Zusätzlich gibt es eine Checkbox `Umbruch` sowie Lösch-Buttons für die Volltextfelder `Textsuche` und `Markieren`.
@@ -1302,7 +1303,10 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Undo/Repeat:
   - `Undo`: letzte schreibende Aktion (ueberschreiben/loeschen) rueckgaengig machen.
   - `Repeat`: zuvor per Undo zurueckgenommene Aktion erneut ausfuehren (Redo).
+  - Vor der eigentlichen Ausführung zeigt die History-Seite jetzt immer zuerst eine typisierte Vorschau an. Erst danach folgt eine separate Bestätigungsabfrage.
   - Wenn die Undo-History-Datei inkompatibel ist, fragt die UI beim Laden, ob sie geloescht werden soll. Bei "nein" bleiben Undo/Repeat gesperrt, bis du `Undo-History loeschen` ausfuehrst.
+
+- Der Bereich `Prüfungs-/Strategie-Änderungen` listet jetzt nicht nur `time_gap.gap_seconds`, sondern auch weitere Strategie- und Parameteränderungen aus der Strategiewahl separat von normalen Messwertänderungen auf.
 
 Hinweis (neu)
 
