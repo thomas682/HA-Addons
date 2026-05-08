@@ -30,7 +30,11 @@ Fehlt einer dieser Einträge: **SOFORT STOPPEN** und melden:
 
 Diese Prüfung ist vor jeder Such-, Lese-, Schreib-, Git- oder Testaktion durchzuführen.
 
-### 1.2 Pflichtablauf vor jeder Umsetzung
+### 1.2 Pflichtablauf vor jeder Umsetzung (KRITISCH)
+
+1.2.0 Schritt 0 - Plan-Zustand muss leer sein
+
+Solange offenen Aufgaben in der aktuellen ToDo-Liste und `./.opencode/plan_state.md` vorhanden sind, dürfen KEINE neuen Issues oder Aufgaben die nicht darin beinhaltet sind - ohne Ausnahme - gestartet werden. Der Agent meldet in diesem Fall den blockierten Zustand und listet die offenen Punkte auf.
 
 1.2.1 Schritt 1 – GitHub-Issues (NUR AUF EXPLIZITEN BEFEHL)
 
@@ -277,7 +281,58 @@ gh issue comment <ISSUE_NUMMER> --repo <OWNER>/<REPO> --body-file /tmp/opencode_
 
 VERBOTEN: `gh issue comment -b "..."` wenn der Inhalt Backticks, Dollarzeichen, shell-ähnliche Ausdrücke, URLs mit Query-Parametern, Dateipfade oder Befehle enthält.
 
----
+##### Pflichtbindung an das aktive Issue (ABSOLUT)
+
+Sobald der Agent ein konkretes Issue aktiv begonnen hat, gilt ausschließlich dieses Issue als aktiver Arbeitskontext.
+Ein Issue gilt als aktiv begonnen, sobald mindestens eine der folgenden Bedingungen erfüllt ist:
+
+- das Issue wurde ausdrücklich als aktuelles Issue genannt
+- das Issue wurde lokal in ToDo/plan_state als `in_progress` geführt
+- das Issue wurde auf GitHub auf `status/in_progress` gesetzt
+- der Agent hat nach Erstellung oder Auswahl des Issues mit der inhaltlichen Abarbeitung begonnen
+Ab diesem Zeitpunkt gilt:
+- Der Agent darf bis zum vollständigen Abschluss dieses aktiven Issues NICHT auf ein anderes Issue umschalten.
+- Der Agent darf bis zum vollständigen Abschluss dieses aktiven Issues NICHT auf einen früheren Abschlusszustand oder eine frühere Abschlussmeldung zurückspringen.
+- Der Agent darf bis zum vollständigen Abschluss dieses aktiven Issues KEINE Abschlussmeldung für ein anderes Issue oder für einen globalen Gesamtzustand erzeugen.
+- Der Agent darf bis zum vollständigen Abschluss dieses aktiven Issues KEINE Prüfung anderer offener Issues priorisieren oder berichten, außer ein echter Blocker macht die Weiterarbeit am aktiven Issue unmöglich.
+
+##### Vollständiger Abschluss eines aktiven Issues (PFLICHT)
+
+Ein aktives Issue darf erst dann als abgeschlossen behandelt oder gemeldet werden, wenn ALLE folgenden Punkte für genau dieses aktive Issue erfüllt sind:
+
+1. Angeforderte Änderung umgesetzt (Schritt A – Pflicht-Sicherheitsüberprüfung (HA Add-on))
+2. Relevante Pflicht-QA ausgeführt (Schritt B – Pflicht-QA)
+3. Keine blockierenden issue-bezogenen Fehler verbleiben
+4. Sicherheitsprüfung durchgeführt, falls erforderlich
+5. Versionsbump durchgeführt, falls erforderlich (Schritt C – Versionierung (PFLICHT FÜR HA))
+6. CHANGELOG aktualisiert, falls erforderlich
+7. MANUAL aktualisiert, falls erforderlich
+8. Commit erstellt 
+9. Nach `main` gepusht (Schritt D – Git-Flow (HA Main-First, PFLICHT))
+10. GitHub-Issue auf `status/done` gesetzt und geschlossen (Schritt E – GitHub-Issue abschließen)
+11. Abschlusssignal ausgeführt (Schritt F – Abschlusssignal (PFLICHT, IMMER AUSFÜHREN))
+12. Erst DANACH Queue-Dateien geprüft und Nutzer über verbleibende Restpunkte informiert
+
+##### Verbotene Umschaltung vor Punkt 11 und 12
+
+Insbesondere ist VERBOTEN:
+
+- nach Punkt 10 (GitHub-Issue geschlossen) bereits auf andere offene Issues umzuschalten
+- vor Punkt 11 (Abschlusssignal) eine Abschlussmeldung zu erzeugen
+- vor Punkt 12 (Queue-/Restprüfung) einen globalen Fertigzustand zu behaupten
+- einen früheren Issue-Abschluss als Antwort auf ein später aktiv gewordenes Issue zu verwenden
+
+##### Pflichtangabe in Status- und Abschlussmeldungen
+
+Solange ein aktives Issue existiert, MUSS jede substanzielle Status- oder Abschlussmeldung die aktive Issue-Nummer eindeutig referenzieren.
+Vor jeder Abschlussmeldung MUSS der Agent intern prüfen:
+
+- Ist dies noch dasselbe aktive Issue?
+- Wurden Punkt 1 bis 12 für genau dieses Issue erfüllt?
+- Wird keine frühere Abschlussmeldung wiederverwendet?
+- Erfolgt die Rest-/Queue-Prüfung erst nach dem issue-lokalen Abschluss?
+
+Wenn eine dieser Prüfungen negativ ist, ist eine Abschlussmeldung VERBOTEN.
 
 #### Schritt F – Abschlusssignal (PFLICHT, IMMER AUSFÜHREN)
 

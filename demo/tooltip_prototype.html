@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chip Tooltip · Professionell mit Doku-Link</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --text: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #eff6ff;
+
+  --severity-high: #dc2626;
+  --severity-high-soft: #fef2f2;
+  --severity-high-border: #fecaca;
+
+  --severity-med: #ea580c;
+  --severity-med-soft: #fff7ed;
+  --severity-med-border: #fed7aa;
+
+  --severity-low: #6b7280;
+  --severity-low-soft: #f3f4f6;
+  --severity-low-border: #d1d5db;
+
+  --tooltip-bg: #1f2937;
+  --tooltip-bg-rgb: 31, 41, 55;
+  --tooltip-text: #f3f4f6;
+  --tooltip-muted: #9ca3af;
+  --tooltip-border: #374151;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 60px 24px 200px;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.demo-wrap {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.demo-header { margin-bottom: 32px; }
+.demo-header h1 {
+  font-size: 18px; font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.demo-header p {
+  font-size: 13px; color: var(--text-muted);
+}
+
+.demo-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+}
+.demo-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.chip-row {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ─────────────────────────────────────────────
+   CHIP – with severity dot, label, info icon
+───────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+.chip:hover { border-color: var(--border-strong); background: #fafbfc; }
+.chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.chip-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.chip-dot.high { background: var(--severity-high); }
+.chip-dot.med  { background: var(--severity-med); }
+.chip-dot.low  { background: var(--severity-low); }
+
+.chip-label {
+  white-space: nowrap;
+}
+
+.chip.is-active {
+  border-color: var(--severity-high);
+  background: var(--severity-high-soft);
+}
+.chip.is-disabled {
+  opacity: 0.5;
+}
+.chip.is-disabled .chip-label {
+  text-decoration: line-through;
+}
+
+.chip-info-btn {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--text-faint);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 2px;
+  margin-right: -2px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  font-family: inherit;
+  line-height: 1;
+}
+.chip-info-btn:hover {
+  background: var(--text-secondary);
+  color: white;
+  border-color: var(--text-secondary);
+}
+.chip-info-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────
+   TOOLTIP
+───────────────────────────────────────────── */
+.tooltip {
+  position: absolute;
+  z-index: 1000;
+  width: 360px;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
+  border-radius: 10px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow:
+    0 4px 6px -2px rgba(0,0,0,0.05),
+    0 12px 24px -8px rgba(0,0,0,0.25),
+    0 24px 48px -12px rgba(0,0,0,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  font-family: 'Inter', sans-serif;
+}
+.tooltip.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* Arrow */
+.tooltip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 28px;
+  width: 12px; height: 12px;
+  background: var(--tooltip-bg);
+  transform: rotate(45deg);
+  border-radius: 2px;
+  z-index: -1;
+}
+
+/* TOOLTIP HEADER */
+.tt-header {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--tooltip-border);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.tt-icon-wrap {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  display: grid; place-items: center;
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+.tt-icon-wrap svg {
+  width: 16px; height: 16px;
+  color: #fca5a5;
+}
+.tt-title-block { flex: 1; min-width: 0; }
+.tt-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 2px;
+}
+.tt-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  color: var(--tooltip-muted);
+  font-weight: 400;
+}
+
+/* TOOLTIP BODY */
+.tt-body {
+  padding: 12px 16px 14px;
+}
+.tt-description {
+  color: #d1d5db;
+  font-size: 12.5px;
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+
+/* META ROWS */
+.tt-meta {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 6px 14px;
+  font-size: 11.5px;
+  margin-bottom: 14px;
+}
+.tt-meta-label {
+  color: var(--tooltip-muted);
+  font-weight: 500;
+}
+.tt-meta-value {
+  color: #e5e7eb;
+}
+.tt-meta-value code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  background: rgba(255,255,255,0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #e5e7eb;
+}
+.tt-severity {
+  display: inline-flex;
+  align-items: center; gap: 5px;
+}
+.tt-severity-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--severity-high);
+}
+
+/* EXAMPLE BLOCK */
+.tt-example {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--tooltip-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #fbbf24;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tt-example::before {
+  content: '▸';
+  color: var(--tooltip-muted);
+  font-size: 10px;
+}
+
+/* TOOLTIP FOOTER (actions) */
+.tt-footer {
+  border-top: 1px solid var(--tooltip-border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tt-doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 5px;
+  margin-left: -8px;
+  transition: background 0.15s;
+}
+.tt-doc-link:hover {
+  background: rgba(147, 197, 253, 0.1);
+  color: #bfdbfe;
+}
+.tt-doc-link:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+.tt-doc-link svg {
+  width: 12px; height: 12px;
+}
+
+.tt-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--tooltip-muted);
+}
+.tt-shortcut kbd {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: #e5e7eb;
+  min-width: 16px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Pinned tooltip indicator */
+.tooltip.is-pinned {
+  border: 1px solid rgba(147, 197, 253, 0.3);
+}
+.tooltip.is-pinned .tt-pin-indicator {
+  display: inline-flex;
+}
+.tt-pin-indicator {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #93c5fd;
+  margin-left: 8px;
+}
+
+/* ─────────────────────────────────────────────
+   USAGE NOTES
+───────────────────────────────────────────── */
+.usage-notes {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-top: 24px;
+}
+.usage-notes h3 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.usage-notes ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.usage-notes li {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding-left: 24px;
+  position: relative;
+}
+.usage-notes li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.usage-notes li kbd {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 500;
+  margin: 0 2px;
+}
+.usage-notes li code {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11.5px;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<div class="demo-wrap">
+
+  <div class="demo-header">
+    <h1>Chip Tooltip · professionell, mit Doku-Verlinkung</h1>
+    <p>Hover oder fokussieren (Tab) öffnet den Tooltip kurz. Klick auf das <strong>ⓘ</strong>-Icon „pinnt" ihn — dann ist auch der Doku-Link klickbar.</p>
+  </div>
+
+  <div class="demo-section">
+    <div class="demo-section-label">Beispiel · Analysetypen</div>
+    <div class="chip-row">
+
+      <button class="chip is-active"
+              data-tooltip="tt-zero-value"
+              aria-describedby="tt-zero-value">
+        <span class="chip-dot high"></span>
+        <span class="chip-label">Unplausibler 0-Wert</span>
+        <span class="chip-info-btn"
+              role="button"
+              tabindex="0"
+              aria-label="Mehr Details und Dokumentation öffnen">i</span>
+      </button>
+
+      <button class="chip is-disabled"
+              data-tooltip="tt-counter-jump"
+              aria-describedby="tt-counter-jump">
+        <span class="chip-dot low"></span>
+        <span class="chip-label">Counter-Sprung pro Zeit</span>
+        <span class="chip-info-btn"
+              role="button"
+              tabindex="0"
+              aria-label="Mehr Details und Dokumentation öffnen">i</span>
+      </button>
+
+      <button class="chip"
+              data-tooltip="tt-spike"
+              aria-describedby="tt-spike">
+        <span class="chip-dot med"></span>
+        <span class="chip-label">Spike-Erkennung</span>
+        <span class="chip-info-btn"
+              role="button"
+              tabindex="0"
+              aria-label="Mehr Details und Dokumentation öffnen">i</span>
+      </button>
+
+    </div>
+  </div>
+
+  <div class="usage-notes">
+    <h3>So funktioniert der Tooltip</h3>
+    <ul>
+      <li><strong>Maus:</strong> Auf den Chip oder das <strong>ⓘ</strong>-Icon zeigen — Tooltip erscheint nach kurzer Verzögerung.</li>
+      <li><strong>Tastatur:</strong> Mit <kbd>Tab</kbd> zum Chip navigieren — Tooltip öffnet automatisch beim Fokus.</li>
+      <li><strong>Pinnen:</strong> Klick auf <strong>ⓘ</strong> oder <kbd>Enter</kbd> drücken — Tooltip bleibt offen, Doku-Link wird klickbar.</li>
+      <li><strong>Doku öffnen:</strong> Bei pinned Tooltip auf „Doku öffnen" klicken oder <kbd>?</kbd> drücken während Chip fokussiert ist.</li>
+      <li><strong>Schließen:</strong> <kbd>Esc</kbd> drücken oder außerhalb klicken.</li>
+      <li><strong>Touch:</strong> Tippen auf den Chip öffnet den Tooltip im pinned Modus direkt.</li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     TOOLTIP TEMPLATES
+═══════════════════════════════════════════════ -->
+
+<div id="tt-zero-value" class="tooltip" role="tooltip">
+  <div class="tt-header">
+    <div class="tt-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </div>
+    <div class="tt-title-block">
+      <div class="tt-title">Unplausibler 0-Wert</div>
+      <div class="tt-subtitle">dashboard_analysis.chip_type.zero_value</div>
+    </div>
+  </div>
+
+  <div class="tt-body">
+    <div class="tt-description">
+      Erkennt unerwartete Null-Werte in Messreihen, die normalerweise einen positiven Wertebereich haben — z. B. Temperaturen, Drücke oder Durchflussmengen.
+    </div>
+
+    <div class="tt-meta">
+      <div class="tt-meta-label">Schweregrad</div>
+      <div class="tt-meta-value">
+        <span class="tt-severity">
+          <span class="tt-severity-dot"></span>
+          Hoch
+        </span>
+      </div>
+
+      <div class="tt-meta-label">Quelle</div>
+      <div class="tt-meta-value"><code>InfluxDB · field</code></div>
+
+      <div class="tt-meta-label">Status</div>
+      <div class="tt-meta-value">Aktiv · 23 Treffer in 30 Tagen</div>
+    </div>
+
+    <div class="tt-example">value == 0 WHERE expected &gt; 0</div>
+  </div>
+
+  <div class="tt-footer">
+    <a href="#" class="tt-doc-link" data-doc="zero-value">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      Dokumentation öffnen
+    </a>
+    <span class="tt-shortcut">
+      <kbd>?</kbd>
+      <span style="margin-left:4px">für Doku</span>
+    </span>
+  </div>
+</div>
+
+<div id="tt-counter-jump" class="tooltip" role="tooltip">
+  <div class="tt-header">
+    <div class="tt-icon-wrap" style="background:rgba(107,114,128,0.15); border-color:rgba(156,163,175,0.3)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+        <polyline points="17 6 23 6 23 12"/>
+      </svg>
+    </div>
+    <div class="tt-title-block">
+      <div class="tt-title">Counter-Sprung pro Zeit</div>
+      <div class="tt-subtitle">dashboard_analysis.chip_type.counter_jump</div>
+    </div>
+  </div>
+
+  <div class="tt-body">
+    <div class="tt-description">
+      Erkennt unerwartet starke Sprünge bei monoton steigenden Zählern (z. B. Energieverbrauch, Paketzähler) innerhalb einer Zeitspanne.
+    </div>
+
+    <div class="tt-meta">
+      <div class="tt-meta-label">Schweregrad</div>
+      <div class="tt-meta-value">
+        <span class="tt-severity">
+          <span class="tt-severity-dot" style="background:#9ca3af"></span>
+          Niedrig
+        </span>
+      </div>
+
+      <div class="tt-meta-label">Quelle</div>
+      <div class="tt-meta-value"><code>InfluxDB · counter</code></div>
+
+      <div class="tt-meta-label">Status</div>
+      <div class="tt-meta-value" style="color:#9ca3af">Deaktiviert</div>
+    </div>
+
+    <div class="tt-example">delta(value) &gt; threshold per Δt</div>
+  </div>
+
+  <div class="tt-footer">
+    <a href="#" class="tt-doc-link" data-doc="counter-jump">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      Dokumentation öffnen
+    </a>
+    <span class="tt-shortcut">
+      <kbd>?</kbd>
+      <span style="margin-left:4px">für Doku</span>
+    </span>
+  </div>
+</div>
+
+<div id="tt-spike" class="tooltip" role="tooltip">
+  <div class="tt-header">
+    <div class="tt-icon-wrap" style="background:rgba(234,88,12,0.15); border-color:rgba(234,88,12,0.3)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+    </div>
+    <div class="tt-title-block">
+      <div class="tt-title">Spike-Erkennung</div>
+      <div class="tt-subtitle">dashboard_analysis.chip_type.spike</div>
+    </div>
+  </div>
+
+  <div class="tt-body">
+    <div class="tt-description">
+      Erkennt einzelne Messwerte, die signifikant vom rollierenden Mittelwert abweichen (statistische Ausreißer über 3σ).
+    </div>
+
+    <div class="tt-meta">
+      <div class="tt-meta-label">Schweregrad</div>
+      <div class="tt-meta-value">
+        <span class="tt-severity">
+          <span class="tt-severity-dot" style="background:#ea580c"></span>
+          Mittel
+        </span>
+      </div>
+
+      <div class="tt-meta-label">Quelle</div>
+      <div class="tt-meta-value"><code>InfluxDB · field</code></div>
+
+      <div class="tt-meta-label">Status</div>
+      <div class="tt-meta-value">Aktiv · 4 Treffer in 30 Tagen</div>
+    </div>
+
+    <div class="tt-example">|value − μ| &gt; 3σ</div>
+  </div>
+
+  <div class="tt-footer">
+    <a href="#" class="tt-doc-link" data-doc="spike">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      Dokumentation öffnen
+    </a>
+    <span class="tt-shortcut">
+      <kbd>?</kbd>
+      <span style="margin-left:4px">für Doku</span>
+    </span>
+  </div>
+</div>
+
+<script>
+(function(){
+  const HOVER_DELAY = 350;        // ms before tooltip shows on hover
+  const HIDE_DELAY = 200;         // ms before hiding when leaving
+  let activeTooltip = null;
+  let activeChip = null;
+  let pinnedTooltip = null;
+  let showTimer = null;
+  let hideTimer = null;
+
+  function getTooltipFor(chip) {
+    const id = chip.dataset.tooltip;
+    return document.getElementById(id);
+  }
+
+  function positionTooltip(tt, chip) {
+    const r = chip.getBoundingClientRect();
+    const ttW = tt.offsetWidth;
+    let left = r.left + window.scrollX;
+    // Adjust if it would overflow right
+    if (left + ttW > window.innerWidth - 16) {
+      left = window.innerWidth - ttW - 16;
+    }
+    if (left < 16) left = 16;
+    const top = r.bottom + window.scrollY + 12;
+    tt.style.left = left + 'px';
+    tt.style.top  = top + 'px';
+    // Position arrow above the chip
+    const arrowOffset = Math.max(20, Math.min(r.left + window.scrollX - left + (r.width / 2) - 6, ttW - 30));
+    tt.style.setProperty('--arrow-left', arrowOffset + 'px');
+    tt.querySelector('::before');
+  }
+
+  function showTooltip(chip, pinned = false) {
+    clearTimeout(hideTimer);
+    const tt = getTooltipFor(chip);
+    if (!tt) return;
+
+    // Hide any other visible tooltip (if not the same)
+    if (activeTooltip && activeTooltip !== tt) {
+      hideTooltip(activeTooltip, true);
+    }
+
+    positionTooltip(tt, chip);
+    tt.classList.add('is-visible');
+    if (pinned) {
+      tt.classList.add('is-pinned');
+      pinnedTooltip = tt;
+    }
+    activeTooltip = tt;
+    activeChip = chip;
+  }
+
+  function hideTooltip(tt, force = false) {
+    if (!tt) return;
+    if (tt === pinnedTooltip && !force) return;
+    tt.classList.remove('is-visible');
+    tt.classList.remove('is-pinned');
+    if (tt === activeTooltip) {
+      activeTooltip = null;
+      activeChip = null;
+    }
+    if (tt === pinnedTooltip) pinnedTooltip = null;
+  }
+
+  function unpinAll() {
+    if (pinnedTooltip) {
+      hideTooltip(pinnedTooltip, true);
+    }
+  }
+
+  // Attach to all chips
+  document.querySelectorAll('.chip').forEach(chip => {
+    // Hover with delay
+    chip.addEventListener('mouseenter', () => {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+      showTimer = setTimeout(() => showTooltip(chip, false), HOVER_DELAY);
+    });
+
+    chip.addEventListener('mouseleave', () => {
+      clearTimeout(showTimer);
+      const tt = getTooltipFor(chip);
+      hideTimer = setTimeout(() => {
+        if (tt && !tt.matches(':hover') && tt !== pinnedTooltip) {
+          hideTooltip(tt);
+        }
+      }, HIDE_DELAY);
+    });
+
+    // Focus (keyboard tab)
+    chip.addEventListener('focus', () => {
+      showTooltip(chip, false);
+    });
+    chip.addEventListener('blur', (e) => {
+      const tt = getTooltipFor(chip);
+      // Don't hide if focus moved into the tooltip
+      setTimeout(() => {
+        if (tt && !tt.contains(document.activeElement) && tt !== pinnedTooltip) {
+          hideTooltip(tt);
+        }
+      }, 50);
+    });
+
+    // Click on chip = pin (toggle)
+    chip.addEventListener('click', (e) => {
+      // If click was on the info button, handle separately
+      if (e.target.closest('.chip-info-btn')) return;
+      e.preventDefault();
+      const tt = getTooltipFor(chip);
+      if (tt && tt.classList.contains('is-pinned')) {
+        hideTooltip(tt, true);
+      } else {
+        showTooltip(chip, true);
+      }
+    });
+  });
+
+  // Info icon button click → always pin
+  document.querySelectorAll('.chip-info-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const chip = btn.closest('.chip');
+      const tt = getTooltipFor(chip);
+      if (tt && tt.classList.contains('is-pinned')) {
+        hideTooltip(tt, true);
+      } else {
+        showTooltip(chip, true);
+      }
+    });
+
+    // Enter / Space on info button = pin
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.click();
+      }
+    });
+  });
+
+  // Tooltip itself: keep open while hovered
+  document.querySelectorAll('.tooltip').forEach(tt => {
+    tt.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+    tt.addEventListener('mouseleave', () => {
+      if (tt !== pinnedTooltip) {
+        hideTimer = setTimeout(() => hideTooltip(tt), HIDE_DELAY);
+      }
+    });
+  });
+
+  // Doc link click — open documentation (stub)
+  document.querySelectorAll('.tt-doc-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const docKey = link.dataset.doc;
+      // In real app: window.open('/docs/' + docKey, '_blank')
+      alert('Öffne Dokumentation: ' + docKey + '\n\nIn der echten App würde hier z. B. /docs/' + docKey + ' im neuen Tab geöffnet.');
+    });
+  });
+
+  // Global keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // ESC closes any open tooltip
+    if (e.key === 'Escape' && activeTooltip) {
+      hideTooltip(activeTooltip, true);
+      if (activeChip) activeChip.focus();
+      return;
+    }
+
+    // ? while a chip is focused → open docs directly
+    if (e.key === '?' && document.activeElement?.classList.contains('chip')) {
+      e.preventDefault();
+      const tt = getTooltipFor(document.activeElement);
+      const link = tt?.querySelector('.tt-doc-link');
+      if (link) link.click();
+    }
+  });
+
+  // Click outside closes pinned tooltip
+  document.addEventListener('click', (e) => {
+    if (pinnedTooltip &&
+        !pinnedTooltip.contains(e.target) &&
+        !e.target.closest('.chip')) {
+      hideTooltip(pinnedTooltip, true);
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
