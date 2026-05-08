@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.570
+
+### Fix
+
+- Dashboard / Cacheflow / Analyseflow: Das Rendern der beiden Checklist-Bereiche bewahrt jetzt den aktuellen Open/Close-Zustand der zugehörigen Dashboard-Sektion explizit mit. Dadurch bleiben `Caching` und `Analyse` auch während laufender Cache-Prüfungen oder Analyse-Updates eingeklappt, statt sich durch UI-Refreshs wieder aufzuklappen. ([#536](https://github.com/thomas682/HA-Addons/issues/536))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.569
 
 ### Fix

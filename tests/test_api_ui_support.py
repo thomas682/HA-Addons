@@ -873,6 +873,13 @@ def test_dashboard_sections_use_scoped_state_key_and_explicit_details_restore():
     assert "saveDashboardDetailsState();" in body
 
 
+def test_dashboard_checklist_render_preserves_collapsed_sections():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert "function preserveSectionOpenState(sectionEl, applyFn){" in body
+    assert "preserveSectionOpenState($cachingSection, ()=>{" in body
+    assert "preserveSectionOpenState($analysisSection, ()=>{" in body
+
+
 def test_bottom_statusbar_uses_ios_safe_area_layout_and_hides_influx_chip():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'bottom: 0;' in topbar

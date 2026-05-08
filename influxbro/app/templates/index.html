@@ -2105,6 +2105,18 @@ function saveDashboardDetailsState(){
   }
 }
 
+function preserveSectionOpenState(sectionEl, applyFn){
+  try{
+    const hasSection = !!(sectionEl && typeof sectionEl.open === 'boolean');
+    const wasOpen = hasSection ? !!sectionEl.open : null;
+    const out = applyFn();
+    if(hasSection && !!sectionEl.open !== wasOpen) sectionEl.open = wasOpen;
+    return out;
+  }catch(e){
+    try{ return applyFn(); }catch(ex){ return undefined; }
+  }
+}
+
 function loadScopedState(key){
   try{
     const raw = localStorage.getItem(String(key || ''));
@@ -10665,10 +10677,12 @@ function _renderChecklist(items){
   if(!$cl) return;
   const rows = Array.isArray(items) ? items : [];
   if(!rows.length){
-    $cl.innerHTML = '';
-    try{ if($loadStatusTxt) $loadStatusTxt.style.display = ''; }catch(e){}
-    try{ if($loadStatusTime) $loadStatusTime.style.display = ''; }catch(e){}
-    try{ _renderTracePanels(); }catch(e){}
+    preserveSectionOpenState($cachingSection, ()=>{
+      $cl.innerHTML = '';
+      try{ if($loadStatusTxt) $loadStatusTxt.style.display = ''; }catch(e){}
+      try{ if($loadStatusTime) $loadStatusTime.style.display = ''; }catch(e){}
+      try{ _renderTracePanels(); }catch(e){}
+    });
     return;
   }
 
@@ -10688,28 +10702,30 @@ function _renderChecklist(items){
   const done = rows.filter((item)=> String(item && item.status || '') === 'ok').length;
   const pct = Math.min(100, Math.max(0, Math.round((done / Math.max(1, rows.length)) * 100)));
 
-  _renderModernFlowChecklist($cl, {
-    id: 'load_checklist',
-    title: 'Cacheflow',
-    meta: meta,
-    pct: pct,
-    steps: rows.map((it)=>{
-      const key = String(it && it.key || '');
-      const label = String(it && it.label ? it.label : (LOAD_STEP_LABELS[key] || key));
-      const status = String(it && it.status || 'pending');
-      const at = String(it && it.at || '');
-      const dur = (it && it.dur !== null && it.dur !== undefined && isFinite(Number(it.dur))) ? Math.max(0, Math.round(Number(it.dur))) : 0;
-      const sub = String(it && it.sub || '');
-      return {
-        key,
-        label,
-        status,
-        at,
-        dur_ms: dur,
-        result: sub,
-        info: String(LOAD_STEP_INFO[key] || ''),
-      };
-    }),
+  preserveSectionOpenState($cachingSection, ()=>{
+    _renderModernFlowChecklist($cl, {
+      id: 'load_checklist',
+      title: 'Cacheflow',
+      meta: meta,
+      pct: pct,
+      steps: rows.map((it)=>{
+        const key = String(it && it.key || '');
+        const label = String(it && it.label ? it.label : (LOAD_STEP_LABELS[key] || key));
+        const status = String(it && it.status || 'pending');
+        const at = String(it && it.at || '');
+        const dur = (it && it.dur !== null && it.dur !== undefined && isFinite(Number(it.dur))) ? Math.max(0, Math.round(Number(it.dur))) : 0;
+        const sub = String(it && it.sub || '');
+        return {
+          key,
+          label,
+          status,
+          at,
+          dur_ms: dur,
+          result: sub,
+          info: String(LOAD_STEP_INFO[key] || ''),
+        };
+      }),
+    });
   });
 
   // The modern flow component already renders the status meta.
@@ -10724,8 +10740,10 @@ function _renderAnalysisChecklist(items, chunkLog){
   if(!$cl) return;
   const rows = Array.isArray(items) ? items : [];
   if(!rows.length){
-    $cl.innerHTML = '';
-    try{ _renderTracePanels(); }catch(e){}
+    preserveSectionOpenState($analysisSection, ()=>{
+      $cl.innerHTML = '';
+      try{ _renderTracePanels(); }catch(e){}
+    });
     return;
   }
 
@@ -10741,28 +10759,30 @@ function _renderAnalysisChecklist(items, chunkLog){
     }
   })();
 
-  _renderModernFlowChecklist($cl, {
-    id: 'analysis_checklist',
-    title: 'Analyseflow',
-    meta: meta,
-    pct: pct,
-    steps: rows.map((it)=>{
-      const key = String(it && it.key || '');
-      const label = String(it && it.label || '');
-      const status = String(it && it.status || 'pending');
-      const at = String(it && it.at || it.started_at || '');
-      const dur = (it && it.dur !== null && it.dur !== undefined && isFinite(Number(it.dur))) ? Math.max(0, Math.round(Number(it.dur))) : 0;
-      const sub = String(it && it.sub || '');
-      return {
-        key,
-        label,
-        status,
-        at,
-        dur_ms: dur,
-        result: sub,
-        info: (typeof _analysisStepInfoText === 'function') ? String(_analysisStepInfoText(it) || '') : '',
-      };
-    }),
+  preserveSectionOpenState($analysisSection, ()=>{
+    _renderModernFlowChecklist($cl, {
+      id: 'analysis_checklist',
+      title: 'Analyseflow',
+      meta: meta,
+      pct: pct,
+      steps: rows.map((it)=>{
+        const key = String(it && it.key || '');
+        const label = String(it && it.label || '');
+        const status = String(it && it.status || 'pending');
+        const at = String(it && it.at || it.started_at || '');
+        const dur = (it && it.dur !== null && it.dur !== undefined && isFinite(Number(it.dur))) ? Math.max(0, Math.round(Number(it.dur))) : 0;
+        const sub = String(it && it.sub || '');
+        return {
+          key,
+          label,
+          status,
+          at,
+          dur_ms: dur,
+          result: sub,
+          info: (typeof _analysisStepInfoText === 'function') ? String(_analysisStepInfoText(it) || '') : '',
+        };
+      }),
+    });
   });
 
   try{ _renderTracePanels(); }catch(e){}
