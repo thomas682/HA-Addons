@@ -12036,6 +12036,8 @@ async function runRawOutlierSearchWithProgress(onProgress, onChunkLog, effective
               types: row.types || [],
               point_index: row.point_index,
               window: row.window || null,
+              raw_rows_cache: Array.isArray(row.raw_rows_cache) ? row.raw_rows_cache : null,
+              raw_meta_cache: (row.raw_meta_cache && typeof row.raw_meta_cache === 'object') ? row.raw_meta_cache : null,
               counterreset_role: row.counterreset_role || '',
               counterreset_before_value: row.counterreset_before_value,
               counterreset_begin_time: row.counterreset_begin_time || '',
@@ -12926,6 +12928,18 @@ function trimCenteredRows(rows, anchorIso, contextRows){
   const start = Math.max(0, bestIdx - limit);
   const end = Math.min(xs.length, bestIdx + limit + 1);
   return xs.slice(start, end);
+}
+
+function canReuseCenteredRows(rows, anchorIso, contextRows){
+  try{
+    const xs = Array.isArray(rows) ? rows : [];
+    if(!xs.length) return false;
+    const counts = countCenteredRows(xs, anchorIso);
+    const need = Math.max(1, Math.trunc(Number(contextRows || 10)));
+    return counts.anchor > 0 && counts.before >= need && counts.after >= need;
+  }catch(e){
+    return false;
+  }
 }
 
 function setRawSelectedKey(key){
@@ -14772,6 +14786,33 @@ async function loadRawFromGraph(reset){
     let j = null;
     if(useCenter){
       const minPoints = Math.max(1, Math.trunc(Number(RAW_OUTLIER_CONTEXT_ROWS || UI_RAW_CENTER_MIN_POINTS || 10)));
+      const outlierInfo = _findOutlierInfoByTime(anchorIso);
+      if(outlierInfo && Array.isArray(outlierInfo.raw_rows_cache) && canReuseCenteredRows(outlierInfo.raw_rows_cache, anchorIso, RAW_OUTLIER_CONTEXT_ROWS)){
+        RAW_ROWS = trimCenteredRows(outlierInfo.raw_rows_cache, anchorIso, RAW_OUTLIER_CONTEXT_ROWS);
+        RAW_META = (outlierInfo.raw_meta_cache && typeof outlierInfo.raw_meta_cache === 'object') ? outlierInfo.raw_meta_cache : {
+          mode: 'center',
+          before_points: countCenteredRows(RAW_ROWS, anchorIso).before,
+          after_points: countCenteredRows(RAW_ROWS, anchorIso).after,
+        };
+        RAW_OFFSET = (RAW_ROWS || []).length;
+        renderRawTable();
+        try{ await loadRawHistorySummary(base); }catch(e){}
+        renderRawTable();
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.raw', `Raw: ${RAW_OFFSET} (cache)`); }catch(e){}
+        _rawStatusEnd(true, 'Cache verwendet.');
+        return;
+      }
+      if(canReuseCenteredRows(RAW_ROWS, anchorIso, RAW_OUTLIER_CONTEXT_ROWS)){
+        RAW_ROWS = trimCenteredRows(RAW_ROWS, anchorIso, RAW_OUTLIER_CONTEXT_ROWS);
+        RAW_META = RAW_META && typeof RAW_META === 'object' ? RAW_META : { mode: 'center' };
+        RAW_OFFSET = (RAW_ROWS || []).length;
+        renderRawTable();
+        try{ await loadRawHistorySummary(base); }catch(e){}
+        renderRawTable();
+        try{ window.InfluxBroStatus && window.InfluxBroStatus.done && window.InfluxBroStatus.done('dashboard.raw', `Raw: ${RAW_OFFSET} (reuse)`); }catch(e){}
+        _rawStatusEnd(true, 'Vorhandenes Raw-Fenster wiederverwendet.');
+        return;
+      }
       payload.mode = 'center';
       payload.anchor_time = anchorIso;
       payload.include_total = false;
@@ -14779,7 +14820,6 @@ async function loadRawFromGraph(reset){
       payload.after_limit = minPoints;
 
       // Nutze vorhandene Fenstergrenzen nur zum Einengen der Query, nicht mehr fuer die eigentliche N-davor/N-danach-Logik.
-      const outlierInfo = _findOutlierInfoByTime(anchorIso);
       const cachedWindow = outlierInfo && outlierInfo.window ? outlierInfo.window : null;
       const beforeMs = Date.parse(String(cachedWindow && cachedWindow.before_time || ''));
       const afterMs = Date.parse(String(cachedWindow && cachedWindow.after_time || ''));
@@ -14814,6 +14854,18 @@ async function loadRawFromGraph(reset){
     if(useCenter){
       RAW_ROWS = trimCenteredRows(rows, anchorIso, RAW_OUTLIER_CONTEXT_ROWS);
       RAW_OFFSET = (RAW_ROWS || []).length;
+      try{
+        const info = _findOutlierInfoByTime(anchorIso);
+        if(info){
+          info.raw_rows_cache = (RAW_ROWS || []).slice();
+          info.raw_meta_cache = meta && typeof meta === 'object' ? JSON.parse(JSON.stringify(meta)) : null;
+        }
+        const out = (RAW_OUTLIER_RESULTS || []).find((it)=> String(it && it.time || '') === String(anchorIso || ''));
+        if(out){
+          out.raw_rows_cache = (RAW_ROWS || []).slice();
+          out.raw_meta_cache = meta && typeof meta === 'object' ? JSON.parse(JSON.stringify(meta)) : null;
+        }
+      }catch(e){}
       _syncSelectedOutlierWindowFromRawRows(anchorIso, RAW_ROWS || []);
       renderOutlierOverviewTable();
     }else{

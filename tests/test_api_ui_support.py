@@ -1038,6 +1038,15 @@ def test_history_page_contains_parameter_strategy_history_section_and_preview_lo
     assert "./api/undo/repeat_preview" in history_body
 
 
+def test_raw_centered_rows_reuse_outlier_cache_before_refetch():
+    index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'function canReuseCenteredRows(rows, anchorIso, contextRows){' in index_body
+    assert 'raw_rows_cache' in index_body
+    assert 'raw_meta_cache' in index_body
+    assert "if(outlierInfo && Array.isArray(outlierInfo.raw_rows_cache) && canReuseCenteredRows(outlierInfo.raw_rows_cache, anchorIso, RAW_OUTLIER_CONTEXT_ROWS))" in index_body
+    assert "if(canReuseCenteredRows(RAW_ROWS, anchorIso, RAW_OUTLIER_CONTEXT_ROWS))" in index_body
+
+
 def test_logs_recorder_controls_moved_to_header_and_filter_toolbar():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
     assert 'id="record_start_header"' in body

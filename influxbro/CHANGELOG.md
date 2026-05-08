@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.568
+
+### Fix
+
+- Raw-Daten / Cache: Beim Auswählen eines Ausreißers wird das zentrierte Raw-Fenster jetzt bevorzugt aus bereits vorhandenem Outlier-/Frontend-Cache wiederverwendet, statt jedes Mal erneut `api/raw_points` gegen die Datenbank zu rufen. Bereits geladene Raw-Kontextfenster werden pro Ausreißer mitgespeichert und auch beim späteren Navigieren zwischen Ausreißern erneut genutzt. ([#537](https://github.com/thomas682/HA-Addons/issues/537))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.567
 
 ### Fix
