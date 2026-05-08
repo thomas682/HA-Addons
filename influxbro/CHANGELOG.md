@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.572
+
+### Fix
+
+- Start-/Support-Logging: Der normale `safeReveal`-Fallback schreibt beim Seitenstart keine irrefuehrende Warnung mehr in die Browser-Console. Zusaetzlich sendet der globale Button-Logger `ui_event`-POSTs mit den notwendigen CSRF-/Ingress-Headern, und `Jump Logs` navigiert aus der Fehlerleiste ohne zusaetzlichen programmatischen Button-Klick. ([#541](https://github.com/thomas682/HA-Addons/issues/541))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.571
 
 ### Fix

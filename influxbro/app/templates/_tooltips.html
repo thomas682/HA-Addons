@@ -3037,10 +3037,13 @@
       });
     }catch(e){}
 
+    function _jumpLogs(){
+      try{ location.href = './logs'; }catch(e){}
+    }
     try{
       jumpLogsBtn.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-        try{ location.href = './logs'; }catch(e){}
+        _jumpLogs();
       });
     }catch(e){}
 
@@ -3048,6 +3051,7 @@
     try{ window.InfluxBroBugreport = { run: (msg)=>_bugreportRun(msg) }; }catch(e){}
     try{ window.InfluxBroSmartBugAssistant = { run: (msg)=>_smartBugRun(msg) }; }catch(e){}
     try{ window.InfluxBroRecentLogs = { open5min: ()=>_openRecentLogs(5) }; }catch(e){}
+    try{ window.InfluxBroJumpLogs = { open: _jumpLogs }; }catch(e){}
 
     POPUP_REFS = { root, title, pre, meta, metaFooter: popupMetaFooter, copyBtn, settingsBtn, logsBtn, split, historyBox };
 
@@ -4513,13 +4517,18 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
       } : {};
       await fetch('./api/ui_event', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-InfluxBro-Request': '1',
+          'X-Requested-With': 'InfluxBro',
+        },
         body: JSON.stringify({
           page: _page(),
           ui: m.ui || m.id || m.tag,
           text: m.text || m.id || m.tag,
           extra: Object.assign({ kind: String(kind || 'button_event') }, traceExtra, extra || {}, m),
-        })
+        }),
+        credentials: 'same-origin',
       });
     }catch(e){}
   }

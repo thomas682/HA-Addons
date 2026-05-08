@@ -98,6 +98,7 @@ Neu: Top-Leiste (Profil + Zoom)
     - Export/Import der Einstellungen sichert die Layout-Zuordnung mit.
 - Zoom wird im Browser gespeichert (pro Browser/Client) und skaliert die komplette UI proportional (auch Tabellen/Graphen/Buttongroessen).
 - Neu: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden automatisch eine passende Default-Zoomstufe je nach Viewport-Breite gesetzt (z.B. iPhone groesser, Desktop 100%). Danach kannst du wie gewohnt mit `-`/`+` anpassen.
+- Der globale Start-Fallback `safeReveal` bleibt aktiv, meldet normale Start-Enthuellungen aber nicht mehr als Warnung. Warnungen erscheinen nur noch bei echten Browserfehlern oder unbehandelten Promise-Fehlern.
 
 ## Installation in Home Assistant
 

@@ -3053,7 +3053,11 @@
       const navOverlay = document.getElementById('ib_nav_mobile_overlay');
       if(navOverlay) navOverlay.style.display = 'none';
       if(document.body) document.body.classList.remove('ib_nav_mobile_open');
-      try{ console.warn('[InfluxBro] safeReveal', reason || 'unknown'); }catch(e){}
+      const r = String(reason || 'unknown');
+      try{
+        if(r === 'window.error' || r === 'unhandledrejection') console.warn('[InfluxBro] safeReveal', r);
+        else if(console && console.debug) console.debug('[InfluxBro] safeReveal', r);
+      }catch(e){}
     }catch(e){}
   }
   window.InfluxBroSafeReveal = safeReveal;
@@ -3222,7 +3226,7 @@
   try{ if($bBug) $bBug.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ const e0 = (window.InfluxBroErrors && window.InfluxBroErrors.last) ? window.InfluxBroErrors.last() : null; const msg = e0 && e0.message ? String(e0.message) : 'Manueller Bugreport'; if(window.InfluxBroBugreport && window.InfluxBroBugreport.run) window.InfluxBroBugreport.run(msg); }catch(x){}; }); }catch(e){}
   try{ if($bSmart) $bSmart.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ const e0 = (window.InfluxBroErrors && window.InfluxBroErrors.last) ? window.InfluxBroErrors.last() : null; const msg = e0 && e0.message ? String(e0.message) : 'Manueller Bugreport'; if(window.InfluxBroSmartBugAssistant && window.InfluxBroSmartBugAssistant.run) window.InfluxBroSmartBugAssistant.run(msg); }catch(x){}; }); }catch(e){}
   try{ if($bLogs5) $bLogs5.addEventListener('click', async (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ if(window.InfluxBroRecentLogs && window.InfluxBroRecentLogs.open5min) await window.InfluxBroRecentLogs.open5min(); }catch(x){}; }); }catch(e){}
-  try{ if($bJumpLogs) $bJumpLogs.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ const btn = document.getElementById('influxbro_popup_jump_logs'); if(btn) btn.click(); }catch(x){}; }); }catch(e){}
+  try{ if($bJumpLogs) $bJumpLogs.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ if(window.InfluxBroJumpLogs && window.InfluxBroJumpLogs.open) window.InfluxBroJumpLogs.open(); else { const btn = document.getElementById('influxbro_popup_jump_logs'); if(btn) btn.click(); } }catch(x){}; }); }catch(e){}
 
   try{ if($bGit) $bGit.addEventListener('click', (ev)=>{
     try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
@@ -3676,6 +3680,7 @@ try{
 
   document.addEventListener('click', (ev)=>{
     const btn = ev.target.closest('button');
+    if(window.InfluxBroButtons) return;
     if(btn && btn.id && !btn.classList.contains('ib_info_icon') && !btn.classList.contains('ib_cfg_icon')){
       _reportAction('click', btn.dataset.ui || btn.id, btn.textContent.trim());
     }
