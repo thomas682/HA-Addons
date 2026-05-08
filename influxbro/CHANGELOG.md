@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.569
+
+### Fix
+
+- Dashboard / Section-Status: Die Dashboard-Sektionen speichern ihren Open/Close-Zustand jetzt unter einem eigenen Dashboard-State-Key und restaurieren den globalen `<details>`-Status beim Seitenaufbau aktiv erneut. Dadurch bleiben Bereiche wie `Ausreißer` und `Raw Daten Analyse` auch nach Seitenwechseln oder Navigationssprüngen stabil im zuletzt gewählten Zustand. ([#539](https://github.com/thomas682/HA-Addons/issues/539))
+- Maintenance: Tested with Home Assistant Core: unknown
+
 ## 1.12.568
 
 ### Fix

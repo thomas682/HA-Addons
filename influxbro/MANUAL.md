@@ -1390,6 +1390,7 @@ UI:
 - `Bereich-Titel Ebene 2/3`: fuer die verschachtelten Settings-Sections gibt es eigene Hintergrund-/Textfarben (Schriftgroesse folgt den GUI Gruppen).
 - `Filter ... Breite`: steuert die Layout-Breiten im Dashboard.
 - Dashboard-Details wie `Auswahl`, `Analyse`, `Ausreißer`, `Raw` und `Graph` starten nach Erstinstallation wieder fest `geoeffnet`; dafuer gibt es keine separate Parametrierung mehr.
+- Sobald du einen dieser Bereiche manuell ein- oder ausklappst, merkt sich das Dashboard den zuletzt gewaehlten Zustand jetzt wieder stabil auch ueber Seitenwechsel hinweg.
 - Auswahlfelder (Filter/Zeiten):
   - Schriftgroesse folgt den GUI Gruppen (Controls/Meta)
   - Auto-Breite (Default) oder manuelle Breite (px)

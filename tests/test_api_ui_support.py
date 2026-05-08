@@ -864,6 +864,15 @@ def test_details_state_restore_is_one_shot_and_open_all_persists():
     assert "window.InfluxBroDetailsState && window.InfluxBroDetailsState.save" in topbar
 
 
+def test_dashboard_sections_use_scoped_state_key_and_explicit_details_restore():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'const LS_KEY = "influxbro_dashboard_ui_state_v1";' in body
+    assert 'const LS_KEY_LEGACY = "influxbro_ui_state_v1";' in body
+    assert "function restoreDashboardDetailsState(force){" in body
+    assert "restoreDashboardDetailsState(true);" in body
+    assert "saveDashboardDetailsState();" in body
+
+
 def test_bottom_statusbar_uses_ios_safe_area_layout_and_hides_influx_chip():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'bottom: 0;' in topbar

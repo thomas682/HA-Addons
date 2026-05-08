@@ -2072,9 +2072,49 @@ function setSelectOptions(selectEl, items, placeholder){
   if(prev && Array.from(selectEl.options).some(o=>o.value===prev)) selectEl.value = prev;
 }
 
-const LS_KEY = "influxbro_ui_state_v1";
+const LS_KEY = "influxbro_dashboard_ui_state_v1";
+const LS_KEY_LEGACY = "influxbro_ui_state_v1";
 const FLOW_UI_KEY_PREFIX = "influxbro_flow_ui_v1:";
 // UI state is auto-persisted; no explicit "Darstellung speichern".
+
+function dashboardDetailsScope(){
+  try{
+    return document.querySelector('main.content');
+  }catch(e){
+    return null;
+  }
+}
+
+function restoreDashboardDetailsState(force){
+  try{
+    if(!window.InfluxBroDetailsState || !window.InfluxBroDetailsState.restore) return false;
+    window.InfluxBroDetailsState.restore(dashboardDetailsScope(), !!force);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function saveDashboardDetailsState(){
+  try{
+    if(!window.InfluxBroDetailsState || !window.InfluxBroDetailsState.save) return false;
+    window.InfluxBroDetailsState.save(dashboardDetailsScope());
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function loadScopedState(key){
+  try{
+    const raw = localStorage.getItem(String(key || ''));
+    if(!raw) return null;
+    const j = JSON.parse(raw);
+    return (j && typeof j === "object") ? j : null;
+  }catch(e){
+    return null;
+  }
+}
 
 function _normalizeFlowUiState(raw){
   try{
@@ -2126,10 +2166,20 @@ function _saveFlowUiState(id, ui){
 
 function loadState(){
   try{
-    const raw = localStorage.getItem(LS_KEY);
-    if(!raw) return {};
-    const j = JSON.parse(raw);
-    return (j && typeof j === "object") ? j : {};
+    const scoped = loadScopedState(LS_KEY);
+    if(scoped) return scoped;
+    const legacy = loadScopedState(LS_KEY_LEGACY);
+    if(!legacy) return {};
+    const hasDashboardState = [
+      'analysis_open',
+      'outlier_open',
+      'caching_open',
+      'raw_open',
+      'graph_open',
+      'scan_preset',
+      'graph_markers',
+    ].some((k)=>Object.prototype.hasOwnProperty.call(legacy, k));
+    return hasDashboardState ? legacy : {};
   }catch(e){
     return {};
   }
@@ -18621,6 +18671,8 @@ try{
       if($editApplyErr) $editApplyErr.textContent = "Writes are disabled. Enable writes in Settings.";
     }
 
+    restoreDashboardDetailsState(true);
+
     const st = loadState();
     const globalSel = await loadGlobalDashboardSelection();
     if($r && globalSel.range) $r.value = globalSel.range;
@@ -18824,7 +18876,7 @@ try{
 
 // Persist dashboard state on navigation.
 try{
-  const persistNow = ()=>{ try{ saveState(); }catch(e){}; try{ cacheSaveNow(); }catch(e){}; };
+  const persistNow = ()=>{ try{ saveState(); }catch(e){}; try{ saveDashboardDetailsState(); }catch(e){}; try{ cacheSaveNow(); }catch(e){}; };
   window.addEventListener('pagehide', persistNow);
   document.addEventListener('visibilitychange', ()=>{ try{ if(document.visibilityState === 'hidden') persistNow(); }catch(e){}; });
 }catch(e){}
