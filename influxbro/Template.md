@@ -260,21 +260,40 @@ Ziel:
 
 - Jeder Dialog hat immer einen Kopfbereich.
 - Jeder Dialog hat einen eindeutigen Dialog-Bezeichner, z. B. `dialog.measurement_profile_runtime`.
+- Vor groesseren Dialog-Umbauten ist ein GitHub-Release als Wiederherstellungspunkt zu erstellen, wenn dies fuer die Aufgabe gefordert ist.
 - Jeder Dialog zeigt rechts unten eine Meta-Info im Format:
   - `pk: <pickkey> | tpl: <template> | dlg: <dialog-name>`
-- Jeder Dialog hat standardmäßig einen `(i)`-Button im Kopf.
-  - Der `(i)`-Button zeigt:
+- Jeder Dialog hat eine aussagekraeftige Titelzeile.
+- Direkt unter der Titelzeile liegt ein Beschreibungsframe mit genau drei gut lesbaren Zeilen:
+  - Zeile 1: Aufgabe/Zweck des Dialogs
+  - Zeile 2: kurze fachliche Einordnung
+  - Zeile 3: Bedienhinweis / Herkunft / Folgeaktion
+- Direkt unter dem Beschreibungsframe liegt eine Aktionsleiste.
+  - Ganz links steht immer ein Info-Button.
+  - Direkt rechts daneben steht immer ein Handbuch-Button.
+- Der Info-Button zeigt:
     - a) welches Template verwendet wird
     - b) was Pflicht ist und was dialogspezifisch ist
     - c) die eindeutige Dialog-Bezeichnung
     - d) die Beschreibung des Templates aus dieser Template-Definition
+- Der Handbuch-Button oeffnet immer die passende Passage in `./manual`.
 - Jeder Dialog soll optisch möglichst ähnlich aufgebaut sein.
-- Wenn der Inhalt größer ist: scrollbarer Inhaltsbereich.
+- Jeder Dialog hat rechts oben feste Fenster-Aktionen in dieser Reihenfolge:
+  - Minimieren / Restore
+  - Maximieren
+  - Schliessen
+- Der Schliessen-Button ist immer rechts oben als Icon-Button.
+- OK-, Abbrechen-, Speichern- und vergleichbare Arbeitsaktionen stehen immer rechts unten im Footer.
+- Sichtbare S-Picker-Buttons sind in Dialogen verboten.
+  - Der Shortcut darf weiterhin kontextsensitiv auf den aktiven Dialog wirken.
+- Wenn der Inhalt groesser ist: scrollbarer Inhaltsbereich mit automatischen X-/Y-Scrollbalken.
 - Wenn der Dialog funktionale Controls/Filter hat: Toolbar.
 - Info- und Arbeitsdialoge sollen resizebar sein (rechte untere Ecke).
-- S-Picker ist standardmäßig vorgesehen.
-  - Standard-Shortcut: konfigurierbar, Default `ctrl+s`
-  - Kontextsensitiv: wenn ein sichtbarer modaler Dialog offen ist, dann dessen S-Picker; sonst der Seiten-S-Picker.
+- Dialoge werden beim Oeffnen so positioniert und in der Groesse begrenzt, dass linke obere und rechte untere Ecke im sichtbaren Viewport bleiben.
+- Maximieren/Restore ist immer nur temporaer fuer die aktuelle Oeffnung; Position oder Groesse werden dadurch nicht persistent gespeichert.
+- Jedes Oeffnen, Schliessen und jede Dialogaktion wird protokolliert.
+  - Pflichtfelder: Seite, Dialogname, Trigger/Ausloeser, Aktion/Button.
+- Standard-Shortcut fuer den kontextsensitiven S-Picker bleibt konfigurierbar, Default `ctrl+s`.
 
 ### Standard `dialog_info_popup`
 
@@ -288,8 +307,11 @@ Verwendung:
 Pflicht:
 
 - Kopf
-- `(i)`-Button
-- Close
+- Titelzeile
+- 3-Zeilen-Beschreibung
+- Info links in Aktionsleiste
+- Handbuch-Button
+- Close oben rechts
 - Meta-Footer
 - Scrollbereich
 - Resize
@@ -297,13 +319,12 @@ Pflicht:
 Optional:
 
 - Copy
-- S-Picker
 - Inline-Details
 - kleine Toolbar
 
 Beschreibung:
 
-- Informationsdialog mit einheitlichem Kopf, Meta-Footer, Resize und optionalen Detailbereichen.
+- Informationsdialog mit einheitlichem Kopf, Beschreibungsframe, linker Hilfeleiste, Meta-Footer, Resize und optionalen Detailbereichen.
 
 ### Standard `dialog_panel_workbench`
 
@@ -317,8 +338,11 @@ Verwendung:
 Pflicht:
 
 - Kopf
-- `(i)`-Button
-- Close
+- Titelzeile
+- 3-Zeilen-Beschreibung
+- Info links in Aktionsleiste
+- Handbuch-Button
+- Close oben rechts
 - Meta-Footer
 - Scrollbereich
 - Resize
@@ -327,13 +351,12 @@ Optional:
 
 - Toolbar
 - Copy
-- S-Picker
 - Inline-Details
 - Split-/Mehrbereichslayout
 
 Beschreibung:
 
-- Arbeitsdialog mit einheitlicher Toolbar-/Content-Struktur für Listen, Logs, Filter und gesteuerte Bearbeitungsabläufe.
+- Arbeitsdialog mit einheitlicher Toolbar-/Content-Struktur, Beschreibungsframe, linker Hilfeleiste und Footer-Aktionen unten rechts.
 
 ### Standard `dialog_confirm_action`
 
@@ -344,17 +367,21 @@ Verwendung:
 Pflicht:
 
 - Kopf
-- `(i)`-Button
+- Titelzeile
+- 3-Zeilen-Beschreibung
+- Info links in Aktionsleiste
+- Handbuch-Button
+- Close oben rechts
 - OK / Abbrechen
 - Meta-Footer
 
 Optional:
 
-- S-Picker
+- kompaktes Resize nur wenn fachlich sinnvoll
 
 Beschreibung:
 
-- Kompakter Aktionsdialog für Bestätigungen, Warnungen und sichere Freigaben.
+- Kompakter Aktionsdialog fuer Bestaetigungen, Warnungen und sichere Freigaben mit denselben Kopf-/Footer-Regeln wie die grossen Dialoge.
 
 ### Dialog-Inventar und Ziel-Templates
 
@@ -381,12 +408,12 @@ Beschreibung:
 
 | Dialog | Kopf | (i) | Close | Copy | S-Picker | Meta | Resize | Scroll | Toolbar | Struktur | Inline-Details |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `dialog.measurement_profile_runtime` | x | x | x | x | x | x | x | x |  | x | x |
-| `dialog.analysis_log` | x | x | x | x | x | x | x | x | x | x |  |
-| `dialog.query_info` | x | x | x | x | x | x | x | x |  | x | optional |
-| `dialog_panel_workbench` abgeleitete Arbeitsdialoge | x | x | x | optional | x | x | x | x | x | x | optional |
-| `dialog.logs_record_start` | x | x | x |  | x | x | x | x | x | x |  |
-| `dialog.confirm_action` | x | x | x |  | optional | x | optional | optional |  |  |  |
+| `dialog.measurement_profile_runtime` | x | x | x | x |  | x | x | x |  | x | x |
+| `dialog.analysis_log` | x | x | x | x |  | x | x | x | x | x |  |
+| `dialog.query_info` | x | x | x | x |  | x | x | x |  | x | optional |
+| `dialog_panel_workbench` abgeleitete Arbeitsdialoge | x | x | x | optional |  | x | x | x | x | x | optional |
+| `dialog.logs_record_start` | x | x | x |  |  | x | x | x | x | x |  |
+| `dialog.confirm_action` | x | x | x |  |  | x | optional | optional |  |  |  |
 
 ### Spezialisierung `dialog_panel_floating_workbench`
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.574
+
+### Enhancement
+
+- Dialoge / Template / UI: Die zentrale Dialog-Normalisierung erzwingt jetzt fuer Standard- und Spezialdialoge eine gemeinsame Fenster-Chrome mit Icon-Buttons fuer `Schliessen`, `Maximieren` und temporaeres `Restore`, einem 3-Zeilen-Beschreibungsframe, linker Info-/Handbuch-Leiste, Footer-Aktionen unten rechts sowie Viewport-Clamping beim Oeffnen. Gleichzeitig sind sichtbare Dialog-`S-Picker` entfernt; der Shortcut bleibt kontextsensitiv erhalten, und Dialog-Open/Close/Aktionen werden ueber den bestehenden UI-Event-Pfad mit Seite, Trigger und Dialogname protokolliert. ([#542](https://github.com/thomas682/HA-Addons/issues/542))
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.573
 
 ### Fix

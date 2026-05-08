@@ -835,7 +835,10 @@
       if(root) return root;
       root = document.createElement('div');
       root.id = 'ib_doc_modal';
-      root.id = 'ib_doc_modal';
+      root.setAttribute('data-dialog-root', '1');
+      root.setAttribute('data-dialog-name', 'dialog.docs_modal');
+      root.setAttribute('data-dialog-template', 'dialog_info_popup');
+      root.setAttribute('data-dialog-trigger', 'tooltip.docs');
       root.style.display = 'none';
       root.style.position = 'fixed';
       root.style.inset = '0';
@@ -848,13 +851,13 @@
           </div>
           <iframe id="ib_doc_modal_iframe" style="flex:1 1 auto; width:100%; border:0;" src="about:blank"></iframe>
           <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; padding:10px 12px; border-top:1px solid #eee;">
-            <button id="ib_doc_modal_superpicker" type="button" class="btn_sm ib_dialog_superpicker" style="width:auto;" data-open-superpicker="1" data-ui="docs_modal.btn_superpicker" data-ib-pickkey="docs_modal.btn_superpicker">S-Picker</button>
             <button id="ib_doc_modal_open" type="button" class="btn_sm" style="width:auto;" data-ui="docs_modal.btn_open_tab" data-ib-pickkey="docs_modal.btn_open_tab">Neuer Tab</button>
             <button id="ib_doc_modal_close" type="button" class="btn_sm" style="width:auto;" data-ui="docs_modal.btn_close" data-ib-pickkey="docs_modal.btn_close">Schliessen</button>
           </div>
         </div>
       `;
       document.body.appendChild(root);
+      try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance) window.InfluxBroDialogStandards.enhance(root, { name: 'dialog.docs_modal', template: 'dialog_info_popup', trigger: 'tooltip.docs', closeSelector: '#ib_doc_modal_close' }); }catch(e){}
       try{
         const close = root.querySelector('#ib_doc_modal_close');
         if(close) close.addEventListener('click', ()=>{ try{ root.style.display='none'; }catch(e){}; });
@@ -1597,14 +1600,15 @@
 
   function _ensureUi(){
     let root = document.getElementById('influxbro_popup_root');
-    if(root){
-      if(!POPUP_REFS){
-        POPUP_REFS = {
-          root,
-          title: document.getElementById('influxbro_popup_title'),
-          pre: document.getElementById('influxbro_popup_pre'),
-          meta: document.getElementById('influxbro_popup_meta'),
-          metaFooter: document.getElementById('influxbro_popup_meta_footer'),
+      if(root){
+        if(!POPUP_REFS){
+          POPUP_REFS = {
+            root,
+            card: document.getElementById('influxbro_popup_card'),
+            title: document.getElementById('influxbro_popup_title'),
+            pre: document.getElementById('influxbro_popup_pre'),
+            meta: document.getElementById('influxbro_popup_meta'),
+            metaFooter: document.getElementById('influxbro_popup_meta_footer'),
           copyBtn: document.getElementById('influxbro_popup_copy'),
           logsBtn: document.getElementById('influxbro_popup_logs'),
           settingsBtn: document.getElementById('influxbro_popup_settings'),
@@ -1617,6 +1621,10 @@
 
     root = document.createElement('dialog');
     root.id = 'influxbro_popup_root';
+    root.setAttribute('data-dialog-root', '1');
+    root.setAttribute('data-dialog-name', 'dialog.query_info');
+    root.setAttribute('data-dialog-template', 'dialog_info_popup');
+    root.setAttribute('data-dialog-trigger', 'InfluxBroPopup.show');
     root.style.zIndex = '10050';
     root.style.display = 'none';
     root.style.background = 'transparent';
@@ -1996,6 +2004,7 @@
     confirmRoot.appendChild(confirmCard);
     document.body.appendChild(confirmRoot);
     CONFIRM_REFS = { root: confirmRoot, card: confirmCard, title: confirmTitle, body: confirmBody, cancel: confirmCancel, ok: confirmOk, meta: confirmMeta };
+    POPUP_REFS = { root, card, title, pre, meta, metaFooter: popupMetaFooter, copyBtn, logsBtn, settingsBtn, split, historyBox };
 
     const composer = document.createElement('div');
     composer.id = 'influxbro_issue_composer';
@@ -2082,7 +2091,6 @@
       </div>
       </div>
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; border-top:1px solid #eee; padding-top:10px; margin-top:4px;">
-        <button type="button" id="influxbro_issue_superpicker" class="ib_dialog_superpicker" data-open-superpicker="1" data-ui="issue_composer.btn_superpicker" data-ib-pickkey="issue_composer.btn_superpicker" style="cursor:pointer; padding:10px 12px;">S-Picker</button>
         <button type="button" id="influxbro_issue_cancel" data-ui="issue_composer.btn_close" data-ib-pickkey="issue_composer.btn_close" style="cursor:pointer; padding:10px 12px;">Schliessen</button>
         <button type="button" id="influxbro_issue_submit" style="cursor:pointer; padding:10px 12px;">Absenden / Issue anlegen</button>
         <span id="influxbro_issue_status" style="font-size:12px; opacity:0.75;"></span>
@@ -3270,11 +3278,15 @@
       }catch(e){}
       try{
         if(root){
+          const card = refs.card || document.getElementById('influxbro_popup_card');
+          root.setAttribute('data-dialog-name', String(opts && opts.dialogName ? opts.dialogName : 'dialog.query_info'));
+          root.setAttribute('data-dialog-template', String(opts && opts.templateName ? opts.templateName : 'dialog_info_popup'));
+          root.setAttribute('data-dialog-trigger', String(opts && opts.trigger ? opts.trigger : 'InfluxBroPopup.show'));
           card.setAttribute('data-dialog-name', String(opts && opts.dialogName ? opts.dialogName : 'dialog.query_info'));
           card.setAttribute('data-dialog-template', String(opts && opts.templateName ? opts.templateName : 'dialog_info_popup'));
           card.setAttribute('data-dialog-trigger', String(opts && opts.trigger ? opts.trigger : 'InfluxBroPopup.show'));
           if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance){
-            window.InfluxBroDialogStandards.enhance(card, {
+            window.InfluxBroDialogStandards.enhance(root, {
               name: String(opts && opts.dialogName ? opts.dialogName : 'dialog.query_info'),
               template: String(opts && opts.templateName ? opts.templateName : 'dialog_info_popup'),
               trigger: String(opts && opts.trigger ? opts.trigger : 'InfluxBroPopup.show'),

@@ -1361,7 +1361,6 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           </div>
         </div>
         <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-          <button class="btn_sm ib_dialog_superpicker" id="raw_outlier_params_superpicker" type="button" data-open-superpicker="1" data-ui="dialog_raw_outlier_params.btn_superpicker" data-ib-pickkey="dialog_raw_outlier_params.btn_superpicker">S-Picker</button>
           <button class="btn_sm" id="raw_outlier_params_close" type="button" data-ui="dialog_raw_outlier_params.btn_close" data-ib-pickkey="dialog_raw_outlier_params.btn_close">Schliessen</button>
           <button class="btn_sm" id="raw_outlier_params_reset" type="button" data-ui="dialog_raw_outlier_params.btn_reset" data-ib-pickkey="dialog_raw_outlier_params.btn_reset">Standardwerte</button>
           <button class="btn_sm" id="raw_outlier_params_save" type="button" data-ui="dialog_raw_outlier_params.btn_save" data-ib-pickkey="dialog_raw_outlier_params.btn_save">Speichern</button>
@@ -1451,7 +1450,6 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         </div>
 
         <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-          <button class="btn_sm ib_dialog_superpicker" id="change_preview_superpicker" type="button" data-open-superpicker="1" data-ui="dialog_change_preview.btn_superpicker" data-ib-pickkey="dialog_change_preview.btn_superpicker">S-Picker</button>
           <button class="btn_sm" id="change_preview_close" type="button" data-ui="dialog_change_preview.btn_close" data-ib-pickkey="dialog_change_preview.btn_close">Schliessen</button>
           <button class="btn_sm" id="change_preview_cancel" type="button" data-ui="dialog_change_preview.btn_cancel" data-ib-pickkey="dialog_change_preview.btn_cancel">Abbrechen</button>
           <button class="btn_sm" id="change_preview_ok" type="button" data-ui="dialog_change_preview.btn_ok" data-ib-pickkey="dialog_change_preview.btn_ok">OK ausfuehren</button>
@@ -1498,7 +1496,6 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         </div>
 
         <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-          <button class="btn_sm ib_dialog_superpicker" id="repair_wizard_superpicker" type="button" data-open-superpicker="1" data-ui="dialog_repair_wizard.btn_superpicker" data-ib-pickkey="dialog_repair_wizard.btn_superpicker">S-Picker</button>
           <button class="btn_sm" id="repair_wizard_close" type="button" data-ui="dialog_repair_wizard.btn_close" data-ib-pickkey="dialog_repair_wizard.btn_close">Schliessen</button>
           <button class="btn_sm" id="repair_wizard_preview" type="button" data-ui="dialog_repair_wizard.btn_preview" data-ib-pickkey="dialog_repair_wizard.btn_preview">Vorschau</button>
           <button class="btn_sm" id="repair_wizard_apply" type="button" data-ui="dialog_repair_wizard.btn_apply" data-ib-pickkey="dialog_repair_wizard.btn_apply" disabled>Ausfuehren</button>
@@ -15001,6 +14998,10 @@ try{
       modal.style.inset = '0';
       modal.style.zIndex = '10000';
       modal.style.background = 'rgba(0,0,0,0.45)';
+      modal.setAttribute('data-dialog-root', '1');
+      modal.setAttribute('data-dialog-name', 'dialog.git_bugreport');
+      modal.setAttribute('data-dialog-template', 'dialog_panel_workbench');
+      modal.setAttribute('data-dialog-trigger', 'errors_main.btn_bugreport');
       modal.innerHTML = `
         <div style="max-width:900px;margin:6vh auto;background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 12px 60px rgba(0,0,0,0.28);" data-dialog-panel="1">
           <div style="display:flex;align-items:center;gap:12px;">
@@ -15009,7 +15010,6 @@ try{
           <div style="margin-top:8px;" class="muted">Vorbereitung fuer GitHub Issue. Bitte Beschreibung erg&auml;nzen bevor Sie auf 'Open on GitHub' klicken.</div>
           <textarea id="bugreport_text" style="width:100%;height:260px;margin-top:10px;padding:10px;border:1px solid #eee;border-radius:8px;font-family:monospace;"></textarea>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
-            <button class="btn_sm ib_dialog_superpicker" id="bugreport_superpicker" data-open-superpicker="1" data-ui="bugreport.btn_superpicker" data-ib-pickkey="bugreport.btn_superpicker">S-Picker</button>
             <button class="btn_sm" id="bugreport_close" data-ui="bugreport.btn_close" data-ib-pickkey="bugreport.btn_close">Schliessen</button>
             <button class="btn_sm" id="bugreport_copy" data-ui="bugreport.btn_copy" data-ib-pickkey="bugreport.btn_copy">In Zwischenablage kopieren</button>
             <button class="btn_sm" id="bugreport_github" data-ui="bugreport.btn_github" data-ib-pickkey="bugreport.btn_github">Open on GitHub</button>
@@ -15017,6 +15017,7 @@ try{
         </div>
       `;
       document.body.appendChild(modal);
+      try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance) window.InfluxBroDialogStandards.enhance(modal, { name: 'dialog.git_bugreport', template: 'dialog_panel_workbench', trigger: 'errors_main.btn_bugreport', closeSelector: '#bugreport_close' }); }catch(e){}
 
       function close(){ try{ modal.style.display = 'none'; }catch(e){} }
       modal.querySelector('#bugreport_close').addEventListener('click', close);

@@ -817,6 +817,14 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
 ## Popup-Dialoge
 
 - Der Button `Zwischenablage` verwendet jetzt priorisiert den aktuell sichtbaren Inhalt des Dialogfelds `influxbro_popup_pre`. Dadurch wird im Fehler-/Logdialog immer genau der gerade angezeigte Text kopiert, auch wenn innerhalb desselben Popups zwischen verschiedenen Ansichten umgeschaltet wurde.
+- Dialoge folgen jetzt einem strikteren gemeinsamen Fensterrahmen:
+  - rechts oben nur noch Icon-Buttons fuer `Restore`, `Maximieren` und `Schliessen`
+  - unter dem Titel immer ein kurzer Beschreibungsframe mit drei Zeilen
+  - darunter links eine feste Hilfeleiste mit `Info` und `Handbuch`
+  - Arbeitsaktionen wie `OK`, `Abbrechen`, `Speichern` und aehnliche Buttons unten rechts
+- Sichtbare `S-Picker`-Buttons innerhalb von Dialogen entfallen. Der konfigurierbare Shortcut `ctrl+s` bleibt erhalten und wirkt bei offenem Dialog weiterhin auf genau diesen Dialogkontext.
+- Beim Oeffnen werden Dialoge jetzt auf den sichtbaren Viewport begrenzt. Temporäres Maximieren bzw. Restore gilt nur fuer die aktuelle Oeffnung und wird nicht persistent gespeichert.
+- Das Dialog-Logging schreibt fuer Oeffnen, Schliessen und Fenster-/Hilfeaktionen weiterhin ueber den vorhandenen UI-Event-Pfad mit, von welcher Seite und welchem Trigger der Dialog kam.
 
 ## Jobs & Cache
 
@@ -884,7 +892,7 @@ Timer Jobs:
   - `weekly`: woechentlich (Wochentag 0=Mo..6=So) um HH:MM:SS
   - `manual`: nur manuell per `Start`
 - `History`: oeffnet einen Dialog mit zusammengefuehrter Timer-Historie fuer die selektierten Timer; Filter nach Timer-ID und Freitextsuche sind im Dialog moeglich.
-- Dialoge verwenden jetzt konsistent einen Footer unten rechts fuer `Schliessen`-, `Abbrechen`- und `OK`-Aktionen. In vielen Dialogen gibt es dort zusaetzlich direkt einen `S-Picker`, um UI-Elemente ohne Rueckweg in die Topbar zu referenzieren.
+- Dialoge verwenden jetzt konsistent einen Footer unten rechts fuer Arbeitsaktionen wie `Abbrechen`, `OK`, `Speichern` oder `Ausfuehren`. Ein separates `Schliessen` liegt als Icon oben rechts; sichtbare dialoginterne `S-Picker` entfallen.
 - `Deaktivieren`/`Aktivieren`: schaltet die Automatik (Auto-Start) fuer die selektierten Timer aus/an. Hinweis: Bei `stats_full` bedeutet `Deaktivieren` effektiv `manual`; beim Aktivieren wird der vorherige Modus (falls bekannt) wiederhergestellt.
 - Zusaetzlich: `stats_full` laedt Statistik komplett (inkl. Details wie count/min/max/mean) fuer alle Serien.
 - Neu: `analysis_nightly` aktualisiert nachts den Analysecache fuer bereits analysierte Serien (1x pro Nacht; best-effort).
@@ -978,17 +986,17 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der Analyse-Logs-Dialog zeigt die Laufzeit jetzt direkt rechts neben der Uhrzeit. Zusätzlich gibt es eine Checkbox `Umbruch` sowie Lösch-Buttons für die Volltextfelder `Textsuche` und `Markieren`.
 - `Analyse mit Cache` verwendet bei einem direkten zweiten Lauf derselben Auswahl ein stabiles, zuletzt bestimmtes Analysefenster weiter, damit der vorhandene Cache nicht durch minimale Zeitverschiebungen sofort wieder als komplett neu zu lesen gilt.
 - Die Tabelle `Ausreißer` folgt jetzt demselben Standard-Tabellenlayout wie die übrigen Listen: eigene Tabellenüberschrift, Toolbar über der Tabelle, separates Statuspanel darunter sowie die Standard-Controls für Spaltenbreiten, Spaltenauswahl, Umbruch, Spaltenfilter und Kopieraktionen.
-- Info- und Arbeitsdialoge besitzen jetzt einen einheitlicheren Aufbau mit Meta-Footer, `(i)`-Selbstbeschreibung und resizebarer rechter unterer Ecke, soweit der Dialog auf den neuen Standardunterbau gehoben wurde.
-- Der S-Picker kann kontextsensitiv über den konfigurierbaren Shortcut `ctrl+s` geöffnet werden. Wenn ein sichtbarer modaler Dialog offen ist, wird dessen Dialog-S-Picker gestartet, sonst der Seiten-S-Picker. Der Shortcut ist in den Einstellungen unter `Tastaturshortcuts` anpassbar.
+- Info- und Arbeitsdialoge besitzen jetzt einen einheitlicheren Aufbau mit Meta-Footer, 3-Zeilen-Beschreibungsframe, linker Hilfeleiste, Fenster-Iconbuttons oben rechts und resizebarer rechter unterer Ecke, soweit der Dialog auf den neuen Standardunterbau gehoben wurde.
+- Der S-Picker kann kontextsensitiv ueber den konfigurierbaren Shortcut `ctrl+s` geoeffnet werden. Wenn ein sichtbarer modaler Dialog offen ist, wird dessen Dialogkontext verwendet; ein sichtbarer Dialog-Button dafuer ist nicht mehr vorhanden. Der Shortcut ist in den Einstellungen unter `Tastaturshortcuts` anpassbar.
 - Die Dashboard-Sektionsköpfe `Ausreißer`, `Raw Daten Analyse` und `Grafische Analyse` folgen wieder konsistent dem normalen Section-Layout. Die Friendly-Name-Zeitraumerkennung für `Messwertinfos von Homeassistant` läuft bei `range=all` wieder ohne den früheren `tag_combo_ranges`-500er.
 - Die Dashboard-Section-Blöcke `Ausreißer`, `Raw Daten Analyse` und die nachfolgenden Analysebereiche besitzen jetzt wieder saubere Containergrenzen. Dadurch rendert die Dashboard-Seite nach dem App-Start wieder stabil statt mit leerem Bildschirm oder hängendem Spinner.
 - Für schwerere Hintergrund-Scheduler wird die erste Arbeitsrunde beim App-Start jetzt zeitlich gestaffelt begonnen. Parallel dazu erzeugt der Startpfad zusätzliche Diagnose-Logs für erste HTTP-Anfragen und Scheduler-Erstläufe, damit Startprobleme unter HA/Ingress besser eingegrenzt werden können.
 - Auf der Logs-Seite wird die Recorder-Aufzeichnung jetzt über zwei Buttons in der Titelzeile gesteuert: Start öffnet einen Standarddialog zur Aufzeichnungsanlage, Stop beendet die laufende Aufzeichnung. Gespeicherte Aufzeichnungen können direkt über das Auswahlfeld neben dem Zeitfilter auf Start-/Stop-Felder angewendet und mit dem zugehörigen Löschbutton wieder entfernt werden.
 - Die Multi-Picker-Bar ist jetzt verschiebbar und folgt als kleiner beweglicher Arbeitsdialog der neuen Spezialisierung `dialog_panel_floating_workbench`.
 - Die Diagnose-Seite rendert ihre Storage-Logik wieder vollständig innerhalb des normalen `dbinfo.html`-Scriptblocks. Zusätzlich sorgt ein globaler Fallback dafuer, dass Hauptinhalt und Navigation bei optionalen Frontend-Initialisierungsfehlern nicht dauerhaft hinter einem leeren Bildschirm/Spinner verborgen bleiben.
-- Standarddialoge unterscheiden jetzt intern zwischen Dialog-Wurzel und Dialog-Panel. Dadurch bleiben `(i)`-Button und dialoglokaler S-Picker auch bei mehreren gleichzeitig vorhandenen Standarddialogen eindeutig referenzierbar und kollidieren nicht mehr auf generischen Dialog-Pickkeys.
+- Standarddialoge unterscheiden jetzt intern zwischen Dialog-Wurzel und Dialog-Panel. Dadurch bleiben Dialogname, `(i)`-Button, Handbuch-Button und Fenster-Aktionen auch bei mehreren gleichzeitig vorhandenen Standarddialogen eindeutig referenzierbar und kollidieren nicht mehr auf generischen Dialog-Pickkeys.
 - Auch die verbleibenden Spezialdialoge besitzen jetzt explizite Dialog-Bezeichner und Template-Metadaten, damit die globale Dialog-Normalisierung keine `dialog_unknown.*`-Fallbacks mehr erzeugt.
-- Das gilt jetzt auch für die dynamischen Overlay-Dialoge aus `_tooltips.html` (`Bestätigung`, `Issue anlegen`, `Smart Assist`), sodass `(i)`-Button und dialoglokaler S-Picker dort ebenfalls eindeutig bleiben.
+- Das gilt jetzt auch fuer die dynamischen Overlay-Dialoge aus `_tooltips.html` (`Bestätigung`, `Issue anlegen`, `Smart Assist`), die denselben Unterbau ohne sichtbaren Dialog-`S-Picker` nutzen.
 - Aufklappbare Bereiche (`<details>`) behalten ihren Zustand jetzt stabiler. Bereits restaurierte Sections werden nicht bei jeder späteren DOM-Mutation erneut auf alte Werte zurückgesetzt; außerdem speichern `Alle öffnen` und `Alle schließen` den neuen Zustand sofort.
 - In den Logs verwenden die beiden Löschbuttons beim Zeit-/Aufzeichnungsfilter jetzt das gleiche Mülleimer-SVG wie andere Löschaktionen. Das Aufzeichnungs-Auswahlfeld fügt sich außerdem mit flexibler Breite in dieselbe Eingabezeile wie der Markierungsfilter ein.
 - Undo und Repeat zeigen jetzt vor der Ausführung eine Vorschau und müssen erst bestätigt werden. Auf der History-Seite werden Prüfungs-/Strategie-Änderungen zusätzlich in einem eigenen Bereich dargestellt, damit Parameteränderungen getrennt von Messwertänderungen nachvollziehbar und undo-fähig bleiben.

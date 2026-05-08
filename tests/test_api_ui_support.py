@@ -844,8 +844,10 @@ def test_dialog_standardization_avoids_generic_dialog_pickkeys():
     index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "return 'dialog_unknown';" in topbar
-    assert "key + '.btn_superpicker'" in topbar
     assert "name + '.btn_info'" in topbar
+    assert 'data-dialog-window="maximize"' in topbar
+    assert 'data-dialog-window="restore"' in topbar
+    assert 'data-dialog-window="close"' in topbar
     assert 'data-dialog-panel="1"' in index_body
     assert 'data-dialog-panel' in tooltips
     assert "dialog.issue_composer" in tooltips
@@ -1540,7 +1542,7 @@ def test_export_actions_expose_running_status_panel():
     assert "setRunStatusText('Abbruch angefordert...')" in body
 
 
-def test_dialogs_expose_superpicker_and_footer_normalizer():
+def test_dialogs_hide_superpicker_buttons_and_keep_footer_normalizer():
     index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     config_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     logs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
@@ -1549,17 +1551,17 @@ def test_dialogs_expose_superpicker_and_footer_normalizer():
     topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     tooltips_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-dialog-root="1"' in index_body
-    assert 'data-open-superpicker="1"' in index_body
-    assert 'data-ui="config_icon_svg.btn_superpicker"' in config_body
-    assert 'data-ui="logs_support_bundle.btn_superpicker"' in logs_body
-    assert 'data-ui="dq_detail.btn_superpicker"' in dq_body
-    assert 'data-ui="jobs_timers_history.btn_superpicker"' in jobs_body
+    assert 'btn_superpicker' not in index_body
+    assert 'btn_superpicker' not in config_body
+    assert 'btn_superpicker' not in logs_body
+    assert 'btn_superpicker' not in dq_body
+    assert 'btn_superpicker' not in jobs_body
     assert 'window.InfluxBroOpenSuperpickerFromDialog = function(dialogRoot)' in topbar_body
     assert "btn.closest('[data-dialog-root=\"1\"], dialog, [role=\"dialog\"], .dlg_backdrop, .modal')" in topbar_body
     assert "_ensureDialogFooter('#ib_page_search_modal', '#ib_page_search_modal_close');" in topbar_body
-    assert "_ensureDialogFooter('#analysis_log_modal', '#analysis_log_modal_close', { buttonClass: 'btn_sm ib_dialog_superpicker', superpicker: false })" in topbar_body
-    assert 'data-ui="docs_modal.btn_superpicker"' in tooltips_body
-    assert 'data-ui="issue_composer.btn_superpicker"' in tooltips_body
+    assert "_ensureDialogFooter('#analysis_log_modal', '#analysis_log_modal_close', { buttonClass: 'btn_sm ib_dialog_superpicker', superpicker: true });" in topbar_body
+    assert "footer.querySelectorAll('[data-open-superpicker=\"1\"], .ib_dialog_superpicker').forEach" in topbar_body
+    assert 'btn_superpicker' not in tooltips_body
 
 
 def test_dashboard_outlier_params_dialog_is_global_config_based():
@@ -2121,27 +2123,17 @@ def test_api_ui_inventory_returns_items(load_app_module, tmp_path):
     keys = {str(x.get("key") or "") for x in j["items"] if isinstance(x, dict)}
     assert "config_page.main" in keys
     assert "config_icon_svg.btn_close" in keys
-    assert "config_icon_svg.btn_superpicker" in keys
     assert "dialog_change_preview.btn_close" in keys
-    assert "dialog_change_preview.btn_superpicker" in keys
     assert "dialog_repair_wizard.btn_close" in keys
-    assert "dialog_repair_wizard.btn_superpicker" in keys
     assert "export_target.btn_close" in keys
-    assert "export_target.btn_superpicker" in keys
     assert "logs_support_bundle.btn_close" in keys
-    assert "logs_support_bundle.btn_superpicker" in keys
     assert "dq_detail.btn_close" in keys
-    assert "dq_detail.btn_superpicker" in keys
     assert "jobs_timers_history.btn_close" in keys
-    assert "jobs_timers_history.btn_superpicker" in keys
     assert "docs_modal.btn_close" in keys
-    assert "docs_modal.btn_superpicker" in keys
     assert "issue_composer.btn_close" in keys
-    assert "issue_composer.btn_superpicker" in keys
     assert "settings_organizer.btn_close" in keys
-    assert "settings_organizer.btn_superpicker" in keys
     assert "ib_page_search_modal.btn_close" in keys
-    assert "ib_page_search_modal.btn_superpicker" in keys
+    assert not any(key.endswith(".btn_superpicker") for key in keys)
     assert "analysis_log_modal.btn_close" in keys
     assert "analysis_log_modal.btn_superpicker" not in keys
     assert "picker_multi.panel_bar" in keys
