@@ -101,6 +101,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Der globale Start-Fallback `safeReveal` bleibt aktiv, meldet normale Start-Enthuellungen aber nicht mehr als Warnung. Warnungen erscheinen nur noch bei echten Browserfehlern oder unbehandelten Promise-Fehlern.
 - Standard-Tooltips erscheinen nur noch auf wirklich interaktiven Elementen wie Buttons, Links und Eingaben. Wenn du bei einem sichtbaren Tooltip `Shift` gedrueckt haeltst, bleibt dieser offen, damit du den kleinen Button `Dokumentation oeffnen` oder andere interaktive Inhalte direkt im Tooltip benutzen kannst; ein separater Tooltip-Schalter innerhalb des Tooltips wird nicht mehr angezeigt. Die Tooltip-Ziellogik wird direkt im Tooltip-Script geladen, damit dieses Verhalten beim Seitenstart zuverlaessig aktiv ist.
 - Globale Dialoge wie Query-/Info-Popup, Bestaetigung, Issue Composer und Smart Bug Assistant nutzen die neue Dialogstruktur mit Kopfbereich, Beschreibung, Info-/Handbuch-Leiste, Inhaltsbereich, Footer-Meta und Tastaturbedienung (`Esc`, `F1`, `Ctrl+I`). Sichtbare S-Picker-Buttons erscheinen in Dialogen nicht; der konfigurierte Shortcut bleibt dialogbezogen nutzbar.
+- Dashboard-Dialoge wie Ausreisser-Parameter, Strategieinfo, Referenzdetails, JSON-Hilfe, Aenderungsvorschau, Reparatur-Assistent, Messwertinfos-Laufzeitdetails und gefiltertes Analyse-Logging verwenden ebenfalls stabile Dialog-Pickkeys und die Template-v2-Bereiche fuer Kopf, Toolbar, Inhalt und Footer.
 
 ## Installation in Home Assistant
 

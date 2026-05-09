@@ -879,6 +879,24 @@ def test_dialog_template_v2_basis_for_global_dialogs():
     assert "window.InfluxBroDialogStandards.enhance(confirmRoot" in tooltips
 
 
+def test_dashboard_dialogs_expose_template_v2_pickkeys_and_regions():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    for key in [
+        "dialog_raw_outlier_params",
+        "dialog_analysis_strategy",
+        "dialog_reference_detail",
+        "dialog_analysis_strategy_help",
+        "dialog_change_preview",
+        "dialog_repair_wizard",
+        "dialog_measurement_profile_runtime",
+        "dialog_analysis_log",
+    ]:
+        assert f'data-ui="{key}.root"' in body or f"data-ui', '{key}.root'" in body
+        assert f'data-ib-pickkey="{key}.panel"' in body or f"data-ib-pickkey', '{key}.panel'" in body
+    assert body.count('data-dialog-footer="1"') >= 4
+    assert body.count('data-dialog-toolbar="1"') >= 2
+
+
 def test_details_state_restore_is_one_shot_and_open_all_persists():
     nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()

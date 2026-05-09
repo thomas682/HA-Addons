@@ -1308,8 +1308,8 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
         <div class="muted" id="graph_points_info" style="margin-top: 6px;" data-ui="dashboard_graph.txt_points" title="dashboard_graph.txt_points" data-ib-pickkey="dashboard_graph.txt_points"></div>
     </details>
 
-    <div id="raw_outlier_params_dialog" data-dialog-root="1" data-dialog-name="dialog.raw_outlier_params" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dashboard_outliers.btn_params" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
-      <div style="background:#fff; border-radius:16px; padding:20px; max-width:760px; width:min(760px, 100%); max-height:88vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+    <div id="raw_outlier_params_dialog" data-dialog-root="1" data-dialog-name="dialog.raw_outlier_params" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dashboard_outliers.btn_params" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_raw_outlier_params.root" data-ib-pickkey="dialog_raw_outlier_params.root">
+      <div data-dialog-panel="1" data-ui="dialog_raw_outlier_params.panel" data-ib-pickkey="dialog_raw_outlier_params.panel" style="background:#fff; border-radius:16px; padding:20px; max-width:760px; width:min(760px, 100%); max-height:88vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;">
           <div>
             <h3 style="margin:0 0 6px 0;">Ausreisser-Parameter</h3>
@@ -1321,46 +1321,46 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
             <div style="font-weight:700;">Counter: Max Sprung</div>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px;">
               <div style="display:flex; flex-direction:column; gap:6px;">
-                <label for="raw_param_max_step_w" style="font-weight:700; font-size:12px;">W</label>
-                <input id="raw_param_max_step_w" type="number" step="any" placeholder="Default" style="width:100%;" />
+                <label for="raw_param_max_step_w" style="font-weight:700; font-size:12px;" data-ui="dialog_raw_outlier_params.lbl_max_step_w" data-ib-pickkey="dialog_raw_outlier_params.lbl_max_step_w">W</label>
+                <input id="raw_param_max_step_w" type="number" step="any" placeholder="Default" style="width:100%;" data-ui="dialog_raw_outlier_params.input_max_step_w" data-ib-pickkey="dialog_raw_outlier_params.input_max_step_w" />
               </div>
               <div style="display:flex; flex-direction:column; gap:6px;">
-                <label for="raw_param_max_step_kw" style="font-weight:700; font-size:12px;">kW</label>
-                <input id="raw_param_max_step_kw" type="number" step="any" placeholder="Default" style="width:100%;" />
+                <label for="raw_param_max_step_kw" style="font-weight:700; font-size:12px;" data-ui="dialog_raw_outlier_params.lbl_max_step_kw" data-ib-pickkey="dialog_raw_outlier_params.lbl_max_step_kw">kW</label>
+                <input id="raw_param_max_step_kw" type="number" step="any" placeholder="Default" style="width:100%;" data-ui="dialog_raw_outlier_params.input_max_step_kw" data-ib-pickkey="dialog_raw_outlier_params.input_max_step_kw" />
               </div>
               <div style="display:flex; flex-direction:column; gap:6px;">
-                <label for="raw_param_max_step_wh" style="font-weight:700; font-size:12px;">Wh</label>
-                <input id="raw_param_max_step_wh" type="number" step="any" placeholder="Default" style="width:100%;" />
+                <label for="raw_param_max_step_wh" style="font-weight:700; font-size:12px;" data-ui="dialog_raw_outlier_params.lbl_max_step_wh" data-ib-pickkey="dialog_raw_outlier_params.lbl_max_step_wh">Wh</label>
+                <input id="raw_param_max_step_wh" type="number" step="any" placeholder="Default" style="width:100%;" data-ui="dialog_raw_outlier_params.input_max_step_wh" data-ib-pickkey="dialog_raw_outlier_params.input_max_step_wh" />
               </div>
               <div style="display:flex; flex-direction:column; gap:6px;">
-                <label for="raw_param_max_step_kwh" style="font-weight:700; font-size:12px;">kWh</label>
-                <input id="raw_param_max_step_kwh" type="number" step="any" placeholder="Default" style="width:100%;" />
+                <label for="raw_param_max_step_kwh" style="font-weight:700; font-size:12px;" data-ui="dialog_raw_outlier_params.lbl_max_step_kwh" data-ib-pickkey="dialog_raw_outlier_params.lbl_max_step_kwh">kWh</label>
+                <input id="raw_param_max_step_kwh" type="number" step="any" placeholder="Default" style="width:100%;" data-ui="dialog_raw_outlier_params.input_max_step_kwh" data-ib-pickkey="dialog_raw_outlier_params.input_max_step_kwh" />
               </div>
             </div>
             <div class="muted" style="font-size:12px; line-height:1.45;">Maximal erlaubter positiver Sprung zwischen zwei aufeinanderfolgenden Punkten. Werte gelten global pro Einheit.</div>
           </div>
           <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
-            <label for="raw_param_min" style="font-weight:700;">Grenzen: Min</label>
-            <input id="raw_param_min" type="number" step="any" placeholder="leer = keine Untergrenze" style="width:100%;" />
+            <label for="raw_param_min" style="font-weight:700;" data-ui="dialog_raw_outlier_params.lbl_min" data-ib-pickkey="dialog_raw_outlier_params.lbl_min">Grenzen: Min</label>
+            <input id="raw_param_min" type="number" step="any" placeholder="leer = keine Untergrenze" style="width:100%;" data-ui="dialog_raw_outlier_params.input_min" data-ib-pickkey="dialog_raw_outlier_params.input_min" />
             <div class="muted" style="font-size:12px; line-height:1.45;">Werte unterhalb dieser Grenze werden als Grenzverletzung markiert. Bleibt das Feld leer, wird keine untere Grenze geprueft.</div>
           </div>
           <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
-            <label for="raw_param_max" style="font-weight:700;">Grenzen: Max</label>
-            <input id="raw_param_max" type="number" step="any" placeholder="leer = keine Obergrenze" style="width:100%;" />
+            <label for="raw_param_max" style="font-weight:700;" data-ui="dialog_raw_outlier_params.lbl_max" data-ib-pickkey="dialog_raw_outlier_params.lbl_max">Grenzen: Max</label>
+            <input id="raw_param_max" type="number" step="any" placeholder="leer = keine Obergrenze" style="width:100%;" data-ui="dialog_raw_outlier_params.input_max" data-ib-pickkey="dialog_raw_outlier_params.input_max" />
             <div class="muted" style="font-size:12px; line-height:1.45;">Werte oberhalb dieser Grenze werden als Grenzverletzung markiert. Bleibt das Feld leer, wird keine obere Grenze geprueft.</div>
           </div>
           <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;">
-            <label for="raw_param_recovery_streak" style="font-weight:700;">Stoerphase: Recovery-Streak</label>
-            <input id="raw_param_recovery_streak" type="number" min="1" max="50" step="1" placeholder="leer = Standard 2" style="width:100%;" />
+            <label for="raw_param_recovery_streak" style="font-weight:700;" data-ui="dialog_raw_outlier_params.lbl_recovery_streak" data-ib-pickkey="dialog_raw_outlier_params.lbl_recovery_streak">Stoerphase: Recovery-Streak</label>
+            <input id="raw_param_recovery_streak" type="number" min="1" max="50" step="1" placeholder="leer = Standard 2" style="width:100%;" data-ui="dialog_raw_outlier_params.input_recovery_streak" data-ib-pickkey="dialog_raw_outlier_params.input_recovery_streak" />
             <div class="muted" style="font-size:12px; line-height:1.45;">Anzahl gueltiger Werte in Folge, bis eine aktive Stoerphase wieder als beendet gilt. Hoehere Werte machen die Rueckkehr in den Normalzustand strenger.</div>
           </div>
           <div style="border:1px solid #e7e7e7; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px; grid-column:1 / -1;">
-            <label for="raw_param_gap_seconds" style="font-weight:700;">Messwertluecke: Max Abstand (s)</label>
-            <input id="raw_param_gap_seconds" type="number" min="1" max="86400" step="1" placeholder="leer = Standard aus Einstellungen" style="width:100%; max-width:240px;" />
+            <label for="raw_param_gap_seconds" style="font-weight:700;" data-ui="dialog_raw_outlier_params.lbl_gap_seconds" data-ib-pickkey="dialog_raw_outlier_params.lbl_gap_seconds">Messwertluecke: Max Abstand (s)</label>
+            <input id="raw_param_gap_seconds" type="number" min="1" max="86400" step="1" placeholder="leer = Standard aus Einstellungen" style="width:100%; max-width:240px;" data-ui="dialog_raw_outlier_params.input_gap_seconds" data-ib-pickkey="dialog_raw_outlier_params.input_gap_seconds" />
             <div class="muted" style="font-size:12px; line-height:1.45;">Wenn zwei aufeinanderfolgende Werte weiter auseinanderliegen als dieser Abstand, wird das als Messwertluecke gewertet statt als normaler Verlauf oder Counter-Sprung.</div>
           </div>
         </div>
-        <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+        <div data-dialog-footer="1" style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
           <button class="btn_sm" id="raw_outlier_params_close" type="button" data-ui="dialog_raw_outlier_params.btn_close" data-ib-pickkey="dialog_raw_outlier_params.btn_close">Schliessen</button>
           <button class="btn_sm" id="raw_outlier_params_reset" type="button" data-ui="dialog_raw_outlier_params.btn_reset" data-ib-pickkey="dialog_raw_outlier_params.btn_reset">Standardwerte</button>
           <button class="btn_sm" id="raw_outlier_params_save" type="button" data-ui="dialog_raw_outlier_params.btn_save" data-ib-pickkey="dialog_raw_outlier_params.btn_save">Speichern</button>
@@ -1368,8 +1368,8 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
       </div>
     </div>
 
-    <div id="analysis_strategy_dialog" data-dialog-root="1" data-dialog-name="dialog.analysis_strategy" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dashboard_analysis.btn_strategy_info" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
-      <div style="background:#fff; border-radius:16px; padding:20px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+    <div id="analysis_strategy_dialog" data-dialog-root="1" data-dialog-name="dialog.analysis_strategy" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dashboard_analysis.btn_strategy_info" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_analysis_strategy.root" data-ib-pickkey="dialog_analysis_strategy.root">
+      <div data-dialog-panel="1" data-ui="dialog_analysis_strategy.panel" data-ib-pickkey="dialog_analysis_strategy.panel" style="background:#fff; border-radius:16px; padding:20px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;">
           <div>
             <h3 style="margin:0 0 6px 0;">Strategieinfo</h3>
@@ -1392,40 +1392,40 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
             <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
               <button class="btn_sm" id="analysis_strategy_dialog_json_help" type="button" data-ui="dialog_analysis_strategy.btn_json_help" data-ib-pickkey="dialog_analysis_strategy.btn_json_help">JSON Aufbau und Beispiele</button>
             </div>
-            <textarea id="analysis_strategy_dialog_json" style="width:100%; min-height:220px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:12px;"></textarea>
+            <textarea id="analysis_strategy_dialog_json" style="width:100%; min-height:220px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:12px;" data-ui="dialog_analysis_strategy.input_json" data-ib-pickkey="dialog_analysis_strategy.input_json"></textarea>
           </div>
         </div>
-        <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+        <div data-dialog-footer="1" style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
           <button class="btn_sm" id="analysis_strategy_dialog_close" type="button" data-ui="dialog_analysis_strategy.btn_close" data-ib-pickkey="dialog_analysis_strategy.btn_close">Schliessen</button>
           <button class="btn_sm" id="analysis_strategy_dialog_save" type="button" data-ui="dialog_analysis_strategy.btn_save" data-ib-pickkey="dialog_analysis_strategy.btn_save">Speichern</button>
         </div>
       </div>
     </div>
 
-    <div id="reference_detail_dialog" data-dialog-root="1" data-dialog-name="dialog.reference_detail" data-dialog-template="dialog_info_popup" data-dialog-trigger="dashboard_selection.btn_reference_detail" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
-      <div style="background:#fff; border-radius:16px; padding:20px; max-width:1100px; width:min(1100px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;"><div><h3 style="margin:0 0 6px 0;">Referenzierung – Detailliste</h3><div id="reference_detail_meta" class="muted" style="font-size:12px; line-height:1.45;">Alle Einträge mit Dateiinhalt und Suche.</div></div><button id="reference_detail_close" class="btn_sm" type="button" style="width:auto;">Schliessen</button></div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
-          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Suche</span><input id="reference_detail_search" type="text" placeholder="Volltextsuche in Dateiinhalt/Referenzen" /></label>
-          <button id="reference_detail_prev" class="btn_sm" type="button" style="width:auto; align-self:end;">Zurück</button>
-          <button id="reference_detail_next" class="btn_sm" type="button" style="width:auto; align-self:end;">Weiter</button>
+    <div id="reference_detail_dialog" data-dialog-root="1" data-dialog-name="dialog.reference_detail" data-dialog-template="dialog_info_popup" data-dialog-trigger="dashboard_selection.btn_reference_detail" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_reference_detail.root" data-ib-pickkey="dialog_reference_detail.root">
+      <div data-dialog-panel="1" data-ui="dialog_reference_detail.panel" data-ib-pickkey="dialog_reference_detail.panel" style="background:#fff; border-radius:16px; padding:20px; max-width:1100px; width:min(1100px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;"><div><h3 style="margin:0 0 6px 0;">Referenzierung – Detailliste</h3><div id="reference_detail_meta" class="muted" style="font-size:12px; line-height:1.45;">Alle Einträge mit Dateiinhalt und Suche.</div></div><button id="reference_detail_close" class="btn_sm" type="button" style="width:auto;" data-ui="dialog_reference_detail.btn_close" data-ib-pickkey="dialog_reference_detail.btn_close">Schliessen</button></div>
+        <div data-dialog-toolbar="1" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;" data-ui="dialog_reference_detail.lbl_search" data-ib-pickkey="dialog_reference_detail.lbl_search"><span>Suche</span><input id="reference_detail_search" type="text" placeholder="Volltextsuche in Dateiinhalt/Referenzen" data-ui="dialog_reference_detail.input_search" data-ib-pickkey="dialog_reference_detail.input_search" /></label>
+          <button id="reference_detail_prev" class="btn_sm" type="button" style="width:auto; align-self:end;" data-ui="dialog_reference_detail.btn_prev" data-ib-pickkey="dialog_reference_detail.btn_prev">Zurück</button>
+          <button id="reference_detail_next" class="btn_sm" type="button" style="width:auto; align-self:end;" data-ui="dialog_reference_detail.btn_next" data-ib-pickkey="dialog_reference_detail.btn_next">Weiter</button>
         </div>
         <div id="reference_detail_list" style="display:flex; flex-direction:column; gap:12px;"></div>
       </div>
     </div>
 
-    <div id="analysis_strategy_json_help_dialog" data-dialog-root="1" data-dialog-name="dialog.analysis_strategy_help" data-dialog-template="dialog_info_popup" data-dialog-trigger="dialog_analysis_strategy.btn_json_help" style="display:none; position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
-      <div style="background:#fff; border-radius:16px; padding:16px; max-width:1080px; width:min(1080px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28); resize:both; overflow: auto; min-width:720px; min-height:520px;">
+    <div id="analysis_strategy_json_help_dialog" data-dialog-root="1" data-dialog-name="dialog.analysis_strategy_help" data-dialog-template="dialog_info_popup" data-dialog-trigger="dialog_analysis_strategy.btn_json_help" style="display:none; position:fixed; inset:0; z-index:10001; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_analysis_strategy_help.root" data-ib-pickkey="dialog_analysis_strategy_help.root">
+      <div data-dialog-panel="1" data-ui="dialog_analysis_strategy_help.panel" data-ib-pickkey="dialog_analysis_strategy_help.panel" style="background:#fff; border-radius:16px; padding:16px; max-width:1080px; width:min(1080px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28); resize:both; overflow: auto; min-width:720px; min-height:520px;">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
           <div>
             <div style="font-weight:900; font-size:16px;">JSON Aufbau und Beispiele</div>
             <div class="muted" id="analysis_strategy_json_help_meta" style="margin-top:4px; font-size:12px; line-height:1.4;">pk: dialog_analysis_strategy_json_help.root | tpl: dialog_info_popup</div>
           </div>
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:12px;">
-          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;"><span>Suche</span><input id="analysis_strategy_json_help_search" type="text" placeholder="Suche in Erklärung und Beispielen" /></label>
-          <button type="button" id="analysis_strategy_json_help_copy_all" class="btn_sm" style="width:auto; align-self:end;">Alle Beispiele kopieren</button>
-          <button type="button" id="analysis_strategy_json_help_close" class="btn_sm" style="width:auto; align-self:end;">Schliessen</button>
+        <div data-dialog-toolbar="1" style="display:flex; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:12px;">
+          <label style="display:flex; flex-direction:column; gap:4px; font-size:12px; flex:1 1 260px;" data-ui="dialog_analysis_strategy_help.lbl_search" data-ib-pickkey="dialog_analysis_strategy_help.lbl_search"><span>Suche</span><input id="analysis_strategy_json_help_search" type="text" placeholder="Suche in Erklärung und Beispielen" data-ui="dialog_analysis_strategy_help.input_search" data-ib-pickkey="dialog_analysis_strategy_help.input_search" /></label>
+          <button type="button" id="analysis_strategy_json_help_copy_all" class="btn_sm" style="width:auto; align-self:end;" data-ui="dialog_analysis_strategy_help.btn_copy_all" data-ib-pickkey="dialog_analysis_strategy_help.btn_copy_all">Alle Beispiele kopieren</button>
+          <button type="button" id="analysis_strategy_json_help_close" class="btn_sm" style="width:auto; align-self:end;" data-ui="dialog_analysis_strategy_help.btn_close" data-ib-pickkey="dialog_analysis_strategy_help.btn_close">Schliessen</button>
         </div>
         <div id="analysis_strategy_json_help_content" style="display:flex; flex-direction:column; gap:14px;"></div>
       </div>
@@ -1433,7 +1433,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
 
     <!-- Generic change preview / undo preview dialog (Issue #395) -->
     <div id="change_preview_dialog" data-dialog-root="1" data-dialog-name="dialog.change_preview" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dialog_change_preview.btn_open" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_change_preview.root" data-ib-pickkey="dialog_change_preview.root">
-      <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+      <div data-dialog-panel="1" data-ui="dialog_change_preview.panel" data-ib-pickkey="dialog_change_preview.panel" style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
           <div>
             <div id="change_preview_title" style="font-weight:900; font-size:16px;" data-ui="dialog_change_preview.txt_title" data-ib-pickkey="dialog_change_preview.txt_title">Vorschau</div>
@@ -1449,7 +1449,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           </table>
         </div>
 
-        <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+        <div data-dialog-footer="1" style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
           <button class="btn_sm" id="change_preview_close" type="button" data-ui="dialog_change_preview.btn_close" data-ib-pickkey="dialog_change_preview.btn_close">Schliessen</button>
           <button class="btn_sm" id="change_preview_cancel" type="button" data-ui="dialog_change_preview.btn_cancel" data-ib-pickkey="dialog_change_preview.btn_cancel">Abbrechen</button>
           <button class="btn_sm" id="change_preview_ok" type="button" data-ui="dialog_change_preview.btn_ok" data-ib-pickkey="dialog_change_preview.btn_ok">OK ausfuehren</button>
@@ -1459,7 +1459,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
 
     <!-- Repair wizard (Issue #385) -->
     <div id="repair_wizard_dialog" data-dialog-root="1" data-dialog-name="dialog.repair_wizard" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dashboard_raw.btn_repair_wizard" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_repair_wizard.root" data-ib-pickkey="dialog_repair_wizard.root">
-      <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+      <div data-dialog-panel="1" data-ui="dialog_repair_wizard.panel" data-ib-pickkey="dialog_repair_wizard.panel" style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
         <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
           <div>
             <div style="font-weight:900; font-size:16px;" data-ui="dialog_repair_wizard.txt_title" data-ib-pickkey="dialog_repair_wizard.txt_title">Reparatur-Assistent</div>
@@ -1495,7 +1495,7 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
           </div>
         </div>
 
-        <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+        <div data-dialog-footer="1" style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
           <button class="btn_sm" id="repair_wizard_close" type="button" data-ui="dialog_repair_wizard.btn_close" data-ib-pickkey="dialog_repair_wizard.btn_close">Schliessen</button>
           <button class="btn_sm" id="repair_wizard_preview" type="button" data-ui="dialog_repair_wizard.btn_preview" data-ib-pickkey="dialog_repair_wizard.btn_preview">Vorschau</button>
           <button class="btn_sm" id="repair_wizard_apply" type="button" data-ui="dialog_repair_wizard.btn_apply" data-ib-pickkey="dialog_repair_wizard.btn_apply" disabled>Ausfuehren</button>
@@ -5899,7 +5899,9 @@ function _ensureMeasurementProfileRuntimeDialog(){
   dlg.style.border = '0';
   dlg.style.borderRadius = '12px';
   dlg.style.padding = '0';
-  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:60vh; height:100%; max-height:82vh; background:#fff; box-shadow:0 12px 60px rgba(0,0,0,0.28); border-radius:16px;" data-dialog-panel="1"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Messwertinfos Laufzeitdetails</div><div data-dialog-header-actions="1" style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="measurement_profile_runtime_copy" class="btn_sm" style="width:auto;">In Zwischenablage kopieren</button><button type="button" id="measurement_profile_runtime_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; border-bottom:1px solid #eee; font-size:12px; color:#555;">Dieser Dialog zeigt die komplette Abfolge zur Ermittlung der Messwertinfos inklusive Server-Teilschritten.</div><div style="padding:12px 16px; overflow:auto; flex:1 1 auto;"><div id="measurement_profile_runtime_meta" class="checklist_sub" style="padding-left:0; white-space:pre-wrap;"></div><div id="measurement_profile_runtime_steps" style="margin-top:8px;"></div><div data-dialog-meta="1" style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: measurement_profile_runtime_modal.dialog | tpl: dialog_info_popup</div></div></div>';
+  dlg.setAttribute('data-ui', 'dialog_measurement_profile_runtime.root');
+  dlg.setAttribute('data-ib-pickkey', 'dialog_measurement_profile_runtime.root');
+  dlg.innerHTML = '<div style="display:flex; flex-direction:column; min-height:60vh; height:100%; max-height:82vh; background:#fff; box-shadow:0 12px 60px rgba(0,0,0,0.28); border-radius:16px;" data-dialog-panel="1" data-ui="dialog_measurement_profile_runtime.panel" data-ib-pickkey="dialog_measurement_profile_runtime.panel"><div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;"><div style="font-weight:700;">Messwertinfos Laufzeitdetails</div><div data-dialog-header-actions="1" style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" id="measurement_profile_runtime_copy" class="btn_sm" style="width:auto;">In Zwischenablage kopieren</button><button type="button" id="measurement_profile_runtime_close" class="btn_sm" style="width:auto;">Schliessen</button></div></div><div style="padding:12px 16px; border-bottom:1px solid #eee; font-size:12px; color:#555;">Dieser Dialog zeigt die komplette Abfolge zur Ermittlung der Messwertinfos inklusive Server-Teilschritten.</div><div style="padding:12px 16px; overflow:auto; flex:1 1 auto;"><div id="measurement_profile_runtime_meta" class="checklist_sub" style="padding-left:0; white-space:pre-wrap;"></div><div id="measurement_profile_runtime_steps" style="margin-top:8px;"></div><div data-dialog-meta="1" style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: dialog_measurement_profile_runtime.root | tpl: dialog_info_popup</div></div></div>';
   document.body.appendChild(dlg);
   const close = document.getElementById('measurement_profile_runtime_close');
   const copy = document.getElementById('measurement_profile_runtime_copy');
@@ -11514,6 +11516,8 @@ function _ensureFilteredLogModal(){
   dlg.setAttribute('data-dialog-name', 'dialog.analysis_log');
   dlg.setAttribute('data-dialog-template', 'dialog_panel_workbench');
   dlg.setAttribute('data-dialog-trigger', 'dashboard_analysis.btn_logs');
+  dlg.setAttribute('data-ui', 'dialog_analysis_log.root');
+  dlg.setAttribute('data-ib-pickkey', 'dialog_analysis_log.root');
   dlg.style.width = 'min(1200px, calc(100vw - 32px))';
   dlg.style.maxWidth = '1200px';
   dlg.style.height = 'min(85vh, 900px)';
@@ -11525,12 +11529,15 @@ function _ensureFilteredLogModal(){
   try{
     const panel = dlg.firstElementChild;
     if(panel){
-      panel.setAttribute('data-dialog-root', '1');
+      panel.setAttribute('data-dialog-panel', '1');
+      panel.setAttribute('data-ui', 'dialog_analysis_log.panel');
+      panel.setAttribute('data-ib-pickkey', 'dialog_analysis_log.panel');
       panel.style.background = '#fff';
       panel.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
       panel.style.borderRadius = '16px';
       const header = panel.firstElementChild;
       if(header && header.children && header.children[1]) header.children[1].setAttribute('data-dialog-header-actions', '1');
+      if(header && header.nextElementSibling) header.nextElementSibling.setAttribute('data-dialog-toolbar', '1');
     }
   }catch(e){}
 

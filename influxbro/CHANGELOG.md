@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.578
+
+### Enhancement
+
+- Dialoge / Template v2 Paket 2: Dashboard-Dialoge wie Ausreisser-Parameter, Strategieinfo, Referenzdetails, JSON-Hilfe, Aenderungsvorschau, Reparatur-Assistent sowie die dynamischen Laufzeit-/Analyse-Log-Dialoge haben jetzt stabile Root-/Panel-Pickkeys und Template-v2-Regionen fuer Footer, Toolbar und Dialog-Scope. Bestehende IDs, Handler und API-Aktionen bleiben unveraendert. ([#545](https://github.com/thomas682/HA-Addons/issues/545))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.577
 
 ### Enhancement
