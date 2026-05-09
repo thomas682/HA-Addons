@@ -929,6 +929,8 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'Datenquelle' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
     assert 'Status' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
     assert 'function _isTooltipEligible(el)' in tooltips
+    assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('function _targetFrom(ev)')
+    assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('</script>')
     assert "el.matches('button, a[href], summary, select, textarea, label')" in tooltips
 
 

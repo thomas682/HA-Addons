@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.576
+
+### Fix
+
+- Tooltips / Issue-Nachpruefung: Die interaktive Tooltip-Ziellogik wird jetzt wieder innerhalb des aktiven Tooltip-Scripts geladen. Dadurch greifen die #543-Regeln fuer `Shift`-Offenhalten und Tooltips nur auf klickbaren/interaktiven Elementen im Browser zuverlaessig. ([#543](https://github.com/thomas682/HA-Addons/issues/543))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.575
 
 ### Fix
