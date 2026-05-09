@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.580
+
+### Enhancement
+
+- Dialoge / Template v2 Paket 4: Config-, Datenqualitaets-, Export- und Backup-Dialoge wie Verbindungstest-Erfolg, Icon-SVG-Editor, DQ-Details, Export-Zielauswahl und Backup-Verifikation haben jetzt stabile Root-/Panel-Pickkeys, Template-v2-Footer/Toolbar-Regionen und explizite Dialog-Standardisierung beim Oeffnen. Bestehende IDs, Event-Handler und API-Aktionen bleiben unveraendert. ([#547](https://github.com/thomas682/HA-Addons/issues/547))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.579
 
 ### Enhancement

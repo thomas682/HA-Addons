@@ -279,15 +279,15 @@
         </div>
       </div>
 
-      <div class="dlg_backdrop" id="dq_dlg" data-dialog-root="1" data-dialog-name="dialog.dq_detail" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dq_detail.btn_open" data-ui="dq_detail.dialog" data-ib-pickkey="dq_detail.dialog" title="dq.detail">
-        <div class="dlg">
+      <div class="dlg_backdrop" id="dq_dlg" data-dialog-root="1" data-dialog-name="dialog.dq_detail" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="dq_detail.btn_open" data-ui="dialog_dq_detail.root" data-ib-pickkey="dialog_dq_detail.root" title="dq.detail">
+        <div class="dlg" data-dialog-panel="1" data-ui="dialog_dq_detail.panel" data-ib-pickkey="dialog_dq_detail.panel">
           <div style="display:flex; gap:12px; align-items:flex-start;">
             <div>
               <div style="font-weight:900; font-size:16px;" id="dq_dlg_title" class="mono" data-ui="dq_detail.txt_title" data-ib-pickkey="dq_detail.txt_title" title="dq.detail.title"></div>
               <div class="muted">Details zu Findings, Score und HA-Metadaten.</div>
             </div>
           </div>
-          <div style="margin-top:10px;">
+          <div data-dialog-toolbar="1" style="margin-top:10px;">
             <div class="dq_graph" data-ui="dq_detail.graph_wrap" data-ib-pickkey="dq_detail.graph_wrap" title="dq.detail.graph">
               <div class="muted" id="dq_graph_meta" data-ui="dq_detail.graph_meta" data-ib-pickkey="dq_detail.graph_meta" title="dq.detail.graph.meta"></div>
               <div class="dq_legend" id="dq_graph_legend" data-ui="dq_detail.graph_legend" data-ib-pickkey="dq_detail.graph_legend" title="dq.detail.graph.legend"></div>
@@ -297,7 +297,7 @@
           <div style="margin-top:10px;" class="mono">
             <pre id="dq_dlg_body" style="max-height:60vh; overflow:auto; border:1px solid #eee; border-radius:12px; padding:10px; background:#fafafa;" data-ui="dq_detail.pre_body" data-ib-pickkey="dq_detail.pre_body" title="dq.detail.body"></pre>
           </div>
-          <div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+          <div data-dialog-footer="1" style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
             <button id="dq_dlg_close" class="btn_sm" type="button" data-ui="dq_detail.btn_close" data-ib-pickkey="dq_detail.btn_close" title="dq.detail.close">Schliessen</button>
           </div>
         </div>
@@ -488,6 +488,7 @@
           if($dlgTitle) $dlgTitle.textContent = name;
           if($dlgBody) $dlgBody.textContent = JSON.stringify(it, null, 2);
           _resetGraph('Multi-Resolution: lade...');
+          try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance && $dlg) window.InfluxBroDialogStandards.enhance($dlg, { name: 'dialog.dq_detail', template: 'dialog_panel_workbench', trigger: 'dq_detail.btn_open', closeSelector: '#dq_dlg_close' }); }catch(e){}
           if($dlg) $dlg.style.display = 'block';
         }catch(e){}
 

@@ -237,25 +237,25 @@
         <div id="ok" class="ok"></div>
       </div>
 
-      <div id="target_modal" class="modal" aria-hidden="true" data-dialog-root="1" data-dialog-name="dialog.export_target" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="export_target.btn_open" data-ui="export_target.panel_modal" data-ib-pickkey="export_target.panel_modal" title="export.target.modal">
-        <div class="card">
+      <div id="target_modal" class="modal" aria-hidden="true" data-dialog-root="1" data-dialog-name="dialog.export_target" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="export_target.btn_open" data-ui="dialog_export_target.root" data-ib-pickkey="dialog_export_target.root" title="export.target.modal">
+        <div class="card" data-dialog-panel="1" data-ui="dialog_export_target.panel" data-ib-pickkey="dialog_export_target.panel">
           <div class="head">
             <div class="title">Export Ziel</div>
           </div>
           <div class="muted" style="margin-top: 8px;">Waehle den Client-Ordner, in den die Export-Datei lokal geschrieben werden soll. Diese Funktion nutzt den Browser-Dateisystemzugriff und ist fuer Chromium-basierte Browser gedacht.</div>
-          <div class="grid" style="margin-top: 12px;">
+          <div class="grid" data-dialog-toolbar="1" style="margin-top: 12px;">
             <div class="span2">
               <label>Aktueller Client-Ordner</label>
-              <div id="target_dir" class="mono" style="padding:10px 12px; border:1px solid var(--line); border-radius:10px; min-height:42px; background: var(--bg_soft); word-break: break-all;">Nicht gewaehlt</div>
+              <div id="target_dir" class="mono" style="padding:10px 12px; border:1px solid var(--line); border-radius:10px; min-height:42px; background: var(--bg_soft); word-break: break-all;" data-ui="export_target.txt_dir" data-ib-pickkey="export_target.txt_dir">Nicht gewaehlt</div>
               <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap;">
-                <button id="target_pick_root" type="button">Client-Ordner waehlen</button>
-                <button id="target_up" type="button">Eine Ebene hoch</button>
+                <button id="target_pick_root" type="button" data-ui="export_target.btn_pick_root" data-ib-pickkey="export_target.btn_pick_root">Client-Ordner waehlen</button>
+                <button id="target_up" type="button" data-ui="export_target.btn_up" data-ib-pickkey="export_target.btn_up">Eine Ebene hoch</button>
               </div>
               <div class="muted" id="target_hint" style="margin-top:8px;">Du waehlt zuerst einen lokalen Root-Ordner und kannst danach Unterordner mit der Maus anklicken.</div>
-              <div id="target_entries" class="table_box" style="margin-top:10px; max-height:220px; overflow:auto; border:1px solid var(--line); border-radius:10px;"></div>
+              <div id="target_entries" class="table_box" style="margin-top:10px; max-height:220px; overflow:auto; border:1px solid var(--line); border-radius:10px;" data-ui="export_target.panel_entries" data-ib-pickkey="export_target.panel_entries"></div>
             </div>
           </div>
-          <div class="actions">
+          <div class="actions" data-dialog-footer="1">
             <button id="target_close" type="button" data-ui="export_target.btn_close" data-ib-pickkey="export_target.btn_close">Schliessen</button>
             <button id="target_cancel" type="button" data-ui="export_target.btn_cancel" data-ib-pickkey="export_target.btn_cancel">Abbrechen</button>
             <button id="target_ok" type="button" data-ui="export_target.btn_ok" data-ib-pickkey="export_target.btn_ok">OK</button>
@@ -516,6 +516,7 @@
               await updateTargetUi();
             };
 
+            try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance) window.InfluxBroDialogStandards.enhance($targetModal, { name: 'dialog.export_target', template: 'dialog_panel_workbench', trigger: 'export_target.btn_open', closeSelector: '#target_close' }); }catch(e){}
             $targetModal.style.display = 'block';
             $targetModal.setAttribute('aria-hidden','false');
             updateTargetUi().catch(()=>{});

@@ -103,6 +103,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Globale Dialoge wie Query-/Info-Popup, Bestaetigung, Issue Composer und Smart Bug Assistant nutzen die neue Dialogstruktur mit Kopfbereich, Beschreibung, Info-/Handbuch-Leiste, Inhaltsbereich, Footer-Meta und Tastaturbedienung (`Esc`, `F1`, `Ctrl+I`). Sichtbare S-Picker-Buttons erscheinen in Dialogen nicht; der konfigurierte Shortcut bleibt dialogbezogen nutzbar.
 - Dashboard-Dialoge wie Ausreisser-Parameter, Strategieinfo, Referenzdetails, JSON-Hilfe, Aenderungsvorschau, Reparatur-Assistent, Messwertinfos-Laufzeitdetails und gefiltertes Analyse-Logging verwenden ebenfalls stabile Dialog-Pickkeys und die Template-v2-Bereiche fuer Kopf, Toolbar, Inhalt und Footer.
 - Logs-/Jobs-Dialoge wie `Aufzeichnung starten`, `Support-Bundle` und `Timer History` sind ebenfalls auf stabile Root-/Panel-Pickkeys und Template-v2-Bereiche fuer Toolbar, Inhalt und Footer umgestellt.
+- Config-/DQ-/Export-/Backup-Dialoge wie Verbindungstest-Erfolg, Icon-SVG-Editor, Datenqualitaets-Details, Export-Zielauswahl und Backup-Verifikation folgen ebenfalls dem Template-v2-Dialogstandard mit stabilen Pickkeys und Footer-/Toolbar-Bereichen.
 
 ## Installation in Home Assistant
 

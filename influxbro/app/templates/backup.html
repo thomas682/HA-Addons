@@ -422,25 +422,25 @@
         </details>
       </div>
 
-      <div id="verify_dialog" data-dialog-root="1" data-dialog-name="dialog.backup_verify" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="backup_verify.btn_open" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
-        <div style="background:#fff; border-radius:16px; padding:20px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
-          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;"><div><h3 style="margin:0 0 6px 0;">Backup verifizieren</h3><div class="muted" style="font-size:12px; line-height:1.45;">Prüft ein Backup durch Restore in einen temporären Prüf-Bucket. Originaldaten werden nicht verändert.</div></div><button id="verify_close" class="btn_sm" type="button" style="width:auto;">Schliessen</button></div>
-          <div class="grid" style="margin-top:0;">
-            <div><label>Prüfmodus</label><select id="verify_mode"><option value="measurement">Messwert-Backup verifizieren</option><option value="fullbackup">Fullbackup verifizieren</option></select></div>
-            <div><label>Backupquelle</label><select id="verify_backup_mode"><option value="existing">Vorhandenes Backup verwenden</option><option value="create_new">Neues Backup erstellen und danach verifizieren</option></select></div>
-            <div id="verify_existing_backup_wrap"><label>Vorhandenes Backup</label><select id="verify_existing_backup"></select></div>
-            <div><label>Prüfprofil</label><select id="verify_profile"><option value="fast">Fast</option><option value="deep">Deep</option></select></div>
-            <div><label>Erlaubte Abweichung (%)</label><input id="verify_delta_pct" type="number" step="0.1" min="0" value="0.1" /></div>
-            <div><label>Bucket (nur Fullbackup)</label><input id="verify_bucket" placeholder="homeassistant_db" /></div>
+      <div id="verify_dialog" data-dialog-root="1" data-dialog-name="dialog.backup_verify" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="backup_verify.btn_open" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_backup_verify.root" data-ib-pickkey="dialog_backup_verify.root">
+        <div data-dialog-panel="1" data-ui="dialog_backup_verify.panel" data-ib-pickkey="dialog_backup_verify.panel" style="background:#fff; border-radius:16px; padding:20px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;"><div><h3 style="margin:0 0 6px 0;">Backup verifizieren</h3><div class="muted" style="font-size:12px; line-height:1.45;">Prüft ein Backup durch Restore in einen temporären Prüf-Bucket. Originaldaten werden nicht verändert.</div></div><button id="verify_close" class="btn_sm" type="button" style="width:auto;" data-ui="backup_verify.btn_close" data-ib-pickkey="backup_verify.btn_close">Schliessen</button></div>
+          <div class="grid" data-dialog-toolbar="1" style="margin-top:0;">
+            <div><label data-ui="backup_verify.lbl_mode" data-ib-pickkey="backup_verify.lbl_mode">Prüfmodus</label><select id="verify_mode" data-ui="backup_verify.select_mode" data-ib-pickkey="backup_verify.select_mode"><option value="measurement">Messwert-Backup verifizieren</option><option value="fullbackup">Fullbackup verifizieren</option></select></div>
+            <div><label data-ui="backup_verify.lbl_backup_mode" data-ib-pickkey="backup_verify.lbl_backup_mode">Backupquelle</label><select id="verify_backup_mode" data-ui="backup_verify.select_backup_mode" data-ib-pickkey="backup_verify.select_backup_mode"><option value="existing">Vorhandenes Backup verwenden</option><option value="create_new">Neues Backup erstellen und danach verifizieren</option></select></div>
+            <div id="verify_existing_backup_wrap"><label data-ui="backup_verify.lbl_existing_backup" data-ib-pickkey="backup_verify.lbl_existing_backup">Vorhandenes Backup</label><select id="verify_existing_backup" data-ui="backup_verify.select_existing_backup" data-ib-pickkey="backup_verify.select_existing_backup"></select></div>
+            <div><label data-ui="backup_verify.lbl_profile" data-ib-pickkey="backup_verify.lbl_profile">Prüfprofil</label><select id="verify_profile" data-ui="backup_verify.select_profile" data-ib-pickkey="backup_verify.select_profile"><option value="fast">Fast</option><option value="deep">Deep</option></select></div>
+            <div><label data-ui="backup_verify.lbl_delta_pct" data-ib-pickkey="backup_verify.lbl_delta_pct">Erlaubte Abweichung (%)</label><input id="verify_delta_pct" type="number" step="0.1" min="0" value="0.1" data-ui="backup_verify.input_delta_pct" data-ib-pickkey="backup_verify.input_delta_pct" /></div>
+            <div><label data-ui="backup_verify.lbl_bucket" data-ib-pickkey="backup_verify.lbl_bucket">Bucket (nur Fullbackup)</label><input id="verify_bucket" placeholder="homeassistant_db" data-ui="backup_verify.input_bucket" data-ib-pickkey="backup_verify.input_bucket" /></div>
           </div>
           <div class="row" style="margin-top:10px;">
-            <label><input type="checkbox" id="verify_cleanup" checked /> Prüf-Bucket automatisch löschen</label>
-            <label><input type="checkbox" id="verify_compare_series" checked /> Serienvergleich</label>
-            <label><input type="checkbox" id="verify_compare_sizes" /> Größenvergleich</label>
+            <label data-ui="backup_verify.lbl_cleanup" data-ib-pickkey="backup_verify.lbl_cleanup"><input type="checkbox" id="verify_cleanup" checked data-ui="backup_verify.chk_cleanup" data-ib-pickkey="backup_verify.chk_cleanup" /> Prüf-Bucket automatisch löschen</label>
+            <label data-ui="backup_verify.lbl_compare_series" data-ib-pickkey="backup_verify.lbl_compare_series"><input type="checkbox" id="verify_compare_series" checked data-ui="backup_verify.chk_compare_series" data-ib-pickkey="backup_verify.chk_compare_series" /> Serienvergleich</label>
+            <label data-ui="backup_verify.lbl_compare_sizes" data-ib-pickkey="backup_verify.lbl_compare_sizes"><input type="checkbox" id="verify_compare_sizes" data-ui="backup_verify.chk_compare_sizes" data-ib-pickkey="backup_verify.chk_compare_sizes" /> Größenvergleich</label>
           </div>
-          <div class="row" style="margin-top:12px;"><button id="verify_start" class="btn_sm" type="button" style="width:auto;">Verifikation starten</button></div>
-          <div id="verify_status_box" class="space_box" style="display:none; margin-top:12px;"></div>
-          <div id="verify_result_box" class="space_box" style="display:none; margin-top:12px;"></div>
+          <div class="row" data-dialog-footer="1" style="margin-top:12px;"><button id="verify_start" class="btn_sm" type="button" style="width:auto;" data-ui="backup_verify.btn_start" data-ib-pickkey="backup_verify.btn_start">Verifikation starten</button></div>
+          <div id="verify_status_box" class="space_box" style="display:none; margin-top:12px;" data-ui="backup_verify.panel_status" data-ib-pickkey="backup_verify.panel_status"></div>
+          <div id="verify_result_box" class="space_box" style="display:none; margin-top:12px;" data-ui="backup_verify.panel_result" data-ib-pickkey="backup_verify.panel_result"></div>
         </div>
       </div>
 
@@ -532,7 +532,7 @@
       }
 
       try{ if($backupTarget) $backupTarget.addEventListener('change', ()=>{ _renderTargetInfo(); loadList().catch(()=>{}); }); }catch(e){}
-      try{ if($verifyOpen) $verifyOpen.addEventListener('click', ()=>{ if($verifyDialog) $verifyDialog.style.display = 'flex'; _verifyRefreshModeUi(); _verifyRenderStatus(null); _verifyRenderResult(null); }); }catch(e){}
+      try{ if($verifyOpen) $verifyOpen.addEventListener('click', ()=>{ try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance && $verifyDialog) window.InfluxBroDialogStandards.enhance($verifyDialog, { name: 'dialog.backup_verify', template: 'dialog_panel_workbench', trigger: 'backup_verify.btn_open', closeSelector: '#verify_close' }); }catch(e){} if($verifyDialog) $verifyDialog.style.display = 'flex'; _verifyRefreshModeUi(); _verifyRenderStatus(null); _verifyRenderResult(null); }); }catch(e){}
       try{ if($verifyClose) $verifyClose.addEventListener('click', ()=>{ if($verifyDialog) $verifyDialog.style.display = 'none'; }); }catch(e){}
       try{ if($verifyMode) $verifyMode.addEventListener('change', _verifyRefreshModeUi); }catch(e){}
       try{ if($verifyBackupMode) $verifyBackupMode.addEventListener('change', _verifyRefreshModeUi); }catch(e){}

@@ -914,6 +914,30 @@ def test_logs_jobs_dialogs_expose_template_v2_pickkeys_and_regions():
     assert "window.InfluxBroDialogStandards.enhance($timersHistoryDlg" in jobs
 
 
+def test_config_dq_export_backup_dialogs_expose_template_v2_pickkeys_and_regions():
+    root = Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates"
+    config = (root / "config.html").read_text()
+    dq = (root / "dq.html").read_text()
+    export = (root / "export.html").read_text()
+    backup = (root / "backup.html").read_text()
+    for body, key in [
+        (config, "dialog_config_test_success"),
+        (config, "dialog_config_icon_svg"),
+        (dq, "dialog_dq_detail"),
+        (export, "dialog_export_target"),
+        (backup, "dialog_backup_verify"),
+    ]:
+        assert f'data-ui="{key}.root"' in body
+        assert f'data-ib-pickkey="{key}.panel"' in body
+    assert "window.InfluxBroDialogStandards.enhance($iconSvgModal" in config
+    assert "window.InfluxBroDialogStandards.enhance(modal" in config
+    assert "window.InfluxBroDialogStandards.enhance($dlg" in dq
+    assert "window.InfluxBroDialogStandards.enhance($targetModal" in export
+    assert "window.InfluxBroDialogStandards.enhance($verifyDialog" in backup
+    assert 'data-dialog-footer="1"' in config + dq + export + backup
+    assert 'data-dialog-toolbar="1"' in config + dq + export + backup
+
+
 def test_details_state_restore_is_one_shot_and_open_all_persists():
     nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
