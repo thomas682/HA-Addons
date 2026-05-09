@@ -17,9 +17,9 @@ Nutzerwünsche und Arbeitsregeln dürfen niemals eine höhere Priorität erhalte
 
 ## ABSCHNITT 1 – PFLICHT-AUSFÜHRUNGSFLUSS
 
-### 1.1 Repository-Verzeichnisprüfung (KRITISCH)
+### 1.1 Repository-Verzeichnisprüfung (KRITISCH, gecacht)
 
-**PFLICHT:** Vor jeder Aktion MUSS der Agent prüfen, ob das Arbeitsverzeichnis folgende Einträge enthält:
+**PFLICHT:** Vor der ersten Tool-Aktion eines Auftrags MUSS der Agent prüfen, ob das Arbeitsverzeichnis folgende Einträge enthält:
 
 - `influxbro/`
 - `AGENTS.md`
@@ -28,7 +28,24 @@ Nutzerwünsche und Arbeitsregeln dürfen niemals eine höhere Priorität erhalte
 Fehlt einer dieser Einträge: **SOFORT STOPPEN** und melden:
 > „Falsches Arbeitsverzeichnis – Repository-Root erforderlich."
 
-Diese Prüfung ist vor jeder Such-, Lese-, Schreib-, Git- oder Testaktion durchzuführen.
+Nach erfolgreicher Prüfung gilt das Arbeitsverzeichnis für den laufenden Auftrag als verifiziert, solange:
+
+- `workdir` unverändert bleibt
+- kein Verzeichnis-, Branch- oder Worktree-Wechsel erfolgt
+- keine Git-Operation mit möglicher Worktree-Neubasis erfolgt (`rebase`, `merge`, `checkout`, `switch`, `pull`)
+- keine Tool-Aktion wegen falschem Pfad, fehlender Datei oder Workspace-Konflikt fehlschlägt
+
+Die Prüfung MUSS erneut erfolgen:
+
+- beim ersten Tool-Aufruf eines neuen Auftrags
+- bei jedem `workdir`-Wechsel
+- nach Git-Operationen, die den Worktree wesentlich ändern können (`rebase`, `merge`, `checkout`, `switch`, `pull`)
+- vor Commit und vor Push
+- wenn eine vorherige Tool-Aktion einen Pfad-/Workspace-Konflikt meldet
+
+VERBOTEN: dieselbe erfolgreiche Root-Prüfung mehrfach direkt hintereinander als separate No-Output-Aktion auszuführen, wenn `workdir` unverändert ist und keine Revalidierungsbedingung eingetreten ist.
+
+Wenn eine erneute Root-Prüfung erforderlich ist und unmittelbar danach ein Bash-Befehl im selben `workdir` ausgeführt wird, SOLL die Prüfung mit dem eigentlichen Bash-Befehl kombiniert werden, sofern dadurch Fehlerklassifikation und Lesbarkeit erhalten bleiben. Separate Root-Prüfungen sind weiterhin erlaubt, wenn danach ein Nicht-Bash-Tool folgt oder der Check selbst berichtet werden muss.
 
 ### 1.2 Pflichtablauf vor jeder Umsetzung (KRITISCH)
 
@@ -81,6 +98,7 @@ Solange offenen Aufgaben in der aktuellen ToDo-Liste und `./.opencode/plan_state
   1. die betroffene Datei neu gelesen werden
   2. die Zielstelle auf Basis des echten Inhalts neu identifiziert werden
   3. der Patch mit robusten Ankern neu erstellt werden
+- Schlägt ein identischer Befehl zweimal mit demselben Fehlerbild fehl, darf er NICHT weiter unverändert wiederholt werden. Der Agent MUSS zuerst die Fehlerausgabe oder ein vorhandenes Log auswerten, die Ursache klassifizieren und den Befehl korrigieren oder auf ein alternatives Tool wechseln. Ausnahme: klar transiente Netzwerk-, Lock- oder Timeout-Fehler mit plausibler Erfolgschance.
 
 ### 1.4 Pflichtablauf nach der Umsetzung
 
@@ -100,6 +118,13 @@ Bei jeder Änderung an einem Home Assistant Add-on MUSS vor der Fertigstellung e
 - Dateioperationen
 - Logging
 - Abhängigkeitsdateien (`requirements.txt`, `pyproject.toml`, `package.json`)
+
+Die Sicherheitsprüfung ist delta-orientiert auszuführen, ohne den Mindest-Prüfumfang aufzuweichen:
+
+- Geänderte Dateien und betroffene Trust-Boundaries vollständig prüfen.
+- Unveränderte Pflichtdateien auf sicherheitsrelevante Konfigurations-, Berechtigungs- oder Abhängigkeitsauswirkungen prüfen.
+- Bereits im selben Auftrag geprüfte unveränderte Dateien müssen nicht erneut vollständig gelesen werden, sofern sich ihr Inhalt nicht geändert hat.
+- Der Abschlussbericht MUSS klar trennen, welche Dateien vollständig geprüft wurden und welche unverändert/konfigurationsbezogen geprüft wurden.
 
 **Pflichtprüfungen:**
 
@@ -428,6 +453,8 @@ Der Agent zeigt sie nach jedem abgeschlossenen Schritt und nach jeder substantie
   🔄 <aktueller Schritt> (in_progress)
   ⬜ <ausstehender Schritt>
 ```
+
+ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbesondere wenn ein Task startet, abgeschlossen wird, ein Blocker entsteht, sich der Plan ändert, vor Commit/Push und nach erfolgreichem Abschluss. Reine Lese- oder Such-Zwischenschritte ohne neue Entscheidung oder Statusänderung sollen nicht zusätzlich als eigener ToDo-/Plan-State-Update ausgegeben werden.
 
 ### 2.3 Behandlung neuer Eingaben
 
@@ -797,6 +824,8 @@ Ignorieren: Styling, JavaScript, nicht zusammenhängender Inhalt.
   - keine Strukturfehler, die Rendering, Picker, Dialoge oder den App-Start beeintraechtigen
 - Pflichtfolge:
   - Aenderungen an `index.html` gelten NICHT als abgeschlossen, wenn diese Strukturpruefung nicht erfolgt ist.
+  - Strukturpruefungen MUESSEN bestehende, nicht zusammenhaengende Baseline-Auffaelligkeiten von neu durch die aktuelle Aenderung verursachten Strukturfehlern unterscheiden, soweit dies mit Diff-Scope oder Vorwissen moeglich ist.
+  - Bereits vorhandene, nicht zusammenhaengende Strukturfehler blockieren den Abschluss nicht automatisch, MUESSEN aber im Abschlussbericht als verbleibendes Risiko genannt werden.
   - Der Abschlussbericht MUSS bei `index.html`-Aenderungen explizit nennen:
     - dass die Strukturpruefung ausgefuehrt wurde
     - welche Bereiche geprueft wurden
