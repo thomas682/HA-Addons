@@ -816,7 +816,10 @@
     }
 
     function _docHrefFor(key){
-      try{ return './manual?q=' + encodeURIComponent(String(key || '').trim()); }catch(e){ return './manual'; }
+      try{
+        if(window.InfluxBroManualDocs && window.InfluxBroManualDocs.href) return window.InfluxBroManualDocs.href(key);
+        return './manual?q=' + encodeURIComponent(String(key || '').trim());
+      }catch(e){ return './manual'; }
     }
 
     function _ensureDocModal(){
@@ -855,6 +858,9 @@
     }
 
     function _openDoc(key){
+      if(window.InfluxBroManualDocs && window.InfluxBroManualDocs.open){
+        try{ window.InfluxBroManualDocs.open(key); return; }catch(e){}
+      }
       const href = _docHrefFor(key);
       const mode = String(DOC_OPEN_MODE || 'new_tab');
       if(mode === 'same_tab'){
@@ -868,12 +874,12 @@
         try{
           const open = root.querySelector('#ib_doc_modal_open');
           if(open){
-            open.onclick = ()=>{ try{ window.open(href, '_blank', 'noopener'); }catch(e){} };
+            open.onclick = ()=>{ try{ location.href = href; }catch(e){} };
           }
         }catch(e){}
         return;
       }
-      try{ window.open(href, '_blank', 'noopener'); }catch(e){}
+      try{ location.href = href; }catch(e){}
     }
 
     function _severityColor(sev){

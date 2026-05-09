@@ -906,6 +906,34 @@ def test_dialog_descriptions_and_meta_copy_are_specific():
         assert phrase in topbar
 
 
+def test_handbook_rules_and_resolver_are_centralized():
+    root = Path(__file__).resolve().parents[1]
+    agents = (root / "AGENTS.md").read_text()
+    handbuch_rules = (root / "influxbro" / "template-handbuch-rules.md").read_text()
+    topbar = (root / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    tooltips = (root / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    manual = (root / "influxbro" / "app" / "templates" / "manual.html").read_text()
+    manual_md = (root / "influxbro" / "MANUAL.md").read_text()
+
+    assert "influxbro/template-handbuch-rules.md" in agents
+    assert "g) für Handbuch / Dokumentationssprünge" in agents
+    assert "Alle Handbuchaufrufe muessen ueber einen zentralen Doc-Resolver laufen" in handbuch_rules
+    assert "Relative Markdown-Bilder werden intern ueber `./api/manual_asset?path=...` geladen" in handbuch_rules
+    assert "const MANUAL_DOC_TARGETS = {" in topbar
+    assert "window.InfluxBroManualDocs = {" in topbar
+    assert "dashboard_selection.btn_measurement_profile_runtime_info" in topbar
+    assert "messwertinfo-laufzeitdetails" in topbar
+    assert "_openManualDoc(_dialogDocKey(root))" in topbar
+    assert "window.InfluxBroManualDocs.open(key)" in tooltips
+    assert "window.open(href, '_blank', 'noopener')" not in topbar
+    assert "window.open(href, '_blank', 'noopener')" not in tooltips
+    assert "const MANUAL_DOC_TARGETS = {" in manual
+    assert "scrollToManualAnchor(anchor)" in manual
+    assert "./api/manual_asset?path=" in manual
+    assert "## Handbuch und Dokumentationsspruenge" in manual_md
+    assert "### Messwertinfo-Laufzeitdetails" in manual_md
+
+
 def test_dashboard_dialogs_expose_template_v2_pickkeys_and_regions():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     for key in [

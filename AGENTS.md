@@ -13,7 +13,7 @@ Bei Konflikten gilt immer diese Rangfolge:
 4. Regeln dieser Datei
 5. Nutzerwunsch
 
-Nutzerwünsche und Queue-Regeln dürfen niemals eine höhere Priorität erhalten als eine aktive Modussperre.
+Nutzerwünsche und Arbeitsregeln dürfen niemals eine höhere Priorität erhalten als eine aktive Modussperre.
 
 ## ABSCHNITT 1 – PFLICHT-AUSFÜHRUNGSFLUSS
 
@@ -40,7 +40,7 @@ Solange offenen Aufgaben in der aktuellen ToDo-Liste und `./.opencode/plan_state
 
 - GitHub-Issues werden NICHT automatisch geprüft, geladen oder gestartet.
 - Issues werden ausschließlich geprüft und abgearbeitet, wenn der Nutzer dies explizit anweist (z. B. „offene Issues abarbeiten", „prüfe Issues").
-- Solange ToDo-Einträge mit Status `in_progress` oder `ausstehend` existieren ODER Einträge in `.opencode/todo_plan.md` bzw. `.opencode/todo_build.md` vorhanden sind, dürfen KEINE neuen Issues gestartet werden – auch nicht auf explizite Anfrage. Der Agent meldet in diesem Fall den blockierten Zustand und listet die offenen Punkte auf.
+- Solange ToDo-Einträge mit Status `in_progress` oder `ausstehend` existieren oder `./.opencode/plan_state.md` offene Punkte enthält, dürfen KEINE neuen Issues gestartet werden – auch nicht auf explizite Anfrage. Der Agent meldet in diesem Fall den blockierten Zustand und listet die offenen Punkte auf.
 - `rememberme`-Issues sind bei jeder Prüfung strikt zu überspringen, auch wenn der Nutzer nach „allen Issues" fragt.
 
 1.2.2 Schritt 2 – Issue erstellen bei neuer Anfrage
@@ -62,7 +62,7 @@ Solange offenen Aufgaben in der aktuellen ToDo-Liste und `./.opencode/plan_state
 - Für jeden Auftrag MUSS eine ToDo-Liste angelegt und sichtbar gehalten werden.
 - Genau ein Eintrag trägt zu jedem Zeitpunkt den Status `in_progress`.
 - Abgeschlossene Einträge werden sofort als `erledigt` markiert.
-- ToDo Plan und ToDo Build werden gemeinsam mit der aktiven ToDo-Liste als Block im Chat angezeigt (Abschnitt 2.2 Sichtbarkeitsregel).
+- Die aktive ToDo-Liste wird gemeinsam mit dem aktuellen Arbeitsstand im Chat angezeigt.
 
 1.2.4 Schritt 4 – Plan-Zustand persistieren**
 
@@ -307,11 +307,11 @@ Ein aktives Issue darf erst dann als abgeschlossen behandelt oder gemeldet werde
 5. Versionsbump durchgeführt, falls erforderlich (Schritt C – Versionierung (PFLICHT FÜR HA))
 6. CHANGELOG aktualisiert, falls erforderlich
 7. MANUAL aktualisiert, falls erforderlich
-8. Commit erstellt 
+8. Commit erstellt
 9. Nach `main` gepusht (Schritt D – Git-Flow (HA Main-First, PFLICHT))
 10. GitHub-Issue auf `status/done` gesetzt und geschlossen (Schritt E – GitHub-Issue abschließen)
 11. Abschlusssignal ausgeführt (Schritt F – Abschlusssignal (PFLICHT, IMMER AUSFÜHREN))
-12. Erst DANACH Queue-Dateien geprüft und Nutzer über verbleibende Restpunkte informiert
+12. Erst DANACH `./.opencode/plan_state.md` geprüft und Nutzer über verbleibende Restpunkte informiert
 
 ##### Verbotene Umschaltung vor Punkt 11 und 12
 
@@ -319,7 +319,7 @@ Insbesondere ist VERBOTEN:
 
 - nach Punkt 10 (GitHub-Issue geschlossen) bereits auf andere offene Issues umzuschalten
 - vor Punkt 11 (Abschlusssignal) eine Abschlussmeldung zu erzeugen
-- vor Punkt 12 (Queue-/Restprüfung) einen globalen Fertigzustand zu behaupten
+- vor Punkt 12 (Restprüfung) einen globalen Fertigzustand zu behaupten
 - einen früheren Issue-Abschluss als Antwort auf ein später aktiv gewordenes Issue zu verwenden
 
 ##### Pflichtangabe in Status- und Abschlussmeldungen
@@ -330,50 +330,75 @@ Vor jeder Abschlussmeldung MUSS der Agent intern prüfen:
 - Ist dies noch dasselbe aktive Issue?
 - Wurden Punkt 1 bis 12 für genau dieses Issue erfüllt?
 - Wird keine frühere Abschlussmeldung wiederverwendet?
-- Erfolgt die Rest-/Queue-Prüfung erst nach dem issue-lokalen Abschluss?
+- Erfolgt die Restprüfung erst nach dem issue-lokalen Abschluss?
 
 Wenn eine dieser Prüfungen negativ ist, ist eine Abschlussmeldung VERBOTEN.
 
-#### Schritt F – Abschlusssignal (PFLICHT, IMMER AUSFÜHREN)
+#### Schritt F – Signale und Abschluss (PFLICHT, IMMER AUSFÜHREN)
 
-Nach erfolgreicher Fertigstellung:
+Es gibt vier unterschiedliche Signalarten:
+
+1. Abschlusssignal
+2. Versionsansage
+3. Blockersignal
+4. Entscheidungssignal
+
+Das Abschlusssignal darf AUSSCHLIESSLICH ganz am Ende des vollständigen Abschlussflusses erfolgen.
+Pflichtreihenfolge vor jedem Abschlusssignal:
+
+1. Umsetzung abgeschlossen
+2. Erforderliche QA abgeschlossen
+3. Versionsbump / Changelog / Manual abgeschlossen (falls erforderlich)
+4. Commit erstellt
+5. Push nach `main` erfolgreich abgeschlossen
+6. GitHub-Issue auf `status/done` gesetzt und geschlossen (falls vorhanden)
+7. Erst DANACH Abschlusssignal ausführen
+8. Eine Versionsansage darf nur zusätzlich und erst nach erfolgreichem Push ausgeführt werden
+
+VERBOTEN:
+
+- Abschlusssignal vor erfolgreichem Commit
+- Abschlusssignal vor erfolgreichem Push
+- Versionsansage vor erfolgreichem Push
+- Abschlusssignal oder Versionsansage, wenn Commit oder Push fehlgeschlagen ist
+
+Nach erfolgreicher Fertigstellung wird das Abschlusssignal ausgeführt:
 
 ```bash
 afplay /System/Library/Sounds/Glass.aiff
 say "Fertig mit der Umsetzung"
 ```
 
-Wenn eine neue Add-on-Version erstellt wurde (Version in `influxbro/config.yaml` erhöht):
+Wenn eine neue Add-on-Version erstellt wurde (Version in influxbro/config.yaml erhöht), wird zusätzlich und erst nach erfolgreichem Push die Versionsansage ausgeführt:
 
 ```bash
 say -v Anna "Generierung erfolgt, Version X Punkt Y Punkt Z wurde erzeugt"
 ```
 
-Bei blockierenden Fehlern oder offenen Fragen:
+Bei blockierenden Fehlern oder offenen Fragen wird das Blockersignal ausgeführt:
 
 ```bash
 afplay /System/Library/Sounds/Basso.aiff
 say "Einige Punkte muessten noch beantwortet werden"
 ```
 
-Wenn der Agent auf eine Entscheidung des Nutzers wartet:
+Wenn der Agent auf eine Entscheidung des Nutzers wartet, wird das Entscheidungssignal ausgeführt:
 
 ```bash
 say "Entscheidung erforderlich"
 ```
 
-Hinweis: Audio-Signale sind Best-Effort. Ein fehlendes Audio-Signal macht eine abgeschlossene Aufgabe NICHT ungültig.
-
+Hinweis: Audio-Signale sind Best-Effort. Ein fehlendes Signal macht eine abgeschlossene Aufgabe NICHT ungültig.
 Abgeschlossen ist eine Aufgabe AUSSCHLIESSLICH, wenn alle Pflichtschritte A bis F ausgeführt wurden.
 
-## ABSCHNITT 2 – INPUT-QUEUE UND ABARBEITUNGSLOGIK
+## ABSCHNITT 2 – INPUT-LOGIK UND ABARBEITUNGSKONTEXT
 
 ### 2.1 Grundregel: Keine Unterbrechung aktiver Abarbeitung
 
 Solange eine Abarbeitung aktiv ist und noch nicht vollständig abgeschlossen wurde (inkl. Abschlusssignal, ohne offene Restarbeiten und ohne offene Rückfragen), gilt:
 
 - **Neue Eingaben des Nutzers werden NICHT sofort ausgeführt.**
-- **Neue Eingaben werden in die entsprechende Queue eingereiht.**
+- **Neue Eingaben werden als offene Folgepunkte im aktiven Arbeitskontext dokumentiert.**
 - **Der aktive Prozess läuft bis zum vollständigen Abschluss weiter.**
 
 Diese Regel gilt NICHT kontextübergreifend: Beginnt ein neuer Auftrag mit anderem Scope oder unter aktiver Modussperre, verfallen frühere GO-/Issue-Freigaben gemäß Abschnitt 2.1.1 und 4.1 automatisch.
@@ -386,123 +411,27 @@ Diese Regel gilt NICHT kontextübergreifend: Beginnt ein neuer Auftrag mit ander
 - `GO` darf NUR an den unmittelbar davor aktiven, thematisch passenden Auftrag gebunden werden.
 - Frühere `GO`-/Issue-Freigaben dürfen NICHT auf neue Analyse-, Plan-, Read-Only- oder anders gelagerte Aufträge übertragen werden.
 
-### 2.2 Zwei Queues
+### 2.2 Sichtbarkeit und Folgeeingaben
 
-#### ToDo Plan – Planungsanfragen
+Neue Folgeeingaben, Restpunkte und offene Entscheidungen werden nicht in getrennten Arbeitslisten geführt, sondern ausschließlich:
 
-Wird verwendet für: Analyseanfragen, Plan-Erstellungen, Triage-Anfragen, Fragen, Recherchen.
+- in der aktiven ToDo-Liste
+- im aktuellen Arbeitsstand in `./.opencode/plan_state.md`
+- und, solange eine Modussperre aktiv ist, zusätzlich sichtbar im Chat
 
-Speicherort: `./.opencode/todo_plan.md`
-Format:
-
-```text
-## ToDo Plan – Queue
-- [ ] <Kurzbeschreibung> | Eingegangen: <Zeitstempel> | Quelle: Nutzereingabe
-```
-
-#### ToDo Build – Umsetzungsaufgaben
-
-Wird verwendet für: Implementierungsaufträge, GO-Befehle, Issue-Umsetzungen, Codeänderungen.
-
-Speicherort: `./.opencode/todo_build.md`
-Format:
-
-```text
-## ToDo Build – Queue
-- [ ] <Kurzbeschreibung> | Eingegangen: <Zeitstempel> | Quelle: Nutzereingabe
-```
-
-Beide Dateien sind lokal zu halten und NICHT zu committen.
-
-#### Queue-ID und Detaildateien (PFLICHT)
-
-Jeder Queue-Eintrag MUSS eine eindeutige fortlaufende Queue-ID erhalten.
-
-Format:
-
-- Plan-Queue: `PLAN-0001`, `PLAN-0002`, `PLAN-0003`, ...
-- Build-Queue: `BUILD-0001`, `BUILD-0002`, `BUILD-0003`, ...
-
-Die Nummerierung ist innerhalb der jeweiligen Queue fortlaufend und darf NICHT wiederverwendet werden, auch wenn ein Eintrag erledigt, blockiert oder logisch gelöscht wurde.
-
-In den Queue-Dateien steht nur eine Kurzzeile:
-
-```text
-- [ ] <QUEUE-ID> | <Kurzbeschreibung> | Eingegangen: <Zeitstempel> | Quelle: <Quelle> | Details: ./.opencode/queue_items/<QUEUE-ID>.md
-```
-
-Die vollständige ursprüngliche Nutzeranweisung wird NICHT dauerhaft in der sichtbaren Queue-Zeile angezeigt, sondern in einer Detaildatei gespeichert:
-
-```text
-./.opencode/queue_items/<QUEUE-ID>.md
-```
-
-Pflichtinhalt der Detaildatei:
-
-- Queue-ID
-- Kurzbeschreibung
-- Typ: Plan oder Build
-- Status: `ausstehend`, `in_progress`, `erledigt`, `blockiert` oder `gelöscht`
-- Eingangszeitpunkt
-- Quelle
-- vollständige ursprüngliche Nutzeranweisung
-- abgeleitete Aufgabe
-- offene Fragen oder Blocker, falls vorhanden
-
-Die ursprüngliche Nutzeranweisung darf in der Detaildatei nicht gekürzt, geglättet oder sinngemäß ersetzt werden. Sensible Daten, Zugangsdaten, Tokens, Passwörter oder private personenbezogene Daten MÜSSEN vor dem Speichern entfernt oder maskiert werden.
-
-#### Queue-Bedienbefehle (PFLICHT)
-
-Der Nutzer darf Queue-Einträge über ihre Queue-ID steuern.
-
-Erlaubte Befehle sind insbesondere:
-
-- `zeige PLAN-0001`
-- `Details zu BUILD-0002`
-- `lösche PLAN-0003`
-- `entferne BUILD-0004 aus der Queue`
-- `verschiebe PLAN-0002 nach Build`
-- `verschiebe BUILD-0001 nach Plan`
-- `setze PLAN-0005 auf erledigt`
-- `priorisiere BUILD-0003`
-- `verschiebe BUILD-0003 nach oben`
-
-Bei Detailabfragen zeigt der Agent die Detaildatei des Queue-Eintrags an, insbesondere die vollständige ursprüngliche Nutzeranweisung.
-
-Bei Löschbefehlen wird der Eintrag nicht physisch entfernt, sondern auf Status `gelöscht` gesetzt und aus der aktiven Queue-Anzeige ausgeblendet. Die Detaildatei bleibt zur Nachvollziehbarkeit erhalten.
-
-#### Sichtbarkeitsregel (PFLICHT)
-
-Beide Queues MÜSSEN im Chat sichtbar gehalten werden – genauso wie die aktive ToDo-Liste.
-Der Agent zeigt alle drei Listen als Block** nach jedem abgeschlossenen Schritt, nach jeder Statusmeldung und nach jedem neuen Queue-Eintrag:
+Die aktive ToDo-Liste MUSS im Chat sichtbar gehalten werden.
+Der Agent zeigt sie nach jedem abgeschlossenen Schritt und nach jeder substantiellen Statusmeldung als Block an:
 
 ```text
 📋 ToDo – Aktiv
   ✅ <erledigter Schritt>
   🔄 <aktueller Schritt> (in_progress)
   ⬜ <ausstehender Schritt>
-
-📥 ToDo Plan – Queue  (.opencode/todo_plan.md)
-  ⬜ <Eintrag> | Eingegangen: <Zeitstempel>
-  — leer —
-
-🔨 ToDo Build – Queue  (.opencode/todo_build.md)
-  ⬜ <Eintrag> | Eingegangen: <Zeitstempel>
-  — leer —
 ```
 
-Anzeigeregeln:
+### 2.3 Behandlung neuer Eingaben
 
-- Ist eine Queue leer, wird sie trotzdem angezeigt mit dem Eintrag `— leer —`.
-- Sichtbare Queue-Einträge werden mit Queue-ID und Kurzbeschreibung angezeigt; die vollständige ursprüngliche Anweisung wird nur auf Detailabfrage ausgegeben.
-- Der Block wird IMMER vollständig dargestellt – nie nur einzelne Listen.
-- Nach einem neuen Queue-Eintrag wird der Block sofort aktualisiert ausgegeben.
-- Nach Abschluss der aktiven Aufgabe ersetzt der Block den regulären Status (siehe Abschnitt 2.5).
-
-### 2.3 Einreihungsregeln
-
-Alle neuen Plan Anweisungen werden erst in "ToDo Plan" eingefügt und nicht direkt ausgeführt
-Alle neuen Build Anweisungen werden erst in "ToDo Build" eingefügt und nicht direkt ausgeführt
+Neue Plan- oder Build-Anforderungen werden nicht in getrennten Queues geführt, sondern als offene Folgepunkte im aktiven Arbeitskontext dokumentiert.
 
 ### 2.4 Explizite Abbruchsignale (EINZIGE Ausnahme)
 
@@ -516,15 +445,15 @@ Nur folgende Formulierungen gelten als echte Unterbrechung:
 - `stattdessen mache jetzt X`
 - `verwirf den aktuellen Ablauf`
 
-Fehlt ein solches Signal, ist jede neue Nachricht als Ergänzung oder Einreihung in die Queue zu behandeln.
+Fehlt ein solches Signal, ist jede neue Nachricht als Ergänzung des aktiven Arbeitskontexts zu behandeln.
 
 ### 2.5 Verhalten nach Abschluss der aktiven Aufgabe
 
 Wenn die aktive Aufgabe vollständig abgeschlossen ist (alle Pflichtschritte A–F ausgeführt, kein offener Restpunkt, kein offenes Abschlusssignal), MUSS der Agent:
 
-1. Beide Queue-Dateien prüfen (`./.opencode/todo_plan.md` und `./.opencode/todo_build.md`)
-2. Den Nutzer informieren, welche Einträge ausstehen – geordnet nach Plan-Queue und Build-Queue
-3. Explizit fragen, ob die ausstehenden Todos abgearbeitet werden sollen
+1. Die aktive ToDo-Liste und `./.opencode/plan_state.md` prüfen
+2. Den Nutzer informieren, welche offenen Restpunkte ausstehen
+3. Explizit fragen, ob diese Restpunkte als nächstes abgearbeitet werden sollen
 
 VERBOTEN: Ausstehende Todos automatisch und ohne Rückfrage ausführen.
 
@@ -533,19 +462,13 @@ Pflichtausgabe nach Abschluss:**
 ```text
 Aktive Aufgabe abgeschlossen.
 
-Ausstehende Plan-Queue (.opencode/todo_plan.md):
+Offene Restpunkte:
 - <Eintrag 1>
 - <Eintrag 2>
 
-Ausstehende Build-Queue (.opencode/todo_build.md):
-- <Eintrag 1>
-- <Eintrag 2>
-
-Soll ich mit der Abarbeitung der ausstehenden Todos beginnen?
-1. Ja, Plan-Queue zuerst
-2. Ja, Build-Queue zuerst
-3. Ja, beide Queues (Plan zuerst)
-4. Nein, ich gebe neue Anweisungen
+Soll ich mit der Abarbeitung der offenen Restpunkte beginnen?
+1. Ja
+2. Nein, ich gebe neue Anweisungen
 ```
 
 ### 2.6 Pflichtverhalten bei Fehlern während der Abarbeitung
@@ -554,16 +477,16 @@ Schlägt ein Schritt fehl, MUSS der Agent:
 
 1. Den Fehler klar benennen
 2. Den bereits erfolgreich erledigten Teil vom offenen Rest trennen
-3. Den offenen Rest in der Queue einsortieren
-4. Erst danach neue Nutzeranweisungen in diese Queue einarbeiten
+3. Den offenen Rest in der aktiven ToDo-Liste und in `./.opencode/plan_state.md` dokumentieren
+4. Erst danach neue Nutzeranweisungen in diesen aktiven Arbeitskontext einarbeiten
 
 ### 2.7 Pflichtverhalten bei Scope-Erweiterungen
 
 Fügt der Nutzer während der Ausführung neue Anforderungen hinzu:
 
 1. Die laufende Arbeit bleibt aktiv
-2. Neue Anforderungen werden an die Build-Queue angehängt
-3. Der Agent benennt kurz, was in Arbeit war und wie die neue Anweisung eingereiht wurde
+2. Neue Anforderungen werden als offene Folgepunkte in der aktiven ToDo-Liste und in `./.opencode/plan_state.md` ergänzt
+3. Der Agent benennt kurz, was in Arbeit war und wie die neue Anweisung im aktiven Arbeitskontext ergänzt wurde
 4. Nur bei explizitem Abbruchsignal darf die bisherige Arbeit fallengelassen werden
 
 ### 2.8 Kontextbruch-Erkennung (PFLICHT)
@@ -598,7 +521,7 @@ Wenn ein System-Hinweis, System-Reminder oder Developer-Hinweis `Plan Mode`, `RE
 - Lesen, Suchen, Analysieren
 - Rückfragen stellen
 - Plan erstellen
-- Queue-Punkte ordnen und dokumentieren
+- offene Punkte ordnen und dokumentieren
 
 **VERBOTEN (ohne Ausnahme):**
 
@@ -610,24 +533,20 @@ Wenn ein System-Hinweis, System-Reminder oder Developer-Hinweis `Plan Mode`, `RE
 - Abschlussschritte (Versionsbump, Changelog, Manual, Commit, Push, Issue-Abschluss)
 - Laufende Arbeit noch schnell fertigstellen
 
-### 3.2 Queue-Einfrieren unter Modussperre
+### 3.2 Arbeitsstand unter Modussperre
 
-Eine aktive Queue wird bei Modussperre eingefroren:
+Der aktive Arbeitsstand wird bei Modussperre eingefroren:
 
-- Sie darf nur noch dokumentiert, geordnet, priorisiert und geplant werden
-- Sie darf NICHT umgesetzt, abgeschlossen, committed oder gepusht werden
-- Die Queue-Regel ist niemals eine Erlaubnis, eine aktive Modussperre zu umgehen
+- Er darf nur noch dokumentiert, geordnet, priorisiert und geplant werden
+- Er darf NICHT umgesetzt, abgeschlossen, committed oder gepusht werden
+- Diese Regel ist niemals eine Erlaubnis, eine aktive Modussperre zu umgehen
 
-### 3.2.1 Additive Plan-Queue-Dokumentationsausnahme (lokal, eng begrenzt)
+### 3.2.1 Additive Plan-Dokumentationsausnahme (lokal, eng begrenzt)
 
 - Diese Ausnahme gilt NUR innerhalb dieser Repository-Regeln und hebt NIEMALS höher priorisierte System- oder Developer-Sperren auf.
-- Wenn ausschließlich der repository-interne Plan-Modus aktiv ist und KEINE höher priorisierte globale Schreibsperre mit Formulierungen wie `READ-ONLY`, `ZERO exceptions`, `STRICTLY FORBIDDEN` oder sinngleich aktiv ist, DÜRFEN folgende lokale Dateien trotz Plan-Modus beschrieben werden:
-  - `./.opencode/todo_plan.md`
-  - `./.opencode/todo_build.md`
-  - `./.opencode/queue_items/*.md`
-  - `./.opencode/plan_state.md`
-- Diese Ausnahme dient ausschließlich der Queue-/Plan-Dokumentation.
-- Wenn eine höher priorisierte Schreibsperre jede Dateiänderung verbietet, duerfen auch diese Dateien NICHT geschrieben werden. In diesem Fall MUSS die Queue vollständig im Chat als einzelner Block `Queue im Planmodus` geführt und nach Ende der Sperre zuerst in `./.opencode/todo_plan.md`, `./.opencode/todo_build.md` und `./.opencode/plan_state.md` synchronisiert werden.
+- Wenn ausschließlich der repository-interne Plan-Modus aktiv ist und KEINE höher priorisierte globale Schreibsperre mit Formulierungen wie `READ-ONLY`, `ZERO exceptions`, `STRICTLY FORBIDDEN` oder sinngleich aktiv ist, DARF ausschließlich `./.opencode/plan_state.md` zur Plan-/Arbeitsstand-Dokumentation beschrieben werden.
+- Diese Ausnahme dient ausschließlich der Plan-/Arbeitsstand-Dokumentation.
+- Wenn eine höher priorisierte Schreibsperre jede Dateiänderung verbietet, darf auch `./.opencode/plan_state.md` NICHT geschrieben werden. In diesem Fall MUSS der Arbeitsstand vollständig im Chat dokumentiert und nach Ende der Sperre zuerst in `./.opencode/plan_state.md` synchronisiert werden.
 - VERBOTEN bleiben alle anderen Dateiänderungen, Commits, Pushes, GitHub-Mutationen und Abschlussaktionen.
 
 ### 3.3 Pflicht-Checkpoint vor jeder Mutation
@@ -774,17 +693,11 @@ Wenn Plan-Modus aktiv ist:
 - Aufgaben logisch gruppieren
 - Auf explizite Nutzerfreigabe warten, bevor etwas umgesetzt wird (keine Dateiänderungen, keine Commits, keine Pushes)
 
-### 6.1.1 Lokale Dokumentationsausnahme fuer Queue-Dateien
+### 6.1.1 Lokale Dokumentationsausnahme fuer `plan_state.md`
 
-- Zusaetzlich zu 6.1 gilt: Die in Abschnitt 3.2.1 genannten lokalen Queue-/Plan-Dateien duerfen im Plan-Modus beschrieben werden, sofern keine hoeher priorisierte Schreibsperre aktiv ist.
+- Zusaetzlich zu 6.1 gilt: `./.opencode/plan_state.md` darf im Plan-Modus beschrieben werden, sofern keine hoeher priorisierte Schreibsperre aktiv ist.
 - Diese Ausnahme ist abschliessend. Es gibt keine weitere Ausnahme fuer andere Dateien.
-- Wenn eine hoeher priorisierte Schreibsperre aktiv ist, wird im Plan-Modus kein lokaler Queue- oder Plan-State geschrieben. Stattdessen wird ausschließlich ein einzelner Chat-Block `Queue im Planmodus` angezeigt, der alle gemerkten Informationen traegt und nach Ende der Sperre zuerst in die bestehenden `.opencode`-Dateien synchronisiert werden muss.
-
-### 6.1.2 Queue im Plan-Modus (Chat-only unter Schreibsperre)
-
-- Der Block `Queue im Planmodus` ersetzt unter aktiver uebergeordneter Schreibsperre die sichtbare lokale Queue-Darstellung im Chat.
-- Dieser Block MUSS den aktiven Punkt, gemerkte Pfade, offene Planungspunkte und Blocker enthalten.
-- Außerhalb einer solchen Schreibsperre gelten wieder die normalen lokalen Queue-/Plan-Dateien und Sichtbarkeitsregeln dieser Repository-Policy.
+- Wenn eine hoeher priorisierte Schreibsperre aktiv ist, wird im Plan-Modus kein lokaler Plan-State geschrieben. Stattdessen wird der Arbeitsstand ausschließlich im Chat dokumentiert und nach Ende der Sperre zuerst in `./.opencode/plan_state.md` synchronisiert.
 
 **VERBOTEN:** Nach Planpräsentation proaktiv nach Issues fragen oder Issue-Triage anbieten.
 
@@ -792,16 +705,16 @@ Wenn Plan-Modus aktiv ist:
 
 - Läuft bereits eine freigegebene Build-Ausführung, bleibt diese bis zu einem logischen Abschlusspunkt aktiv.
 - Ein späterer Wechsel in den Plan-Modus darf diese laufende Ausführung NICHT rückwirkend stoppen oder als Read-Only umdeuten.
-- Neue Plan-Anfragen während laufender Build-Ausführung werden in die **ToDo Plan Queue** eingereiht.
-- Die laufende Build-Ausführung bleibt in der **ToDo Build Queue** aktiv, bis der aktuelle logische Block abgeschlossen ist.
+- Neue Plan-Anfragen während laufender Build-Ausführung werden als offene Folgepunkte im aktiven Arbeitskontext dokumentiert.
+- Die laufende Build-Ausführung bleibt im aktiven Arbeitskontext bestehen, bis der aktuelle logische Block abgeschlossen ist.
 - Nur ein explizites Abbruchsignal gemäß Abschnitt 2.4 kann eine laufende Build-Ausführung zugunsten von Plan-Arbeit unterbrechen.
 
 ### 6.3 Build-Modus darf aktive Plan-Arbeit nicht unterbrechen
 
 - Läuft bereits aktive Plan-Arbeit, darf ein späterer Build-/GO-Befehl diese nicht abbrechen.
 - Die aktuell laufende Plan-Arbeit muss zuerst einen logischen Abschlusspunkt erreichen.
-- Der Build-/GO-Befehl wird in die **ToDo Build Queue** eingereiht.
-- Nach Abschluss der laufenden Plan-Arbeit wird die **ToDo Build Queue** als nächste Aktion bearbeitet.
+- Der Build-/GO-Befehl wird als offener Folgepunkt im aktiven Arbeitskontext dokumentiert.
+- Nach Abschluss der laufenden Plan-Arbeit wird dieser offene Folgepunkt als nächste Aktion bearbeitet.
 - Eine sofortige Unterbrechung erfolgt nur, wenn der Nutzer dies ausdrücklich anweist.
 
 ### 6.4 Plan-Aufträge entwerten alte GO-Freigaben
@@ -949,12 +862,12 @@ Externe APIs (z. B. Alibaba Qwen) können Anfragen bei zu schnellem Traffic able
 - Bei einer neuen fachlichen Anfrage fragt der Agent, ob daraus ein Issue erstellt oder die Änderung direkt umgesetzt werden soll.
 - Bezieht sich die Anfrage eindeutig auf ein bestehendes Issue, arbeitet der Agent direkt daran weiter, ohne erneut zu fragen.
 
-- Offene Aufgaben in der **ToDo Build Queue** blockieren standardmäßig den Start neuer Issues.
-- Offene Aufgaben in der **ToDo Plan Queue** blockieren nur neue Plan-/Analyseaufgaben, nicht zwingend freigegebene Build-Arbeit.
+- Offene Aufgaben in der aktiven ToDo-Liste und offene Punkte in `./.opencode/plan_state.md` blockieren standardmäßig den Start neuer Issues.
 - Bei blockiertem Zustand meldet der Agent die offenen Punkte und startet kein neues Issue.
+- Neue GitHub-Issues dürfen nur dann angelegt, gestartet oder bearbeitet werden, wenn das aktuell aktive Issue vollständig abgeschlossen ist. Ein aktives Issue gilt erst dann als abgeschlossen, wenn alle zugehörigen offenen Punkte in der aktiven ToDo-Liste und in `./.opencode/plan_state.md` erledigt sind, das Issue auf GitHub auf `status/done` gesetzt und geschlossen wurde und die vorgesehene Abschlussmeldung bzw. der vollständige Abschlussfluss ausgeführt wurde. Vorher ist das Anlegen oder Beginnen eines neuen Issues verboten.
 - Der Nutzer darf die Sperre ausdrücklich überschreiben, z. B. mit:
   - „Issue #X trotzdem starten“
-  - „bestehende Todos zurückstellen“
+  - „bestehende Todos zurückstellen"
   - „Priorität auf dieses Issue ändern“
 
 - `rememberme`-Issues sind bei jeder Prüfung, Triage oder Sammelumsetzung strikt zu überspringen, auch wenn der Nutzer nach „allen Issues“ fragt.
@@ -1025,14 +938,14 @@ Die Issue-Liste darf VOR dieser Auswahl NICHT geladen oder angezeigt werden.
 
 ## ABSCHNITT 9 – AUFGABEN-TRACKING
 
-### 9.1 ToDo-Liste und Queues – Sichtbarkeit (PFLICHT)
+### 9.1 ToDo-Liste – Sichtbarkeit (PFLICHT)
 
 - Für jeden Auftrag IMMER eine ToDo-Liste erstellen und sichtbar halten.
 - Bei neuen Anforderungen: bestehende ToDo-Liste sofort erweitern.
 - Genau ein Eintrag trägt den Status `in_progress`.
 - Einträge sofort als `erledigt` markieren, sobald abgeschlossen.
 - Alle ToDo-Einträge MÜSSEN umgesetzt sein, bevor Fertigstellung erklärt wird.
-- **Alle drei Listen werden gemeinsam als Block im Chat sichtbar gehalten** (aktive ToDo + ToDo Plan + ToDo Build). Regeln siehe Abschnitt 2.2 Sichtbarkeitsregel.
+- **Die aktive ToDo-Liste wird als Block im Chat sichtbar gehalten.** Regeln siehe Abschnitt 2.2 Sichtbarkeitsregel.
 
 **Statussymbole (einheitlich für alle drei Listen):**
 
@@ -1214,14 +1127,20 @@ Beispiele: Abschnitt geöffnet/geschlossen (`*_open`), Tabellenhöhen, Splitter-
 
 ### 13.7 Templates (HTML/JS/CSS)
 
-- Templates selbstständig halten; kein Build-Schritt vorhanden.
-- Relative URLs (`./api/...`) verwenden damit HA Ingress funktioniert.
-- JS einfach halten (kein Framework). Kleine Funktionen und explizite DOM-Lookups bevorzugen.
+- Allgemeine Template-, Ingress- und JavaScript-Grundregeln fuer Handbuch-/Dokumentationsspruenge sind in `influxbro/template-handbuch-rules.md` ausgelagert und dort vor entsprechenden Aenderungen zwingend zu lesen.
 - Bei destruktiven Aktionen: Bestätigungs-UI beibehalten und zusätzliche Schutzmaßnahmen ergänzen.
 
 **UI-Design-Standard:**
 
-- Vor dem Hinzufügen oder Ändern von GUI-Elementen: `influxbro/Template.md` konsultieren.
+- Vor dem Hinzufügen oder Ändern von GUI-Elementen ist generell immer diese Regeln zu beachten und die Datei zu lesen: `influxbro/Template.md`. Diese Vorgaben sind zwingend zu beachten und müssen ohne Ausnahme befolgt werden.
+- Zusätzlich sind abhängig vom Umbau an der GUI die sepezifischen Regeln für GUI Elemente zu lesen und zwingend zu beachten. Die Vorgaben müssen befolgt werden:
+  a) für Dialoge:          `influxbro/template-dialog-rules.md`
+  b) für Tooltips:         `inluxbro/template-tooltips-rules.md`
+  c) für Messwertauswahl:  `influxbro/template-measurement-select-rules.md`
+  d) für Sections:         `influxbro/template-section-rules.md`
+  e) für Picker:           `influxbro/template-picker-rules.md`
+  f) für Tabellen:         `influxbro/template-tables-rules.md`
+  g) für Handbuch / Dokumentationssprünge: `influxbro/template-handbuch-rules.md`
 - Konsistente Layout-Muster über alle UI-Komponenten hinweg.
 - Konsistentes Spacing, konsistente Card-/Layout-Struktur, konsistente Benennung von Klassen und IDs.
 - UI-Komponenten auf Container-Ebene UND für alle Kind-Elemente validieren.
@@ -1381,7 +1300,7 @@ Wenn ein geplanter Punkt nicht umgesetzt werden konnte (oder nur teilweise): exp
 - [ ] Commit erstellt
 - [ ] Nach `main` gepusht
 - [ ] Abschlusssignal ausgeführt
-- [ ] Beide Queue-Dateien geprüft, Nutzer über ausstehende Todos informiert (KEINE automatische Issue-Triage anbieten)
+- [ ] `./.opencode/plan_state.md` geprüft, Nutzer über ausstehende Restpunkte informiert (KEINE automatische Issue-Triage anbieten)
 
 ---
 
@@ -1405,7 +1324,7 @@ Issues werden ausschließlich geprüft und gestartet, wenn der Nutzer eine der f
 - `arbeite alle Issues ab`
 - oder eine sinngleiche direkte Anweisung
 
-**Sperrbedingung (ABSOLUT):** Liegen noch ToDo-Einträge mit Status `in_progress` oder `ausstehend` vor, ODER sind Einträge in `.opencode/todo_plan.md` bzw. `.opencode/todo_build.md` vorhanden, DÜRFEN keine neuen Issues gestartet werden – auch nicht auf explizite Anfrage des Nutzers. Der Agent antwortet stattdessen mit:
+**Sperrbedingung (ABSOLUT):** Liegen noch ToDo-Einträge mit Status `in_progress` oder `ausstehend` vor, ODER enthält `./.opencode/plan_state.md` noch offene Punkte, DÜRFEN keine neuen Issues gestartet werden – auch nicht auf explizite Anfrage des Nutzers. Der Agent antwortet stattdessen mit:
 
 > "Es liegen noch offene Aufgaben vor – neue Issues können erst gestartet werden, wenn alle aktuellen Todos abgeschlossen sind."
 >
@@ -1433,6 +1352,6 @@ Diese Klarstellung ist verpflichtend, bevor der Agent mit Analyse/Plan fortfähr
 8. Nach `main` gepusht
 9. GitHub-Issue abgeschlossen (wenn vorhanden)
 10. Abschlusssignal ausgeführt
-11. Queue-Dateien geprüft, Nutzer über ausstehende Todos informiert
+11. `./.opencode/plan_state.md` geprüft, Nutzer über ausstehende Restpunkte informiert
 
 Fehlt ein einziger Punkt: die Aufgabe ist NICHT abgeschlossen.

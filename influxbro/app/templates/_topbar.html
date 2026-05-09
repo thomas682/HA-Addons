@@ -2874,6 +2874,38 @@
       ],
     };
 
+    const MANUAL_DOC_TARGETS = {
+      'dashboard_selection.btn_measurement_profile_runtime_info': { doc: 'dashboard.measurement_profile_runtime', anchor: 'messwertinfo-laufzeitdetails', title: 'Messwertinfo-Laufzeitdetails', query: 'Messwertinfo-Laufzeitdetails' },
+      'dialog.measurement_profile_runtime': { doc: 'dashboard.measurement_profile_runtime', anchor: 'messwertinfo-laufzeitdetails', title: 'Messwertinfo-Laufzeitdetails', query: 'Messwertinfo-Laufzeitdetails' },
+      'dashboard_analysis.btn_logs': { doc: 'dashboard.analysis_log', anchor: 'analyse-log-und-protokolle', title: 'Analyse-Log und Protokolle', query: 'Analyse-Log' },
+      'dialog.analysis_log': { doc: 'dashboard.analysis_log', anchor: 'analyse-log-und-protokolle', title: 'Analyse-Log und Protokolle', query: 'Analyse-Log' },
+      'dashboard_outliers.btn_params': { doc: 'dashboard.raw_outlier_params', anchor: 'ausreisser-parameter-und-reparatur', title: 'Ausreisser-Parameter und Reparatur', query: 'Ausreisser-Parameter' },
+      'dialog.raw_outlier_params': { doc: 'dashboard.raw_outlier_params', anchor: 'ausreisser-parameter-und-reparatur', title: 'Ausreisser-Parameter und Reparatur', query: 'Ausreisser-Parameter' },
+      'dashboard_raw.btn_repair_wizard': { doc: 'dashboard.repair_wizard', anchor: 'ausreisser-parameter-und-reparatur', title: 'Ausreisser-Parameter und Reparatur', query: 'Reparatur' },
+      'dialog.repair_wizard': { doc: 'dashboard.repair_wizard', anchor: 'ausreisser-parameter-und-reparatur', title: 'Ausreisser-Parameter und Reparatur', query: 'Reparatur' },
+      'dialog.analysis_strategy': { doc: 'dashboard.analysis_strategy', anchor: 'analyse-strategie', title: 'Analyse-Strategie', query: 'Analyse-Strategie' },
+      'dialog.analysis_strategy_help': { doc: 'dashboard.analysis_strategy', anchor: 'analyse-strategie', title: 'Analyse-Strategie', query: 'JSON-Regeln' },
+      'dialog.reference_detail': { doc: 'dashboard.reference_detail', anchor: 'referenzdetails', title: 'Referenzdetails', query: 'Referenzdetails' },
+      'dialog.change_preview': { doc: 'dashboard.change_preview', anchor: 'aenderungsvorschau', title: 'Aenderungsvorschau', query: 'Aenderungsvorschau' },
+      'dialog.logs_record_start': { doc: 'logs.record_start', anchor: 'logs-und-support-bundle', title: 'Logs und Support-Bundle', query: 'Log-Aufzeichnung' },
+      'dialog.logs_support_bundle': { doc: 'logs.support_bundle', anchor: 'logs-und-support-bundle', title: 'Logs und Support-Bundle', query: 'Support-Bundle' },
+      'logs_support_bundle.btn_open': { doc: 'logs.support_bundle', anchor: 'logs-und-support-bundle', title: 'Logs und Support-Bundle', query: 'Support-Bundle' },
+      'dialog.jobs_timers_history': { doc: 'jobs.timers_history', anchor: 'timer-history-und-jobs', title: 'Timer History und Jobs', query: 'Timer History' },
+      'dialog.config_test_success': { doc: 'config.connection_test', anchor: 'verbindungstest-und-konfiguration', title: 'Verbindungstest und Konfiguration', query: 'Verbindungstest' },
+      'dialog.config_icon_svg': { doc: 'config.icon_svg', anchor: 'verbindungstest-und-konfiguration', title: 'Verbindungstest und Konfiguration', query: 'Icon-SVG' },
+      'dialog.dq_detail': { doc: 'dq.detail', anchor: 'datenqualitaets-details', title: 'Datenqualitaets-Details', query: 'Datenqualitaet' },
+      'dialog.export_target': { doc: 'export.target', anchor: 'export-zielauswahl', title: 'Export-Zielauswahl', query: 'Exportziel' },
+      'dialog.backup_verify': { doc: 'backup.verify', anchor: 'backup-verifikation', title: 'Backup-Verifikation', query: 'Backup-Verifikation' },
+      'dialog.query_info': { doc: 'dialogs.query_info', anchor: 'dialoge-und-integrierte-hilfe', title: 'Dialoge und integrierte Hilfe', query: 'Query' },
+      'dialog.confirm_action': { doc: 'dialogs.confirm_action', anchor: 'dialoge-und-integrierte-hilfe', title: 'Dialoge und integrierte Hilfe', query: 'Bestaetigung' },
+      'dialog.docs_modal': { doc: 'manual.doc_modal', anchor: 'handbuch-und-dokumentationsspruenge', title: 'Handbuch und Dokumentationsspruenge', query: 'Handbuch' },
+      'dialog.issue_composer': { doc: 'support.issue_composer', anchor: 'fehlerberichte-und-support', title: 'Fehlerberichte und Support', query: 'GitHub-Issue' },
+      'dialog.git_bugreport': { doc: 'support.git_bugreport', anchor: 'fehlerberichte-und-support', title: 'Fehlerberichte und Support', query: 'GitHub-Fehlerbericht' },
+      'dialog.smart_bug_assistant': { doc: 'support.smart_bug_assistant', anchor: 'fehlerberichte-und-support', title: 'Fehlerberichte und Support', query: 'Fehlerbericht' },
+      'errors_main.btn_bugreport': { doc: 'support.git_bugreport', anchor: 'fehlerberichte-und-support', title: 'Fehlerberichte und Support', query: 'GitHub-Fehlerbericht' },
+      'errors_main.btn_smart_bugreport': { doc: 'support.smart_bug_assistant', anchor: 'fehlerberichte-und-support', title: 'Fehlerberichte und Support', query: 'Fehlerbericht' },
+    };
+
     const DIALOG_CLOSE_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M10.0303 8.96965C9.73741 8.67676 9.26253 8.67676 8.96964 8.96965C8.67675 9.26255 8.67675 9.73742 8.96964 10.0303L10.9393 12L8.96966 13.9697C8.67677 14.2625 8.67677 14.7374 8.96966 15.0303C9.26255 15.3232 9.73743 15.3232 10.0303 15.0303L12 13.0607L13.9696 15.0303C14.2625 15.3232 14.7374 15.3232 15.0303 15.0303C15.3232 14.7374 15.3232 14.2625 15.0303 13.9696L13.0606 12L15.0303 10.0303C15.3232 9.73744 15.3232 9.26257 15.0303 8.96968C14.7374 8.67678 14.2625 8.67678 13.9696 8.96968L12 10.9393L10.0303 8.96965Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.25C6.06294 1.25 1.25 6.06294 1.25 12C1.25 17.9371 6.06294 22.75 12 22.75C17.9371 22.75 22.75 17.9371 22.75 12C22.75 6.06294 17.9371 1.25 12 1.25ZM2.75 12C2.75 6.89137 6.89137 2.75 12 2.75C17.1086 2.75 21.25 6.89137 21.25 12C21.25 17.1086 17.1086 21.25 12 21.25C6.89137 21.25 2.75 17.1086 2.75 12Z" fill="currentColor"></path></svg>';
     const DIALOG_MAXIMIZE_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M17 7H14M17 7V10M17 7L13.5 10.5M7 17H10M7 17V14M7 17L10.5 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7 7H10M7 7V10M7 7L10.5 10.5M17 17H14M17 17V14M17 17L13.5 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C21.5093 4.43821 21.8356 5.80655 21.9449 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>';
     const DIALOG_RESTORE_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M10.5 13.5H7.5M10.5 13.5V16.5M10.5 13.5L7 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M13.5 10.5H16.5M13.5 10.5V7.5M13.5 10.5L17 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10.5 10.5H7.5M10.5 10.5V7.5M10.5 10.5L7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M13.5 13.5H16.5M13.5 13.5V16.5M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C21.5093 4.43821 21.8356 5.80655 21.9449 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>';
@@ -2970,6 +3002,95 @@
       try{ return String(value || 'dialog_unknown').trim().replace(/[^a-zA-Z0-9_.-]+/g, '_') || 'dialog_unknown'; }
       catch(e){ return 'dialog_unknown'; }
     }
+    function _manualDocTarget(key){
+      const raw = String(key || '').trim();
+      const known = MANUAL_DOC_TARGETS[raw];
+      if(known) return Object.assign({ key: raw, exact: true }, known);
+      const normalized = raw.replace(/_/g, '.');
+      if(MANUAL_DOC_TARGETS[normalized]) return Object.assign({ key: normalized, exact: true }, MANUAL_DOC_TARGETS[normalized]);
+      return {
+        key: raw || 'manual',
+        doc: raw || 'manual',
+        anchor: '',
+        title: raw ? 'Handbuchsuche' : 'Handbuch',
+        query: raw || '',
+        exact: false,
+      };
+    }
+    function _manualHrefFor(key){
+      const target = _manualDocTarget(key);
+      const params = new URLSearchParams();
+      if(target.doc) params.set('doc', String(target.doc));
+      if(target.query) params.set('q', String(target.query));
+      let href = './manual' + (String(params).trim() ? ('?' + String(params)) : '');
+      if(target.anchor) href += '#' + encodeURIComponent(String(target.anchor));
+      return href;
+    }
+    function _ensureManualDocModal(){
+      try{
+        let root = document.getElementById('ib_doc_modal');
+        if(root) return root;
+        root = document.createElement('div');
+        root.id = 'ib_doc_modal';
+        root.setAttribute('data-dialog-root', '1');
+        root.setAttribute('data-dialog-name', 'dialog.docs_modal');
+        root.setAttribute('data-dialog-template', 'dialog_info_popup');
+        root.setAttribute('data-dialog-trigger', 'manual_resolver');
+        root.setAttribute('data-ui', 'dialog_docs_modal.root');
+        root.setAttribute('data-ib-pickkey', 'dialog_docs_modal.root');
+        root.style.display = 'none';
+        root.style.position = 'fixed';
+        root.style.inset = '0';
+        root.style.zIndex = '2147483646';
+        root.style.background = 'rgba(0,0,0,0.45)';
+        root.style.alignItems = 'center';
+        root.style.justifyContent = 'center';
+        root.style.padding = '20px';
+        root.style.boxSizing = 'border-box';
+        root.innerHTML = '<div data-dialog-panel="1" data-ui="dialog_docs_modal.panel" data-ib-pickkey="dialog_docs_modal.panel" style="width:min(1040px, calc(100vw - 48px)); height:min(760px, calc(100vh - 48px)); background:#fff; border-radius:14px; box-shadow:0 18px 80px rgba(0,0,0,0.35); overflow:hidden; display:flex; flex-direction:column;"><div data-dialog-header="1"><div data-dialog-title-wrap="1"><div data-dialog-title="1" id="ib_doc_modal_title">Handbuch</div></div></div><div data-dialog-desc-frame="1"><p class="purpose" id="ib_doc_modal_desc">Kontextbezogene Dokumentation wird im Add-on geoeffnet und springt zur passenden Handbuchstelle.</p></div><div data-dialog-content="1" style="padding:0;"><iframe id="ib_doc_modal_iframe" title="Handbuch" style="display:block; width:100%; height:100%; min-height:420px; border:0;" src="about:blank"></iframe></div><div data-dialog-footer="1"><div data-dialog-meta="1"><span data-dialog-meta-text="1">doc: manual</span></div><button id="ib_doc_modal_open" type="button" class="btn_sm" style="width:auto;" data-ui="docs_modal.btn_open_manual" data-ib-pickkey="docs_modal.btn_open_manual">Im Handbuch oeffnen</button><button id="ib_doc_modal_github" type="button" class="btn_sm" style="width:auto;" data-ui="docs_modal.btn_open_github" data-ib-pickkey="docs_modal.btn_open_github">Auf GitHub ansehen</button><button id="ib_doc_modal_close" type="button" class="btn_sm" style="width:auto;" data-ui="docs_modal.btn_close" data-ib-pickkey="docs_modal.btn_close">Schliessen</button></div></div>';
+        document.body.appendChild(root);
+        const close = root.querySelector('#ib_doc_modal_close');
+        if(close) close.addEventListener('click', ()=>{ try{ root.style.display = 'none'; }catch(e){}; });
+        try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance) window.InfluxBroDialogStandards.enhance(root, { name: 'dialog.docs_modal', template: 'dialog_info_popup', trigger: 'manual_resolver', closeSelector: '#ib_doc_modal_close' }); }catch(e){}
+        return root;
+      }catch(e){ return null; }
+    }
+    function _openManualDoc(key, opts){
+      try{
+        const target = _manualDocTarget(key);
+        const href = _manualHrefFor(key);
+        if(opts && opts.mode === 'same_tab'){
+          try{ location.href = href; }catch(e){}
+          return;
+        }
+        const root = _ensureManualDocModal();
+        if(!root){ try{ location.href = href; }catch(e){}; return; }
+        const title = root.querySelector('#ib_doc_modal_title');
+        if(title) title.textContent = target.title || 'Handbuch';
+        const descText = target.exact ? 'Exakter Handbuchsprung: ' + (target.title || target.doc || target.key) : 'Kein exakter Handbucheintrag gefunden. Es wird im Handbuch nach dem technischen Schluessel gesucht.';
+        const setDesc = ()=>{
+          try{
+            const desc = root.querySelector('#ib_doc_modal_desc') || root.querySelector('[data-dialog-desc-frame="1"] .purpose');
+            if(desc){
+              desc.textContent = descText;
+              const frame = desc.closest ? desc.closest('[data-dialog-desc-frame="1"]') : null;
+              if(frame) frame.setAttribute('data-dialog-desc-lock', '1');
+            }
+          }catch(e){}
+        };
+        setDesc();
+        const meta = root.querySelector('[data-dialog-meta-text="1"]');
+        if(meta) meta.textContent = 'doc: ' + String(target.doc || target.key || 'manual') + (target.anchor ? (' | anchor: ' + target.anchor) : ' | fallback: search');
+        const iframe = root.querySelector('#ib_doc_modal_iframe');
+        if(iframe) iframe.src = href;
+        const open = root.querySelector('#ib_doc_modal_open');
+        if(open) open.onclick = ()=>{ try{ location.href = href; }catch(e){} };
+        const gh = root.querySelector('#ib_doc_modal_github');
+        if(gh) gh.onclick = ()=>{ try{ window.open('https://github.com/thomas682/HA-Addons/blob/main/influxbro/MANUAL.md' + (target.anchor ? ('#' + encodeURIComponent(String(target.anchor))) : ''), '_blank', 'noopener'); }catch(e){} };
+        root.style.display = 'flex';
+        setTimeout(setDesc, 80);
+      }catch(e){}
+    }
     function _copyTextToClipboard(text){
       const value = String(text || '');
       if(typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(value);
@@ -3031,8 +3152,7 @@
     }
     function _openDialogManual(root){
       try{
-        const href = './manual?q=' + encodeURIComponent(String(_dialogDocKey(root) || '').trim());
-        window.open(href, '_blank', 'noopener');
+        _openManualDoc(_dialogDocKey(root));
       }catch(e){}
     }
     function _dialogTitleText(root, panel){
@@ -3248,6 +3368,7 @@
           else panel.appendChild(desc);
         }
         const lines = _dialogDescriptionLines(root);
+        if(desc.getAttribute('data-dialog-desc-lock') === '1') return;
         desc.innerHTML = lines.slice(0, 4).map((line, idx)=>'<p' + (idx === 0 ? ' class="purpose"' : '') + '>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>').join('');
       }catch(e){}
     }
@@ -3485,6 +3606,12 @@
         root.setAttribute('data-dialog-enhanced', '1');
       }catch(e){}
     }
+    window.InfluxBroManualDocs = {
+      targets: MANUAL_DOC_TARGETS,
+      target: _manualDocTarget,
+      href: _manualHrefFor,
+      open: _openManualDoc,
+    };
     window.InfluxBroDialogStandards = {
       specs: DIALOG_TEMPLATE_SPECS,
       metaText: _dialogMetaText,

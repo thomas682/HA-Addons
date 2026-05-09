@@ -51,6 +51,8 @@
     .search_meta { font-size:12px; opacity:.8; min-width:72px; text-align:center; }
     mark.ib_search_hit { background:#ffe08a; color:inherit; padding:0 1px; border-radius:3px; }
     mark.ib_search_hit.active { background:#ff9900; color:#111; box-shadow:0 0 0 2px rgba(255,153,0,0.18); }
+    .manual_doc_target { scroll-margin-top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-h, 0px) + 24px); }
+    .manual_doc_target.active_doc_target { outline: 3px solid #ff9900; outline-offset: 4px; border-radius: 8px; background: rgba(255,153,0,0.08); }
   </style>
 </head>
 <body>
@@ -84,6 +86,29 @@
 
       <script>
       const RAW = {{ (manual_text or "") | tojson }};
+      const MANUAL_DOC_TARGETS = {
+        'dashboard.measurement_profile_runtime': { anchor: 'messwertinfo-laufzeitdetails', query: 'Messwertinfo-Laufzeitdetails' },
+        'dashboard.analysis_log': { anchor: 'analyse-log-und-protokolle', query: 'Analyse-Log' },
+        'dashboard.raw_outlier_params': { anchor: 'ausreisser-parameter-und-reparatur', query: 'Ausreisser-Parameter' },
+        'dashboard.repair_wizard': { anchor: 'ausreisser-parameter-und-reparatur', query: 'Reparatur' },
+        'dashboard.analysis_strategy': { anchor: 'analyse-strategie', query: 'Analyse-Strategie' },
+        'dashboard.reference_detail': { anchor: 'referenzdetails', query: 'Referenzdetails' },
+        'dashboard.change_preview': { anchor: 'aenderungsvorschau', query: 'Aenderungsvorschau' },
+        'logs.record_start': { anchor: 'logs-und-support-bundle', query: 'Log-Aufzeichnung' },
+        'logs.support_bundle': { anchor: 'logs-und-support-bundle', query: 'Support-Bundle' },
+        'jobs.timers_history': { anchor: 'timer-history-und-jobs', query: 'Timer History' },
+        'config.connection_test': { anchor: 'verbindungstest-und-konfiguration', query: 'Verbindungstest' },
+        'config.icon_svg': { anchor: 'verbindungstest-und-konfiguration', query: 'Icon-SVG' },
+        'dq.detail': { anchor: 'datenqualitaets-details', query: 'Datenqualitaet' },
+        'export.target': { anchor: 'export-zielauswahl', query: 'Exportziel' },
+        'backup.verify': { anchor: 'backup-verifikation', query: 'Backup-Verifikation' },
+        'dialogs.query_info': { anchor: 'dialoge-und-integrierte-hilfe', query: 'Query' },
+        'dialogs.confirm_action': { anchor: 'dialoge-und-integrierte-hilfe', query: 'Bestaetigung' },
+        'manual.doc_modal': { anchor: 'handbuch-und-dokumentationsspruenge', query: 'Handbuch' },
+        'support.issue_composer': { anchor: 'fehlerberichte-und-support', query: 'GitHub-Issue' },
+        'support.git_bugreport': { anchor: 'fehlerberichte-und-support', query: 'GitHub-Fehlerbericht' },
+        'support.smart_bug_assistant': { anchor: 'fehlerberichte-und-support', query: 'Fehlerbericht' },
+      };
       let MANUAL_HITS = [];
       let MANUAL_CURSOR = -1;
 
@@ -177,7 +202,7 @@
             const txt = (mHead[2]||'').trim();
             const id = uniqId(slugify(txt));
             toc.push({lvl, txt, id});
-            html += `<h${lvl} id="${esc(id)}">${inlineMd(txt)}</h${lvl}>`;
+            html += `<h${lvl} id="${esc(id)}" class="manual_doc_target">${inlineMd(txt)}</h${lvl}>`;
             continue;
           }
 
@@ -296,13 +321,43 @@
       if($manualPrev) $manualPrev.addEventListener('click', ()=>activateHit(MANUAL_CURSOR - 1));
       if($manualNext) $manualNext.addEventListener('click', ()=>activateHit(MANUAL_CURSOR + 1));
 
-      // Allow deep links from tooltips: ./manual?q=<data-ui>
+      function targetForDoc(doc){
+        try{ return MANUAL_DOC_TARGETS[String(doc || '').trim()] || null; }catch(e){ return null; }
+      }
+
+      function scrollToManualAnchor(anchor){
+        if(!anchor) return false;
+        const id = String(anchor || '').replace(/^#/, '');
+        const el = document.getElementById(id);
+        if(!el) return false;
+        try{
+          document.querySelectorAll('.active_doc_target').forEach((x)=>x.classList.remove('active_doc_target'));
+          el.classList.add('active_doc_target');
+          el.scrollIntoView({behavior:'smooth', block:'start'});
+        }catch(e){}
+        return true;
+      }
+
+      // Allow exact deep links: ./manual?doc=<target>#<anchor>; fallback: ./manual?q=<text>.
       try{
-        const q0 = new URLSearchParams(String(location && location.search || '')).get('q');
+        const params = new URLSearchParams(String(location && location.search || ''));
+        const doc0 = params.get('doc');
+        const target = targetForDoc(doc0);
+        const hashAnchor = String(location && location.hash || '').replace(/^#/, '');
+        const anchor = hashAnchor || (target && target.anchor ? target.anchor : '');
+        const q0 = params.get('q') || (target && target.query ? target.query : '');
         if(q0 && $manualSearch){
           $manualSearch.value = String(q0);
           runManualSearch();
         }
+        setTimeout(()=>{
+          try{
+            if(!scrollToManualAnchor(anchor) && q0 && !MANUAL_HITS.length && $manualSearch){
+              $manualSearch.value = String(q0);
+              runManualSearch();
+            }
+          }catch(e){}
+        }, 80);
       }catch(e){}
       </script>
 

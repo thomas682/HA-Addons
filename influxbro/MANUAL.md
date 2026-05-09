@@ -106,6 +106,85 @@ Neu: Top-Leiste (Profil + Zoom)
 - Config-/DQ-/Export-/Backup-Dialoge wie Verbindungstest-Erfolg, Icon-SVG-Editor, Datenqualitaets-Details, Export-Zielauswahl und Backup-Verifikation folgen ebenfalls dem Template-v2-Dialogstandard mit stabilen Pickkeys und Footer-/Toolbar-Bereichen.
 - Alle bekannten Dialoge zeigen oben im Dialog jetzt fachlich passende Beschreibungen zur konkreten Funktion. Der Meta-Hinweis im Footer besitzt einen dezenten Kopierbutton, der den vollstaendigen Meta-String (`pk`, Template und Dialogname) in die Zwischenablage kopiert.
 
+## Handbuch und Dokumentationsspruenge
+
+- Handbuchbuttons, Tooltip-Doku-Buttons und `F1` oeffnen die passende Hilfe direkt im integrierten Handbuchdialog.
+- Der Sprung erfolgt ueber stabile Dokumentationsziele, damit der Dialog zur fachlich richtigen Stelle springt und nicht nur eine ungefaehre Suche ausfuehrt.
+- Der Button `Im Handbuch oeffnen` wechselt bei Bedarf zur vollstaendigen Handbuchseite im gleichen Add-on-Kontext.
+- Der optionale GitHub-Link ist nur ein externer Fallback; die integrierte Hilfe verwendet die lokal installierte Add-on-Version.
+- Bilder im Handbuch werden weiterhin intern geladen und funktionieren auch im integrierten Handbuchdialog.
+
+### Messwertinfo-Laufzeitdetails
+
+- Dieser Abschnitt erklaert den Dialog zur Messwertinfo-Laufzeit, erreichbar z. B. ueber `dashboard_selection.btn_measurement_profile_runtime_info`.
+- Der Dialog zeigt die Schritte, Quellen, Cache-Entscheidungen und Laufzeiten, die beim Ermitteln der Messwertinfos verwendet wurden.
+- Wenn die Auswahl langsam ist oder unerwartete Vorschlaege liefert, helfen diese Details beim Nachvollziehen des Ablaufs.
+
+### Analyse-Log und Protokolle
+
+- Das Analyse-Log zeigt, welche Abfragen, Cache-Entscheidungen, Analysefenster und Ausreisser-Schritte fuer die aktuelle Dashboard-Analyse verwendet wurden.
+- Filter und Markierungen helfen, lange Protokolle auf relevante Schritte einzugrenzen.
+
+### Ausreisser-Parameter und Reparatur
+
+- Die Ausreisser-Parameter steuern, welche Rohdaten als auffaellig gelten.
+- Der Reparatur-Assistent fuehrt durch Vorschau und Anwendung potenziell datenveraendernder Korrekturen.
+- Vor jeder Reparatur sollte die Vorschau geprueft werden.
+
+### Analyse-Strategie
+
+- Die Analyse-Strategie legt fest, welche Typen, Zeitfenster und Overrides fuer die Auswertung verwendet werden.
+- Die JSON-Hilfe beschreibt erlaubte Struktur und Werte fuer strategiebasierte Anpassungen.
+
+### Referenzdetails
+
+- Referenzdetails zeigen, welche Quelle als Vergleichsbasis fuer Auswahl und Analyse verwendet wird.
+- Bei falscher Referenz sollte die Messwertauswahl angepasst werden.
+
+### Aenderungsvorschau
+
+- Die Aenderungsvorschau zeigt geplante Daten- oder Konfigurationsaenderungen vor dem Anwenden.
+- Sie dient als letzte Kontrolle fuer Umfang, betroffene Werte und Zielzustand.
+
+### Logs und Support-Bundle
+
+- Die Log-Aufzeichnung sammelt gezielt Ereignisse fuer eine reproduzierbare Diagnose.
+- Das Support-Bundle buendelt Logs und Diagnoseinformationen; vor dem Teilen sollten sensible Inhalte geprueft werden.
+
+### Timer History und Jobs
+
+- Die Timer-History zeigt fruehere Job-Ausfuehrungen mit Status, Laufzeit und Ergebnis.
+- Sie hilft beim Erkennen von Hintergrundproblemen und wiederkehrenden Fehlern.
+
+### Verbindungstest und Konfiguration
+
+- Der Verbindungstest bestaetigt, ob die aktuelle InfluxDB-Konfiguration erreichbar und nutzbar ist.
+- Der Icon-SVG-Dialog dient zur Kontrolle der Add-on-Kennung in Home Assistant und der InfluxBro-Oberflaeche.
+
+### Datenqualitaets-Details
+
+- Datenqualitaets-Details erklaeren betroffene Messwerte, Zeitbereiche, Regeln und Hinweise fuer Raw/Clean/Rollup-Pruefungen.
+
+### Export-Zielauswahl
+
+- Die Export-Zielauswahl bestimmt Zielpfad, Format und Umfang eines Exports.
+- Vor dem Start sollten Ziel und Optionen geprueft werden.
+
+### Backup-Verifikation
+
+- Die Backup-Verifikation prueft Struktur, Inhalt und Metadaten einer Sicherung.
+- Warnungen sollten vor Restore oder Archivierung vollstaendig ausgewertet werden.
+
+### Dialoge und integrierte Hilfe
+
+- Info-Dialoge, Bestaetigungsdialoge und Query-Details nutzen dieselbe Dialogstruktur und denselben Handbuchresolver.
+- Der Info-Button erklaert die Struktur des Dialogs; der Handbuchbutton erklaert die fachliche Funktion.
+
+### Fehlerberichte und Support
+
+- GitHub-Fehlerbericht, Issue Composer und Smart Bug Assistant sammeln Diagnoseinformationen fuer Supportfaelle.
+- Vor dem Absenden oder Kopieren sollten sensible Inhalte entfernt werden.
+
 ## Installation in Home Assistant
 
 1) Add-on Repository hinzufuegen

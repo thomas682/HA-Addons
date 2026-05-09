@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.582
+
+### Enhancement
+
+- Handbuch / Ingress / Dialoghilfe: Handbuch- und Dokumentationsspruenge laufen jetzt zentral ueber einen integrierten Resolver mit stabilem `doc`-/Anchor-Ziel, statt neue HA-Ingress-Tabs mit `?q=` zu oeffnen. Dialog-Handbuchbutton, Tooltip-Doku-Button und `F1` nutzen denselben integrierten Handbuchdialog; Bilder bleiben ueber die interne Asset-Route kompatibel. ([#549](https://github.com/thomas682/HA-Addons/issues/549))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.581
 
 ### Enhancement
