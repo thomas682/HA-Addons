@@ -9453,6 +9453,23 @@ function _outlierStrategyCollectOverrides(){
   return { param_overrides: paramOverrides, correction_overrides: correctionOverrides };
 }
 
+function _outlierStrategyApplyLocalOverrides(data, selected, extra){
+  try{
+    if(!data || typeof data !== 'object') return;
+    const types = Array.isArray(selected) ? selected : [];
+    const paramOverrides = (extra && extra.param_overrides && typeof extra.param_overrides === 'object') ? extra.param_overrides : {};
+    const correctionOverrides = (extra && extra.correction_overrides && typeof extra.correction_overrides === 'object') ? extra.correction_overrides : {};
+    const strategyParams = (data.strategy && data.strategy.params && typeof data.strategy.params === 'object') ? data.strategy.params : {};
+    const strategyCorrections = (data.strategy && data.strategy.corrections && typeof data.strategy.corrections === 'object') ? data.strategy.corrections : {};
+    data.effective_params = {};
+    data.effective_corrections = {};
+    types.forEach((type)=>{
+      data.effective_params[type] = { ...((strategyParams[type] && typeof strategyParams[type] === 'object') ? strategyParams[type] : {}), ...((paramOverrides[type] && typeof paramOverrides[type] === 'object') ? paramOverrides[type] : {}) };
+      data.effective_corrections[type] = { ...((strategyCorrections[type] && typeof strategyCorrections[type] === 'object') ? strategyCorrections[type] : {}), ...((correctionOverrides[type] && typeof correctionOverrides[type] === 'object') ? correctionOverrides[type] : {}) };
+    });
+  }catch(e){}
+}
+
 function _outlierStrategyRenderInfo(result){
   if(!$analysisStrategyInfo) return;
   if(!result || result.ok === false){
@@ -9501,6 +9518,7 @@ async function saveOutlierStrategyOverride(){
     LAST_OUTLIER_STRATEGY.correction_overrides = extra.correction_overrides;
     LAST_OUTLIER_STRATEGY.effective_selected = selected.slice();
     LAST_OUTLIER_STRATEGY.effective_unselected = ALL_OUTLIER_TYPES.map(t=>t.value).filter(v => v !== 'ignored' && !selected.includes(v));
+    _outlierStrategyApplyLocalOverrides(LAST_OUTLIER_STRATEGY, selected, extra);
     _outlierStrategyRenderInfo(LAST_OUTLIER_STRATEGY);
   }catch(e){}
 }

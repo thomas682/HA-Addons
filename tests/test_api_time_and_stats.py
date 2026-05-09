@@ -1447,7 +1447,7 @@ def test_api_undo_preview_for_strategy_override(load_app_module, tmp_path):
     assert pj["preview"]["items"][0]["parameter"] == "time_gap.gap_seconds"
 
 
-def test_api_strategy_override_registers_general_change_items(load_app_module, tmp_path):
+def test_api_strategy_override_registers_general_change_items(load_app_module, tmp_path, monkeypatch):
     app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
     client = app_mod.app.test_client()
 
@@ -1459,9 +1459,12 @@ def test_api_strategy_override_registers_general_change_items(load_app_module, t
             "field": "value",
             "friendly_name": "Demo",
             "mode": "manual",
-            "manual_enable_types": ["time_gap"],
+            "manual_enable_types": ["time_gap", "range_violation"],
             "manual_disable_types": ["zero_value"],
-            "param_overrides": {"time_gap": {"gap_seconds": 901}},
+            "param_overrides": {
+                "time_gap": {"gap_seconds": 901},
+                "range_violation": {"min": 12, "max": 98},
+            },
         },
     )
     assert r.status_code == 200
@@ -1476,6 +1479,21 @@ def test_api_strategy_override_registers_general_change_items(load_app_module, t
     meta = rows[0]["meta"]
     assert meta["custom_action"] == "outlier_strategy_override"
     assert any(item["parameter"] == "time_gap.gap_seconds" for item in meta["change_items"])
+
+    monkeypatch.setattr(app_mod, "_measurement_profile_build", lambda cfg, **kwargs: {
+        "entity_id": kwargs["entity_id"],
+        "ha": {"available": True, "entity_id": kwargs["entity_id"], "device_class": "energy", "state_class": "measurement", "unit_of_measurement": "Wh", "domain": "sensor"},
+        "yaml": {"found": True, "data": {}},
+        "influx": {"measurement": kwargs["measurement"], "field": kwargs["field"], "field_type": "float"},
+        "derived": {"internal_type": "sensor_numeric", "confidence": "high"},
+        "quality": {"warnings": []},
+    })
+    r2 = client.get("/api/outlier_strategy?entity_id=sensor.demo&measurement=Wh&field=value&range=all")
+    assert r2.status_code == 200
+    j2 = r2.get_json()
+    assert j2["effective_params"]["time_gap"]["gap_seconds"] == 901
+    assert j2["effective_params"]["range_violation"]["min"] == 12
+    assert j2["effective_params"]["range_violation"]["max"] == 98
 
 
 def test_api_outlier_strategy_reads_legacy_keys_and_returns_new_keys(load_app_module, tmp_path, monkeypatch):

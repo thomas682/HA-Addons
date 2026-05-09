@@ -1594,6 +1594,15 @@ def test_dashboard_issue219_analysis_controls_and_limits_exist():
     assert '"ui_raw_outlier_display_limit_per_type": 100' in app_body
 
 
+def test_dashboard_strategy_type_cards_keep_pickkeys_and_local_overrides():
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert 'id="analysis_types_selected"' in body
+    assert 'data-ui="dashboard_analysis.panel_typen_gewaehlt"' in body
+    assert 'dashboard_analysis.panel_strategy_type.${_escAttr(type)}' in body
+    assert 'function _outlierStrategyApplyLocalOverrides(data, selected, extra)' in body
+    assert '_outlierStrategyApplyLocalOverrides(LAST_OUTLIER_STRATEGY, selected, extra)' in body
+
+
 def test_dashboard_caching_section_has_visible_cache_targets_and_no_old_dialog():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert 'id="analysis_cache_box"' in body

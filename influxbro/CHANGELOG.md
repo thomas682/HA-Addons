@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.583
+
+### Fix
+
+- Dashboard / Analyse-Strategie: Eingaben in den Strategie-Typ-Kacheln wie `dashboard_analysis.panel_strategy_type.range_violation` und `dashboard_analysis.panel_strategy_type.time_gap` bleiben nach dem Speichern stabil sichtbar, weil lokale Overrides direkt in die effektiven Kartenwerte gespiegelt werden. Die Typ-Auswahl `dashboard_analysis.panel_typen_gewaehlt` nutzt weiterhin die serverseitige Override-Persistenz. ([#550](https://github.com/thomas682/HA-Addons/issues/550))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.582
 
 ### Enhancement
