@@ -856,6 +856,29 @@ def test_dialog_standardization_avoids_generic_dialog_pickkeys():
     assert "data-dialog-panel', '1'" in tooltips or 'data-dialog-panel="1"' in tooltips
 
 
+def test_dialog_template_v2_basis_for_global_dialogs():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "ib_dialog_standard_styles_v2" in topbar
+    assert "--c-bg:" in topbar
+    assert "--c-accent:" in topbar
+    assert "1-4 Zeilen Beschreibung" in topbar
+    assert "data-dialog-toolbar=\"1\"" in topbar
+    assert "data-dialog-content=\"1\"" in topbar
+    assert "data-dialog-template') || '') === 'dialog_confirm_action'" in topbar
+    assert "kein Minimieren/Maximieren" in topbar
+    assert "key === 'F1'" in topbar
+    assert "key.toLowerCase() === 'i'" in topbar
+    assert "data-open-superpicker=\"1\"" not in tooltips
+    assert "ib_dialog_superpicker" not in tooltips
+    assert "dialog_query_info.root" in tooltips
+    assert "dialog_confirm_action.root" in tooltips
+    assert "dialog_issue_composer.root" in tooltips
+    assert "dialog_smart_bug_assistant.root" in tooltips
+    assert "window.InfluxBroDialogStandards.enhance(root" in tooltips
+    assert "window.InfluxBroDialogStandards.enhance(confirmRoot" in tooltips
+
+
 def test_details_state_restore_is_one_shot_and_open_all_persists():
     nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()

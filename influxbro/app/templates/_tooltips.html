@@ -1625,6 +1625,8 @@
     root.setAttribute('data-dialog-name', 'dialog.query_info');
     root.setAttribute('data-dialog-template', 'dialog_info_popup');
     root.setAttribute('data-dialog-trigger', 'InfluxBroPopup.show');
+    root.setAttribute('data-ui', 'dialog_query_info.root');
+    root.setAttribute('data-ib-pickkey', 'dialog_query_info.root');
     root.style.zIndex = '10050';
     root.style.display = 'none';
     root.style.background = 'transparent';
@@ -1643,6 +1645,8 @@
     card.setAttribute('data-dialog-name', 'dialog.query_info');
     card.setAttribute('data-dialog-template', 'dialog_info_popup');
     card.setAttribute('data-dialog-trigger', 'InfluxBroPopup.show');
+    card.setAttribute('data-ui', 'dialog_query_info.panel');
+    card.setAttribute('data-ib-pickkey', 'dialog_query_info.panel');
     card.style.maxWidth = 'calc(100vw - 24px)';
     card.style.margin = '8vh auto 12px auto';
     card.style.background = '#fff';
@@ -1701,6 +1705,7 @@
 
     const controls = document.createElement('div');
     controls.id = 'influxbro_popup_controls';
+    controls.setAttribute('data-dialog-toolbar', '1');
     controls.style.display = 'flex';
     controls.style.alignItems = 'center';
     controls.style.justifyContent = 'space-between';
@@ -1859,6 +1864,7 @@
 
     const contentWrap = document.createElement('div');
     contentWrap.id = 'influxbro_popup_content';
+    contentWrap.setAttribute('data-dialog-content', '1');
     contentWrap.style.display = 'flex';
     contentWrap.style.flexDirection = 'column';
     contentWrap.style.gap = '8px';
@@ -1926,6 +1932,8 @@
     confirmRoot.setAttribute('data-dialog-name', 'dialog.confirm_action');
     confirmRoot.setAttribute('data-dialog-template', 'dialog_confirm_action');
     confirmRoot.setAttribute('data-dialog-trigger', 'InfluxBroConfirm.ask');
+    confirmRoot.setAttribute('data-ui', 'dialog_confirm_action.root');
+    confirmRoot.setAttribute('data-ib-pickkey', 'dialog_confirm_action.root');
     confirmRoot.style.zIndex = '10055';
     confirmRoot.style.display = 'none';
     confirmRoot.style.background = 'transparent';
@@ -1939,6 +1947,8 @@
     const confirmCard = document.createElement('div');
     confirmCard.id = 'influxbro_confirm_card';
     confirmCard.setAttribute('data-dialog-panel', '1');
+    confirmCard.setAttribute('data-ui', 'dialog_confirm_action.panel');
+    confirmCard.setAttribute('data-ib-pickkey', 'dialog_confirm_action.panel');
     confirmCard.style.maxWidth = 'min(640px, calc(100vw - 24px))';
     confirmCard.style.margin = '10vh auto 12px auto';
     confirmCard.style.background = '#fff';
@@ -1956,6 +1966,7 @@
 
     const confirmBody = document.createElement('pre');
     confirmBody.id = 'influxbro_confirm_body';
+    confirmBody.setAttribute('data-dialog-content', '1');
     confirmBody.style.margin = '0';
     confirmBody.style.padding = '10px 12px';
     confirmBody.style.border = '1px solid #eee';
@@ -1968,6 +1979,7 @@
 
     const confirmActions = document.createElement('div');
     confirmActions.id = 'influxbro_confirm_actions';
+    confirmActions.setAttribute('data-dialog-footer', '1');
     confirmActions.style.display = 'flex';
     confirmActions.style.justifyContent = 'flex-end';
     confirmActions.style.gap = '8px';
@@ -2012,6 +2024,8 @@
     composer.setAttribute('data-dialog-name', 'dialog.issue_composer');
     composer.setAttribute('data-dialog-template', 'dialog_panel_workbench');
     composer.setAttribute('data-dialog-trigger', 'errors_main.btn_bugreport');
+    composer.setAttribute('data-ui', 'dialog_issue_composer.root');
+    composer.setAttribute('data-ib-pickkey', 'dialog_issue_composer.root');
     composer.style.position = 'fixed';
     composer.style.inset = '0';
     composer.style.zIndex = '10060';
@@ -2023,6 +2037,8 @@
 
     const composerCard = document.createElement('div');
     composerCard.setAttribute('data-dialog-panel', '1');
+    composerCard.setAttribute('data-ui', 'dialog_issue_composer.panel');
+    composerCard.setAttribute('data-ib-pickkey', 'dialog_issue_composer.panel');
     composerCard.style.maxWidth = '860px';
     composerCard.style.margin = '0 auto 12px auto';
     composerCard.style.maxHeight = 'calc(100vh - 16vh - 24px)';
@@ -2105,6 +2121,8 @@
     smart.setAttribute('data-dialog-name', 'dialog.smart_bug_assistant');
     smart.setAttribute('data-dialog-template', 'dialog_panel_workbench');
     smart.setAttribute('data-dialog-trigger', 'errors_main.btn_smart_bugreport');
+    smart.setAttribute('data-ui', 'dialog_smart_bug_assistant.root');
+    smart.setAttribute('data-ib-pickkey', 'dialog_smart_bug_assistant.root');
     smart.style.position = 'fixed';
     smart.style.inset = '0';
     smart.style.zIndex = '10070';
@@ -2116,6 +2134,8 @@
 
     const smartCard = document.createElement('div');
     smartCard.setAttribute('data-dialog-panel', '1');
+    smartCard.setAttribute('data-ui', 'dialog_smart_bug_assistant.panel');
+    smartCard.setAttribute('data-ib-pickkey', 'dialog_smart_bug_assistant.panel');
     smartCard.style.maxWidth = '920px';
     smartCard.style.margin = '0 auto 12px auto';
     smartCard.style.maxHeight = 'calc(100vh - 16vh - 24px)';
@@ -2179,6 +2199,14 @@
     smart.appendChild(smartCard);
     document.body.appendChild(smart);
     document.body.appendChild(root);
+    try{
+      if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance){
+        window.InfluxBroDialogStandards.enhance(root, { name: 'dialog.query_info', template: 'dialog_info_popup', trigger: 'InfluxBroPopup.show', closeSelector: '#influxbro_popup_close' });
+        window.InfluxBroDialogStandards.enhance(confirmRoot, { name: 'dialog.confirm_action', template: 'dialog_confirm_action', trigger: 'InfluxBroConfirm.ask' });
+        window.InfluxBroDialogStandards.enhance(composer, { name: 'dialog.issue_composer', template: 'dialog_panel_workbench', trigger: 'errors_main.btn_bugreport', closeSelector: '#influxbro_issue_cancel' });
+        window.InfluxBroDialogStandards.enhance(smart, { name: 'dialog.smart_bug_assistant', template: 'dialog_panel_workbench', trigger: 'errors_main.btn_smart_bugreport', closeSelector: '#influxbro_sba_cancel' });
+      }
+    }catch(e){}
 
     function _clampPopupSize(){
       try{
@@ -3174,6 +3202,7 @@
       const historyBox = refs.historyBox || document.getElementById('influxbro_popup_history');
       const split = refs.split || document.getElementById('influxbro_popup_split');
       if(t) t.textContent = title || 'Hinweis';
+      try{ const stdTitle = document.querySelector('#influxbro_popup_card [data-dialog-title="1"]'); if(stdTitle) stdTitle.textContent = title || 'Hinweis'; }catch(e){}
       const htmlMode = !!(opts && opts.bodyHtml);
       const normalizedMsg = (window.InfluxBroDecodeInfoText ? window.InfluxBroDecodeInfoText(String(msg || '')) : String(msg || ''));
       let normalizedText = normalizedMsg;
@@ -3384,9 +3413,10 @@
           CONFIRM_RESOLVE = resolve;
           const title = String(opts && opts.title ? opts.title : 'Bestaetigung');
           const body = String(opts && opts.text ? opts.text : '');
-          const pickerKey = String(opts && opts.pickerKey ? opts.pickerKey : 'dialog_confirm_action.root');
+          const pickerKey = String(opts && opts.pickerKey ? opts.pickerKey : 'dialog_confirm_action.panel');
           const templateName = String(opts && opts.templateName ? opts.templateName : 'dialog_confirm_action');
           if(refs.title) refs.title.textContent = title;
+          try{ const stdTitle = document.querySelector('#influxbro_confirm_card [data-dialog-title="1"]'); if(stdTitle) stdTitle.textContent = title; }catch(e){}
           if(refs.body) refs.body.textContent = body;
           if(refs.cancel) refs.cancel.textContent = String(opts && opts.cancelLabel ? opts.cancelLabel : 'Abbrechen');
           if(refs.ok) refs.ok.textContent = String(opts && opts.okLabel ? opts.okLabel : 'OK');

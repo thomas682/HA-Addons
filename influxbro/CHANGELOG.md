@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.577
+
+### Enhancement
+
+- Dialoge / Template v2 Paket 1: Die zentrale Dialog-Basis nutzt jetzt Template-v2-Strukturklassen, Theme-Tokens, Header/Beschreibung/Actionbar/Content/Footer/Meta-Bereiche sowie Tastatur-Bindings fuer globale Dialoge. Popup, Confirm, Issue Composer und Smart Bug Assistant werden beim Erzeugen direkt an `InfluxBroDialogStandards.enhance()` angebunden; Confirm-Dialoge zeigen oben rechts nur noch `Schliessen` und vermeiden die bisherige Root/Panel-Pickkey-Kollision. ([#544](https://github.com/thomas682/HA-Addons/issues/544))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.576
 
 ### Fix
