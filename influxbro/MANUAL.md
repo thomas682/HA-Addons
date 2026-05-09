@@ -104,6 +104,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Dashboard-Dialoge wie Ausreisser-Parameter, Strategieinfo, Referenzdetails, JSON-Hilfe, Aenderungsvorschau, Reparatur-Assistent, Messwertinfos-Laufzeitdetails und gefiltertes Analyse-Logging verwenden ebenfalls stabile Dialog-Pickkeys und die Template-v2-Bereiche fuer Kopf, Toolbar, Inhalt und Footer.
 - Logs-/Jobs-Dialoge wie `Aufzeichnung starten`, `Support-Bundle` und `Timer History` sind ebenfalls auf stabile Root-/Panel-Pickkeys und Template-v2-Bereiche fuer Toolbar, Inhalt und Footer umgestellt.
 - Config-/DQ-/Export-/Backup-Dialoge wie Verbindungstest-Erfolg, Icon-SVG-Editor, Datenqualitaets-Details, Export-Zielauswahl und Backup-Verifikation folgen ebenfalls dem Template-v2-Dialogstandard mit stabilen Pickkeys und Footer-/Toolbar-Bereichen.
+- Alle bekannten Dialoge zeigen oben im Dialog jetzt fachlich passende Beschreibungen zur konkreten Funktion. Der Meta-Hinweis im Footer besitzt einen dezenten Kopierbutton, der den vollstaendigen Meta-String (`pk`, Template und Dialogname) in die Zwischenablage kopiert.
 
 ## Installation in Home Assistant
 

@@ -879,6 +879,33 @@ def test_dialog_template_v2_basis_for_global_dialogs():
     assert "window.InfluxBroDialogStandards.enhance(confirmRoot" in tooltips
 
 
+def test_dialog_descriptions_and_meta_copy_are_specific():
+    root = Path(__file__).resolve().parents[1] / "influxbro"
+    topbar = (root / "app" / "templates" / "_topbar.html").read_text()
+    rules = (root / "template-dialog-rules.md").read_text()
+
+    assert "const DIALOG_DESCRIPTION_LINES = {" in topbar
+    assert "DIALOG_DESCRIPTION_LINES[name]" in topbar
+    assert "data-dialog-meta-copy" in topbar
+    assert "_copyTextToClipboard(current)" in topbar
+    assert "'.btn_meta_copy'" in topbar
+    assert "data-copy-state', 'ok'" in topbar
+    assert "Bekannte Dialoge MÜSSEN fachlich spezifische Beschreibungstexte erhalten" in rules
+    assert "Generische Template-Beschreibungen sind nur als Fallback" in rules
+    assert "Copy-Button MUSS tastaturbedienbar" in rules
+
+    for name, phrase in [
+        ("dialog.raw_outlier_params", "Parameter für die Rohdaten-Ausreißersuche"),
+        ("dialog.analysis_log", "Analyseprotokoll prüfen"),
+        ("dialog.logs_support_bundle", "Support-Bundle aus Logs"),
+        ("dialog.backup_verify", "Backup-Dateien prüfen"),
+        ("dialog.git_bugreport", "GitHub-Fehlerbericht"),
+        ("dialog.docs_modal", "Kontextbezogene Dokumentation"),
+    ]:
+        assert name in topbar
+        assert phrase in topbar
+
+
 def test_dashboard_dialogs_expose_template_v2_pickkeys_and_regions():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     for key in [

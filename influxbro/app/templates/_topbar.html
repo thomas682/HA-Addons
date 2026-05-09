@@ -2761,6 +2761,119 @@
       },
     };
 
+    const DIALOG_DESCRIPTION_LINES = {
+      'dialog.analysis_log': [
+        'Aufgabe: Analyseprotokoll prüfen und gezielt filtern.',
+        'Kontext: Zeigt Laufzeit, Cache-Nutzung, Abfragefenster und Analyseentscheidungen der aktuellen Dashboard-Auswertung.',
+        'Bedienung: Filter oder Markierungen nutzen, auffällige Schritte öffnen und bei Bedarf den sichtbaren Protokolltext kopieren.',
+      ],
+      'dialog.analysis_strategy': [
+        'Aufgabe: Analyse-Strategie für Ausreißer und Referenzfenster konfigurieren.',
+        'Kontext: Die Auswahl beeinflusst, welche Zeiträume, Typen und Cache-Entscheidungen in der Dashboard-Analyse verwendet werden.',
+        'Bedienung: Strategie prüfen, JSON-Hilfe bei Bedarf öffnen und Änderungen erst übernehmen, wenn die Parameter plausibel sind.',
+      ],
+      'dialog.analysis_strategy_help': [
+        'Aufgabe: JSON-Regeln für Analyse-Strategien nachschlagen.',
+        'Kontext: Erklärt erlaubte Schlüssel, Werte und Struktur für die strategiebasierte Auswertung.',
+        'Bedienung: Beispiele übernehmen, anpassen und anschließend im Strategie-Dialog validieren.',
+      ],
+      'dialog.backup_verify': [
+        'Aufgabe: Backup-Dateien prüfen, bevor sie für Restore oder Archivierung verwendet werden.',
+        'Kontext: Die Prüfung vergleicht Struktur, Inhalt und erwartete Metadaten der ausgewählten Sicherung.',
+        'Bedienung: Ziel auswählen, Prüfung starten und Warnungen vor weiteren Schritten vollständig auswerten.',
+      ],
+      'dialog.change_preview': [
+        'Aufgabe: Vorgesehene Datenänderungen vor dem Anwenden kontrollieren.',
+        'Kontext: Die Vorschau zeigt betroffene Reihen, Felder und Werte, damit Änderungen nachvollziehbar bleiben.',
+        'Bedienung: Differenzen prüfen und nur fortfahren, wenn Umfang und Zielwerte erwartungsgemäß sind.',
+      ],
+      'dialog.config_icon_svg': [
+        'Aufgabe: SVG-Icon der Konfiguration prüfen oder übernehmen.',
+        'Kontext: Das Icon wird in Home Assistant und in der Add-on-Oberfläche als visuelle Kennung genutzt.',
+        'Bedienung: SVG-Inhalt kontrollieren, nur vertrauenswürdige Markups verwenden und Änderungen bewusst speichern.',
+      ],
+      'dialog.config_test_success': [
+        'Aufgabe: Erfolgreichen Verbindungstest nachvollziehen.',
+        'Kontext: Der Dialog bestätigt, dass die aktuelle InfluxDB-Konfiguration erreichbar und nutzbar ist.',
+        'Bedienung: Ergebnis prüfen und anschließend mit Speichern oder weiterer Konfiguration fortfahren.',
+      ],
+      'dialog.confirm_action': [
+        'Aufgabe: Kritische Aktion bewusst bestätigen oder abbrechen.',
+        'Kontext: Der Dialog schützt vor unbeabsichtigten Änderungen, Löschungen oder lang laufenden Operationen.',
+        'Bedienung: Auswirkung prüfen und die primäre Aktion nur ausführen, wenn Ziel und Umfang eindeutig sind.',
+      ],
+      'dialog.docs_modal': [
+        'Aufgabe: Kontextbezogene Dokumentation direkt im Arbeitsfluss lesen.',
+        'Kontext: Die Inhalte erklären Begriffe, UI-Elemente oder Funktionsbereiche ohne Seitenwechsel.',
+        'Bedienung: Abschnitt lesen, bei Bedarf im Handbuch vertiefen und danach zum auslösenden Element zurückkehren.',
+      ],
+      'dialog.dq_detail': [
+        'Aufgabe: Data-Quality-Befund im Detail analysieren.',
+        'Kontext: Zeigt betroffene Messwerte, Zeitbereiche, Prüfregel und Hinweise zur Datenqualität.',
+        'Bedienung: Befund prüfen, Filter oder Detaildaten auswerten und daraus Reparatur- oder Ignorierentscheidung ableiten.',
+      ],
+      'dialog.export_target': [
+        'Aufgabe: Exportziel und Exportumfang festlegen.',
+        'Kontext: Die Auswahl bestimmt, wohin Daten geschrieben werden und welche Inhalte im Export landen.',
+        'Bedienung: Zielpfad, Format und Optionen prüfen, bevor der Export gestartet wird.',
+      ],
+      'dialog.git_bugreport': [
+        'Aufgabe: GitHub-Fehlerbericht aus aktuellen Diagnoseinformationen vorbereiten.',
+        'Kontext: Der Bericht bündelt UI-Aktionen, Laufzeitdaten und Fehlerdetails für eine nachvollziehbare Meldung.',
+        'Bedienung: Inhalt prüfen, sensible Angaben entfernen und erst danach den Bericht erstellen oder kopieren.',
+      ],
+      'dialog.issue_composer': [
+        'Aufgabe: GitHub-Issue mit Diagnosekontext formulieren.',
+        'Kontext: Der Composer sammelt Fehlerbeschreibung, Schritte, Logs und technische Metadaten in einer strukturierten Vorlage.',
+        'Bedienung: Text prüfen, private Daten entfernen und den Issue erst nach Sichtkontrolle absenden.',
+      ],
+      'dialog.jobs_timers_history': [
+        'Aufgabe: Timer-Verlauf und frühere Job-Ausführungen prüfen.',
+        'Kontext: Die Historie zeigt Startzeiten, Status, Laufzeiten und Ergebnisse geplanter Aufgaben.',
+        'Bedienung: Zeitraum oder Einträge vergleichen und Auffälligkeiten für weitere Diagnose übernehmen.',
+      ],
+      'dialog.logs_record_start': [
+        'Aufgabe: Log-Aufzeichnung mit definiertem Startkontext beginnen.',
+        'Kontext: Die Aufnahme sammelt Ereignisse für spätere Diagnose und Support-Bundles.',
+        'Bedienung: Anlass und Filter prüfen, Aufzeichnung starten und danach gezielt reproduzieren.',
+      ],
+      'dialog.logs_support_bundle': [
+        'Aufgabe: Support-Bundle aus Logs und Diagnoseinformationen zusammenstellen.',
+        'Kontext: Das Bundle hilft bei Fehlersuche, enthält aber potenziell sensible Betriebsdetails.',
+        'Bedienung: Umfang prüfen, sensible Inhalte bewerten und Bundle nur bewusst erzeugen oder teilen.',
+      ],
+      'dialog.measurement_profile_runtime': [
+        'Aufgabe: Laufzeit und Schritte der Messwertprofil-Ermittlung nachvollziehen.',
+        'Kontext: Zeigt Quellen, Vorschläge, Cache-Entscheidungen und Verzögerungen der aktuellen Messwertauswahl.',
+        'Bedienung: Schritte prüfen und bei langsamen oder unerwarteten Ergebnissen die Diagnoseinformationen kopieren.',
+      ],
+      'dialog.query_info': [
+        'Aufgabe: Abfrage-, Diagnose- oder Hinweistexte im Detail lesen.',
+        'Kontext: Der Dialog zeigt technische Details aus der aktuellen UI-Aktion, häufig inklusive Query- oder Fehlerkontext.',
+        'Bedienung: Text prüfen, bei Bedarf kopieren und anschließend zum auslösenden Bereich zurückkehren.',
+      ],
+      'dialog.raw_outlier_params': [
+        'Aufgabe: Parameter für die Rohdaten-Ausreißersuche einstellen.',
+        'Kontext: Grenzwerte, Fenster und Typauswahl beeinflussen direkt, welche Rohdaten als auffällig markiert werden.',
+        'Bedienung: Werte plausibilisieren, Suche starten und Ergebnisse vor Reparaturaktionen kontrollieren.',
+      ],
+      'dialog.reference_detail': [
+        'Aufgabe: Referenzmesswert und zugehörige Metadaten prüfen.',
+        'Kontext: Die Details erklären, welche Quelle als Vergleichsbasis für Auswahl und Analyse verwendet wird.',
+        'Bedienung: Angaben kontrollieren und bei falscher Referenz die Messwertauswahl anpassen.',
+      ],
+      'dialog.repair_wizard': [
+        'Aufgabe: Reparaturschritte für erkannte Rohdatenprobleme vorbereitet durchgehen.',
+        'Kontext: Der Wizard führt durch Auswahl, Vorschau und Ausführung potenziell datenverändernder Maßnahmen.',
+        'Bedienung: Jeden Schritt prüfen, Vorschau auswerten und Änderungen nur bei eindeutigem Ziel anwenden.',
+      ],
+      'dialog.smart_bug_assistant': [
+        'Aufgabe: Fehlerbericht mit geführter Diagnose vorbereiten.',
+        'Kontext: Der Assistent verbindet Nutzerbeschreibung, technische Daten und zuletzt beobachtete UI-Aktionen.',
+        'Bedienung: Fragen beantworten, Diagnose prüfen und sensible Inhalte vor dem Absenden entfernen.',
+      ],
+    };
+
     const DIALOG_CLOSE_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M10.0303 8.96965C9.73741 8.67676 9.26253 8.67676 8.96964 8.96965C8.67675 9.26255 8.67675 9.73742 8.96964 10.0303L10.9393 12L8.96966 13.9697C8.67677 14.2625 8.67677 14.7374 8.96966 15.0303C9.26255 15.3232 9.73743 15.3232 10.0303 15.0303L12 13.0607L13.9696 15.0303C14.2625 15.3232 14.7374 15.3232 15.0303 15.0303C15.3232 14.7374 15.3232 14.2625 15.0303 13.9696L13.0606 12L15.0303 10.0303C15.3232 9.73744 15.3232 9.26257 15.0303 8.96968C14.7374 8.67678 14.2625 8.67678 13.9696 8.96968L12 10.9393L10.0303 8.96965Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.25C6.06294 1.25 1.25 6.06294 1.25 12C1.25 17.9371 6.06294 22.75 12 22.75C17.9371 22.75 22.75 17.9371 22.75 12C22.75 6.06294 17.9371 1.25 12 1.25ZM2.75 12C2.75 6.89137 6.89137 2.75 12 2.75C17.1086 2.75 21.25 6.89137 21.25 12C21.25 17.1086 17.1086 21.25 12 21.25C6.89137 21.25 2.75 17.1086 2.75 12Z" fill="currentColor"></path></svg>';
     const DIALOG_MAXIMIZE_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M17 7H14M17 7V10M17 7L13.5 10.5M7 17H10M7 17V14M7 17L10.5 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7 7H10M7 7V10M7 7L10.5 10.5M17 17H14M17 17V14M17 17L13.5 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C21.5093 4.43821 21.8356 5.80655 21.9449 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>';
     const DIALOG_RESTORE_SVG = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M10.5 13.5H7.5M10.5 13.5V16.5M10.5 13.5L7 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M13.5 10.5H16.5M13.5 10.5V7.5M13.5 10.5L17 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10.5 10.5H7.5M10.5 10.5V7.5M10.5 10.5L7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M13.5 13.5H16.5M13.5 13.5V16.5M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C21.5093 4.43821 21.8356 5.80655 21.9449 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>';
@@ -2802,6 +2915,11 @@
           [data-dialog-footer="1"]{ display:flex; align-items:center; gap:12px; padding:12px 16px 12px 18px; border-top:1px solid var(--c-border); background:var(--c-surface); margin-top:auto; }
           [data-dialog-meta="1"]{ display:inline-flex; align-items:center; gap:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:10.5px; color:var(--c-text-faint); white-space:nowrap; margin-right:auto; }
           [data-dialog-meta="1"]::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--c-text-faint); }
+          [data-dialog-meta-text="1"]{ overflow:hidden; text-overflow:ellipsis; max-width:min(42vw, 420px); }
+          [data-dialog-meta-copy="1"]{ width:24px; height:24px; display:inline-grid; place-items:center; padding:0; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--c-text-faint); box-shadow:none; opacity:.72; cursor:pointer; }
+          [data-dialog-meta-copy="1"]:hover,[data-dialog-meta-copy="1"]:focus-visible{ opacity:1; color:var(--c-text); background:var(--c-bg-subtle); border-color:var(--c-border); }
+          [data-dialog-meta-copy="1"][data-copy-state="ok"]{ color:var(--c-success); }
+          .sr_only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
         `;
         document.head.appendChild(st);
       }catch(e){}
@@ -2847,6 +2965,30 @@
       const template = String(tpl || 'unknown').trim() || 'unknown';
       const dlg = String(name || 'unknown').trim() || 'unknown';
       return 'pk: ' + key + ' | tpl: ' + template + ' | dlg: ' + dlg;
+    }
+    function _dialogSafeKey(value){
+      try{ return String(value || 'dialog_unknown').trim().replace(/[^a-zA-Z0-9_.-]+/g, '_') || 'dialog_unknown'; }
+      catch(e){ return 'dialog_unknown'; }
+    }
+    function _copyTextToClipboard(text){
+      const value = String(text || '');
+      if(typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(value);
+      return new Promise((resolve, reject)=>{
+        try{
+          const ta = document.createElement('textarea');
+          ta.value = value;
+          ta.setAttribute('readonly', 'readonly');
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          ta.style.top = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand('copy');
+          ta.remove();
+          if(ok) resolve();
+          else reject(new Error('copy failed'));
+        }catch(e){ reject(e); }
+      });
     }
     function _dialogPage(){
       try{
@@ -2914,6 +3056,8 @@
     }
     function _dialogDescriptionLines(root){
       try{
+        const name = _dialogName(root);
+        if(DIALOG_DESCRIPTION_LINES[name]) return DIALOG_DESCRIPTION_LINES[name].slice(0, 4);
         const tpl = String(root.getAttribute('data-dialog-template') || 'dialog_info_popup');
         const spec = DIALOG_TEMPLATE_SPECS[tpl] || DIALOG_TEMPLATE_SPECS.dialog_info_popup;
         const trigger = String(root.getAttribute('data-dialog-trigger') || '-').trim();
@@ -3203,9 +3347,49 @@
           if(footer) footer.insertBefore(meta, footer.firstChild || null);
           else panel.appendChild(meta);
         }
-        meta.textContent = _dialogMetaText(root.getAttribute('data-ib-pickkey') || root.getAttribute('data-ui') || root.id, root.getAttribute('data-dialog-template'), _dialogName(root));
-        meta.title = meta.textContent;
-        meta.addEventListener('click', ()=>{ try{ navigator.clipboard.writeText(meta.textContent || ''); }catch(e){} }, { once: true });
+        const dialogName = _dialogName(root);
+        const metaText = _dialogMetaText(root.getAttribute('data-ib-pickkey') || root.getAttribute('data-ui') || root.id, root.getAttribute('data-dialog-template'), dialogName);
+        let metaLabel = meta.querySelector('[data-dialog-meta-text="1"]');
+        if(!metaLabel){
+          metaLabel = document.createElement('span');
+          metaLabel.setAttribute('data-dialog-meta-text', '1');
+          meta.appendChild(metaLabel);
+        }
+        metaLabel.textContent = metaText;
+        meta.title = metaText;
+        let copyBtn = meta.querySelector('[data-dialog-meta-copy="1"]');
+        if(!copyBtn){
+          copyBtn = document.createElement('button');
+          copyBtn.type = 'button';
+          copyBtn.setAttribute('data-dialog-meta-copy', '1');
+          copyBtn.setAttribute('aria-label', 'Dialog-Meta kopieren');
+          copyBtn.setAttribute('title', 'Dialog-Meta kopieren');
+          copyBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M9 8.5C9 7.11929 10.1193 6 11.5 6H17.5C18.8807 6 20 7.11929 20 8.5V14.5C20 15.8807 18.8807 17 17.5 17H11.5C10.1193 17 9 15.8807 9 14.5V8.5Z" stroke="currentColor" stroke-width="1.5"></path><path d="M6.5 18C5.11929 18 4 16.8807 4 15.5V9.5C4 8.11929 5.11929 7 6.5 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg><span class="sr_only">Kopieren</span>';
+          copyBtn.addEventListener('click', (ev)=>{
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            const current = metaLabel ? String(metaLabel.textContent || '') : metaText;
+            _copyTextToClipboard(current).then(()=>{
+              try{
+                copyBtn.setAttribute('data-copy-state', 'ok');
+                copyBtn.setAttribute('title', 'Kopiert');
+                copyBtn.setAttribute('aria-label', 'Dialog-Meta kopiert');
+                setTimeout(()=>{
+                  try{
+                    copyBtn.removeAttribute('data-copy-state');
+                    copyBtn.setAttribute('title', 'Dialog-Meta kopieren');
+                    copyBtn.setAttribute('aria-label', 'Dialog-Meta kopieren');
+                  }catch(e){}
+                }, 1200);
+              }catch(e){}
+            }).catch(()=>{
+              try{ copyBtn.setAttribute('title', 'Kopieren nicht moeglich'); }catch(e){}
+            });
+          });
+          meta.appendChild(copyBtn);
+        }
+        const copyKey = _dialogSafeKey(dialogName) + '.btn_meta_copy';
+        copyBtn.setAttribute('data-ui', copyKey);
+        copyBtn.setAttribute('data-ib-pickkey', copyKey);
       }catch(e){}
     }
     function _ensureDialogInfoButton(root, panel){

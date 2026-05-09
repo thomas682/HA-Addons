@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.581
+
+### Enhancement
+
+- Dialoge / Template v2: Bekannte Dialoge erhalten jetzt fachlich spezifische Beschreibungen statt generischer Template-Texte; der Meta-Footer hat einen eigenen tastaturbedienbaren Copy-Button mit stabilem Pickkey und Kopierfeedback. ([#548](https://github.com/thomas682/HA-Addons/issues/548))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.580
 
 ### Enhancement
