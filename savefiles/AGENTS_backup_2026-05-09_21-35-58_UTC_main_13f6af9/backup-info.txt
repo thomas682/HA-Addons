@@ -1,0 +1,8 @@
+Backup name: AGENTS_backup_2026-05-09_21-35-58_UTC_main_13f6af9
+Date UTC: 2026-05-09_21-35-58_UTC
+Branch/Ref: main
+Commit SHA: 13f6af91ca7cf6311fc92d1cf4212e00edbe97b0
+Actor: thomas682
+Event: push
+Repository: thomas682/HA-Addons
+Workflow run: 25612394291
