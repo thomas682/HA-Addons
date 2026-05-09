@@ -897,6 +897,23 @@ def test_dashboard_dialogs_expose_template_v2_pickkeys_and_regions():
     assert body.count('data-dialog-toolbar="1"') >= 2
 
 
+def test_logs_jobs_dialogs_expose_template_v2_pickkeys_and_regions():
+    root = Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates"
+    logs = (root / "logs.html").read_text()
+    jobs = (root / "jobs.html").read_text()
+    for key in ["dialog_logs_record_start", "dialog_logs_support_bundle"]:
+        assert f'data-ui="{key}.root"' in logs
+        assert f'data-ib-pickkey="{key}.panel"' in logs
+    assert 'data-dialog-footer="1"' in logs
+    assert 'data-dialog-toolbar="1"' in logs
+    assert 'window.InfluxBroDialogStandards.enhance($sbDialog' in logs
+    assert 'data-ui="dialog_jobs_timers_history.root"' in jobs
+    assert 'data-ib-pickkey="dialog_jobs_timers_history.panel"' in jobs
+    assert 'data-dialog-toolbar="1"' in jobs
+    assert 'data-dialog-footer="1"' in jobs
+    assert "window.InfluxBroDialogStandards.enhance($timersHistoryDlg" in jobs
+
+
 def test_details_state_restore_is_one_shot_and_open_all_persists():
     nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()

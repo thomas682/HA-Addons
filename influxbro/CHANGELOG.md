@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.579
+
+### Enhancement
+
+- Dialoge / Template v2 Paket 3: Logs- und Jobs-Dialoge wie Aufzeichnung starten, Support-Bundle und Timer-History haben jetzt stabile Root-/Panel-Pickkeys, Template-v2-Footer/Toolbar-Regionen und direkt adressierbare Controls. Bestehende IDs, Event-Handler und API-Aktionen bleiben unveraendert. ([#546](https://github.com/thomas682/HA-Addons/issues/546))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.578
 
 ### Enhancement

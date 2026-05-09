@@ -394,29 +394,29 @@
         </div>
       </details>
 
-      <dialog id="timers_history_dialog" data-dialog-root="1" data-dialog-name="dialog.jobs_timers_history" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="jobs_timers_history.btn_open" style="width:min(980px, 96vw); border:1px solid #eee; border-radius:16px; padding:0;">
-        <div style="display:flex; flex-direction:column; min-height:70vh; max-height:85vh;">
+      <dialog id="timers_history_dialog" data-dialog-root="1" data-dialog-name="dialog.jobs_timers_history" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="jobs_timers.btn_table_history" style="width:min(980px, 96vw); border:1px solid #eee; border-radius:16px; padding:0;" data-ui="dialog_jobs_timers_history.root" data-ib-pickkey="dialog_jobs_timers_history.root">
+        <div data-dialog-panel="1" data-ui="dialog_jobs_timers_history.panel" data-ib-pickkey="dialog_jobs_timers_history.panel" style="display:flex; flex-direction:column; min-height:70vh; max-height:85vh;">
           <div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
             <div style="font-weight:700;">Timer History</div>
             <div style="display:flex; gap:8px; align-items:center;">
-              <button type="button" id="timers_history_refresh" class="btn_xs" style="width:auto;">Refresh</button>
+              <button type="button" id="timers_history_refresh" class="btn_xs" style="width:auto;" data-ui="jobs_timers_history.btn_refresh" data-ib-pickkey="jobs_timers_history.btn_refresh">Refresh</button>
             </div>
           </div>
-          <div style="padding:12px 16px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; border-bottom:1px solid #eee;">
+          <div data-dialog-toolbar="1" style="padding:12px 16px; display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; border-bottom:1px solid #eee;">
             <div style="flex:1 1 360px; min-width:260px;">
               <div class="muted" style="font-size:12px; margin-bottom:6px;">Filter (Timer IDs)</div>
-              <div id="timers_history_filter" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+              <div id="timers_history_filter" style="display:flex; gap:10px; flex-wrap:wrap;" data-ui="jobs_timers_history.panel_filter" data-ib-pickkey="jobs_timers_history.panel_filter"></div>
             </div>
             <div style="flex:1 1 260px; min-width:220px;">
               <div class="muted" style="font-size:12px; margin-bottom:6px;">Textfilter</div>
-              <input id="timers_history_search" type="text" placeholder="Suche in den Zeilen" style="width:100%;" />
+              <input id="timers_history_search" type="text" placeholder="Suche in den Zeilen" style="width:100%;" data-ui="jobs_timers_history.input_search" data-ib-pickkey="jobs_timers_history.input_search" />
             </div>
           </div>
           <div style="padding:12px 16px; min-height:0; flex:1 1 auto; display:flex; flex-direction:column; gap:8px;">
-            <div id="timers_history_meta" class="muted" style="font-size:12px;"></div>
-            <pre id="timers_history_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45;"></pre>
+            <div id="timers_history_meta" class="muted" style="font-size:12px;" data-ui="jobs_timers_history.txt_meta" data-ib-pickkey="jobs_timers_history.txt_meta"></div>
+            <pre id="timers_history_pre" style="margin:0; flex:1 1 auto; min-height:0; overflow:auto; background:#fafafa; border:1px solid #eee; border-radius:10px; padding:12px; font-size:12px; line-height:1.45;" data-ui="jobs_timers_history.pre_rows" data-ib-pickkey="jobs_timers_history.pre_rows"></pre>
           </div>
-          <div style="padding:0 16px 14px 16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+          <div data-dialog-footer="1" style="padding:0 16px 14px 16px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
             <button type="button" id="timers_history_close" class="btn_xs" style="width:auto;" data-ui="jobs_timers_history.btn_close" data-ib-pickkey="jobs_timers_history.btn_close">Schliessen</button>
           </div>
         </div>
@@ -1320,9 +1320,13 @@
             lbl.style.gap = '6px';
             lbl.style.alignItems = 'center';
             lbl.style.fontSize = '12px';
+            lbl.setAttribute('data-ui', 'jobs_timers_history.lbl_filter_' + id.replace(/[^a-zA-Z0-9_-]+/g, '_'));
+            lbl.setAttribute('data-ib-pickkey', 'jobs_timers_history.lbl_filter_' + id.replace(/[^a-zA-Z0-9_-]+/g, '_'));
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.checked = selected.has(id);
+            cb.setAttribute('data-ui', 'jobs_timers_history.chk_filter_' + id.replace(/[^a-zA-Z0-9_-]+/g, '_'));
+            cb.setAttribute('data-ib-pickkey', 'jobs_timers_history.chk_filter_' + id.replace(/[^a-zA-Z0-9_-]+/g, '_'));
             cb.addEventListener('change', ()=>{
               if(cb.checked) selected.add(id); else selected.delete(id);
               refresh().catch(()=>{});
@@ -1373,6 +1377,7 @@
         try{ if($timersHistoryClose) $timersHistoryClose.onclick = ()=>{ try{ $timersHistoryDlg.close(); }catch(e){} }; }catch(e){}
         try{ if($timersHistoryRefresh) $timersHistoryRefresh.onclick = ()=>{ refresh().catch(()=>{}); }; }catch(e){}
         try{ $timersHistoryDlg.addEventListener('click', (ev)=>{ if(ev.target === $timersHistoryDlg) $timersHistoryDlg.close(); }); }catch(e){}
+        try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance) window.InfluxBroDialogStandards.enhance($timersHistoryDlg, { name: 'dialog.jobs_timers_history', template: 'dialog_panel_workbench', trigger: 'jobs_timers.btn_table_history', closeSelector: '#timers_history_close' }); }catch(e){}
         try{ if(typeof $timersHistoryDlg.showModal === 'function') $timersHistoryDlg.showModal(); else $timersHistoryDlg.style.display='block'; }catch(e){ try{ $timersHistoryDlg.style.display='block'; }catch(x){} }
         await refresh();
       }

@@ -71,12 +71,12 @@
         </div>
       </div>
 
-      <div id="logs_record_start_dialog" data-dialog-root="1" data-dialog-name="dialog.logs_record_start" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="logs_main.btn_record_start_header" style="display:none; position:fixed; inset:0; z-index:10020; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
-        <div style="width:min(760px, calc(100vw - 32px)); max-width:760px; max-height:min(78vh, 760px); background:#fff; border-radius:16px; box-shadow:0 12px 60px rgba(0,0,0,0.28); display:flex; flex-direction:column; overflow:hidden;">
+      <div id="logs_record_start_dialog" data-dialog-root="1" data-dialog-name="dialog.logs_record_start" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="logs_main.btn_record_start_header" style="display:none; position:fixed; inset:0; z-index:10020; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_logs_record_start.root" data-ib-pickkey="dialog_logs_record_start.root">
+        <div data-dialog-panel="1" data-ui="dialog_logs_record_start.panel" data-ib-pickkey="dialog_logs_record_start.panel" style="width:min(760px, calc(100vw - 32px)); max-width:760px; max-height:min(78vh, 760px); background:#fff; border-radius:16px; box-shadow:0 12px 60px rgba(0,0,0,0.28); display:flex; flex-direction:column; overflow:hidden;">
           <div style="padding:14px 16px; border-bottom:1px solid #eee; display:flex; align-items:center; justify-content:space-between; gap:12px;">
             <div style="font-weight:700;">Aufzeichnung starten</div>
             <div data-dialog-header-actions="1" style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button id="logs_record_start_close" type="button" class="btn_sm" style="width:auto;">Schliessen</button>
+              <button id="logs_record_start_close" type="button" class="btn_sm" style="width:auto;" data-ui="dialog_logs_record_start.btn_close" data-ib-pickkey="dialog_logs_record_start.btn_close">Schliessen</button>
             </div>
           </div>
           <div style="padding:12px 16px; overflow:auto; flex:1 1 auto; display:flex; flex-direction:column; gap:12px;">
@@ -90,7 +90,7 @@
                 <select id="record_recent_dialog" data-ui="logs_main.select_record_recent_dialog" data-ib-pickkey="logs_main.select_record_recent_dialog" title="logs.record_recent_dialog"><option value="">Komplettlog</option></select>
               </div>
             </div>
-            <div class="tbl_actions" style="justify-content:flex-end; gap:8px;">
+            <div class="tbl_actions" data-dialog-footer="1" style="justify-content:flex-end; gap:8px;">
               <button id="record_toggle_dialog" type="button" class="btn_sm" data-ui="logs_main.btn_record_toggle_dialog" data-ib-pickkey="logs_main.btn_record_toggle_dialog" title="logs.record_toggle_dialog">Aufzeichnung starten</button>
             </div>
             <div data-dialog-meta="1" style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: logs_record_start_dialog.dialog | tpl: dialog_panel_workbench</div>
@@ -355,8 +355,8 @@
         </div>
       </details>
 
-      <div id="support_bundle_dialog" data-dialog-root="1" data-dialog-name="dialog.logs_support_bundle" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="logs_support_bundle.btn_open" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="logs_support_bundle.dialog" data-ib-pickkey="logs_support_bundle.dialog">
-        <div style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
+      <div id="support_bundle_dialog" data-dialog-root="1" data-dialog-name="dialog.logs_support_bundle" data-dialog-template="dialog_panel_workbench" data-dialog-trigger="logs_support_bundle.btn_open" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; padding:20px; box-sizing:border-box;" data-ui="dialog_logs_support_bundle.root" data-ib-pickkey="dialog_logs_support_bundle.root">
+        <div data-dialog-panel="1" data-ui="dialog_logs_support_bundle.panel" data-ib-pickkey="dialog_logs_support_bundle.panel" style="background:#fff; border-radius:16px; padding:16px; max-width:980px; width:min(980px, 100%); max-height:90vh; overflow:auto; box-shadow:0 12px 60px rgba(0,0,0,0.28);">
           <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:10px;">
             <div>
               <div style="font-weight:900; font-size:16px;" data-ui="logs_support_bundle.txt_title" data-ib-pickkey="logs_support_bundle.txt_title">Support-Bundle</div>
@@ -367,7 +367,7 @@
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
             <div style="border:1px solid #e7e7e7; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px;">
               <div style="font-weight:800;" data-ui="logs_support_bundle.txt_cfg" data-ib-pickkey="logs_support_bundle.txt_cfg">Konfiguration</div>
-              <div class="row" style="margin-top:0;">
+              <div class="row" data-dialog-toolbar="1" style="margin-top:0;">
                 <div style="flex:1; min-width:120px;">
                   <label>Zeitfenster (h)</label>
                   <input id="support_bundle_hours" type="number" min="1" max="168" value="24" data-ui="logs_support_bundle.input_hours" data-ib-pickkey="logs_support_bundle.input_hours" />
@@ -392,17 +392,17 @@
 
               <div class="muted" style="font-size:12px;">Inhalt</div>
               <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px 12px; font-size:12px;">
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_addon_logs" type="checkbox" checked /> Add-on Logs</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_supervisor_logs" type="checkbox" checked /> Supervisor Logs</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_ui_actions" type="checkbox" checked /> Bedieneraktionen</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_jobs" type="checkbox" checked /> Jobs/Timer</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_history" type="checkbox" checked /> History</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_monitor" type="checkbox" checked /> Monitor</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_cache_meta" type="checkbox" checked /> Cache-Meta</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_context" type="checkbox" checked /> Kontext</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_settings" type="checkbox" checked /> Settings Snapshot</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_support_snapshot" type="checkbox" checked /> Snapshot</label>
-                <label style="display:flex; gap:8px; align-items:center;"><input id="sb_browser_errors" type="checkbox" checked /> Browser-Fehler</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_addon_logs" data-ib-pickkey="logs_support_bundle.lbl_addon_logs"><input id="sb_addon_logs" type="checkbox" checked data-ui="logs_support_bundle.chk_addon_logs" data-ib-pickkey="logs_support_bundle.chk_addon_logs" /> Add-on Logs</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_supervisor_logs" data-ib-pickkey="logs_support_bundle.lbl_supervisor_logs"><input id="sb_supervisor_logs" type="checkbox" checked data-ui="logs_support_bundle.chk_supervisor_logs" data-ib-pickkey="logs_support_bundle.chk_supervisor_logs" /> Supervisor Logs</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_ui_actions" data-ib-pickkey="logs_support_bundle.lbl_ui_actions"><input id="sb_ui_actions" type="checkbox" checked data-ui="logs_support_bundle.chk_ui_actions" data-ib-pickkey="logs_support_bundle.chk_ui_actions" /> Bedieneraktionen</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_jobs" data-ib-pickkey="logs_support_bundle.lbl_jobs"><input id="sb_jobs" type="checkbox" checked data-ui="logs_support_bundle.chk_jobs" data-ib-pickkey="logs_support_bundle.chk_jobs" /> Jobs/Timer</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_history" data-ib-pickkey="logs_support_bundle.lbl_history"><input id="sb_history" type="checkbox" checked data-ui="logs_support_bundle.chk_history" data-ib-pickkey="logs_support_bundle.chk_history" /> History</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_monitor" data-ib-pickkey="logs_support_bundle.lbl_monitor"><input id="sb_monitor" type="checkbox" checked data-ui="logs_support_bundle.chk_monitor" data-ib-pickkey="logs_support_bundle.chk_monitor" /> Monitor</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_cache_meta" data-ib-pickkey="logs_support_bundle.lbl_cache_meta"><input id="sb_cache_meta" type="checkbox" checked data-ui="logs_support_bundle.chk_cache_meta" data-ib-pickkey="logs_support_bundle.chk_cache_meta" /> Cache-Meta</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_context" data-ib-pickkey="logs_support_bundle.lbl_context"><input id="sb_context" type="checkbox" checked data-ui="logs_support_bundle.chk_context" data-ib-pickkey="logs_support_bundle.chk_context" /> Kontext</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_settings" data-ib-pickkey="logs_support_bundle.lbl_settings"><input id="sb_settings" type="checkbox" checked data-ui="logs_support_bundle.chk_settings" data-ib-pickkey="logs_support_bundle.chk_settings" /> Settings Snapshot</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_support_snapshot" data-ib-pickkey="logs_support_bundle.lbl_support_snapshot"><input id="sb_support_snapshot" type="checkbox" checked data-ui="logs_support_bundle.chk_support_snapshot" data-ib-pickkey="logs_support_bundle.chk_support_snapshot" /> Snapshot</label>
+                <label style="display:flex; gap:8px; align-items:center;" data-ui="logs_support_bundle.lbl_browser_errors" data-ib-pickkey="logs_support_bundle.lbl_browser_errors"><input id="sb_browser_errors" type="checkbox" checked data-ui="logs_support_bundle.chk_browser_errors" data-ib-pickkey="logs_support_bundle.chk_browser_errors" /> Browser-Fehler</label>
               </div>
             </div>
 
@@ -412,12 +412,12 @@
             </div>
           </div>
 
-          <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+          <div data-dialog-footer="1" style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
             <button class="btn_sm" id="support_bundle_close" type="button" data-ui="logs_support_bundle.btn_close" data-ib-pickkey="logs_support_bundle.btn_close">Schliessen</button>
             <button class="btn_sm" id="support_bundle_preview_btn" type="button" data-ui="logs_support_bundle.btn_preview" data-ib-pickkey="logs_support_bundle.btn_preview">Vorschau</button>
             <button class="btn_sm" id="support_bundle_download_btn" type="button" data-ui="logs_support_bundle.btn_download" data-ib-pickkey="logs_support_bundle.btn_download" disabled>Download ZIP</button>
           </div>
-          <div style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: logs_support_bundle.dialog | tpl: dialog_info_popup</div>
+          <div data-dialog-meta="1" style="font-size:10px; opacity:0.65; text-align:right; white-space:nowrap; margin-top:4px;">pk: dialog_logs_support_bundle.root | tpl: dialog_panel_workbench</div>
         </div>
       </div>
 
@@ -1331,6 +1331,7 @@
         try{ if($sbDownloadBtn) $sbDownloadBtn.disabled = true; }catch(e){}
         _SB_LAST = null;
         loadSupportSnapshots().catch(()=>{});
+        try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance && $sbDialog) window.InfluxBroDialogStandards.enhance($sbDialog, { name: 'dialog.logs_support_bundle', template: 'dialog_panel_workbench', trigger: 'logs_support_bundle.btn_open', closeSelector: '#support_bundle_close' }); }catch(e){}
         try{ if($sbDialog) $sbDialog.style.display = 'flex'; }catch(e){}
       }
 
