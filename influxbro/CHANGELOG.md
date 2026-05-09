@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.575
+
+### Fix
+
+- Tooltips / Navigation / Dialog-S-Picker: Standard-Tooltips werden jetzt nur noch fuer interaktive Elemente gezeigt, funktionieren damit auch wieder auf Buttons in Titel- und Fehlerleiste und bleiben bei gedrueckter `Shift`-Taste fuer interaktive Inhalte stabil offen, ohne den frueheren Tooltip-Schalter im Tooltip selbst. Zusaetzlich springt `nav_history.btn_back` aus Seiten mit vielen lokalen Klickzielen wieder bevorzugt zur vorherigen Seite, und der per Shortcut oder Dialog gestartete S-Picker erfasst bei offenen Dialogen nur noch Elemente innerhalb des aktiven Dialog-Panels. ([#543](https://github.com/thomas682/HA-Addons/issues/543))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.574
 
 ### Enhancement

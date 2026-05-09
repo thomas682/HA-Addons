@@ -1166,7 +1166,7 @@
         try{
           if(!entry) return;
           const targetPath = String(entry.path || './');
-          if(targetPath && targetPath !== './' && targetPath !== _navPath()){
+          if(targetPath && targetPath !== _navPath()){
             _writeJson(NAV_PENDING_KEY, entry);
             location.href = targetPath;
             return;
@@ -1715,7 +1715,7 @@
       try{ if($prev) $prev.addEventListener('click', ()=>stepResult(-1)); }catch(e){}
       try{ if($next) $next.addEventListener('click', ()=>stepResult(1)); }catch(e){}
       try{ if($settings) $settings.addEventListener('click', ()=>renderSearchSettings()); }catch(e){}
-      try{ if($navBack) $navBack.addEventListener('click', ()=>{ const rows = _readNavHistory(); let idx = _readNavIndex(); if(idx > 0){ idx -= 1; _writeNavIndex(idx); _navigateToEntry(rows[idx]); _updateNavButtons(); } }); }catch(e){}
+      try{ if($navBack) $navBack.addEventListener('click', ()=>{ const rows = _readNavHistory(); let idx = _readNavIndex(); if(idx <= 0) return; const curPath = _navPath(); let nextIdx = idx - 1; while(nextIdx > 0 && rows[nextIdx] && String(rows[nextIdx].path || '') === curPath) nextIdx -= 1; idx = nextIdx; _writeNavIndex(idx); _navigateToEntry(rows[idx]); _updateNavButtons(); }); }catch(e){}
       try{ if($navForward) $navForward.addEventListener('click', ()=>{ const rows = _readNavHistory(); let idx = _readNavIndex(); if(idx >= 0 && idx < rows.length - 1){ idx += 1; _writeNavIndex(idx); _navigateToEntry(rows[idx]); _updateNavButtons(); } }); }catch(e){}
       try{ if($paramHelp) $paramHelp.addEventListener('click', ()=>{ _setParamHelpActive(!PARAM_HELP_ACTIVE); _renderParamHelpBadges(); }); }catch(e){}
       try{ document.addEventListener('click', (ev)=>{ if(NAV_SUPPRESS_RECORD) return; const t = ev.target && ev.target.closest ? ev.target.closest('[data-ui]') : null; if(!t) return; const ui = String(t.getAttribute('data-ui') || '').trim(); if(!ui || ui.startsWith('nav.history.') || ui === 'nav.param_help') return; _recordNavTarget({ path: _navPath(), ui, selector: '', page: currentPageLabel(), label: ui }); }, true); }catch(e){}
@@ -1747,6 +1747,7 @@
       let currentTargetIndex = 0;
       let lastPointer = { x: null, y: null };
       let tooltipSuppressed = [];
+      let pickerScopeRoot = null;
 
       // #348 Extended multi-pick mode state.
       // Activated via Shift+Click on Picker or S-Picker button.
@@ -2066,10 +2067,38 @@
       }catch(e){ return false; }
     }
 
+      function _normalizePickerScopeRoot(root){
+        try{
+          if(!root) return null;
+          const host = (root.matches && root.matches('[data-dialog-root="1"], dialog, [role="dialog"], .dlg_backdrop, .modal')) ? root : (root.closest ? root.closest('[data-dialog-root="1"], dialog, [role="dialog"], .dlg_backdrop, .modal') : null);
+          if(!host) return null;
+          const panel = host.querySelector ? host.querySelector('[data-dialog-panel="1"]') : null;
+          return panel || host;
+        }catch(e){ return null; }
+      }
+
+      function _withinPickerScope(el){
+        try{
+          if(!pickerScopeRoot || !el) return true;
+          return el === pickerScopeRoot || !!(pickerScopeRoot.contains && pickerScopeRoot.contains(el));
+        }catch(e){ return true; }
+      }
+
+      function _pickerTargetDepth(el){
+        try{
+          let d = 0;
+          let cur = el;
+          while(cur){ d += 1; cur = cur.parentElement; }
+          return d;
+        }catch(e){ return 0; }
+      }
+
     function _collectTargets(el, ev){
       try{
         if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
-        const stack = _targetsFromEvent(ev).filter((cand)=>!_isOwnPickerUi(cand));
+        const stack = _targetsFromEvent(ev)
+          .filter((cand)=>!_isOwnPickerUi(cand) && _withinPickerScope(cand))
+          .sort((a, b)=>_pickerTargetDepth(b) - _pickerTargetDepth(a));
         const seen = new Set();
         const out = [];
         const pushTarget = (cand)=>{
@@ -2081,7 +2110,7 @@
           seen.add(key);
           out.push(meta);
         };
-        if(el && !_isOwnPickerUi(el)) pushTarget(el);
+        if(el && !_isOwnPickerUi(el) && _withinPickerScope(el)) pushTarget(el);
         for(let i = 0; i < stack.length; i += 1) pushTarget(stack[i]);
         return out;
       }catch(e){ return []; }
@@ -2411,6 +2440,7 @@
       currentTargets = [];
       currentTargetIndex = 0;
       lastPointer = { x: null, y: null };
+      pickerScopeRoot = null;
       try{ if($btn) $btn.classList.remove('active'); }catch(e){}
       try{ if($superBtn) $superBtn.classList.remove('active'); }catch(e){}
       try{ if(scrim) scrim.style.display = 'none'; }catch(e){}
@@ -2424,8 +2454,9 @@
       document.removeEventListener('keydown', onKey, true);
     }
 
-    async function start(){
+    async function start(opts){
       active = true;
+      pickerScopeRoot = _normalizePickerScopeRoot(opts && opts.scopeRoot ? opts.scopeRoot : null);
       ensureUi();
       try{ await _loadPickerCfg(); }catch(e){}
       try{ suppressTitles(); }catch(e){}
@@ -2662,14 +2693,12 @@
       });
       try{
         window.InfluxBroOpenSuperpickerFromDialog = function(dialogRoot){
-          try{
-            if(active && !readSuper()) stop();
-          }catch(e){}
+          try{ if(active) stop(); }catch(e){}
           try{ if(!readSuper()) writeSuper(true); }catch(e){}
           try{ applySuperUi(); }catch(e){}
-          setTimeout(()=>{
-            try{ $superBtn.click(); }catch(e){}
-          }, 0);
+          multiMode = false;
+          try{ multiItems = []; }catch(e){}
+          setTimeout(()=>{ start({ scopeRoot: dialogRoot }).catch(()=>{}); }, 0);
         };
       }catch(e){}
       try{

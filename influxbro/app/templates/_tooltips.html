@@ -812,17 +812,6 @@
         }catch(e){}
       }, true);
 
-      tip.addEventListener('change', async (ev)=>{
-        try{
-          const tgt = ev && ev.target ? ev.target : null;
-          if(!tgt || !tgt.matches || !tgt.matches('[data-ib-tooltip-toggle]')) return;
-          const next = !!tgt.checked;
-          TOOLTIPS_ENABLED = next;
-          await _persistTooltipEnabled(next);
-          if(!next){ _hide(true); }
-        }catch(e){}
-      }, true);
-
       return tip;
     }
 
@@ -907,10 +896,6 @@
       if(!r.ok || !j.ok) throw new Error(j && j.error ? j.error : ('HTTP ' + r.status));
     }
 
-    function _tooltipToggleMarkup(){
-      return '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#cbd5e1;user-select:none;"><input type="checkbox" data-ib-tooltip-toggle="1" ' + (TOOLTIPS_ENABLED ? 'checked' : '') + ' style="accent-color:#60a5fa;" />Tooltips</label>';
-    }
-
     function _fallbackTooltipDesc(el, title, desc, key){
       const raw = _norm(desc);
       if(raw && raw !== _norm(title) && raw !== _norm(key)) return raw;
@@ -982,7 +967,7 @@
       const descHtml = '<div style="font-size:12px; line-height:1.55; color:#e5e7eb; margin:0 0 10px 0;">' + _esc(String(m.desc || desc || 'Zeigt Details und Dokumentation zu diesem Element.')) + '</div>';
       const countHtml = m.count ? '<div style="display:inline-flex;align-items:center;gap:8px;border:1px solid #374151;border-radius:10px;background:rgba(255,255,255,0.03);padding:8px 10px;margin:0 0 10px 0;font-size:12px;color:#f3f4f6;"><span style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;">Treffer</span><strong>' + _esc(String(m.count || '0')) + '</strong></div>' : '';
       const exampleHtml = m.example ? '<div style="border:1px solid #374151; border-radius:10px; background:#111827; padding:10px 11px; margin-bottom:10px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;margin-bottom:5px;">Beispiel</div><code style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#d1fae5;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
-      const head = '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px;"><div style="display:flex; gap:10px; align-items:flex-start; min-width:0;"><span style="display:inline-block;width:18px;height:18px;border-radius:999px;background:' + sevColor + ';flex:0 0 auto;margin-top:2px;"></span><div style="min-width:0;"><div style="font-weight:800;font-size:14px;color:#f9fafb;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#9ca3af;margin-top:2px;">' + keyHtml + '</div></div></div><div style="flex:0 0 auto;">' + _tooltipToggleMarkup() + '</div></div>';
+      const head = '<div style="display:flex;justify-content:flex-start;gap:10px;align-items:flex-start;margin-bottom:10px;"><div style="display:flex; gap:10px; align-items:flex-start; min-width:0;"><span style="display:inline-block;width:18px;height:18px;border-radius:999px;background:' + sevColor + ';flex:0 0 auto;margin-top:2px;"></span><div style="min-width:0;"><div style="font-weight:800;font-size:14px;color:#f9fafb;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#9ca3af;margin-top:2px;">' + keyHtml + '</div></div></div></div>';
       const foot = '<div style="display:flex;justify-content:flex-start;gap:12px;align-items:center;">' + docBtn + '</div>';
       return head + descHtml + countHtml + exampleHtml + foot;
     }
@@ -1009,10 +994,12 @@
         if(!t || !t.closest) return null;
         // Keep tooltip stable while hovering its own content.
         if(tip && (t === tip || (t.closest && t.closest('#ib_html_tooltip')))) return lastEl;
-        const el = t.closest('[data-tooltip-desc],[data-ib-title],[title]');
-        if(!el) return null;
-        if(el.closest && el.closest('#ib_pagecard')) return null; // avoid fighting the fixed topbar/pagecard hover UI
-        return el;
+        let cur = t.nodeType === Node.TEXT_NODE ? t.parentElement : t;
+        while(cur){
+          if(cur.matches && cur.matches('[data-tooltip-desc],[data-ib-title],[title]') && _isTooltipEligible(cur)) return cur;
+          cur = cur.parentElement;
+        }
+        return null;
       }catch(e){
         return null;
       }
@@ -1099,7 +1086,7 @@
     }, true);
     document.addEventListener('keydown', (ev)=>{
       const key = String(ev.key || '');
-      if(key === 'Shift'){ shiftHeld = true; if(tip){ tip.style.pointerEvents = 'auto'; tip.style.borderColor = '#60a5fa'; } return; }
+      if(key === 'Shift'){ shiftHeld = true; if(tip && tip.style.visibility === 'visible'){ pinned = true; tip.style.pointerEvents = 'auto'; tip.style.borderColor = '#60a5fa'; } return; }
       if(key === 'Escape'){ _hide(true); return; }
       const el = document.activeElement;
       if(!el || !el.getAttribute) return;
@@ -1113,7 +1100,7 @@
         }
         return;
       }
-      if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = false; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
+      if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
     }, true);
     document.addEventListener('keyup', (ev)=>{
       const key = String(ev.key || '');
@@ -4741,3 +4728,15 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
   });
 })();
 </script>
+    function _isTooltipEligible(el){
+      try{
+        if(!el || !el.matches) return false;
+        if(el.matches('button, a[href], summary, select, textarea, label')) return true;
+        if(el.matches('input:not([type="hidden"])')) return true;
+        const role = String(el.getAttribute('role') || '').trim().toLowerCase();
+        if(role === 'button' || role === 'link' || role === 'tab' || role === 'menuitem' || role === 'checkbox' || role === 'switch') return true;
+        const tabIndex = Number(el.getAttribute('tabindex'));
+        if(isFinite(tabIndex) && tabIndex >= 0) return true;
+      }catch(e){}
+      return false;
+    }

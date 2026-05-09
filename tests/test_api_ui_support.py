@@ -916,18 +916,48 @@ def test_snapshots_page_and_nav_exist():
     assert './api/snapshots/verify' in page
 
 
-def test_standard_tooltip_has_toggle_shift_hold_and_doc_button():
+def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
-    assert 'data-ib-tooltip-toggle="1"' in tooltips
-    assert 'Tooltips</label>' in tooltips
-    assert 'async function _persistTooltipEnabled(next)' in tooltips
+    assert 'data-ib-tooltip-toggle="1"' not in tooltips
+    assert 'Tooltips</label>' not in tooltips
     assert 'if(key === \'Shift\'){' in tooltips
+    assert 'pinned = true;' in tooltips
     assert 'document.addEventListener(\'keyup\'' in tooltips
     assert 'Dokumentation öffnen' in tooltips
     assert '? öffnet Doku' not in tooltips
     assert 'Schweregrad' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
     assert 'Datenquelle' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
     assert 'Status' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
+    assert 'function _isTooltipEligible(el)' in tooltips
+    assert "el.matches('button, a[href], summary, select, textarea, label')" in tooltips
+
+
+def test_tooltips_are_not_globally_blocked_for_pagecard_and_statusbar_buttons():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "el.closest && el.closest('#ib_pagecard')" not in tooltips
+    assert 'data-ui="page_title.panel_card"' in topbar
+    assert 'data-ui="errors_main.panel_statusbar"' in topbar
+
+
+def test_nav_back_prefers_previous_page_instead_of_same_page_controls():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "const curPath = _navPath();" in topbar
+    assert "while(nextIdx > 0 && rows[nextIdx] && String(rows[nextIdx].path || '') === curPath) nextIdx -= 1;" in topbar
+    assert "if(targetPath && targetPath !== _navPath()){" in topbar
+
+
+def test_dialog_superpicker_uses_active_dialog_scope():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'let pickerScopeRoot = null;' in topbar
+    assert 'function _normalizePickerScopeRoot(root)' in topbar
+    assert 'const panel = host.querySelector ? host.querySelector(\'[data-dialog-panel="1"]\') : null;' in topbar
+    assert 'function _withinPickerScope(el)' in topbar
+    assert 'function _pickerTargetDepth(el)' in topbar
+    assert '_withinPickerScope(cand)' in topbar
+    assert '.sort((a, b)=>_pickerTargetDepth(b) - _pickerTargetDepth(a));' in topbar
+    assert 'pickerScopeRoot = _normalizePickerScopeRoot(opts && opts.scopeRoot ? opts.scopeRoot : null);' in topbar
+    assert 'setTimeout(()=>{ start({ scopeRoot: dialogRoot }).catch(()=>{}); }, 0);' in topbar
 
 
 def test_dashboard_analysis_chips_use_only_standard_tooltip():
