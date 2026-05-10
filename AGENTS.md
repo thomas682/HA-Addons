@@ -510,14 +510,15 @@ ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbes
 ### 2.2.1 Kompakte Chat-Ausgaben (PFLICHT)
 
 - Standard-Statusmeldungen nutzen eine einfache Checkliste mit maximal einer Zeile, z. B. `Checkliste: Kontext ✅ | Umsetzung 🔄 | QA ⬜ | Sicherheit ⬜ | Abschluss ⬜`.
-- Diffs, Diff-Stats, Patch-Inhalte und Codeauszuege werden im Chat NICHT angezeigt. Der Agent meldet nur knapp, dass die Pruefung oder Aenderung laeuft bzw. abgeschlossen ist.
-- Code-Stellenlisten, Zeilenreferenzen und Dateiinhalte werden NICHT angezeigt, ausser sie sind fuer eine Entscheidung, einen Blocker, einen Sicherheitsbefund, einen Fehlerfix oder eine explizite Nutzeranforderung erforderlich.
-- Datei-Lesevorgaenge, `Grep`-/Suchtreffer und Inhalte aus `Read`/Suchwerkzeugen werden im Chat nicht routinemaessig wiedergegeben; sichtbar genannt werden nur Erkenntnisse, die fuer Bedienung, Entscheidungen, Blocker, Sicherheitsbefunde oder Abschluss relevant sind oder vom Nutzer explizit verlangt wurden.
+- Diffs, Diff-Stats, Patch-Inhalte, Plus/Minus-Darstellungen und Codeauszuege werden im Chat NICHT angezeigt. Der Agent meldet nur, dass die Pruefung oder Aenderung ausgefuehrt wird bzw. abgeschlossen ist.
+- Code-Stellenlisten, Dateinamenlisten, Zeilenreferenzen und Dateiinhalte werden NICHT angezeigt, ausser sie sind fuer eine Entscheidung, einen Blocker, einen Sicherheitsbefund, einen Fehlerfix oder eine explizite Nutzeranforderung erforderlich.
+- Datei-Lesevorgaenge, `Grep`-/Suchtreffer, Suchergebnislisten und Inhalte aus `Read`/Suchwerkzeugen werden im Chat nicht wiedergegeben; sichtbar genannt werden nur die daraus abgeleiteten Erkenntnisse, wenn sie fuer Bedienung, Entscheidungen, Blocker, Sicherheitsbefunde oder Abschluss relevant sind oder vom Nutzer explizit verlangt wurden.
 - Vollstaendige Tool-Ausgaben, Testlogs, Polling-Schleifen, Playwright-Details, Build-Logs und API-Rohantworten werden nicht in den Chat uebernommen, solange der Schritt erfolgreich ist.
-- Tests, QA und UI-Pruefungen erscheinen in der Checkliste nur als `passed`, `failed` oder `skipped`. Details werden nur bei `failed`, Blockern oder expliziter Nachfrage genannt.
+- Tests, QA, Smoke-Tests, Live-Tests und UI-Pruefungen erscheinen in der Checkliste nur als `passed`, `failed` oder `skipped`. Vor Live-/UI-/Playwright-Tests reicht eine einzelne Startzeile mit Zweck und Timeout; erfolgreiche Testausgaben bleiben vollstaendig ausgeblendet.
 - Bei fehlgeschlagenen Pruefungen werden immer der relevante Fehlerkern, die Ursache/Klassifikation und der naechste Fix-Schritt ausgegeben.
+- Rebase-, Push-, Commit-, Live-Update- und Polling-Details werden nicht angezeigt, solange sie erfolgreich sind; sichtbar bleibt nur der Checklistenstatus und im Abschluss der Commit/Version/Live-Version.
 - Compaction- oder Kontextpflege-Vorgaenge werden nur als kurzer Hinweis gemeldet, z. B. `Kontext wird kompaktiert; Arbeitsstand bleibt erhalten.`
-- Abschlussberichte bleiben kompakt: Umsetzung, QA-Ergebnis, Sicherheitsbefunde, Version/Commit/Push/Live-Update und offene Restpunkte. Keine Rohlogs, Diffs, Patches, Codeauszuege oder vollstaendigen Dateiauszuege ohne Nachfrage.
+- Abschlussberichte bleiben kompakt: Issue, Version, Commit, Push, Live-Version, QA, Sicherheit und offene Restpunkte. Keine Rohlogs, Diffs, Patches, Codeauszuege, Grep-Treffer, Tooldetails oder vollstaendigen Dateiauszuege ohne Nachfrage.
 
 ### 2.3 Behandlung neuer Eingaben
 
@@ -1255,7 +1256,7 @@ Beispiele: Abschnitt geöffnet/geschlossen (`*_open`), Tabellenhöhen, Splitter-
 - Konfiguration: `playwright.config.js` (baseURL: `http://192.168.2.200:8099`)
 - Tests: `tests/e2e/*.spec.js`
 - Ausführen: `npx playwright test`
-- Chat-Ausgabe: Playwright-/UI-Test-Start nur mit Zweck und erwarteter Antwortzeit/Timeout melden, z. B. `UI-Test laeuft: Playwright, Timeout 300s.` Ergebnis nur als `passed` oder `failed` in der Checkliste melden. Einzelne Browser-Schritte, Locator-Details, Screenshots, Traces und Polling-Details nur bei Fehlschlag oder auf Nachfrage nennen.
+- Chat-Ausgabe: Playwright-/UI-/Live-Test-Start nur mit einer Zeile zu Zweck und erwarteter Antwortzeit/Timeout melden, z. B. `UI-Test laeuft: Playwright, Timeout 300s.` Erfolgreiche Ausgaben ausblenden; Ergebnis nur als `passed` oder `failed` in der Checkliste melden. Einzelne Browser-Schritte, Locator-Details, Screenshots, Traces und Polling-Details nur bei Fehlschlag oder auf Nachfrage nennen.
 - Smoke-Tests nur ausfuehren, wenn die Aenderung sicherheits-, start-, API-, Update-, UI-kritisch oder groesser ist, wenn die erste Umsetzung fehlerhaft war, wenn vorherige Live-/Playwright-/Timeout-Probleme relevant sind oder wenn der Nutzer sie explizit verlangt. Sonst in der Checkliste als `skipped` mit Kurzgrund markieren.
 
 ### 14.3 Live-System-Tests (Pflichtablauf)
