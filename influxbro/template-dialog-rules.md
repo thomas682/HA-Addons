@@ -25,7 +25,7 @@ Jeder Dialog MUSS exakt diese Struktur haben:
 
 1. **Kopfbereich** mit Titelzeile und Fenster-Aktionen
 2. **Beschreibungs-Sektion** (eine kurze Zeile)
-3. **Aktionsleiste** mit Hilfe-Funktionen links und optionalen Tools rechts
+3. **Optionale Aktionsleiste** nur fuer echte zusaetzliche Werkzeuge, nicht fuer Standard-Hilfe
 4. **Optionale Toolbar** (nur bei funktionalen Controls/Filtern)
 5. **Inhaltsbereich** (scrollbar bei Überlauf)
 6. **Footer** mit Meta-Indicator links und Arbeits-Aktionen rechts
@@ -36,9 +36,9 @@ Auch ohne Zugriff auf die HTML-Referenz MUSS die Struktur eindeutig umsetzbar se
 
 | Bereich | Pflichtinhalt | Schutzregel |
 |---|---|---|
-| Kopfbereich | Links ein sichtbarer Fenstertitel, rechts Fenster-Aktionen in fester Reihenfolge | Fachliche Inhalte aus dem alten Dialogkopf duerfen nicht geloescht werden; sie werden nur dann verschoben, wenn sie eindeutig Titel oder Fensteraktion sind. |
+| Kopfbereich | Links ein sichtbarer Fenstertitel, rechts Info, Handbuch und Fenster-Aktionen in fester Reihenfolge | Fachliche Inhalte aus dem alten Dialogkopf duerfen nicht geloescht werden; sie werden nur dann verschoben, wenn sie eindeutig Titel, Hilfe- oder Fensteraktion sind. |
 | Beschreibungs-Sektion | Eine kurze, dezente Zeile direkt unter dem Kopfbereich | Bestehende fachliche Hilfetexte duerfen nicht geloescht werden; laengere Erklaerungen gehoeren in Inhalt, Info oder Handbuch. |
-| Aktionsleiste | Links Info und Handbuch, rechts optionale technische Hilfsaktionen | Keine fachlichen Primaeraktionen in die Aktionsleiste verschieben, wenn sie zum Arbeitsfluss gehoeren. |
+| Aktionsleiste | Optional; nur zusaetzliche technische Hilfsaktionen oder Werkzeuge | Info und Handbuch gehoeren in den Kopfbereich. Keine fachlichen Primaeraktionen in die Aktionsleiste verschieben, wenn sie zum Arbeitsfluss gehoeren. |
 | Toolbar | Nur Filter, Suche, Sortierung, Ansicht oder andere funktionale Controls | Keine reinen Inhaltsbereiche als Toolbar markieren. |
 | Inhaltsbereich | Alle fachlichen Dialoginhalte, bei Ueberlauf scrollbar | Kinder nur kapseln, nicht inhaltlich veraendern; Event-Handler und stabile Attribute muessen erhalten bleiben. |
 | Footer | Links Meta-Indicator, rechts Arbeitsaktionen | Bestehende Speichern/Abbrechen/OK-Aktionen duerfen nur optisch eingeordnet, nicht ersetzt werden. |
@@ -82,7 +82,7 @@ Bekannte Dialoge MÜSSEN fachlich spezifische Kurzbeschreibungen erhalten. Gener
 
 ### 3.4 Hilfe-Aktionen (klare Funktionstrennung — PFLICHT)
 
-In der Aktionsleiste ganz links, in dieser Reihenfolge:
+Im Kopfbereich rechts neben dem Titel und direkt vor den Fensteraktionen, in dieser Reihenfolge:
 
 1. **Info-Button (`ⓘ`)** — zeigt **strukturelle Meta-Information** des Dialogs:
    - Verwendetes Template
@@ -101,19 +101,28 @@ In der Aktionsleiste ganz links, in dieser Reihenfolge:
 
 ### 3.5 Fenster-Aktionen (rechts oben — feste Reihenfolge)
 
-1. **Minimieren / Restore** (`—` / `▢`)
-2. **Maximieren / Restore** (`⛶`)
-3. **Schließen** (`✕`) — IMMER als letztes, IMMER als Icon-Button
+1. **Info** (`ⓘ`)
+2. **Handbuch** (`📖`)
+3. **Minimieren / Restore** (`—` / `▢`)
+4. **Maximieren / Restore** (`⛶`)
+5. **Schließen** (`✕`) — IMMER als letztes, IMMER als Icon-Button
 
 Ausnahme: `dialog_confirm_action` hat NUR den Schließen-Button. Minimieren und Maximieren sind dort verboten.
 
 Fenster-Aktionen MUESSEN dem Standardkopf entsprechen:
 
-- Rechts oben im Kopfbereich, nicht im Inhaltsbereich und nicht im Footer.
+- Rechts oben im Kopfbereich, nicht im Inhaltsbereich und nicht im Footer. Info und Handbuch sitzen direkt links neben Minimieren.
 - Reine Icon-Buttons mit `type="button"`, `aria-label`, `title`, sichtbarem Fokuszustand und stabilem `data-ui`/`data-ib-pickkey`, wenn sie im Markup erzeugt werden.
-- Reihenfolge darf nicht variieren: Minimieren/Restore, Maximieren/Restore, Schliessen.
+- Reihenfolge darf nicht variieren: Info, Handbuch, Minimieren/Restore, Maximieren/Restore, Schliessen.
 - Schliessen bleibt immer der rechte aeusserste Button.
 - Hover/Focus/Disabled-Zustaende muessen themetaugliche Tokens verwenden und duerfen keine hartcodierten Dialogfarben einfuehren.
+
+### 3.5.1 Mobile Dialogbedienung (iPhone/content-first)
+
+- Der Kopfbereich bleibt kompakt und priorisiert Titel, Info/Handbuch und Schliessen.
+- Standard-Hilfeaktionen duerfen auf Mobile keine eigene Leiste zwischen Beschreibung und Inhalt erzeugen.
+- Sekundaere Aktionen sollen kompakt gruppiert oder in Footer/Overflow verschoben werden, damit der Inhaltsbereich nicht von Buttonleisten verdraengt wird.
+- Primaere Arbeitsaktionen bleiben eindeutig sichtbar, bevorzugt als Footer-Aktion mit grossem Touch-Ziel.
 
 ### 3.6 Footer-Aktionen
 
@@ -205,7 +214,7 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 **Verwendung:** Query-/Info-/Diagnose-/Detaildialoge, Laufzeitdialoge, Referenzdetails, Hilfetexte.
 
 **Pflicht:**
-- Kopf · Titelzeile · Beschreibung · Info + Handbuch · Close · Meta-Footer · Scroll · Resize · Theme-Support · Tastatur-Bindings · alle 4 Zustände
+- Kopf · Titelzeile · Beschreibung · Info + Handbuch im Kopf · Close · Meta-Footer · Scroll · Resize · Theme-Support · Tastatur-Bindings · alle 4 Zustände
 
 **Optional:**
 - Copy-Button · Inline-Details · kleine Toolbar · Sektions-Tabs
@@ -222,7 +231,7 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 
 **Pflicht:**
 
-- Kopf · Titelzeile · Beschreibung · Info + Handbuch · Close · Meta-Footer · Scroll · Resize · Theme-Support · Tastatur-Bindings · alle 4 Zustände · Footer-Aktionen rechts unten
+- Kopf · Titelzeile · Beschreibung · Info + Handbuch im Kopf · Close · Meta-Footer · Scroll · Resize · Theme-Support · Tastatur-Bindings · alle 4 Zustände · Footer-Aktionen rechts unten
 
 **Optional:**
 
@@ -317,8 +326,8 @@ Vor jedem Commit eines neuen oder geänderten Dialogs MÜSSEN diese Punkte abgeh
 - [ ] Visueller Abgleich mit `demo/dialog-mockup-themed.html` durchgeführt
 - [ ] Titelzeile aussagekräftig
 - [ ] Beschreibungs-Sektion mit genau einer kurzen Zeile
-- [ ] Info-Button + Handbuch-Button vorhanden, klar getrennt
-- [ ] Fenster-Aktionen rechts oben in korrekter Reihenfolge
+- [ ] Info-Button + Handbuch-Button im Kopfbereich vorhanden, klar getrennt
+- [ ] Kopfaktionen rechts oben in korrekter Reihenfolge: Info, Handbuch, Fenster-Aktionen
 - [ ] Meta-Indicator als dezenter Debug-Punkt links unten
 - [ ] Footer-Aktionen rechts unten (bei Arbeitsdialogen)
 - [ ] Alle 4 Zustände (Loading/Empty/Error/Success) abgebildet

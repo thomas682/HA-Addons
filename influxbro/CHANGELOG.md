@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.593
+
+### Enhancement
+
+- Dialoge: Info- und Handbuch-Aktionen sitzen jetzt im Dialog-Header direkt vor Minimieren, Maximieren und Schliessen. Die reine Hilfe-Aktionsleiste entfaellt, und Mobile-Dialoge erhalten kompaktere Touch-Ziele mit content-first Layout. ([#568](https://github.com/thomas682/HA-Addons/issues/568))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.592
 
 ### Enhancement

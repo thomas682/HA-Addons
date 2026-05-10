@@ -104,7 +104,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Der globale Start-Fallback `safeReveal` bleibt aktiv, meldet normale Start-Enthuellungen aber nicht mehr als Warnung. Warnungen erscheinen nur noch bei echten Browserfehlern oder unbehandelten Promise-Fehlern.
 - Standard-Tooltips erscheinen nur noch auf wirklich interaktiven Elementen wie Buttons, Links und Eingaben. Wenn du bei einem sichtbaren Tooltip `Shift` gedrueckt haeltst, bleibt dieser offen, damit du den kleinen Button `Dokumentation oeffnen` oder andere interaktive Inhalte direkt im Tooltip benutzen kannst; ein separater Tooltip-Schalter innerhalb des Tooltips wird nicht mehr angezeigt. Die Tooltip-Ziellogik wird direkt im Tooltip-Script geladen, damit dieses Verhalten beim Seitenstart zuverlaessig aktiv ist.
 - Analyse-Chips und Graph-Hover nutzen jetzt die professionellen Tooltip-Designs aus den HTML-Referenzen: Chip-Tooltips zeigen Titel, stabile Kennung, Beschreibung, Schweregrad, Quelle, Status, Beispiel und Doku-Footer; Graph-Tooltips zeigen Datenquelle, Wert, Zeitstempel, Delta, Wertebereich und einen kleinen Verlaufskontext. Picker und S-Picker unterdruecken weiterhin sichtbare Tooltips.
-- Globale Dialoge wie Query-/Info-Popup, Bestaetigung, Issue Composer und Smart Bug Assistant nutzen die neue Dialogstruktur mit Kopfbereich, Beschreibung, Info-/Handbuch-Leiste, Inhaltsbereich, Footer-Meta und Tastaturbedienung (`Esc`, `F1`, `Ctrl+I`). Sichtbare S-Picker-Buttons erscheinen in Dialogen nicht; der konfigurierte Shortcut bleibt dialogbezogen nutzbar.
+- Globale Dialoge wie Query-/Info-Popup, Bestaetigung, Issue Composer und Smart Bug Assistant nutzen die neue Dialogstruktur mit Kopfbereich, Beschreibung, Info/Handbuch im Header, Inhaltsbereich, Footer-Meta und Tastaturbedienung (`Esc`, `F1`, `Ctrl+I`). Sichtbare S-Picker-Buttons erscheinen in Dialogen nicht; der konfigurierte Shortcut bleibt dialogbezogen nutzbar.
 - Dashboard-Dialoge wie Ausreisser-Parameter, Strategieinfo, Referenzdetails, JSON-Hilfe, Aenderungsvorschau, Reparatur-Assistent, Messwertinfos-Laufzeitdetails und gefiltertes Analyse-Logging verwenden ebenfalls stabile Dialog-Pickkeys und die Template-v2-Bereiche fuer Kopf, Toolbar, Inhalt und Footer.
 - Logs-/Jobs-Dialoge wie `Aufzeichnung starten`, `Support-Bundle` und `Timer History` sind ebenfalls auf stabile Root-/Panel-Pickkeys und Template-v2-Bereiche fuer Toolbar, Inhalt und Footer umgestellt.
 - Config-/DQ-/Export-/Backup-Dialoge wie Verbindungstest-Erfolg, Icon-SVG-Editor, Datenqualitaets-Details, Export-Zielauswahl und Backup-Verifikation folgen ebenfalls dem Template-v2-Dialogstandard mit stabilen Pickkeys und Footer-/Toolbar-Bereichen.
@@ -909,10 +909,11 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
 
 - Der Button `Zwischenablage` verwendet jetzt priorisiert den aktuell sichtbaren Inhalt des Dialogfelds `influxbro_popup_pre`. Dadurch wird im Fehler-/Logdialog immer genau der gerade angezeigte Text kopiert, auch wenn innerhalb desselben Popups zwischen verschiedenen Ansichten umgeschaltet wurde.
 - Dialoge folgen jetzt einem strikteren gemeinsamen Fensterrahmen:
-  - rechts oben nur noch Icon-Buttons fuer `Restore`, `Maximieren` und `Schliessen`
-  - unter dem Titel immer ein kurzer Beschreibungsframe mit drei Zeilen
-  - darunter links eine feste Hilfeleiste mit `Info` und `Handbuch`
+  - rechts oben Icon-Buttons fuer `Info`, `Handbuch`, `Restore`, `Maximieren` und `Schliessen`
+  - unter dem Titel immer eine kurze, dezente Beschreibungszeile
+  - keine separate Hilfeleiste zwischen Beschreibung und Inhalt, damit wichtige Dialoginhalte frueher sichtbar sind
   - Arbeitsaktionen wie `OK`, `Abbrechen`, `Speichern` und aehnliche Buttons unten rechts
+- Auf iPhone sind Header, Hilfe-Icons und Footer kompakter gestaltet: grosse Touch-Ziele bleiben erhalten, waehrend der Inhaltsbereich mehr Platz bekommt.
 - Sichtbare `S-Picker`-Buttons innerhalb von Dialogen entfallen. Der konfigurierbare Shortcut `ctrl+s` bleibt erhalten und wirkt bei offenem Dialog weiterhin auf genau diesen Dialogkontext.
 - Beim Oeffnen werden Dialoge jetzt auf den sichtbaren Viewport begrenzt. Temporäres Maximieren nutzt die Bildschirmgroesse zuverlaessig; Restore gilt nur fuer die aktuelle Oeffnung und wird nicht persistent gespeichert.
 - Das Dialog-Logging schreibt fuer Oeffnen, Schliessen und Fenster-/Hilfeaktionen weiterhin ueber den vorhandenen UI-Event-Pfad mit, von welcher Seite und welchem Trigger der Dialog kam.

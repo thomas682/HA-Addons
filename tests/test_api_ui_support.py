@@ -915,6 +915,7 @@ def test_dialog_template_v2_basis_for_global_dialogs():
     assert "1-4 Zeilen Beschreibung" not in topbar
     assert "data-dialog-toolbar=\"1\"" in topbar
     assert "data-dialog-content=\"1\"" in topbar
+    assert "Info + Handbuch im Kopf" in (Path(__file__).resolve().parents[1] / "influxbro" / "template-dialog-rules.md").read_text()
     assert "data-dialog-template') || '') === 'dialog_confirm_action'" in topbar
     assert "kein Minimieren/Maximieren" in topbar
     assert "key === 'F1'" in topbar
@@ -957,6 +958,18 @@ def test_dialog_descriptions_and_meta_copy_are_specific():
     ]:
         assert name in topbar
         assert phrase in topbar
+
+
+def test_dialog_help_buttons_live_in_header_before_window_actions():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    rules = (Path(__file__).resolve().parents[1] / "influxbro" / "template-dialog-rules.md").read_text()
+    assert "let infoBtn = headerActions.querySelector('[data-dialog-info-btn=\"1\"]');" in topbar
+    assert "let restoreBtn = headerActions.querySelector('[data-dialog-window=\"restore\"]');" in topbar
+    assert topbar.index("let infoBtn = headerActions.querySelector") < topbar.index("let restoreBtn = headerActions.querySelector")
+    assert "DIALOG_DOC_SVG + '<span class=\"sr_only\">Handbuch</span>'" in topbar
+    assert "bar.remove();" in topbar
+    assert "Info und Handbuch gehoeren in den Kopfbereich" in rules
+    assert "Mobile Dialogbedienung" in rules
 
 
 def test_handbook_rules_and_resolver_are_centralized():
