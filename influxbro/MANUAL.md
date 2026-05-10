@@ -108,7 +108,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Dashboard-Dialoge wie Ausreisser-Parameter, Strategieinfo, Referenzdetails, JSON-Hilfe, Aenderungsvorschau, Reparatur-Assistent, Messwertinfos-Laufzeitdetails und gefiltertes Analyse-Logging verwenden ebenfalls stabile Dialog-Pickkeys und die Template-v2-Bereiche fuer Kopf, Toolbar, Inhalt und Footer.
 - Logs-/Jobs-Dialoge wie `Aufzeichnung starten`, `Support-Bundle` und `Timer History` sind ebenfalls auf stabile Root-/Panel-Pickkeys und Template-v2-Bereiche fuer Toolbar, Inhalt und Footer umgestellt.
 - Config-/DQ-/Export-/Backup-Dialoge wie Verbindungstest-Erfolg, Icon-SVG-Editor, Datenqualitaets-Details, Export-Zielauswahl und Backup-Verifikation folgen ebenfalls dem Template-v2-Dialogstandard mit stabilen Pickkeys und Footer-/Toolbar-Bereichen.
-- Alle bekannten Dialoge zeigen oben im Dialog jetzt fachlich passende Beschreibungen zur konkreten Funktion. Der Meta-Hinweis im Footer besitzt einen dezenten Kopierbutton, der den vollstaendigen Meta-String (`pk`, Template und Dialogname) in die Zwischenablage kopiert.
+- Alle bekannten Dialoge zeigen direkt unter der Titelzeile nur noch eine kurze, dezente Beschreibungszeile zur konkreten Funktion. Der Meta-Hinweis im Footer besitzt einen dezenten Kopierbutton, der den vollstaendigen Meta-String (`pk`, Template und Dialogname) in die Zwischenablage kopiert.
 - Dialogtitel verwenden bevorzugt den lesbaren Text des Buttons oder UI-Elements, das den Dialog geoeffnet hat. Technische Kennungen wie `data-ui` oder `data-dialog-trigger` bleiben Debug-/Picker-Daten und werden nicht als sichtbarer Fenstertitel verwendet, solange ein lesbarer Ausloesertext verfuegbar ist.
 
 ## Handbuch und Dokumentationsspruenge
@@ -649,7 +649,7 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Beim Start schlaegt InfluxBro anhand von Viewport, Screen-Groesse, Touch-Faehigkeit und Browserhinweisen automatisch ein passendes Profil vor und legt fehlende Standardprofile bei Bedarf an.
 - Die aktive Profilwahl gilt pro Client/Geraet. Dadurch kann ein PC testweise ein mobiles Profil verwenden, ohne echte mobile Geraete umzustellen.
 - In `Profilverwaltung` kannst du Profile anlegen, umbenennen, loeschen, anwenden und den gespeicherten Inhalt per Volltextsuche einsehen.
-- Dialoge sind standardmaessig inhaltsbasiert gross, werden aber auf die aktuelle Fenstergroesse begrenzt. Manuell geaenderte Dialoggroessen werden im aktiven UI-Profil gespeichert.
+- Dialoge sind standardmaessig inhaltsbasiert gross, werden aber auf die aktuelle Fenstergroesse begrenzt. Die Maximieren-Funktion vergroessert Standarddialoge auf die sichtbare Bildschirmgroesse. Manuell geaenderte Dialoggroessen werden im aktiven UI-Profil gespeichert.
 
 ## Automatisches Speichern
 
@@ -914,7 +914,7 @@ Die fruehere Bearbeitungsliste wurde entfernt. Korrekturen erfolgen direkt in de
   - darunter links eine feste Hilfeleiste mit `Info` und `Handbuch`
   - Arbeitsaktionen wie `OK`, `Abbrechen`, `Speichern` und aehnliche Buttons unten rechts
 - Sichtbare `S-Picker`-Buttons innerhalb von Dialogen entfallen. Der konfigurierbare Shortcut `ctrl+s` bleibt erhalten und wirkt bei offenem Dialog weiterhin auf genau diesen Dialogkontext.
-- Beim Oeffnen werden Dialoge jetzt auf den sichtbaren Viewport begrenzt. Temporäres Maximieren bzw. Restore gilt nur fuer die aktuelle Oeffnung und wird nicht persistent gespeichert.
+- Beim Oeffnen werden Dialoge jetzt auf den sichtbaren Viewport begrenzt. Temporäres Maximieren nutzt die Bildschirmgroesse zuverlaessig; Restore gilt nur fuer die aktuelle Oeffnung und wird nicht persistent gespeichert.
 - Das Dialog-Logging schreibt fuer Oeffnen, Schliessen und Fenster-/Hilfeaktionen weiterhin ueber den vorhandenen UI-Event-Pfad mit, von welcher Seite und welchem Trigger der Dialog kam.
 
 ## Jobs & Cache
@@ -1077,7 +1077,7 @@ Tipp: Im Sidebar gibt es ein Status-Panel, das laufende Aktionen (Backup/Restore
 - Der Analyse-Logs-Dialog zeigt die Laufzeit jetzt direkt rechts neben der Uhrzeit. Zusätzlich gibt es eine Checkbox `Umbruch` sowie Lösch-Buttons für die Volltextfelder `Textsuche` und `Markieren`.
 - `Analyse mit Cache` verwendet bei einem direkten zweiten Lauf derselben Auswahl ein stabiles, zuletzt bestimmtes Analysefenster weiter, damit der vorhandene Cache nicht durch minimale Zeitverschiebungen sofort wieder als komplett neu zu lesen gilt.
 - Die Tabelle `Ausreißer` folgt jetzt demselben Standard-Tabellenlayout wie die übrigen Listen: eigene Tabellenüberschrift, Toolbar über der Tabelle, separates Statuspanel darunter sowie die Standard-Controls für Spaltenbreiten, Spaltenauswahl, Umbruch, Spaltenfilter und Kopieraktionen.
-- Info- und Arbeitsdialoge besitzen jetzt einen einheitlicheren Aufbau mit Meta-Footer, 3-Zeilen-Beschreibungsframe, linker Hilfeleiste, Fenster-Iconbuttons oben rechts und resizebarer rechter unterer Ecke, soweit der Dialog auf den neuen Standardunterbau gehoben wurde.
+- Info- und Arbeitsdialoge besitzen jetzt einen einheitlicheren Aufbau mit Meta-Footer, kurzer Beschreibungszeile, linker Hilfeleiste, Fenster-Iconbuttons oben rechts und resizebarer rechter unterer Ecke, soweit der Dialog auf den neuen Standardunterbau gehoben wurde.
 - Der S-Picker kann kontextsensitiv ueber den konfigurierbaren Shortcut `ctrl+s` geoeffnet werden. Wenn ein sichtbarer modaler Dialog offen ist, wird dessen Dialogkontext verwendet; ein sichtbarer Dialog-Button dafuer ist nicht mehr vorhanden. Der Shortcut ist in den Einstellungen unter `Tastaturshortcuts` anpassbar.
 - Die Dashboard-Sektionsköpfe `Ausreißer`, `Raw Daten Analyse` und `Grafische Analyse` folgen wieder konsistent dem normalen Section-Layout. Die Friendly-Name-Zeitraumerkennung für `Messwertinfos von Homeassistant` läuft bei `range=all` wieder ohne den früheren `tag_combo_ranges`-500er.
 - Die Dashboard-Section-Blöcke `Ausreißer`, `Raw Daten Analyse` und die nachfolgenden Analysebereiche besitzen jetzt wieder saubere Containergrenzen. Dadurch rendert die Dashboard-Seite nach dem App-Start wieder stabil statt mit leerem Bildschirm oder hängendem Spinner.

@@ -512,7 +512,7 @@ ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbes
 - Standard-Statusmeldungen nutzen eine einfache Checkliste mit maximal einer Zeile, z. B. `Checkliste: Kontext ✅ | Umsetzung 🔄 | QA ⬜ | Sicherheit ⬜ | Abschluss ⬜`.
 - Diffs, Diff-Stats, Patch-Inhalte und Codeauszuege werden im Chat NICHT angezeigt. Der Agent meldet nur knapp, dass die Pruefung oder Aenderung laeuft bzw. abgeschlossen ist.
 - Code-Stellenlisten, Zeilenreferenzen und Dateiinhalte werden NICHT angezeigt, ausser sie sind fuer eine Entscheidung, einen Blocker, einen Sicherheitsbefund, einen Fehlerfix oder eine explizite Nutzeranforderung erforderlich.
-- Datei-Lesevorgaenge und Inhalte aus `Read`/Suchwerkzeugen werden im Chat nicht routinemaessig wiedergegeben; sichtbar genannt werden nur Erkenntnisse, die fuer Bedienung, Entscheidungen, Blocker, Sicherheitsbefunde oder Abschluss relevant sind.
+- Datei-Lesevorgaenge, `Grep`-/Suchtreffer und Inhalte aus `Read`/Suchwerkzeugen werden im Chat nicht routinemaessig wiedergegeben; sichtbar genannt werden nur Erkenntnisse, die fuer Bedienung, Entscheidungen, Blocker, Sicherheitsbefunde oder Abschluss relevant sind oder vom Nutzer explizit verlangt wurden.
 - Vollstaendige Tool-Ausgaben, Testlogs, Polling-Schleifen, Playwright-Details, Build-Logs und API-Rohantworten werden nicht in den Chat uebernommen, solange der Schritt erfolgreich ist.
 - Tests, QA und UI-Pruefungen erscheinen in der Checkliste nur als `passed`, `failed` oder `skipped`. Details werden nur bei `failed`, Blockern oder expliziter Nachfrage genannt.
 - Bei fehlgeschlagenen Pruefungen werden immer der relevante Fehlerkern, die Ursache/Klassifikation und der naechste Fix-Schritt ausgegeben.

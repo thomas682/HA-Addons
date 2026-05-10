@@ -24,7 +24,7 @@
 Jeder Dialog MUSS exakt diese Struktur haben:
 
 1. **Kopfbereich** mit Titelzeile und Fenster-Aktionen
-2. **Beschreibungs-Sektion** (1–4 Zeilen)
+2. **Beschreibungs-Sektion** (eine kurze Zeile)
 3. **Aktionsleiste** mit Hilfe-Funktionen links und optionalen Tools rechts
 4. **Optionale Toolbar** (nur bei funktionalen Controls/Filtern)
 5. **Inhaltsbereich** (scrollbar bei Überlauf)
@@ -37,7 +37,7 @@ Auch ohne Zugriff auf die HTML-Referenz MUSS die Struktur eindeutig umsetzbar se
 | Bereich | Pflichtinhalt | Schutzregel |
 |---|---|---|
 | Kopfbereich | Links ein sichtbarer Fenstertitel, rechts Fenster-Aktionen in fester Reihenfolge | Fachliche Inhalte aus dem alten Dialogkopf duerfen nicht geloescht werden; sie werden nur dann verschoben, wenn sie eindeutig Titel oder Fensteraktion sind. |
-| Beschreibungs-Sektion | 1-4 kurze Zeilen direkt unter dem Kopfbereich | Bestehende fachliche Hilfetexte duerfen nicht ueberschrieben werden, wenn sie dialog-spezifisch sind. |
+| Beschreibungs-Sektion | Eine kurze, dezente Zeile direkt unter dem Kopfbereich | Bestehende fachliche Hilfetexte duerfen nicht geloescht werden; laengere Erklaerungen gehoeren in Inhalt, Info oder Handbuch. |
 | Aktionsleiste | Links Info und Handbuch, rechts optionale technische Hilfsaktionen | Keine fachlichen Primaeraktionen in die Aktionsleiste verschieben, wenn sie zum Arbeitsfluss gehoeren. |
 | Toolbar | Nur Filter, Suche, Sortierung, Ansicht oder andere funktionale Controls | Keine reinen Inhaltsbereiche als Toolbar markieren. |
 | Inhaltsbereich | Alle fachlichen Dialoginhalte, bei Ueberlauf scrollbar | Kinder nur kapseln, nicht inhaltlich veraendern; Event-Handler und stabile Attribute muessen erhalten bleiben. |
@@ -70,18 +70,15 @@ Picker-Sonderregel: Der Dialog, der nach einem erfolgreichen Pick angezeigt wird
 - Bei Confirm-Dialogen MIT Severity-Indicator-Icon links (Info/Warnung/Gefahr).
 - Severity-Farben gemäß Token `--c-info`, `--c-warning`, `--c-danger`.
 
-### 3.3 Beschreibungs-Sektion (überarbeitet — 1 bis 4 Zeilen)
+### 3.3 Beschreibungs-Sektion (eine kurze Zeile)
 
-Direkt unter der Titelzeile. Hierarchie der Zeilen:
+Direkt unter der Titelzeile. Die Beschreibung ist bewusst kompakt:
 
-- **Zeile 1 (PFLICHT):** Aufgabe / Zweck des Dialogs (visuell hervorgehoben — Klasse `purpose`)
-- **Zeile 2 (empfohlen):** Fachliche Einordnung / Kontext
-- **Zeile 3 (empfohlen):** Bedienhinweis oder Folgeaktion
-- **Zeile 4 (optional):** Warnung / Sicherheitshinweis bei destruktiven Aktionen (Klasse `warn`, mit ⚠-Icon)
+- **Zeile 1 (PFLICHT):** Aufgabe / Zweck des Dialogs in einem kurzen Satz oder Satzfragment, kleine Schrift, dezent unterhalb des Titels.
 
-**Geändert gegenüber v1:** Die starre 3-Zeilen-Pflicht entfällt. Wenn nur eine Zeile sinnvoll ist, ist eine Zeile zulässig.
+Laengere Funktionsbeschreibungen, Bedienhinweise und technische Erklaerungen gehoeren in den Inhaltsbereich, die Info-Funktion oder das Handbuch, nicht dauerhaft in den Dialogkopf.
 
-Bekannte Dialoge MÜSSEN fachlich spezifische Beschreibungstexte erhalten. Generische Template-Beschreibungen sind nur als Fallback für unbekannte oder noch nicht inventarisierte Dialoge zulässig.
+Bekannte Dialoge MÜSSEN fachlich spezifische Kurzbeschreibungen erhalten. Generische Template-Beschreibungen sind nur als Fallback für unbekannte oder noch nicht inventarisierte Dialoge zulässig.
 
 ### 3.4 Hilfe-Aktionen (klare Funktionstrennung — PFLICHT)
 
@@ -319,7 +316,7 @@ Vor jedem Commit eines neuen oder geänderten Dialogs MÜSSEN diese Punkte abgeh
 - [ ] Standard-Template gewählt (Erweiterung mit fachlicher Begründung dokumentiert)
 - [ ] Visueller Abgleich mit `demo/dialog-mockup-themed.html` durchgeführt
 - [ ] Titelzeile aussagekräftig
-- [ ] Beschreibungs-Sektion mit 1–4 Zeilen
+- [ ] Beschreibungs-Sektion mit genau einer kurzen Zeile
 - [ ] Info-Button + Handbuch-Button vorhanden, klar getrennt
 - [ ] Fenster-Aktionen rechts oben in korrekter Reihenfolge
 - [ ] Meta-Indicator als dezenter Debug-Punkt links unten

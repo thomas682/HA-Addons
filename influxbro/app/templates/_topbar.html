@@ -3028,22 +3028,22 @@
       dialog_info_popup: {
         id: 'dialog_info_popup',
         title: 'Standarddialog Information',
-        description: 'Für Informations-, Query-, Diagnose- und Detaildialoge mit Titel, 1-4 Zeilen Beschreibung, linker Info-/Doku-Leiste, Fenster-Icons, Meta-Footer und scrollbarem Inhalt.',
-        required: ['Kopf', 'Titelzeile', '1-4 Zeilen Beschreibung', 'Info links in Aktionsleiste', 'Doku-Button', 'Schliessen oben rechts', 'Meta-Footer', 'Scrollbereich', 'Resize'],
+        description: 'Für Informations-, Query-, Diagnose- und Detaildialoge mit Titel, kurzer Beschreibungszeile, linker Info-/Doku-Leiste, Fenster-Icons, Meta-Footer und scrollbarem Inhalt.',
+        required: ['Kopf', 'Titelzeile', 'eine kurze Beschreibungszeile', 'Info links in Aktionsleiste', 'Doku-Button', 'Schliessen oben rechts', 'Meta-Footer', 'Scrollbereich', 'Resize'],
         specific: ['optional Copy', 'Inline-Details oder Schrittliste je nach Inhalt'],
       },
       dialog_panel_workbench: {
         id: 'dialog_panel_workbench',
         title: 'Standarddialog Arbeitsbereich',
         description: 'Für funktionsreiche Dialoge mit Titel, Beschreibungsframe, linker Info-/Doku-Leiste, Toolbar, Footer-Aktionen unten rechts und einheitlicher Fenstersteuerung.',
-        required: ['Kopf', 'Titelzeile', '1-4 Zeilen Beschreibung', 'Info links in Aktionsleiste', 'Doku-Button', 'Schliessen oben rechts', 'Meta-Footer', 'Scrollbereich', 'Resize'],
+        required: ['Kopf', 'Titelzeile', 'eine kurze Beschreibungszeile', 'Info links in Aktionsleiste', 'Doku-Button', 'Schliessen oben rechts', 'Meta-Footer', 'Scrollbereich', 'Resize'],
         specific: ['Toolbar/Filter', 'optionale Copy-Funktion', 'Split- oder Mehrbereichslayout'],
       },
       dialog_confirm_action: {
         id: 'dialog_confirm_action',
         title: 'Standarddialog Bestätigung',
         description: 'Für kompakte Bestätigungsdialoge mit eindeutiger Aktion, Beschreibungsframe, Footer-Aktionen unten rechts und konsistentem Kopf.',
-        required: ['Kopf', 'Titelzeile mit Severity', '1-4 Zeilen Beschreibung', 'Info links in Aktionsleiste', 'Doku-Button', 'nur Schliessen oben rechts', 'OK/Abbrechen', 'Meta-Footer'],
+        required: ['Kopf', 'Titelzeile mit Severity', 'eine kurze Beschreibungszeile', 'Info links in Aktionsleiste', 'Doku-Button', 'nur Schliessen oben rechts', 'OK/Abbrechen', 'Meta-Footer'],
         specific: ['kein Minimieren/Maximieren', 'standardmäßig kein großes Resize'],
       },
     };
@@ -3224,8 +3224,9 @@
           [data-dialog-window]{ width:28px; height:28px; display:grid; place-items:center; background:transparent; border:1px solid transparent; border-radius:6px; color:var(--c-text-muted); cursor:pointer; padding:0; }
           [data-dialog-window]:hover{ background:var(--c-bg-subtle); color:var(--c-text); }
           [data-dialog-window="close"]:hover{ background:color-mix(in srgb, var(--c-danger) 15%, transparent); color:var(--c-danger); }
-          [data-dialog-desc-frame="1"]{ padding:14px 20px; border-bottom:1px solid var(--c-border); background:var(--c-surface-2); font-size:12.5px; line-height:1.6; color:var(--c-text-2); }
-          [data-dialog-desc-frame="1"] .purpose{ color:var(--c-text); font-weight:500; }
+          [data-dialog-desc-frame="1"]{ padding:6px 20px 8px; border-bottom:1px solid var(--c-border); background:var(--c-surface-2); font-size:11px; line-height:1.35; color:var(--c-text-2); }
+          [data-dialog-desc-frame="1"] p{ margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+          [data-dialog-desc-frame="1"] .purpose{ color:var(--c-text-2); font-weight:500; }
           [data-dialog-actionbar="1"]{ display:flex; align-items:center; gap:4px; padding:8px 16px 8px 18px; border-bottom:1px solid var(--c-border); background:var(--c-surface); }
           [data-dialog-info-btn="1"], [data-dialog-doc-btn="1"]{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px; background:transparent; border:1px solid transparent; border-radius:6px; color:var(--c-text-2); font-size:12px; font-weight:500; cursor:pointer; width:auto; }
           [data-dialog-info-btn="1"]:hover, [data-dialog-doc-btn="1"]:hover{ background:var(--c-bg-subtle); color:var(--c-text); border-color:var(--c-border); }
@@ -3238,6 +3239,8 @@
           [data-dialog-meta-copy="1"]{ width:24px; height:24px; display:inline-grid; place-items:center; padding:0; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--c-text-faint); box-shadow:none; opacity:.72; cursor:pointer; }
           [data-dialog-meta-copy="1"]:hover,[data-dialog-meta-copy="1"]:focus-visible{ opacity:1; color:var(--c-text); background:var(--c-bg-subtle); border-color:var(--c-border); }
           [data-dialog-meta-copy="1"][data-copy-state="ok"]{ color:var(--c-success); }
+          [data-dialog-root="1"][data-dialog-maximized="1"], dialog[data-dialog-maximized="1"]{ width:100vw !important; max-width:100vw !important; height:100vh !important; max-height:100vh !important; margin:0 !important; padding:0 !important; inset:0 !important; align-items:stretch !important; justify-content:stretch !important; }
+          [data-dialog-maximized="1"] .ib-dialog-v2, [data-dialog-maximized="1"] [data-dialog-panel="1"]{ width:calc(100vw - 24px) !important; max-width:calc(100vw - 24px) !important; height:calc(100vh - 24px) !important; max-height:calc(100vh - 24px) !important; margin:12px !important; border-radius:14px !important; }
           .sr_only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
         `;
         document.head.appendChild(st);
@@ -3502,18 +3505,17 @@
     function _dialogDescriptionLines(root){
       try{
         const name = _dialogName(root);
-        if(DIALOG_DESCRIPTION_LINES[name]) return DIALOG_DESCRIPTION_LINES[name].slice(0, 4);
+        if(DIALOG_DESCRIPTION_LINES[name]) return [String(DIALOG_DESCRIPTION_LINES[name][0] || '').trim() || 'Dialog'];
         const tpl = String(root.getAttribute('data-dialog-template') || 'dialog_info_popup');
         const spec = DIALOG_TEMPLATE_SPECS[tpl] || DIALOG_TEMPLATE_SPECS.dialog_info_popup;
         const trigger = String(root.getAttribute('data-dialog-trigger') || '-').trim();
-        return [
-          'Aufgabe: ' + String(spec.title || 'Dialog').trim(),
-          'Zweck: ' + String(spec.description || 'Dialog mit einheitlichem Aufbau.').trim(),
-          'Quelle: ' + (trigger && trigger !== '-' ? trigger : 'direkter Dialogaufruf') + ' | Aktionen unten rechts, Hilfe links.',
-        ];
+        return [String(spec.title || 'Dialog').trim() + (trigger && trigger !== '-' ? ' · ' + trigger : '')];
       }catch(e){
-        return ['Aufgabe: Dialog', 'Zweck: Einheitlicher Dialogaufbau.', 'Quelle: direkter Dialogaufruf | Aktionen unten rechts, Hilfe links.'];
+        return ['Dialog'];
       }
+    }
+    function _dialogShortDescription(value){
+      return String(value || '').replace(/^\s*Aufgabe:\s*/i, '').replace(/\s+/g, ' ').trim() || 'Dialog';
     }
     function _styleWindowIconButton(btn){
       try{
@@ -3591,13 +3593,26 @@
           ['width','maxWidth','height','maxHeight','margin','borderRadius'].forEach((key)=>{
             panel.dataset['ibPrev' + key.charAt(0).toUpperCase() + key.slice(1)] = panel.style[key] || '';
           });
+          if(root.style){
+            ['width','maxWidth','height','maxHeight','margin','padding'].forEach((key)=>{
+              root.dataset['ibPrevRoot' + key.charAt(0).toUpperCase() + key.slice(1)] = root.style[key] || '';
+            });
+          }
+          root.setAttribute('data-dialog-maximized', '1');
+          if(root.style){
+            root.style.width = '100vw';
+            root.style.maxWidth = '100vw';
+            root.style.height = '100vh';
+            root.style.maxHeight = '100vh';
+            root.style.margin = '0';
+            root.style.padding = '0';
+          }
           panel.style.width = 'calc(100vw - 24px)';
           panel.style.maxWidth = 'calc(100vw - 24px)';
           panel.style.height = 'calc(100vh - 24px)';
           panel.style.maxHeight = 'calc(100vh - 24px)';
           panel.style.margin = '12px';
           panel.style.borderRadius = '14px';
-          root.setAttribute('data-dialog-maximized', '1');
           _setDialogRestoreState(root, false);
           _dialogReport('dialog_maximize', root, { action: 'maximize' });
           return;
@@ -3606,6 +3621,12 @@
           const dataKey = 'ibPrev' + key.charAt(0).toUpperCase() + key.slice(1);
           if(panel.dataset[dataKey] !== undefined) panel.style[key] = panel.dataset[dataKey];
         });
+        if(root.style){
+          ['width','maxWidth','height','maxHeight','margin','padding'].forEach((key)=>{
+            const dataKey = 'ibPrevRoot' + key.charAt(0).toUpperCase() + key.slice(1);
+            if(root.dataset[dataKey] !== undefined) root.style[key] = root.dataset[dataKey];
+          });
+        }
         root.removeAttribute('data-dialog-maximized');
         _setDialogRestoreState(root, true);
         _dialogReport('dialog_restore', root, { action: 'restore' });
@@ -3715,7 +3736,7 @@
         }
         const lines = _dialogDescriptionLines(root);
         if(desc.getAttribute('data-dialog-desc-lock') === '1') return;
-        desc.innerHTML = lines.slice(0, 4).map((line, idx)=>'<p' + (idx === 0 ? ' class="purpose"' : '') + '>' + String(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>').join('');
+        desc.innerHTML = lines.slice(0, 1).map((line)=>'<p class="purpose">' + _dialogShortDescription(line).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>').join('');
       }catch(e){}
     }
     function _ensureDialogActionBar(root, panel){

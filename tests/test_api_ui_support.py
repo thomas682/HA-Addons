@@ -911,7 +911,8 @@ def test_dialog_template_v2_basis_for_global_dialogs():
     assert "ib_dialog_standard_styles_v2" in topbar
     assert "--c-bg:" in topbar
     assert "--c-accent:" in topbar
-    assert "1-4 Zeilen Beschreibung" in topbar
+    assert "eine kurze Beschreibungszeile" in topbar
+    assert "1-4 Zeilen Beschreibung" not in topbar
     assert "data-dialog-toolbar=\"1\"" in topbar
     assert "data-dialog-content=\"1\"" in topbar
     assert "data-dialog-template') || '') === 'dialog_confirm_action'" in topbar
@@ -935,11 +936,14 @@ def test_dialog_descriptions_and_meta_copy_are_specific():
 
     assert "const DIALOG_DESCRIPTION_LINES = {" in topbar
     assert "DIALOG_DESCRIPTION_LINES[name]" in topbar
+    assert "function _dialogShortDescription(value)" in topbar
+    assert "lines.slice(0, 1)" in topbar
     assert "data-dialog-meta-copy" in topbar
     assert "_copyTextToClipboard(current)" in topbar
     assert "'.btn_meta_copy'" in topbar
     assert "data-copy-state', 'ok'" in topbar
-    assert "Bekannte Dialoge MÜSSEN fachlich spezifische Beschreibungstexte erhalten" in rules
+    assert "Bekannte Dialoge MÜSSEN fachlich spezifische Kurzbeschreibungen erhalten" in rules
+    assert "Beschreibungs-Sektion mit genau einer kurzen Zeile" in rules
     assert "Generische Template-Beschreibungen sind nur als Fallback" in rules
     assert "Copy-Button MUSS tastaturbedienbar" in rules
 
@@ -1689,6 +1693,16 @@ def test_dialogs_are_content_sized_and_profile_persisted():
     assert "'X-InfluxBro-Request':'1'" in nav
     assert "dlg.style.width = 'fit-content'" in dashboard
     assert "dlg.style.maxHeight = 'calc(100vh - 32px)'" in dashboard
+
+
+def test_dialog_maximize_uses_viewport_size_not_fit_content():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "[data-dialog-root=\"1\"][data-dialog-maximized=\"1\"]" in topbar
+    assert "dialog[data-dialog-maximized=\"1\"]" in topbar
+    assert "width:100vw !important" in topbar
+    assert "height:100vh !important" in topbar
+    assert "root.style.width = '100vw';" in topbar
+    assert "root.style.height = '100vh';" in topbar
 
 
 def test_dashboard_caching_section_has_visible_cache_targets_and_no_old_dialog():

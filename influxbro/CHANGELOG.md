@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.592
+
+### Enhancement
+
+- Dialoge: Standarddialoge maximieren jetzt verlaesslich auf die sichtbare Bildschirmgroesse und verwenden nur noch eine kurze, dezente Beschreibungszeile unterhalb der Titelzeile. ([#565](https://github.com/thomas682/HA-Addons/issues/565))
+- Agent-Regeln: Grep-/Suchtreffer werden im Chat standardmaessig ausgeblendet, sofern sie nicht explizit angefordert oder fuer Entscheidung, Fehler, Sicherheitsbefund oder Blocker benoetigt werden. ([#565](https://github.com/thomas682/HA-Addons/issues/565))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.591
 
 ### Enhancement
