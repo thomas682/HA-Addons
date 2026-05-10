@@ -191,9 +191,11 @@ Abschlussbericht QA:**
 
 #### Schritt C – Versionierung (PFLICHT FÜR HA)
 
-**Jede Änderung an Laufzeit-, UI-, API- oder Verhaltenslogik erzwingt zwingend eine neue Version. Es gibt keine Ausnahmen.**
+**Jede Änderung an app-relevanter Laufzeit-, UI-, API- oder Verhaltenslogik erzwingt zwingend eine neue Version. Es gibt keine Ausnahmen für app-relevante Änderungen.**
 
 Betroffene Dateitypen: `*.py`, `*.html`, `*.js`, `*.css`, Dockerfile, Shell-/Startskripte, Laufzeit-Konfigurationen.
+
+Nicht app-relevante Dateien erzwingen KEINEN Add-on-Versionsbump, sofern sie das ausgelieferte Add-on, dessen Laufzeitverhalten, UI, API, Container, Startverhalten, Konfiguration oder Abhaengigkeiten nicht beeinflussen. Dazu zaehlen insbesondere reine Agent-/Repository-Regeln, lokale Plan-/Arbeitsdateien, nicht ausgelieferte Hilfsdateien und Dokumentation ausserhalb des Add-ons. Wenn keine Add-on-Version erhoeht wird, entfallen Changelog-Eintrag zur Add-on-Version und Home-Assistant-Live-Update.
 
 Pflichtschritte:
 
@@ -210,7 +212,7 @@ Pflichtschritte:
 
   Den ermittelten Wert unter `Tested with Home Assistant Core: <wert>` eintragen. `unknown` ist nur als Fallback erlaubt, wenn die Abfrage nicht erfolgreich ausgeführt werden kann.
 
-Ohne Versionsbump: Home Assistant erkennt kein Update. Die Änderung gilt als unvollständig.
+Ohne erforderlichen Versionsbump bei app-relevanten Änderungen erkennt Home Assistant kein Update. Eine app-relevante Änderung gilt dann als unvollständig.
 
 #### Schritt D – Git-Flow (HA Main-First, PFLICHT)
 
@@ -512,14 +514,15 @@ ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbes
 - Standard-Statusmeldungen nutzen eine einfache Checkliste mit maximal einer Zeile, z. B. `Checkliste: Kontext ✅ | Umsetzung 🔄 | QA ⬜ | Sicherheit ⬜ | Abschluss ⬜`.
 - Im Build-Modus ist diese Checkliste die Standardausgabe. Erfolgreiche Einzelaktionen wie Issue-Erstellung, ToDo-/Plan-State-Update, Dateiaenderung, Diff-Pruefung, QA-Start, Commit, Rebase, Push, Live-Update, Issue-Kommentar, Issue-Schluss und Signale werden nicht separat beschrieben.
 - Sichtbar bleiben im Build-Modus nur Phasenwechsel in der Checkliste, Fehler, Sicherheitsbefunde, Blocker, Entscheidungen/Rueckfragen, explizit angeforderte Details und der kompakte Abschlussbericht.
-- `plan_state.md`-Aktualisierungen werden im Chat nicht mehr einzeln gemeldet, ausser ein Blocker oder eine Abschluss-/Restpunktmeldung macht sie relevant.
-- Diffs, Diff-Stats, Patch-Inhalte, Plus/Minus-Darstellungen und Codeauszuege werden im Chat NICHT angezeigt. Der Agent meldet nur, dass die Pruefung oder Aenderung ausgefuehrt wird bzw. abgeschlossen ist.
+- `plan_state.md`-Aktualisierungen werden im Chat nicht mehr einzeln gemeldet, ausser ein Blocker oder eine Abschluss-/Restpunktmeldung macht sie relevant. Auch Tool-Erfolgsausgaben wie `Created plan_state.md`, `Updated plan_state.md` oder vergleichbare Schreibbestaetigungen werden nicht wiedergegeben.
+- Patch-/Apply-Patch-Erfolgsausgaben werden im Chat NICHT angezeigt. Dazu zaehlen Meldungen wie `Patched ...`, `Success. Updated files`, `Created ...`, `Deleted ...` oder Datei-/Zeilenzusammenfassungen erfolgreicher Patchvorgaenge. Sichtbar bleiben nur Patch-Fehler, Konflikte oder explizit angeforderte Patchdetails.
+- Diffs, Diff-Stats, `git diff`-Ausgaben, Patch-Inhalte, Plus/Minus-Darstellungen und Codeauszuege werden im Chat NICHT angezeigt. Der Agent wertet sie intern aus und meldet nur den Status, ausser ein Fehler, Sicherheitsbefund, Blocker oder eine explizite Nutzeranforderung erfordert Details.
 - Code-Stellenlisten, Dateinamenlisten, Zeilenreferenzen und Dateiinhalte werden NICHT angezeigt, ausser sie sind fuer eine Entscheidung, einen Blocker, einen Sicherheitsbefund, einen Fehlerfix oder eine explizite Nutzeranforderung erforderlich.
 - Datei-Lesevorgaenge, `Grep`-/Suchtreffer, Suchergebnislisten und Inhalte aus `Read`/Suchwerkzeugen werden im Chat nicht wiedergegeben; sichtbar genannt werden nur die daraus abgeleiteten Erkenntnisse, wenn sie fuer Bedienung, Entscheidungen, Blocker, Sicherheitsbefunde oder Abschluss relevant sind oder vom Nutzer explizit verlangt wurden.
 - Vollstaendige Tool-Ausgaben, Testlogs, Polling-Schleifen, Playwright-Details, Build-Logs und API-Rohantworten werden nicht in den Chat uebernommen, solange der Schritt erfolgreich ist.
-- Tests, QA, Smoke-Tests, Live-Tests und UI-Pruefungen erscheinen in der Checkliste nur als `passed`, `failed` oder `skipped`. Vor Live-/UI-/Playwright-Tests reicht eine einzelne Startzeile mit Zweck und Timeout; erfolgreiche Testausgaben bleiben vollstaendig ausgeblendet.
+- Tests, QA, `rtk`-Tests, Smoke-Tests, Live-Tests und UI-Pruefungen erscheinen in der Checkliste nur als `passed`, `failed` oder `skipped`. Vor Testlaeufen reicht eine einzelne Startzeile wie `Test laeuft...`; erfolgreiche Testausgaben bleiben vollstaendig ausgeblendet.
 - Bei fehlgeschlagenen Pruefungen werden immer der relevante Fehlerkern, die Ursache/Klassifikation und der naechste Fix-Schritt ausgegeben.
-- Rebase-, Push-, Commit-, Live-Update- und Polling-Details werden nicht angezeigt, solange sie erfolgreich sind; sichtbar bleibt nur der Checklistenstatus und im Abschluss der Commit/Version/Live-Version.
+- Rebase-, Push-, Commit-, Home-Assistant-Update-, Live-Update- und Polling-Details werden nicht angezeigt, solange sie erfolgreich sind; sichtbar bleibt nur der Checklistenstatus und im Abschluss Commit, Version und Live-Version. Bei Fehlern werden Fehlerkern, Ursache/Klassifikation und naechster Fix-Schritt angezeigt.
 - Compaction- oder Kontextpflege-Vorgaenge werden nur als kurzer Hinweis gemeldet, z. B. `Kontext wird kompaktiert; Arbeitsstand bleibt erhalten.`
 - Abschlussberichte bleiben kompakt: Issue, Version, Commit, Push, Live-Version, QA, Sicherheit und offene Restpunkte. Keine Rohlogs, Diffs, Patches, Codeauszuege, Grep-Treffer, Tooldetails oder vollstaendigen Dateiauszuege ohne Nachfrage.
 
