@@ -1131,6 +1131,17 @@ def test_tooltips_are_not_globally_blocked_for_pagecard_and_statusbar_buttons():
     assert 'data-ui="errors_main.panel_statusbar"' in topbar
 
 
+def test_mobile_statusbar_uses_bottom_sheet_actions():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'id="ib_error_state"' in topbar
+    assert 'id="ib_error_sheet_toggle"' in topbar
+    assert 'id="ib_error_actions"' in topbar
+    assert 'class="ib_error_sheet_head"' in topbar
+    assert '.ib_bottombar.ib_error_sheet_open .ib_error_actions { display: grid; }' in topbar
+    assert "function setSheetOpen(open)" in topbar
+    assert "setSheetOpen(!($bar && $bar.classList.contains('ib_error_sheet_open')));" in topbar
+
+
 def test_nav_back_prefers_previous_page_instead_of_same_page_controls():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert "const curPath = _navPath();" in topbar

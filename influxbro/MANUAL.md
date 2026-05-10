@@ -804,7 +804,7 @@ Raw Daten (DB):
 - Neue Spalte "Ausreisser": Zeigt bei gefundenen Ausreissern den Grund an (z.B. "counter decrease", "< min (0)", "NULL"). Normale Zeilen bleiben leer.
 - Das Limit fuer die maximale Anzahl gefundener Ausreisser kann in den Einstellungen unter `ui_raw_outlier_search_limit` konfiguriert werden (Default: 5000).
 - Auch die clientseitige Begrenzung der Ausreisser-Ergebnislisten nutzt jetzt `ui_raw_outlier_search_limit`. Die Selector-Queries fuer Measurements, Fields und Tag-Werte verwenden `ui_query_max_points` statt einer festen 5000-Grenze.
-- Die Fehler-Statusleiste besitzt Schnellaktionen fuer `Bugreport`, `5 min Logs` und `Jump Logs`.
+- Die Fehler-Statusleiste besitzt Schnellaktionen fuer `Bugreport`, `5 min Logs` und `Jump Logs`. Auf iPhone/Mobile bleibt unten eine kompakte Statuszeile sichtbar; alle Aktionen sind ueber das `...`-Menue als Bottom-Sheet mit grossen Touch-Zielen erreichbar.
 - Das Suchfeld in der rechten Titelzeile ist jetzt flexibler und darf bei kleiner Fensterbreite auf minimale Breite schrumpfen, damit es nicht mehr von den folgenden Buttons ueberdeckt wird.
 - Jobs & Cache: Die Tabellen in Jobs, Cache, Analyse-Cache, Timer und Cache-Nutzung unterstuetzen jetzt Mehrfachauswahl per Zeilenklick sowie `selektiere alle` / `selektiere keine` in der jeweiligen Tabellenleiste. In der Analyse-Cache-Tabelle wurden `entity_id` und `friendly_name` als eigene Spalten aufgeteilt, `Groesse` umbenannt und `series` ans Tabellenende verschoben.
 - Tooltips werden als eigenes HTML-Overlay angezeigt. Im Picker- und S-Picker-Modus sind sie weiterhin unterdrueckt, damit der Hover-Inspektor nicht gestoert wird.
@@ -1548,6 +1548,7 @@ UI:
 Fehleranzeige:
 
 - Unten wird der letzte Fehler als Statuszeile angezeigt (Zeitstempel + Kurztext).
+- Auf iPhone/Mobile zeigt die Statusleiste kompakt den Fehlerstatus, den Kurztext, `Details` und `...`; ueber `...` oeffnet sich ein Bottom-Sheet mit allen Fehleraktionen.
 - Zusaetzlich wird in der Statusleiste die Influx Verbindung angezeigt (OK/ERR; best-effort).
 - Button `Fehlerdialog`: zeigt den aktuellen Fehler plus Verlauf (mit Zeitstempeln).
 - Button `Git Bugreport`: erzeugt einen GitHub Bugreport (Template profi) und laedt einen Debug report zum Anhaengen.

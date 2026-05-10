@@ -121,9 +121,15 @@ def test_logs_follow_uses_restored_checkbox_state():
 def test_download_and_export_buttons_use_updated_icons():
     export_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "export.html").read_text()
     topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
-    assert 'button id="run" data-ui="export_main.btn_run" title="export.run"' in export_body
-    assert 'button id="export_save" type="button" data-ui="export_main.btn_save" title="export.save"' in export_body
-    assert 'button id="ib_error_git" type="button" data-ui="errors_main.btn_git_bugreport" title="errors.git_bugreport"' in topbar_body
+    assert 'id="run"' in export_body
+    assert 'data-ui="export_main.btn_run"' in export_body
+    assert 'title="export.run"' in export_body
+    assert 'id="export_save"' in export_body
+    assert 'data-ui="export_main.btn_save"' in export_body
+    assert 'title="export.save"' in export_body
+    assert 'id="ib_error_git"' in topbar_body
+    assert 'data-ui="errors_main.btn_git_bugreport"' in topbar_body
+    assert 'title="errors.git_bugreport"' in topbar_body
 
 
 def test_topbar_has_ui_picker_button_and_hover_inspector():

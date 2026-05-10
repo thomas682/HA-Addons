@@ -511,6 +511,7 @@ ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbes
 
 - Intermediaere Statusmeldungen haben maximal zwei Zeilen, ausser ein Blocker, Sicherheitsbefund oder eine ausdrueckliche Nutzeranforderung erfordert Details.
 - Diffs werden nicht im Chat ausgegeben. Der Agent meldet nur kurz, dass ein Diff geprueft wurde, welche Dateien betroffen sind und ob unerwartete Aenderungen gefunden wurden.
+- Datei-Lesevorgaenge und Inhalte aus `Read`/Suchwerkzeugen werden im Chat nicht routinemaessig wiedergegeben; sichtbar genannt werden nur Erkenntnisse, die fuer Bedienung, Entscheidungen, Blocker, Sicherheitsbefunde oder Abschluss relevant sind.
 - Vollstaendige Tool-Ausgaben, Testlogs, Polling-Schleifen, Playwright-Details, Build-Logs und API-Rohantworten werden nicht in den Chat uebernommen, solange der Schritt erfolgreich ist.
 - Bei erfolgreichen Pruefungen reicht eine Ergebniszeile pro Pruefgruppe, z. B. `QA bestanden: py_compile, fokussierte Tests, diff-check.`
 - Bei fehlgeschlagenen Pruefungen werden nur der relevante Fehlerkern, die Ursache/Klassifikation und der naechste Fix-Schritt ausgegeben.

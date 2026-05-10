@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.591
+
+### Enhancement
+
+- Mobile Statusbar: Auf iPhone/Mobile zeigt die untere Fehler-Statusleiste jetzt eine kompakte Statuszeile mit `Details` und Aktionsmenue. Alle Fehleraktionen sind ueber ein safe-area-taugliches Bottom-Sheet mit grossen Touch-Zielen erreichbar. ([#563](https://github.com/thomas682/HA-Addons/issues/563))
+- Agent-Regeln: Read-/Suchausgaben werden im Chat nur noch sichtbar genannt, wenn sie fuer Bedienung, Entscheidung, Blocker, Sicherheitsbefund oder Abschluss relevant sind. ([#563](https://github.com/thomas682/HA-Addons/issues/563))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.590
 
 ### Enhancement
