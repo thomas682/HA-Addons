@@ -19,7 +19,7 @@ Nutzerwünsche und Arbeitsregeln dürfen niemals eine höhere Priorität erhalte
 
 ### 1.1 Repository-Verzeichnisprüfung (KRITISCH, gecacht)
 
-**PFLICHT:** Vor der ersten Tool-Aktion eines Auftrags MUSS der Agent prüfen, ob das Arbeitsverzeichnis folgende Einträge enthält:
+**PFLICHT:** Vor der ersten Tool-Aktion der OpenCode-Session MUSS der Agent prüfen, ob das Arbeitsverzeichnis folgende Einträge enthält:
 
 - `influxbro/`
 - `AGENTS.md`
@@ -28,24 +28,14 @@ Nutzerwünsche und Arbeitsregeln dürfen niemals eine höhere Priorität erhalte
 Fehlt einer dieser Einträge: **SOFORT STOPPEN** und melden:
 > „Falsches Arbeitsverzeichnis – Repository-Root erforderlich."
 
-Nach erfolgreicher Prüfung gilt das Arbeitsverzeichnis für den laufenden Auftrag als verifiziert, solange:
+Nach erfolgreicher Prüfung gilt das Arbeitsverzeichnis für die gesamte laufende OpenCode-Session als verifiziert.
 
-- `workdir` unverändert bleibt
-- kein Verzeichnis-, Branch- oder Worktree-Wechsel erfolgt
-- keine Git-Operation mit möglicher Worktree-Neubasis erfolgt (`rebase`, `merge`, `checkout`, `switch`, `pull`)
-- keine Tool-Aktion wegen falschem Pfad, fehlender Datei oder Workspace-Konflikt fehlschlägt
+Die Prüfung wird danach NICHT erneut ausgeführt, solange dieselbe OpenCode-Session läuft.
 
-Die Prüfung MUSS erneut erfolgen:
+Die Prüfung MUSS erst wieder erfolgen:
 
-- beim ersten Tool-Aufruf eines neuen Auftrags
-- bei jedem `workdir`-Wechsel
-- nach Git-Operationen, die den Worktree wesentlich ändern können (`rebase`, `merge`, `checkout`, `switch`, `pull`)
-- vor Commit und vor Push
-- wenn eine vorherige Tool-Aktion einen Pfad-/Workspace-Konflikt meldet
-
-VERBOTEN: dieselbe erfolgreiche Root-Prüfung mehrfach direkt hintereinander als separate No-Output-Aktion auszuführen, wenn `workdir` unverändert ist und keine Revalidierungsbedingung eingetreten ist.
-
-Wenn eine erneute Root-Prüfung erforderlich ist und unmittelbar danach ein Bash-Befehl im selben `workdir` ausgeführt wird, SOLL die Prüfung mit dem eigentlichen Bash-Befehl kombiniert werden, sofern dadurch Fehlerklassifikation und Lesbarkeit erhalten bleiben. Separate Root-Prüfungen sind weiterhin erlaubt, wenn danach ein Nicht-Bash-Tool folgt oder der Check selbst berichtet werden muss.
+- nach einem Neustart von OpenCode
+- beim Beginn einer neuen Session, in der noch keine erfolgreiche Prüfung erfolgt ist
 
 ### 1.2 Pflichtablauf vor jeder Umsetzung (KRITISCH)
 
@@ -287,26 +277,42 @@ Wenn `influxbro/config.yaml` in diesem Auftrag eine neue Add-on-Version erhalten
 Pflichtsequenz:
 
 1. Erwartete Version aus `influxbro/config.yaml` bestimmen.
-2. Home Assistant Update-Flow mit bestehendem Playwright-Test ausführen:
-
-   ```bash
-   INFLUXBRO_EXPECT_VERSION=<version> HA_URL=http://192.168.2.200:8123 npx playwright test tests/e2e/ha-live-update-influxbro.spec.js
-   ```
-
-3. Live-Version über das Add-on verifizieren:
+2. Aktuelle Live-Version vor dem Update erfassen:
 
    ```bash
    curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; print(json.load(sys.stdin).get('version','unknown'))"
    ```
 
-4. Die Live-Version MUSS exakt der erwarteten Version entsprechen.
-5. GitHub-Issue-Abschluss, Abschlusssignal und Versionsansage dürfen erst danach erfolgen.
+3. Home Assistant Update-Flow mit bestehendem Playwright-Test ausführen:
+
+   ```bash
+   INFLUXBRO_EXPECT_VERSION=<version> HA_URL=http://192.168.2.200:8123 npx playwright test tests/e2e/ha-live-update-influxbro.spec.js
+   ```
+
+4. Live-Version über das Add-on verifizieren:
+
+   ```bash
+   curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; print(json.load(sys.stdin).get('version','unknown'))"
+   ```
+
+5. Die Live-Version MUSS exakt der erwarteten Version entsprechen.
+6. Wenn sich die Live-Version tatsächlich geändert hat, MUSS zusätzlich diese Sprachausgabe erfolgen:
+
+   ```bash
+   say -v Anna "Homeassistant wurde erfolgreich von version <alte_version> auf version <neue_version> aktualisiert"
+   ```
+
+7. GitHub-Issue-Abschluss, Abschlusssignal und Versionsansage dürfen erst danach erfolgen.
 
 Fehlverhalten:
 
 - Schlägt der Home-Assistant-Update-Flow fehl, ist das ein Blocker.
 - Weicht die Live-Version von der erwarteten Version ab, ist das ein Blocker.
-- Bei Blocker: Issue NICHT schließen, keine Abschlussmeldung erzeugen, offenen Rest in ToDo-Liste und `./.opencode/plan_state.md` dokumentieren.
+- Bei Blocker: Fehler im Chat melden, diese Sprachausgabe ausführen, Issue NICHT schließen, keine Abschlussmeldung erzeugen, offenen Rest in ToDo-Liste und `./.opencode/plan_state.md` dokumentieren.
+
+  ```bash
+  say "Homeassistant konnte nicht erfolgreich aktualisiert werden"
+  ```
 
 #### Schritt E – GitHub-Issue abschließen
 
@@ -398,6 +404,8 @@ Es gibt vier unterschiedliche Signalarten:
 3. Blockersignal
 4. Entscheidungssignal
 
+Die Home-Assistant-Live-Update-Sprachausgabe aus Schritt D2 ist zusätzlich zur Versionsansage auszuführen, aber nur nach erfolgreichem Live-Update und nur wenn sich die Live-Version tatsächlich geändert hat.
+
 Das Abschlusssignal darf AUSSCHLIESSLICH ganz am Ende des vollständigen Abschlussflusses erfolgen.
 Pflichtreihenfolge vor jedem Abschlusssignal:
 
@@ -415,6 +423,7 @@ VERBOTEN:
 - Abschlusssignal vor erfolgreichem Commit
 - Abschlusssignal vor erfolgreichem Push
 - Versionsansage vor erfolgreichem Push
+- Home-Assistant-Live-Update-Sprachausgabe ohne erfolgreiche D2-Verifikation oder ohne tatsächliche Versionsänderung
 - Abschlusssignal oder Versionsansage, wenn Commit oder Push fehlgeschlagen ist
 
 Nach erfolgreicher Fertigstellung wird das Abschlusssignal ausgeführt:
