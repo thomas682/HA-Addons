@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.594
+
+### Fix
+
+- Dialoge: Header-Aktionen entfernen jetzt alte, nicht standardisierte Zusatzbuttons, damit Info, Handbuch, Minimieren, Maximieren und Schliessen eindeutig und ohne Duplikate im Kopfbereich erscheinen. ([#568](https://github.com/thomas682/HA-Addons/issues/568))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.593
 
 ### Enhancement

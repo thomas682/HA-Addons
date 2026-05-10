@@ -3692,6 +3692,12 @@
           header.appendChild(headerActions);
         }
         headerActions.classList.add('window-actions');
+        Array.from(headerActions.children || []).forEach((el)=>{
+          try{
+            if(el.matches && el.matches('[data-dialog-info-btn="1"],[data-dialog-doc-btn="1"],[data-dialog-window]')) return;
+            el.remove();
+          }catch(e){}
+        });
         const existingClose = _findDialogCloseButton(root, panel, closeSelector);
         if(existingClose){ existingClose.style.display = 'none'; }
         let infoBtn = headerActions.querySelector('[data-dialog-info-btn="1"]');

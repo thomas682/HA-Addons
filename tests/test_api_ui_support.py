@@ -967,6 +967,7 @@ def test_dialog_help_buttons_live_in_header_before_window_actions():
     assert "let restoreBtn = headerActions.querySelector('[data-dialog-window=\"restore\"]');" in topbar
     assert topbar.index("let infoBtn = headerActions.querySelector") < topbar.index("let restoreBtn = headerActions.querySelector")
     assert "DIALOG_DOC_SVG + '<span class=\"sr_only\">Handbuch</span>'" in topbar
+    assert "el.matches('[data-dialog-info-btn=\"1\"],[data-dialog-doc-btn=\"1\"],[data-dialog-window]')" in topbar
     assert "bar.remove();" in topbar
     assert "Info und Handbuch gehoeren in den Kopfbereich" in rules
     assert "Mobile Dialogbedienung" in rules
