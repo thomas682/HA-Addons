@@ -496,7 +496,7 @@ Neue Folgeeingaben, Restpunkte und offene Entscheidungen werden nicht in getrenn
 - und, solange eine Modussperre aktiv ist, zusätzlich sichtbar im Chat
 
 Die aktive ToDo-Liste MUSS im Chat sichtbar gehalten werden.
-Der Agent zeigt sie nach jedem abgeschlossenen Schritt und nach jeder substantiellen Statusmeldung als Block an:
+Genau eine sichtbare ToDo-Darstellung reicht aus. Wenn das verwendete Tool die ToDo-Liste bereits sichtbar anzeigt, DARF der zusaetzliche manuelle Chat-ToDo-Block entfallen. Wenn kein sichtbares ToDo-Tool verfuegbar ist oder ein Blocker/Abschlussstatus gemeldet wird, zeigt der Agent die ToDo-Liste kompakt als Block an:
 
 ```text
 📋 ToDo – Aktiv
@@ -505,7 +505,17 @@ Der Agent zeigt sie nach jedem abgeschlossenen Schritt und nach jeder substantie
   ⬜ <ausstehender Schritt>
 ```
 
-ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbesondere wenn ein Task startet, abgeschlossen wird, ein Blocker entsteht, sich der Plan ändert, vor Commit/Push und nach erfolgreichem Abschluss. Reine Lese- oder Such-Zwischenschritte ohne neue Entscheidung oder Statusänderung sollen nicht zusätzlich als eigener ToDo-/Plan-State-Update ausgegeben werden.
+ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbesondere wenn ein Task startet, abgeschlossen wird, ein Blocker entsteht, sich der Plan ändert, vor Commit/Push und nach erfolgreichem Abschluss. Reine Lese- oder Such-Zwischenschritte ohne neue Entscheidung oder Statusänderung sollen nicht zusätzlich als eigener ToDo-/Plan-State-Update ausgegeben werden. `plan_state.md` wird nicht routinemaessig im Chat ausgegeben; im Chat reicht der Hinweis `Plan-State aktualisiert.` oder bei Blockern eine kurze Liste der offenen Punkte.
+
+### 2.2.1 Kompakte Chat-Ausgaben (PFLICHT)
+
+- Intermediaere Statusmeldungen haben maximal zwei Zeilen, ausser ein Blocker, Sicherheitsbefund oder eine ausdrueckliche Nutzeranforderung erfordert Details.
+- Diffs werden nicht im Chat ausgegeben. Der Agent meldet nur kurz, dass ein Diff geprueft wurde, welche Dateien betroffen sind und ob unerwartete Aenderungen gefunden wurden.
+- Vollstaendige Tool-Ausgaben, Testlogs, Polling-Schleifen, Playwright-Details, Build-Logs und API-Rohantworten werden nicht in den Chat uebernommen, solange der Schritt erfolgreich ist.
+- Bei erfolgreichen Pruefungen reicht eine Ergebniszeile pro Pruefgruppe, z. B. `QA bestanden: py_compile, fokussierte Tests, diff-check.`
+- Bei fehlgeschlagenen Pruefungen werden nur der relevante Fehlerkern, die Ursache/Klassifikation und der naechste Fix-Schritt ausgegeben.
+- Compaction- oder Kontextpflege-Vorgaenge werden nur als kurzer Hinweis gemeldet, z. B. `Kontext wird kompaktiert; Arbeitsstand bleibt erhalten.`
+- Abschlussberichte bleiben kompakt: Umsetzung, QA-Ergebnis, Sicherheitsbefunde, Version/Commit/Push/Live-Update und offene Restpunkte. Keine Rohlogs oder vollstaendigen Dateiauszuege ohne Nachfrage.
 
 ### 2.3 Behandlung neuer Eingaben
 
@@ -829,6 +839,7 @@ Für Aufgaben wie „alle HTML-Dateien analysieren", „alle Templates prüfen",
 - Vollständige Dateiinhalte NUR auf explizite Anforderung ausgeben
 - Standard-Ausgabe: Fehler, relevante Snippets, Zeilenreferenzen
 - Zusammenfassungen vor vollständigen Dumps bevorzugen
+- Diffs, Diff-Stats, Test-Logs und Tool-Rohdaten nur intern auswerten und im Chat auf eine kurze Ergebniszeile reduzieren, sofern kein Fehler oder Befund Details erfordert.
 
 ### 7.5 Token-Sicherheitsregeln
 
@@ -1025,7 +1036,7 @@ Die Issue-Liste darf VOR dieser Auswahl NICHT geladen oder angezeigt werden.
 - Genau ein Eintrag trägt den Status `in_progress`.
 - Einträge sofort als `erledigt` markieren, sobald abgeschlossen.
 - Alle ToDo-Einträge MÜSSEN umgesetzt sein, bevor Fertigstellung erklärt wird.
-- **Die aktive ToDo-Liste wird als Block im Chat sichtbar gehalten.** Regeln siehe Abschnitt 2.2 Sichtbarkeitsregel.
+- **Die aktive ToDo-Liste wird sichtbar gehalten.** Eine sichtbare Tool-ToDo-Liste reicht aus; ein zusätzlicher manueller Chat-Block ist nur bei Blockern, Abschlussstatus oder fehlender Tool-Sichtbarkeit erforderlich. Regeln siehe Abschnitt 2.2 Sichtbarkeitsregel.
 
 **Statussymbole (einheitlich für alle drei Listen):**
 
@@ -1242,6 +1253,7 @@ Beispiele: Abschnitt geöffnet/geschlossen (`*_open`), Tabellenhöhen, Splitter-
 - Konfiguration: `playwright.config.js` (baseURL: `http://192.168.2.200:8099`)
 - Tests: `tests/e2e/*.spec.js`
 - Ausführen: `npx playwright test`
+- Chat-Ausgabe: Playwright-Start und Ergebnis jeweils nur als kurze Statuszeile melden. Einzelne Browser-Schritte, Locator-Details, Screenshots, Traces und Polling-Details nur bei Fehlschlag oder auf Nachfrage nennen.
 
 ### 14.3 Live-System-Tests (Pflichtablauf)
 
