@@ -51,6 +51,38 @@ def test_debug_report_contains_recent_ui_actions(load_app_module, tmp_path):
     assert "dashboard.load" in text
 
 
+def test_ui_profiles_auto_assign_and_save_dialog_item(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    client = app_mod.app.test_client()
+
+    auto = client.post(
+        "/api/ui_profiles/auto_select",
+        json={"client_id": "client_phone", "hints": {"viewport_w": 390, "viewport_h": 844, "touch": True}},
+    )
+    assert auto.status_code == 200
+    aj = auto.get_json()
+    assert aj["ok"] is True
+    assert aj["active"] == "MOBIL"
+    assert aj["assignment"]["mode"] == "auto"
+
+    assign = client.post("/api/ui_profiles/assign", json={"client_id": "client_phone", "id": "PC"})
+    assert assign.status_code == 200
+    assert assign.get_json()["assignment"]["mode"] == "manual"
+
+    key = "influxbro.dialog.dialog_measurement_profile_runtime.size"
+    save = client.post("/api/ui_profiles/save_item", json={"id": "PC", "key": key, "value": '{"width_px":720,"height_px":640}'})
+    assert save.status_code == 200
+    sj = save.get_json()
+    assert sj["ok"] is True
+    assert sj["profile"]["items"][key] == '{"width_px":720,"height_px":640}'
+
+    listed = client.get("/api/ui_profiles?client_id=client_phone")
+    assert listed.status_code == 200
+    lj = listed.get_json()
+    assert lj["active"] == "PC"
+    assert lj["active_profile"]["items"][key] == '{"width_px":720,"height_px":640}'
+
+
 def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
     cfg_root = tmp_path / "config"
     data_root = tmp_path / "data"
@@ -1601,6 +1633,22 @@ def test_dashboard_strategy_type_cards_keep_pickkeys_and_local_overrides():
     assert 'dashboard_analysis.panel_strategy_type.${_escAttr(type)}' in body
     assert 'function _outlierStrategyApplyLocalOverrides(data, selected, extra)' in body
     assert '_outlierStrategyApplyLocalOverrides(LAST_OUTLIER_STRATEGY, selected, extra)' in body
+
+
+def test_dialogs_are_content_sized_and_profile_persisted():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    dashboard = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
+    assert ".ib-dialog-v2{ background:var(--c-surface)" in topbar
+    assert "width:fit-content; height:fit-content" in topbar
+    assert "function _dialogApplyProfileSize(root, panel)" in topbar
+    assert "function _dialogSaveProfileSize(root, panel)" in topbar
+    assert "./api/ui_profiles/auto_select" in nav
+    assert "./api/ui_profiles/assign" in nav
+    assert "./api/ui_profiles/save_item" in nav
+    assert "'X-InfluxBro-Request':'1'" in nav
+    assert "dlg.style.width = 'fit-content'" in dashboard
+    assert "dlg.style.maxHeight = 'calc(100vh - 32px)'" in dashboard
 
 
 def test_dashboard_caching_section_has_visible_cache_targets_and_no_old_dialog():

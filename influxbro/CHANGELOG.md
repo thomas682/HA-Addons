@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.584
+
+### Enhancement
+
+- UI-Profile / Dialoge: Profile bleiben serverseitig gespeichert und erhalten zusaetzlich serverseitige Client-/Geraetezuordnungen mit automatischer Profilwahl. Ein PC kann damit gezielt ein mobiles Profil verwenden, ohne andere Geraete umzustellen. Dialoge werden content-sized mit Viewport-Grenze gerendert; manuell geaenderte Dialoggroessen werden im aktiven UI-Profil gespeichert. ([#552](https://github.com/thomas682/HA-Addons/issues/552))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.583
 
 ### Fix

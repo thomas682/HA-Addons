@@ -242,10 +242,11 @@ def _outlier_types_to_legacy(values: Any) -> list[str]:
             out.append(s)
     return out
 
-# UI profiles (file-based; global active profile)
+# UI profiles (file-based; global profiles plus per-client assignment)
 UI_PROFILES_LOCK = threading.RLock()
 UI_PROFILES_DIR = DATA_DIR / "ui_profiles"
 UI_PROFILE_ACTIVE_PATH = DATA_DIR / "ui_profile_active.json"
+UI_PROFILE_ASSIGNMENTS_PATH = DATA_DIR / "ui_profile_assignments.json"
 MIGRATION_STATE_PATH = DATA_DIR / "influxbro_v3_migration_state.json"
 MIGRATION_STATE_LOCK = threading.RLock()
 
@@ -255,6 +256,7 @@ STORAGE_SAFE_DELETE_NAMES = {
     "ui_state",
     "app_state",
     "ui_profile_active",
+    "ui_profile_assignments",
     "cache_usage",
     "ui_actions",
     "worklog",
@@ -2642,6 +2644,99 @@ def _profile_id_ok(pid: str) -> bool:
     if not p or len(p) > 48:
         return False
     return bool(re.match(r"^[a-zA-Z0-9_-]+$", p))
+
+
+def _ui_profile_assignments_load() -> dict[str, Any]:
+    try:
+        if not UI_PROFILE_ASSIGNMENTS_PATH.exists():
+            return {}
+        with UI_PROFILES_LOCK:
+            raw = UI_PROFILE_ASSIGNMENTS_PATH.read_text(encoding="utf-8", errors="replace")
+        j = json.loads(raw) if raw else {}
+        return j if isinstance(j, dict) else {}
+    except Exception:
+        return {}
+
+
+def _ui_profile_assignments_save(assignments: dict[str, Any]) -> None:
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        safe: dict[str, Any] = {}
+        for client_id, raw in (assignments or {}).items():
+            cid = str(client_id or "").strip()
+            if not _profile_id_ok(cid) or not isinstance(raw, dict):
+                continue
+            pid = str(raw.get("profile_id") or "").strip()
+            if not _profile_id_ok(pid):
+                continue
+            mode = str(raw.get("mode") or "auto").strip().lower()
+            safe[cid] = {
+                "profile_id": pid,
+                "mode": "manual" if mode == "manual" else "auto",
+                "updated_at": str(raw.get("updated_at") or _utc_now_iso_ms()),
+            }
+        with UI_PROFILES_LOCK:
+            UI_PROFILE_ASSIGNMENTS_PATH.write_text(
+                json.dumps(safe, indent=2, sort_keys=True, ensure_ascii=True),
+                encoding="utf-8",
+            )
+    except Exception:
+        return
+
+
+def _ui_profile_device_kind(hints: Any) -> str:
+    data = hints if isinstance(hints, dict) else {}
+    try:
+        width = int(data.get("viewport_w") or data.get("screen_w") or 0)
+    except Exception:
+        width = 0
+    try:
+        touch = bool(data.get("touch"))
+    except Exception:
+        touch = False
+    if width and width <= 520:
+        return "mobile"
+    if touch and width and width <= 1100:
+        return "tablet"
+    if width and width >= 1800:
+        return "wide_desktop"
+    return "desktop"
+
+
+def _ui_profile_default_label(kind: str) -> str:
+    labels = {
+        "mobile": "MOBIL",
+        "tablet": "Tablet",
+        "wide_desktop": "Wide Desktop",
+        "desktop": "PC",
+    }
+    return labels.get(kind, "PC")
+
+
+def _ui_profile_ensure_auto_profile(kind: str) -> str:
+    label = _ui_profile_default_label(kind)
+    pid = _profile_id_from_label(label)
+    if not _profile_id_ok(pid):
+        pid = "PC"
+        label = "PC"
+    if not _profile_path(pid).exists():
+        _profile_save(pid, label, _ui_items_snapshot(prefix="influxbro"))
+    return pid
+
+
+def _ui_profile_public(pid: str) -> dict[str, Any] | None:
+    prof = _profile_load(pid)
+    if not prof:
+        return None
+    items = prof.get("items") if isinstance(prof.get("items"), dict) else {}
+    out_items = {str(k): str(v) for k, v in items.items() if isinstance(k, str) and isinstance(v, str)}
+    return {
+        "id": str(prof.get("id") or pid),
+        "label": str(prof.get("label") or pid),
+        "updated_at": prof.get("updated_at"),
+        "items": out_items,
+        "count": len(out_items),
+    }
 
 
 def _ui_items_snapshot(prefix: str = "influxbro") -> dict[str, str]:
@@ -33419,8 +33514,21 @@ def api_app_state_set():
 @app.get("/api/ui_profiles")
 def api_ui_profiles_list():
     _profiles_ensure_defaults()
+    client_id = str(request.args.get("client_id") or "").strip()
     active = _active_profile_get()
-    return jsonify({"ok": True, "active": active, "profiles": _profile_list()})
+    assignment = None
+    if client_id and _profile_id_ok(client_id):
+        raw = _ui_profile_assignments_load().get(client_id)
+        if isinstance(raw, dict) and _profile_id_ok(str(raw.get("profile_id") or "")):
+            assignment = raw
+            active = str(raw.get("profile_id") or active or "")
+    return jsonify({
+        "ok": True,
+        "active": active,
+        "assignment": assignment,
+        "active_profile": _ui_profile_public(active) if active else None,
+        "profiles": _profile_list(),
+    })
 
 
 @app.get("/api/ui_profiles/get")
@@ -33432,19 +33540,74 @@ def api_ui_profiles_get():
     prof = _profile_load(pid)
     if not prof:
         return jsonify({"ok": False, "error": "profile not found"}), 404
+    return jsonify({"ok": True, "profile": _ui_profile_public(pid)})
+
+
+@app.post("/api/ui_profiles/auto_select")
+def api_ui_profiles_auto_select():
+    _profiles_ensure_defaults()
+    body = request.get_json(force=True) or {}
+    client_id = str(body.get("client_id") or "").strip()
+    if not _profile_id_ok(client_id):
+        return jsonify({"ok": False, "error": "invalid client id"}), 400
+    assignments = _ui_profile_assignments_load()
+    current = assignments.get(client_id) if isinstance(assignments.get(client_id), dict) else None
+    if current and _profile_id_ok(str(current.get("profile_id") or "")) and _profile_path(str(current.get("profile_id"))).exists():
+        pid = str(current.get("profile_id"))
+    else:
+        kind = _ui_profile_device_kind(body.get("hints"))
+        pid = _ui_profile_ensure_auto_profile(kind)
+        assignments[client_id] = {"profile_id": pid, "mode": "auto", "updated_at": _utc_now_iso_ms()}
+        _ui_profile_assignments_save(assignments)
+    return jsonify({
+        "ok": True,
+        "active": pid,
+        "assignment": assignments.get(client_id),
+        "active_profile": _ui_profile_public(pid),
+        "profiles": _profile_list(),
+    })
+
+
+@app.post("/api/ui_profiles/assign")
+def api_ui_profiles_assign():
+    _profiles_ensure_defaults()
+    body = request.get_json(force=True) or {}
+    client_id = str(body.get("client_id") or "").strip()
+    pid = str(body.get("id") or body.get("profile_id") or "").strip()
+    if not _profile_id_ok(client_id):
+        return jsonify({"ok": False, "error": "invalid client id"}), 400
+    if not _profile_id_ok(pid):
+        return jsonify({"ok": False, "error": "invalid profile id"}), 400
+    if not _profile_load(pid):
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+    assignments = _ui_profile_assignments_load()
+    assignments[client_id] = {"profile_id": pid, "mode": "manual", "updated_at": _utc_now_iso_ms()}
+    _ui_profile_assignments_save(assignments)
+    return jsonify({"ok": True, "active": pid, "assignment": assignments.get(client_id), "active_profile": _ui_profile_public(pid)})
+
+
+@app.post("/api/ui_profiles/save_item")
+def api_ui_profiles_save_item():
+    _profiles_ensure_defaults()
+    body = request.get_json(force=True) or {}
+    pid = str(body.get("id") or body.get("profile_id") or "").strip()
+    key = str(body.get("key") or "").strip()
+    value = str(body.get("value") or "")
+    if not _profile_id_ok(pid):
+        return jsonify({"ok": False, "error": "invalid profile id"}), 400
+    if not _ui_state_key_ok(key):
+        return jsonify({"ok": False, "error": "invalid key"}), 400
+    if not _ui_state_val_ok(value):
+        return jsonify({"ok": False, "error": "invalid value"}), 400
+    prof = _profile_load(pid)
+    if not prof:
+        return jsonify({"ok": False, "error": "profile not found"}), 404
+    label = str(prof.get("label") or pid)
     items = prof.get("items") if isinstance(prof.get("items"), dict) else {}
-    # return only strings
-    out_items: dict[str, str] = {}
-    for k, v in items.items():
-        if isinstance(k, str) and isinstance(v, str):
-            out_items[k] = v
-    return jsonify({"ok": True, "profile": {
-        "id": str(prof.get("id") or pid),
-        "label": str(prof.get("label") or pid),
-        "updated_at": prof.get("updated_at"),
-        "items": out_items,
-        "count": len(out_items),
-    }})
+    out_items = {str(k): str(v) for k, v in items.items() if isinstance(k, str) and isinstance(v, str)}
+    out_items[key] = value
+    _profile_save(pid, label, out_items)
+    return jsonify({"ok": True, "profile": _ui_profile_public(pid)})
 
 
 @app.post("/api/ui_profiles/create")

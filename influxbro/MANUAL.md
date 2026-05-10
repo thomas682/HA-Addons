@@ -640,13 +640,15 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 ## UI-Profile
 
 - In der Sidebar kannst du ein Profil auswaehlen (Default: `PC`, `MOBIL`).
-- Profile werden filebasiert unter `/data/ui_profiles` gespeichert.
-- Das aktive Profil ist global (gilt fuer alle Clients/Browsers).
+- Profile werden filebasiert unter `/data/ui_profiles` gespeichert; die serverseitige Client-/Geraetezuordnung liegt separat unter `/data/ui_profile_assignments.json`.
+- Beim Start schlaegt InfluxBro anhand von Viewport, Screen-Groesse, Touch-Faehigkeit und Browserhinweisen automatisch ein passendes Profil vor und legt fehlende Standardprofile bei Bedarf an.
+- Die aktive Profilwahl gilt pro Client/Geraet. Dadurch kann ein PC testweise ein mobiles Profil verwenden, ohne echte mobile Geraete umzustellen.
 - In `Profilverwaltung` kannst du Profile anlegen, umbenennen, loeschen, anwenden und den gespeicherten Inhalt per Volltextsuche einsehen.
+- Dialoge sind standardmaessig inhaltsbasiert gross, werden aber auf die aktuelle Fenstergroesse begrenzt. Manuell geaenderte Dialoggroessen werden im aktiven UI-Profil gespeichert.
 
 ## Automatisches Speichern
 
-- GUI-Aenderungen werden automatisch gespeichert (Checkboxen/Selects/Inputs sowie resizable Hoehen).
+- GUI-Aenderungen werden automatisch gespeichert (Checkboxen/Selects/Inputs, resizable Hoehen sowie Dialoggroessen im aktiven UI-Profil).
 
 ## Caching
 

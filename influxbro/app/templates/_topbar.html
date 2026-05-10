@@ -2926,10 +2926,10 @@
             --c-shadow-sm: 0 1px 2px rgba(0,0,0,.12); --c-shadow-md: 0 12px 24px -8px rgba(0,0,0,.35); --c-shadow-lg: 0 24px 48px -12px rgba(0,0,0,.55); --c-shadow-glow: inset 0 1px 0 rgba(255,255,255,.04); --c-overlay: rgba(0,0,0,.55);
           }
           [data-dialog-root="1"]{ background:var(--c-overlay); color:var(--c-text); }
-          .ib-dialog-v2{ background:var(--c-surface); color:var(--c-text); border:1px solid var(--c-border); border-radius:12px; box-shadow:var(--c-shadow-lg),var(--c-shadow-glow); display:flex; flex-direction:column; max-width:calc(100vw - 48px); max-height:calc(100vh - 48px); overflow:hidden; box-sizing:border-box; }
-          .ib-dialog-v2.dialog-info-popup{ width:min(540px, calc(100vw - 48px)); }
-          .ib-dialog-v2.dialog-panel-workbench{ width:min(720px, calc(100vw - 48px)); min-height:min(540px, calc(100vh - 48px)); }
-          .ib-dialog-v2.dialog-confirm-action{ width:min(460px, calc(100vw - 48px)); border-left:3px solid var(--c-warning); }
+          .ib-dialog-v2{ background:var(--c-surface); color:var(--c-text); border:1px solid var(--c-border); border-radius:12px; box-shadow:var(--c-shadow-lg),var(--c-shadow-glow); display:flex; flex-direction:column; width:fit-content; height:fit-content; max-width:calc(100vw - 48px); max-height:calc(100vh - 48px); overflow:hidden; box-sizing:border-box; }
+          .ib-dialog-v2.dialog-info-popup{ width:fit-content; }
+          .ib-dialog-v2.dialog-panel-workbench{ width:fit-content; }
+          .ib-dialog-v2.dialog-confirm-action{ width:fit-content; border-left:3px solid var(--c-warning); }
           [data-dialog-header="1"]{ display:flex; align-items:center; gap:12px; padding:14px 16px 14px 20px; border-bottom:1px solid var(--c-border); background:var(--c-surface); }
           [data-dialog-title-wrap="1"]{ flex:1 1 auto; min-width:0; }
           [data-dialog-title="1"]{ color:var(--c-text); font-weight:600; font-size:15px; letter-spacing:-.01em; }
@@ -3224,6 +3224,38 @@
         btn.disabled = !!disabled;
         btn.style.opacity = disabled ? '0.45' : '1';
         btn.style.cursor = disabled ? 'default' : 'pointer';
+      }catch(e){}
+    }
+    function _dialogProfileSizeKey(root){
+      try{ return 'influxbro.dialog.' + _dialogSafeKey(_dialogName(root)) + '.size'; }catch(e){ return ''; }
+    }
+    function _dialogApplyProfileSize(root, panel){
+      try{
+        const key = _dialogProfileSizeKey(root);
+        const prof = window.InfluxBroUiProfiles || {};
+        const raw = key && prof.items && prof.items[key] ? String(prof.items[key]) : '';
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        const w = Math.max(320, Math.min(Number(data.width_px || 0), Math.max(320, window.innerWidth - 48)));
+        const h = Math.max(220, Math.min(Number(data.height_px || 0), Math.max(220, window.innerHeight - 48)));
+        if(isFinite(w) && w > 0) panel.style.width = Math.round(w) + 'px';
+        if(isFinite(h) && h > 0) panel.style.height = Math.round(h) + 'px';
+      }catch(e){}
+    }
+    function _dialogSaveProfileSize(root, panel){
+      try{
+        if(!root || !panel || root.getAttribute('data-dialog-maximized') === '1') return;
+        const prof = window.InfluxBroUiProfiles || {};
+        if(!prof.saveItem) return;
+        const rect = panel.getBoundingClientRect ? panel.getBoundingClientRect() : null;
+        if(!rect || rect.width <= 0 || rect.height <= 0) return;
+        const payload = JSON.stringify({width_px: Math.round(rect.width), height_px: Math.round(rect.height)});
+        const key = _dialogProfileSizeKey(root);
+        if(!key) return;
+        prof.items = prof.items || {};
+        if(String(prof.items[key] || '') === payload) return;
+        prof.items[key] = payload;
+        prof.saveItem(key, payload).catch(()=>{});
       }catch(e){}
     }
     function _toggleDialogMaximize(root, panel, nextState){
@@ -3522,6 +3554,22 @@
         panel.style.overflow = 'hidden';
         panel.style.minWidth = panel.style.minWidth || '320px';
         panel.style.minHeight = panel.style.minHeight || '220px';
+        if(panel.dataset.ibDialogResizeObserver !== '1' && window.ResizeObserver){
+          panel.dataset.ibDialogResizeObserver = '1';
+          let timer = null;
+          const ro = new ResizeObserver(()=>{
+            try{
+              if(!_dialogVisible(root)) return;
+              if(panel.dataset.ibDialogResizeReady !== '1'){
+                panel.dataset.ibDialogResizeReady = '1';
+                return;
+              }
+              clearTimeout(timer);
+              timer = setTimeout(()=>_dialogSaveProfileSize(root, panel), 500);
+            }catch(e){}
+          });
+          ro.observe(panel);
+        }
       }catch(e){}
     }
     function _ensureDialogContentRegion(panel){
@@ -3594,6 +3642,7 @@
         const tpl = String(root.getAttribute('data-dialog-template') || 'dialog_info_popup');
         panel.classList.add('ib-dialog-v2', tpl.replace(/_/g, '-'));
         if(!panel.getAttribute('data-dialog-panel')) panel.setAttribute('data-dialog-panel', '1');
+        _dialogApplyProfileSize(root, panel);
         _ensureDialogHeaderActions(root, panel, opts && opts.closeSelector ? opts.closeSelector : null);
         _ensureDialogDescription(root, panel);
         _ensureDialogContentRegion(panel);

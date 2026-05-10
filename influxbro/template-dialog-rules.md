@@ -187,7 +187,7 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 **Optional:**
 - Copy-Button · Inline-Details · kleine Toolbar · Sektions-Tabs
 
-**Standardgröße:** 540 px Breite (`.dialog-info-popup`).
+**Standardgröße:** inhaltsbasiert (`fit-content`) mit Viewport-Maximum. Manuell geänderte Größen werden profilabhängig pro Dialog-Bezeichner gespeichert.
 
 **Referenz:** `demo/dialog-mockup-themed.html` → Bereich `<div class="dialog dialog-info-popup">` (`dialog.measurement_profile_runtime`).
 
@@ -204,7 +204,7 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 - Toolbar mit Filtern (Pflicht bei Such-/Filterdialogen)
 - Copy · Inline-Details · Split-/Mehrbereichslayout · Tabs · Stepper für Wizards
 
-**Standardgröße:** 720 × 540 px (`.dialog-panel-workbench`).
+**Standardgröße:** inhaltsbasiert (`fit-content`) mit Viewport-Maximum. Manuell geänderte Größen werden profilabhängig pro Dialog-Bezeichner gespeichert.
 
 **Referenz:** `demo/dialog-mockup-themed.html` → Bereich `<div class="dialog dialog-panel-workbench">` (`dialog.analysis_log`).
 
@@ -222,7 +222,7 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 - Bestätigungs-Phrase bei destruktiven Aktionen (z. B. `LÖSCHEN` eingeben)
 - Detail-Liste der Auswirkungen (Impact-List)
 
-**Standardgröße:** 460 px Breite (`.dialog-confirm-action`).
+**Standardgröße:** inhaltsbasiert (`fit-content`) mit Viewport-Maximum; Confirm-Dialoge bleiben kompakt und ohne frei resizebare Arbeitsfläche.
 
 **Severity-Klassen:**
 - `is-info` — Border-Akzent in `--c-info`

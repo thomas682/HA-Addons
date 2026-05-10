@@ -1132,10 +1132,42 @@
       }catch(e){}
     }
 
-    // UI Profiles (global)
+    // UI Profiles (server-side profiles with per-client assignment)
+    const UI_PROFILE_CLIENT_KEY = 'influxbro.ui_profile.client_id.v1';
+    function uiProfileClientId(){
+      try{
+        let id = String(localStorage.getItem(UI_PROFILE_CLIENT_KEY) || '').trim();
+        if(id) return id;
+        const rnd = (window.crypto && window.crypto.getRandomValues) ? Array.from(window.crypto.getRandomValues(new Uint8Array(8))).map(x=>x.toString(16).padStart(2,'0')).join('') : String(Date.now());
+        id = 'client_' + rnd;
+        localStorage.setItem(UI_PROFILE_CLIENT_KEY, id);
+        return id;
+      }catch(e){ return 'client_fallback'; }
+    }
+    function uiProfileHints(){
+      try{
+        return {
+          viewport_w: Number(window.innerWidth || 0),
+          viewport_h: Number(window.innerHeight || 0),
+          screen_w: Number(screen && screen.width || 0),
+          screen_h: Number(screen && screen.height || 0),
+          dpr: Number(window.devicePixelRatio || 1),
+          touch: !!(navigator.maxTouchPoints || ('ontouchstart' in window)),
+          platform: String(navigator.platform || ''),
+          user_agent: String(navigator.userAgent || '').slice(0, 300),
+        };
+      }catch(e){ return {}; }
+    }
+    async function autoSelectProfile(){
+      try{
+        const r = await fetch('./api/ui_profiles/auto_select', {method:'POST', headers:{'Content-Type':'application/json','X-InfluxBro-Request':'1'}, body: JSON.stringify({client_id: uiProfileClientId(), hints: uiProfileHints()})});
+        const j = await r.json().catch(()=>({ok:false}));
+        return (r.ok && j && j.ok) ? j : null;
+      }catch(e){ return null; }
+    }
     async function loadProfiles(){
       try{
-        const r = await fetch('./api/ui_profiles');
+        const r = await fetch('./api/ui_profiles?client_id=' + encodeURIComponent(uiProfileClientId()));
         const j = await r.json().catch(()=>({ok:false}));
         if(!r.ok || !j || !j.ok) return null;
         return j;
@@ -1344,8 +1376,23 @@
       const $hint = document.getElementById('ui_profile_hint');
       if(!$sel || !$apply || !$save) return;
 
-      const j = await loadProfiles();
+      let j = await autoSelectProfile();
+      if(!j) j = await loadProfiles();
       if(!j) return;
+      try{
+        window.InfluxBroUiProfiles = window.InfluxBroUiProfiles || {};
+        window.InfluxBroUiProfiles.clientId = uiProfileClientId();
+        window.InfluxBroUiProfiles.active = String(j.active || '');
+        window.InfluxBroUiProfiles.items = (j.active_profile && j.active_profile.items && typeof j.active_profile.items === 'object') ? j.active_profile.items : {};
+        window.InfluxBroUiProfiles.saveItem = async function(key, value){
+          const id = String(window.InfluxBroUiProfiles && window.InfluxBroUiProfiles.active || '').trim();
+          if(!id || !key) return null;
+          const r = await fetch('./api/ui_profiles/save_item', {method:'POST', headers:{'Content-Type':'application/json','X-InfluxBro-Request':'1'}, body: JSON.stringify({id, key:String(key), value:String(value == null ? '' : value)})});
+          const out = await r.json().catch(()=>({ok:false}));
+          if(r.ok && out && out.ok && out.profile && out.profile.items) window.InfluxBroUiProfiles.items = out.profile.items;
+          return out;
+        };
+      }catch(e){}
       const xs = Array.isArray(j.profiles) ? j.profiles : [];
       $sel.innerHTML = '';
       xs.forEach(p=>{
@@ -1358,14 +1405,15 @@
       if($hint){
         const cur = xs.find(p=>String(p.id||'')===String($sel.value||''));
         const lbl = cur ? String(cur.label||cur.id||'') : '';
-        $hint.textContent = 'Aktiv: ' + (lbl || '-') + ' | Version: {{ addon_version }}';
+        const mode = j.assignment && j.assignment.mode ? String(j.assignment.mode) : 'auto';
+        $hint.textContent = 'Aktiv: ' + (lbl || '-') + ' (' + mode + ') | Version: {{ addon_version }}';
       }
 
       $sel.onchange = ()=>{
         try{
           const cur = xs.find(p=>String(p.id||'')===String($sel.value||''));
           const lbl = cur ? String(cur.label||cur.id||'') : '';
-          if($hint) $hint.textContent = 'Aktiv: ' + (String(j.active||'')===String($sel.value||'') ? (lbl||'-') : (String(j.active||'-'))) + ' | Auswahl: ' + (lbl||'-') + ' | Version: {{ addon_version }}';
+          if($hint) $hint.textContent = 'Aktiv: ' + (String(j.active||'')===String($sel.value||'') ? (lbl||'-') : (String(j.active||'-'))) + ' | Auswahl fuer dieses Geraet: ' + (lbl||'-') + ' | Version: {{ addon_version }}';
         }catch(e){}
       };
 
@@ -1373,8 +1421,8 @@
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         const id = String($sel.value||'').trim();
         if(!id) return;
-        if(!confirm('Profil anwenden? Dies ueberschreibt die global gespeicherten GUI-Einstellungen.')) return;
-        await fetch('./api/ui_profiles/apply', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})}).then(r=>r.json()).catch(()=>null);
+        if(!confirm('Profil fuer dieses Geraet verwenden? Andere Geraete bleiben unveraendert.')) return;
+        await fetch('./api/ui_profiles/assign', {method:'POST', headers:{'Content-Type':'application/json','X-InfluxBro-Request':'1'}, body: JSON.stringify({client_id: uiProfileClientId(), id})}).then(r=>r.json()).catch(()=>null);
         location.reload();
       };
       $save.onclick = async (ev)=>{
@@ -1382,7 +1430,7 @@
         const id = String($sel.value||'').trim();
         if(!id) return;
         if(!confirm('Aktuellen Stand in dieses Profil speichern?')) return;
-        await fetch('./api/ui_profiles/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})}).then(r=>r.json()).catch(()=>null);
+        await fetch('./api/ui_profiles/save', {method:'POST', headers:{'Content-Type':'application/json','X-InfluxBro-Request':'1'}, body: JSON.stringify({id})}).then(r=>r.json()).catch(()=>null);
         const j2 = await loadProfiles();
         if(j2 && $hint){
           const xs2 = Array.isArray(j2.profiles) ? j2.profiles : [];
