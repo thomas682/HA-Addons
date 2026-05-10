@@ -216,6 +216,10 @@ Ohne Versionsbump: Home Assistant erkennt kein Update. Die Änderung gilt als un
 
 Standard:** Alle Änderungen werden direkt nach `main` gepusht, damit Home Assistant das Update erkennen kann.
 
+Bevorzugter Pflichtweg ist der HA-Core-API-Updatepfad. Er vermeidet Playwright-Login,
+HA-UI-Abhaengigkeiten und bekannte Node/Playwright-Netzwerkfehler. Der Ablauf ist in
+`tools/ha-live-update-influxbro.md` dauerhaft dokumentiert.
+
 Pflichtsequenz:
 
 1. Erforderliche QA ausführen
@@ -283,26 +287,34 @@ Pflichtsequenz:
    curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; print(json.load(sys.stdin).get('version','unknown'))"
    ```
 
-3. Home Assistant Update-Flow mit bestehendem Playwright-Test ausführen:
+3. HA-Core-API-Updatepfad ausfuehren:
+
+   - `SUPERVISOR_TOKEN` als Bearer-Token gegen `http://192.168.2.200:8123/api/*` verwenden.
+   - `POST /api/services/homeassistant/update_entity` mit `{"entity_id":"update.influxbro_update"}` ausfuehren.
+   - `GET /api/states/update.influxbro_update` pollen, bis `latest_version` der erwarteten Version entspricht und `state` `on` ist.
+   - `POST /api/services/update/install` mit `{"entity_id":"update.influxbro_update","backup":false}` ausfuehren.
+   - `/api/info` des Add-ons pollen, bis die Live-Version exakt der erwarteten Version entspricht.
+
+4. Nur wenn der HA-Core-API-Updatepfad technisch nicht nutzbar ist, darf als Fallback der bestehende Playwright-Test ausgeführt werden:
 
    ```bash
    INFLUXBRO_EXPECT_VERSION=<version> HA_URL=http://192.168.2.200:8123 npx playwright test tests/e2e/ha-live-update-influxbro.spec.js
    ```
 
-4. Live-Version über das Add-on verifizieren:
+5. Live-Version über das Add-on verifizieren:
 
    ```bash
    curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; print(json.load(sys.stdin).get('version','unknown'))"
    ```
 
-5. Die Live-Version MUSS exakt der erwarteten Version entsprechen.
-6. Wenn sich die Live-Version tatsächlich geändert hat, MUSS zusätzlich diese Sprachausgabe erfolgen:
+6. Die Live-Version MUSS exakt der erwarteten Version entsprechen.
+7. Wenn sich die Live-Version tatsächlich geändert hat, MUSS zusätzlich diese Sprachausgabe erfolgen:
 
    ```bash
    say -v Anna "Homeassistant wurde erfolgreich von version <alte_version> auf version <neue_version> aktualisiert"
    ```
 
-7. GitHub-Issue-Abschluss, Abschlusssignal und Versionsansage dürfen erst danach erfolgen.
+8. GitHub-Issue-Abschluss, Abschlusssignal und Versionsansage dürfen erst danach erfolgen.
 
 Fehlverhalten:
 
