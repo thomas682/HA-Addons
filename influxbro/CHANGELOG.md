@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.588
+
+### Fix
+
+- Mobile Layout / iPhone: Die fixe Topbar/Pagecard deckt die iOS-Safe-Area jetzt selbst opak ab und vermeidet doppelte Safe-Area-Abstaende in Content und Mobile-Navigation. Dadurch scheint beim Scrollen kein Seiteninhalt mehr oberhalb der Topbar durch. ([#559](https://github.com/thomas682/HA-Addons/issues/559))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.587
 
 ### Enhancement

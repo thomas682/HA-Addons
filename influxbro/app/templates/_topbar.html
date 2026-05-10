@@ -54,7 +54,7 @@
     body {
       font-size: var(--ui-font-zoomed);
       overflow-x: hidden;
-      padding-top: calc(env(safe-area-inset-top, 0px) + var(--ib-topbar-h) + var(--ib-pagecard-live-h));
+      padding-top: calc(var(--ib-topbar-h) + var(--ib-pagecard-live-h));
       padding-bottom: calc(var(--ib-bottombar-h) + env(safe-area-inset-bottom, 0px));
     }
     .muted { font-size: var(--ui-font-small-zoomed); }
@@ -140,7 +140,7 @@
     }
     .ib_topbar {
       position: fixed;
-      top: env(safe-area-inset-top, 0px);
+      top: 0;
       left: 0;
       right: 0;
       z-index: 10000;
@@ -169,7 +169,7 @@
     .ib_topbar .zoom .pct { font-variant-numeric: tabular-nums; min-width: calc(56px * var(--ib-zoom-scale)); text-align:center; }
     .ib_pagecard {
       position: fixed;
-      top: env(safe-area-inset-top, 0px);
+      top: 0;
       left: 0;
       right: 0;
       z-index: 9998;
@@ -178,11 +178,12 @@
       align-items:center;
       justify-content:space-between;
       gap: calc(12px * var(--ib-zoom-scale));
-      padding: calc(10px * var(--ib-zoom-scale)) calc(12px * var(--ib-zoom-scale));
+      padding: calc(env(safe-area-inset-top, 0px) + (10px * var(--ib-zoom-scale))) calc(12px * var(--ib-zoom-scale)) calc(10px * var(--ib-zoom-scale));
       padding-left: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-left, 0px));
       padding-right: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-right, 0px));
       box-sizing:border-box;
-      background: var(--ib-section-title-bg);
+      background-color: var(--ib-surface, #fff);
+      background-image: linear-gradient(var(--ib-section-title-bg), var(--ib-section-title-bg));
       color: var(--ib-section-title-fg);
       border-bottom: 1px solid rgba(0,0,0,0.08);
     }

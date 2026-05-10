@@ -90,7 +90,7 @@
       .shell > nav.sidebar {
         position: fixed;
         left: 0;
-        top: calc(env(safe-area-inset-top, 0px) + var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px));
+        top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px));
         bottom: calc(env(safe-area-inset-bottom, 0px));
         width: min(320px, 86vw);
         max-width: 86vw;
@@ -110,7 +110,7 @@
         position: fixed;
         left: 0;
         right: 0;
-        top: calc(env(safe-area-inset-top, 0px) + var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px));
+        top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px));
         bottom: calc(env(safe-area-inset-bottom, 0px));
         background: rgba(0,0,0,0.28);
         display: none;

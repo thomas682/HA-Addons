@@ -520,6 +520,18 @@ def test_topbar_updates_pagecard_height_css_var():
     assert "new ResizeObserver(_scheduleTopbarHeightUpdate).observe(pc);" in body
 
 
+def test_iphone_topbar_safe_area_is_covered_without_double_offset():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
+    assert "padding-top: calc(var(--ib-topbar-h) + var(--ib-pagecard-live-h));" in topbar
+    assert ".ib_pagecard {" in topbar
+    assert "top: 0;" in topbar
+    assert "padding: calc(env(safe-area-inset-top, 0px) + (10px * var(--ib-zoom-scale)))" in topbar
+    assert "background-color: var(--ib-surface, #fff);" in topbar
+    assert "background-image: linear-gradient(var(--ib-section-title-bg), var(--ib-section-title-bg));" in topbar
+    assert "top: calc(env(safe-area-inset-top, 0px) + var(--ib-topbar-h" not in nav
+
+
 def test_page_search_highlight_is_global_and_configurable():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
