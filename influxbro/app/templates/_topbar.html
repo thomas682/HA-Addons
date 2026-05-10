@@ -3791,7 +3791,25 @@
       }catch(e){ _updateTopbarHeight(); }
     }
     try{ window.InfluxBroTopbarLayout = { update: _scheduleTopbarHeightUpdate }; }catch(e){}
-    try{ _scheduleTopbarHeightUpdate(); window.addEventListener('resize', _scheduleTopbarHeightUpdate); new MutationObserver(_scheduleTopbarHeightUpdate).observe(document.body, { childList: true, subtree: true }); }catch(e){}
+    try{
+      _scheduleTopbarHeightUpdate();
+      window.addEventListener('load', _scheduleTopbarHeightUpdate);
+      window.addEventListener('resize', _scheduleTopbarHeightUpdate);
+      window.addEventListener('orientationchange', _scheduleTopbarHeightUpdate);
+      if(window.visualViewport){
+        window.visualViewport.addEventListener('resize', _scheduleTopbarHeightUpdate);
+        window.visualViewport.addEventListener('scroll', _scheduleTopbarHeightUpdate);
+      }
+      const pc = document.getElementById('ib_pagecard');
+      if(pc && window.ResizeObserver){
+        new ResizeObserver(_scheduleTopbarHeightUpdate).observe(pc);
+      }
+      const tb = document.querySelector('.ib_topbar');
+      if(tb && window.ResizeObserver){
+        new ResizeObserver(_scheduleTopbarHeightUpdate).observe(tb);
+      }
+      new MutationObserver(_scheduleTopbarHeightUpdate).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'style', 'class'] });
+    }catch(e){}
   })();
   </script>
 </header>

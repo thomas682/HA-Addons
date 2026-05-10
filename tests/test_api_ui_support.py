@@ -514,6 +514,10 @@ def test_topbar_updates_pagecard_height_css_var():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert "const pc = document.getElementById('ib_pagecard');" in body
     assert "document.documentElement.style.setProperty('--ib-pagecard-live-h', String(Math.max(0, ph)) + 'px');" in body
+    assert "window.addEventListener('load', _scheduleTopbarHeightUpdate);" in body
+    assert "window.addEventListener('orientationchange', _scheduleTopbarHeightUpdate);" in body
+    assert "window.visualViewport.addEventListener('resize', _scheduleTopbarHeightUpdate);" in body
+    assert "new ResizeObserver(_scheduleTopbarHeightUpdate).observe(pc);" in body
 
 
 def test_page_search_highlight_is_global_and_configurable():

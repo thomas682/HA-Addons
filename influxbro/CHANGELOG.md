@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.586
+
+### Fix
+
+- Mobile Layout / iPhone: Die fixe Titelzeile/Pagecard synchronisiert ihre echte Hoehe jetzt auch nach `load`, Orientation-Changes, Visual-Viewport-Aenderungen, Bild-/Umbruch-Aenderungen und Mobile-Panel-Toggles. Dadurch beginnt `dashboard_page.main` stabil unterhalb der oberen Titelzeile und Text liegt nicht mehr dahinter. ([#554](https://github.com/thomas682/HA-Addons/issues/554))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.585
 
 ### Enhancement

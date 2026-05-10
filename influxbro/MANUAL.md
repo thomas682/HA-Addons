@@ -80,6 +80,7 @@ Neu: Top-Leiste (Profil + Zoom)
 
 - Ganz oben gibt es eine fixe Leiste (scrollt nicht mit), die immer sichtbar bleibt.
 - Auf sehr schmalen Breiten (z.B. iPhone) kannst du den rechten Block (Profil/Picker/Zoom/Suche/Buttons) ueber den Menu-Button ein- und ausklappen. Der Zustand wird im Browser gespeichert.
+- Auf iPhone wird die tatsaechliche Hoehe der Titelzeile laufend nachgemessen, damit der Dashboard-Inhalt immer unterhalb der fixierten Titelzeile beginnt und nicht dahinter liegt.
 - Auf iPhone wird `nav.donate` rechts neben dem Brand angezeigt (statt als eigene Zeile), damit die Titelzeile kompakter bleibt.
 - iOS Hinweis: Eingabefelder nutzen auf iPhone mindestens 16px Schriftgroesse, damit Safari beim Antippen nicht automatisch hineinzoomt.
 - Enthalten:
