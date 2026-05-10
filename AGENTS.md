@@ -235,7 +235,8 @@ Pflichtsequenz:
 5. Änderungen stagen
 6. Commit erstellen
 7. Nach `main` pushen
-8. Ergebnis klar im Chat melden
+8. Wenn eine Add-on-Version erhöht wurde: Home Assistant Live-Update gemäß Schritt D2 ausführen
+9. Ergebnis klar im Chat melden
 
 VERBOTEN:** Nach Codeänderungen oder nach QA stoppen, wenn diese Policy Version-Bump, Commit und Push fordert.
 
@@ -278,6 +279,34 @@ Jeder Commit enthält: kurze Zusammenfassung + wichtigste Änderungen.
 VERBOTEN:** Force Push.
 
 VERBOTEN:** Push wenn Syntaxprüfung fehlgeschlagen, erforderliche QA nicht ausgeführt oder blockierende Fehler vorhanden.
+
+#### Schritt D2 – Home Assistant Live-Update nach Push (PFLICHT BEI VERSION-BUMP)
+
+Wenn `influxbro/config.yaml` in diesem Auftrag eine neue Add-on-Version erhalten hat, MUSS nach erfolgreichem Push nach `main` Home Assistant angewiesen werden, das InfluxBro-Add-on auf diese Version zu aktualisieren.
+
+Pflichtsequenz:
+
+1. Erwartete Version aus `influxbro/config.yaml` bestimmen.
+2. Home Assistant Update-Flow mit bestehendem Playwright-Test ausführen:
+
+   ```bash
+   INFLUXBRO_EXPECT_VERSION=<version> HA_URL=http://192.168.2.200:8123 npx playwright test tests/e2e/ha-live-update-influxbro.spec.js
+   ```
+
+3. Live-Version über das Add-on verifizieren:
+
+   ```bash
+   curl -fsS http://192.168.2.200:8099/api/info | python3 -c "import json,sys; print(json.load(sys.stdin).get('version','unknown'))"
+   ```
+
+4. Die Live-Version MUSS exakt der erwarteten Version entsprechen.
+5. GitHub-Issue-Abschluss, Abschlusssignal und Versionsansage dürfen erst danach erfolgen.
+
+Fehlverhalten:
+
+- Schlägt der Home-Assistant-Update-Flow fehl, ist das ein Blocker.
+- Weicht die Live-Version von der erwarteten Version ab, ist das ein Blocker.
+- Bei Blocker: Issue NICHT schließen, keine Abschlussmeldung erzeugen, offenen Rest in ToDo-Liste und `./.opencode/plan_state.md` dokumentieren.
 
 #### Schritt E – GitHub-Issue abschließen
 
@@ -334,17 +363,18 @@ Ein aktives Issue darf erst dann als abgeschlossen behandelt oder gemeldet werde
 7. MANUAL aktualisiert, falls erforderlich
 8. Commit erstellt
 9. Nach `main` gepusht (Schritt D – Git-Flow (HA Main-First, PFLICHT))
-10. GitHub-Issue auf `status/done` gesetzt und geschlossen (Schritt E – GitHub-Issue abschließen)
-11. Abschlusssignal ausgeführt (Schritt F – Abschlusssignal (PFLICHT, IMMER AUSFÜHREN))
-12. Erst DANACH `./.opencode/plan_state.md` geprüft und Nutzer über verbleibende Restpunkte informiert
+10. Home Assistant Live-Update abgeschlossen, falls eine Add-on-Version erhöht wurde (Schritt D2)
+11. GitHub-Issue auf `status/done` gesetzt und geschlossen (Schritt E – GitHub-Issue abschließen)
+12. Abschlusssignal ausgeführt (Schritt F – Abschlusssignal (PFLICHT, IMMER AUSFÜHREN))
+13. Erst DANACH `./.opencode/plan_state.md` geprüft und Nutzer über verbleibende Restpunkte informiert
 
-##### Verbotene Umschaltung vor Punkt 11 und 12
+##### Verbotene Umschaltung vor Punkt 12 und 13
 
 Insbesondere ist VERBOTEN:
 
-- nach Punkt 10 (GitHub-Issue geschlossen) bereits auf andere offene Issues umzuschalten
-- vor Punkt 11 (Abschlusssignal) eine Abschlussmeldung zu erzeugen
-- vor Punkt 12 (Restprüfung) einen globalen Fertigzustand zu behaupten
+- nach Punkt 11 (GitHub-Issue geschlossen) bereits auf andere offene Issues umzuschalten
+- vor Punkt 12 (Abschlusssignal) eine Abschlussmeldung zu erzeugen
+- vor Punkt 13 (Restprüfung) einen globalen Fertigzustand zu behaupten
 - einen früheren Issue-Abschluss als Antwort auf ein später aktiv gewordenes Issue zu verwenden
 
 ##### Pflichtangabe in Status- und Abschlussmeldungen
@@ -353,7 +383,7 @@ Solange ein aktives Issue existiert, MUSS jede substanzielle Status- oder Abschl
 Vor jeder Abschlussmeldung MUSS der Agent intern prüfen:
 
 - Ist dies noch dasselbe aktive Issue?
-- Wurden Punkt 1 bis 12 für genau dieses Issue erfüllt?
+- Wurden Punkt 1 bis 13 für genau dieses Issue erfüllt?
 - Wird keine frühere Abschlussmeldung wiederverwendet?
 - Erfolgt die Restprüfung erst nach dem issue-lokalen Abschluss?
 
