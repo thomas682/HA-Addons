@@ -32,6 +32,21 @@ Jeder Dialog MUSS exakt diese Struktur haben:
 
 **Verbindliche HTML/CSS-Struktur** siehe `demo/dialog-mockup-themed.html` Sektionen `dialog-header`, `dialog-description`, `dialog-actionbar`, `dialog-toolbar`, `dialog-content`, `dialog-footer`.
 
+Auch ohne Zugriff auf die HTML-Referenz MUSS die Struktur eindeutig umsetzbar sein:
+
+| Bereich | Pflichtinhalt | Schutzregel |
+|---|---|---|
+| Kopfbereich | Links ein sichtbarer Fenstertitel, rechts Fenster-Aktionen in fester Reihenfolge | Fachliche Inhalte aus dem alten Dialogkopf duerfen nicht geloescht werden; sie werden nur dann verschoben, wenn sie eindeutig Titel oder Fensteraktion sind. |
+| Beschreibungs-Sektion | 1-4 kurze Zeilen direkt unter dem Kopfbereich | Bestehende fachliche Hilfetexte duerfen nicht ueberschrieben werden, wenn sie dialog-spezifisch sind. |
+| Aktionsleiste | Links Info und Handbuch, rechts optionale technische Hilfsaktionen | Keine fachlichen Primaeraktionen in die Aktionsleiste verschieben, wenn sie zum Arbeitsfluss gehoeren. |
+| Toolbar | Nur Filter, Suche, Sortierung, Ansicht oder andere funktionale Controls | Keine reinen Inhaltsbereiche als Toolbar markieren. |
+| Inhaltsbereich | Alle fachlichen Dialoginhalte, bei Ueberlauf scrollbar | Kinder nur kapseln, nicht inhaltlich veraendern; Event-Handler und stabile Attribute muessen erhalten bleiben. |
+| Footer | Links Meta-Indicator, rechts Arbeitsaktionen | Bestehende Speichern/Abbrechen/OK-Aktionen duerfen nur optisch eingeordnet, nicht ersetzt werden. |
+
+Standardisierungscode darf bestehende Kinder NICHT pauschal ausblenden, entfernen, umbenennen oder umsortieren. Er darf nur eindeutig standardbezogene Elemente normalisieren: Titel, Fenster-Aktionen, Beschreibung, Aktionsleiste, Toolbar, Content-Container, Footer und Meta-Indicator. Alle funktionsabhaengigen Kindinhalte bleiben erhalten.
+
+Picker-Sonderregel: Der Dialog, der nach einem erfolgreichen Pick angezeigt wird, folgt dem Minimalmodus in [`template-picker-rules.md`](./template-picker-rules.md). Diese Sonderregel gilt nur fuer den Pick-Ergebnisdialog, nicht fuer Picker/S-Picker selbst.
+
 ---
 
 ## 3. Globale Pflichtregeln
@@ -49,6 +64,9 @@ Jeder Dialog MUSS exakt diese Struktur haben:
 ### 3.2 Titelzeile
 
 - Aussagekräftig, knapp, ohne Punkt am Ende.
+- Wenn ein Dialog durch einen Button oder ein sichtbares UI-Element geoeffnet wird, MUSS der Fenstertitel bevorzugt aus dem lesbaren Text dieses Ausloesers gebildet werden.
+- Technische Werte wie `id`, `data-ui`, `data-ib-pickkey` oder `data-dialog-trigger` duerfen NICHT als sichtbarer Fenstertitel erscheinen, solange ein lesbarer Ausloesertext, ein `aria-label` oder ein nicht-technischer `title` verfuegbar ist.
+- Fallback-Reihenfolge: sichtbarer Ausloesertext → `aria-label` des Ausloesers → nicht-technischer `title` des Ausloesers → explizites `[data-dialog-title="1"]` → erste fachliche Ueberschrift → aus `data-dialog-name` abgeleiteter Fallback.
 - Bei Confirm-Dialogen MIT Severity-Indicator-Icon links (Info/Warnung/Gefahr).
 - Severity-Farben gemäß Token `--c-info`, `--c-warning`, `--c-danger`.
 
@@ -91,6 +109,14 @@ In der Aktionsleiste ganz links, in dieser Reihenfolge:
 3. **Schließen** (`✕`) — IMMER als letztes, IMMER als Icon-Button
 
 Ausnahme: `dialog_confirm_action` hat NUR den Schließen-Button. Minimieren und Maximieren sind dort verboten.
+
+Fenster-Aktionen MUESSEN dem Standardkopf entsprechen:
+
+- Rechts oben im Kopfbereich, nicht im Inhaltsbereich und nicht im Footer.
+- Reine Icon-Buttons mit `type="button"`, `aria-label`, `title`, sichtbarem Fokuszustand und stabilem `data-ui`/`data-ib-pickkey`, wenn sie im Markup erzeugt werden.
+- Reihenfolge darf nicht variieren: Minimieren/Restore, Maximieren/Restore, Schliessen.
+- Schliessen bleibt immer der rechte aeusserste Button.
+- Hover/Focus/Disabled-Zustaende muessen themetaugliche Tokens verwenden und duerfen keine hartcodierten Dialogfarben einfuehren.
 
 ### 3.6 Footer-Aktionen
 
@@ -198,9 +224,11 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 **Verwendung:** Logs, Wizards, Such-/Filterdialoge, Arbeitsdialoge mit mehreren Controls.
 
 **Pflicht:**
+
 - Kopf · Titelzeile · Beschreibung · Info + Handbuch · Close · Meta-Footer · Scroll · Resize · Theme-Support · Tastatur-Bindings · alle 4 Zustände · Footer-Aktionen rechts unten
 
 **Optional:**
+
 - Toolbar mit Filtern (Pflicht bei Such-/Filterdialogen)
 - Copy · Inline-Details · Split-/Mehrbereichslayout · Tabs · Stepper für Wizards
 
@@ -215,9 +243,11 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 **Verwendung:** Bestätigungsdialoge, Warnungen, sichere Freigaben.
 
 **Pflicht:**
+
 - Kopf · Titelzeile MIT Severity-Icon · Beschreibung · Info + Handbuch · Close · Meta-Footer · OK + Abbrechen · Theme-Support · Tastatur-Bindings · Severity-Indicator (Border-Akzent links)
 
 **Optional:**
+
 - Kompaktes Resize (NUR bei fachlichem Bedarf)
 - Bestätigungs-Phrase bei destruktiven Aktionen (z. B. `LÖSCHEN` eingeben)
 - Detail-Liste der Auswirkungen (Impact-List)
@@ -225,11 +255,13 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 **Standardgröße:** inhaltsbasiert (`fit-content`) mit Viewport-Maximum; Confirm-Dialoge bleiben kompakt und ohne frei resizebare Arbeitsfläche.
 
 **Severity-Klassen:**
+
 - `is-info` — Border-Akzent in `--c-info`
 - `is-warning` — Border-Akzent in `--c-warning`
 - `is-danger` — Border-Akzent in `--c-danger`
 
 **Pflicht bei destruktiven Aktionen:**
+
 - `is-danger` Severity-Klasse
 - Impact-Liste mit konkreten Zahlen (Datenpunkte, Zeitraum, abhängige Profile)
 - Bestätigungs-Phrase als Schutz vor versehentlicher Auslösung
@@ -244,9 +276,11 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 **Verwendung:** Kleine bewegliche Arbeitsdialoge / Floating Panels (z. B. Multi-Picker / Multi-Selection Bar).
 
 **Pflicht:**
+
 - Kopf bzw. Griffbereich · Schließen/Abbruch · beweglich/verschiebbar · visuell nahe an `dialog_panel_workbench` · Theme-Support
 
 **Optional:**
+
 - Picker · Meta-Footer (wenn inhaltlich sinnvoll)
 
 **Aktueller Einsatz:** `picker_multi.panel_bar` als beweglicher Multi-Picker-Dialog.
@@ -256,6 +290,7 @@ Alle Dialoge MÜSSEN folgende Farbschemata ohne Anpassung unterstützen:
 ## 5. Dialog-Inventar
 
 | Bezeichner | Trigger | Template | Besonderheiten |
+
 |---|---|---|---|
 | `dialog.measurement_profile_runtime` | `dashboard_selection.btn_measurement_profile_runtime_info` | `dialog_info_popup` | Schrittliste, Inline-Details pro Schritt |
 | `dialog.analysis_log` | Dashboard Analyse/Cache Logs | `dialog_panel_workbench` | Logfilter, Markieren, Wrap, Copy |
@@ -312,6 +347,7 @@ Diese Datei ist die **autoritative visuelle und strukturelle Referenz** für all
 - Token-Namen wie `--c-bg`, `--c-text`, `--c-accent`, `--c-danger`, `--c-shadow-md` etc.
 
 **Pflicht für OpenCode und alle Entwickler:**
+
 - Vor Implementierung eines neuen Dialogs MUSS die Referenz-Datei geöffnet und visuell abgeglichen werden.
 - Bei Widerspruch zwischen Regeltext und Referenz-Implementierung gilt die Referenz-Implementierung.
 - Änderungen an der Referenz-Datei erfordern eine entsprechende Anpassung dieser Regeln und werden im Versionskopf vermerkt.

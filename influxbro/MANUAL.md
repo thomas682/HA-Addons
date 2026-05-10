@@ -90,6 +90,7 @@ Neu: Top-Leiste (Profil + Zoom)
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
     - Direkte Pick-Eingabe: Wenn du einen String wie `<PICK:...|...>` eingibst und Enter drueckst, wird exakt dieses Element gesucht (Page-Mismatch / Nichttreffer wird klar gemeldet).
   - Picker / S-Picker: kopiert eine kanonische Elementkennung in die Zwischenablage. Neu: Vollformat mit stabiler Produktkennung + exakter Instanzkennung: `<PICK:<Page>|v=1;pk=<product_key>;ik=<instance_key>>`. Legacy-Referenzen ohne `v=1` bleiben lesbar.
+    - Nach einem Pick erscheint ein reduzierter Ergebnisdialog mit dem gepickten Text sowie Minimieren, Maximieren und Schliessen. Der Text wird beim Oeffnen automatisch in die Zwischenablage kopiert; falls das Kopieren im Browser blockiert wird, zeigt der Dialog einen kurzen Fehlerhinweis.
     - `oltype` wird nur angehaengt, wenn das Element ein `data-cache-oltype` Attribut besitzt (es wird nur der Wert kopiert, kein Key-Name).
   - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Das funktioniert wieder direkt waehrend des Pickens per gedrueckter `Shift`-Taste, auch wenn der Picker zuvor normal ohne Shift aktiviert wurde. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elemente als anklickbare Chips (Klick = Entfernen). `Ende` kopiert die Liste als mehrere `<PICK:...>` Eintraege.
   - Neu: Button `Verschieben` (Icon mit 2 Quadraten + Pfeil). Dieser oeffnet den Einstellungen-Organizer.
@@ -107,6 +108,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Logs-/Jobs-Dialoge wie `Aufzeichnung starten`, `Support-Bundle` und `Timer History` sind ebenfalls auf stabile Root-/Panel-Pickkeys und Template-v2-Bereiche fuer Toolbar, Inhalt und Footer umgestellt.
 - Config-/DQ-/Export-/Backup-Dialoge wie Verbindungstest-Erfolg, Icon-SVG-Editor, Datenqualitaets-Details, Export-Zielauswahl und Backup-Verifikation folgen ebenfalls dem Template-v2-Dialogstandard mit stabilen Pickkeys und Footer-/Toolbar-Bereichen.
 - Alle bekannten Dialoge zeigen oben im Dialog jetzt fachlich passende Beschreibungen zur konkreten Funktion. Der Meta-Hinweis im Footer besitzt einen dezenten Kopierbutton, der den vollstaendigen Meta-String (`pk`, Template und Dialogname) in die Zwischenablage kopiert.
+- Dialogtitel verwenden bevorzugt den lesbaren Text des Buttons oder UI-Elements, das den Dialog geoeffnet hat. Technische Kennungen wie `data-ui` oder `data-dialog-trigger` bleiben Debug-/Picker-Daten und werden nicht als sichtbarer Fenstertitel verwendet, solange ein lesbarer Ausloesertext verfuegbar ist.
 
 ## Handbuch und Dokumentationsspruenge
 

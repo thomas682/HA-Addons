@@ -2033,6 +2033,34 @@ def test_picker_suppresses_titles_and_handles_disabled_elements_via_mousedown():
     assert 'async function _copyCurrentTarget(target, ev)' in topbar
 
 
+def test_pick_result_dialog_is_minimal_and_copies_text():
+    root = Path(__file__).resolve().parents[1]
+    topbar = (root / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    picker_rules = (root / "influxbro" / "template-picker-rules.md").read_text()
+    assert "function _ensurePickResultDialog()" in topbar
+    assert "id = 'ib_pick_result_dialog'" in topbar
+    assert "picker_result.btn_minimize" in topbar
+    assert "picker_result.btn_maximize" in topbar
+    assert "picker_result.btn_close" in topbar
+    assert "await _showPickResultDialog(text);" in topbar
+    assert "out.textContent = value;" in topbar
+    assert "Kopieren in die Zwischenablage fehlgeschlagen." in topbar
+    assert "Pick-Ergebnisdialog Minimalmodus" in picker_rules
+    assert "Diese Regel gilt nur fuer den Dialog, der nach einem erfolgreichen Pick angezeigt wird" in picker_rules
+
+
+def test_dialog_titles_prefer_readable_trigger_text_and_rules_link_picker():
+    root = Path(__file__).resolve().parents[1]
+    topbar = (root / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    dialog_rules = (root / "influxbro" / "template-dialog-rules.md").read_text()
+    assert "function _dialogTriggerTitle(root)" in topbar
+    assert "const triggerTitle = _dialogTriggerTitle(root);" in topbar
+    assert "if(triggerTitle) return triggerTitle;" in topbar
+    assert "Standardisierungscode darf bestehende Kinder NICHT pauschal ausblenden" in dialog_rules
+    assert "template-picker-rules.md" in dialog_rules
+    assert "data-ui`, `data-ib-pickkey` oder `data-dialog-trigger` duerfen NICHT als sichtbarer Fenstertitel erscheinen" in dialog_rules
+
+
 def test_table_helpers_strip_ingress_token_from_storage_keys():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
     assert "replace(/\\/api\\/hassio_ingress\\/[0-9a-fA-F]+/g, '')" in body

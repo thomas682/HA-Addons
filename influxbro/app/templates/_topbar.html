@@ -1969,6 +1969,151 @@
       }catch(e){ return false; }
     }
 
+    function _stylePickResultButton(btn){
+      try{
+        btn.type = 'button';
+        btn.style.width = '28px';
+        btn.style.height = '28px';
+        btn.style.display = 'grid';
+        btn.style.placeItems = 'center';
+        btn.style.border = '1px solid #2a3345';
+        btn.style.borderRadius = '6px';
+        btn.style.background = 'transparent';
+        btn.style.color = '#e5e7eb';
+        btn.style.cursor = 'pointer';
+        btn.style.padding = '0';
+      }catch(e){}
+    }
+
+    function _ensurePickResultDialog(){
+      let root = document.getElementById('ib_pick_result_dialog');
+      if(root) return root;
+      root = document.createElement('div');
+      root.id = 'ib_pick_result_dialog';
+      root.setAttribute('role', 'dialog');
+      root.setAttribute('aria-modal', 'true');
+      root.setAttribute('data-ui', 'picker_result.dialog');
+      root.setAttribute('data-ib-pickkey', 'picker_result.dialog');
+      root.style.display = 'none';
+      root.style.position = 'fixed';
+      root.style.inset = '0';
+      root.style.zIndex = '2147483646';
+      root.style.background = 'rgba(0,0,0,0.45)';
+      root.style.alignItems = 'center';
+      root.style.justifyContent = 'center';
+      root.style.padding = '20px';
+      root.style.boxSizing = 'border-box';
+
+      const panel = document.createElement('div');
+      panel.setAttribute('data-ui', 'picker_result.panel');
+      panel.setAttribute('data-ib-pickkey', 'picker_result.panel');
+      panel.style.background = '#161a22';
+      panel.style.color = '#e5e7eb';
+      panel.style.border = '1px solid #2a3345';
+      panel.style.borderRadius = '12px';
+      panel.style.boxShadow = '0 24px 48px -12px rgba(0,0,0,.55)';
+      panel.style.width = 'min(720px, calc(100vw - 48px))';
+      panel.style.maxHeight = 'calc(100vh - 48px)';
+      panel.style.overflow = 'hidden';
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
+
+      const header = document.createElement('div');
+      header.style.display = 'flex';
+      header.style.justifyContent = 'flex-end';
+      header.style.gap = '6px';
+      header.style.padding = '10px 12px';
+      header.style.borderBottom = '1px solid #2a3345';
+
+      const body = document.createElement('pre');
+      body.id = 'ib_pick_result_text';
+      body.setAttribute('data-ui', 'picker_result.text');
+      body.setAttribute('data-ib-pickkey', 'picker_result.text');
+      body.style.margin = '0';
+      body.style.padding = '16px 18px';
+      body.style.whiteSpace = 'pre-wrap';
+      body.style.overflow = 'auto';
+      body.style.font = '12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+
+      const status = document.createElement('div');
+      status.id = 'ib_pick_result_status';
+      status.setAttribute('data-ui', 'picker_result.status');
+      status.setAttribute('data-ib-pickkey', 'picker_result.status');
+      status.style.display = 'none';
+      status.style.padding = '0 18px 14px 18px';
+      status.style.color = '#fca5a5';
+      status.style.fontSize = '12px';
+
+      const minBtn = document.createElement('button');
+      minBtn.id = 'ib_pick_result_minimize';
+      minBtn.setAttribute('data-ui', 'picker_result.btn_minimize');
+      minBtn.setAttribute('data-ib-pickkey', 'picker_result.btn_minimize');
+      minBtn.setAttribute('aria-label', 'Dialog minimieren');
+      minBtn.setAttribute('title', 'Dialog minimieren');
+      minBtn.textContent = '—';
+      _stylePickResultButton(minBtn);
+
+      const maxBtn = document.createElement('button');
+      maxBtn.id = 'ib_pick_result_maximize';
+      maxBtn.setAttribute('data-ui', 'picker_result.btn_maximize');
+      maxBtn.setAttribute('data-ib-pickkey', 'picker_result.btn_maximize');
+      maxBtn.setAttribute('aria-label', 'Dialog maximieren');
+      maxBtn.setAttribute('title', 'Dialog maximieren');
+      maxBtn.textContent = '□';
+      _stylePickResultButton(maxBtn);
+
+      const closeBtn = document.createElement('button');
+      closeBtn.id = 'ib_pick_result_close';
+      closeBtn.setAttribute('data-ui', 'picker_result.btn_close');
+      closeBtn.setAttribute('data-ib-pickkey', 'picker_result.btn_close');
+      closeBtn.setAttribute('aria-label', 'Dialog schliessen');
+      closeBtn.setAttribute('title', 'Dialog schliessen');
+      closeBtn.textContent = '×';
+      _stylePickResultButton(closeBtn);
+
+      minBtn.addEventListener('click', ()=>{
+        const minimized = body.style.display !== 'none';
+        body.style.display = minimized ? 'none' : 'block';
+        status.style.display = minimized ? 'none' : (status.textContent ? 'block' : 'none');
+        minBtn.textContent = minimized ? '▢' : '—';
+      });
+      maxBtn.addEventListener('click', ()=>{
+        const maxed = root.getAttribute('data-maximized') === '1';
+        root.setAttribute('data-maximized', maxed ? '0' : '1');
+        panel.style.width = maxed ? 'min(720px, calc(100vw - 48px))' : 'calc(100vw - 32px)';
+        panel.style.height = maxed ? '' : 'calc(100vh - 32px)';
+        maxBtn.textContent = maxed ? '□' : '▢';
+      });
+      closeBtn.addEventListener('click', ()=>{ root.style.display = 'none'; });
+
+      header.appendChild(minBtn);
+      header.appendChild(maxBtn);
+      header.appendChild(closeBtn);
+      panel.appendChild(header);
+      panel.appendChild(body);
+      panel.appendChild(status);
+      root.appendChild(panel);
+      document.body.appendChild(root);
+      return root;
+    }
+
+    async function _showPickResultDialog(text){
+      const root = _ensurePickResultDialog();
+      const out = root.querySelector('#ib_pick_result_text');
+      const status = root.querySelector('#ib_pick_result_status');
+      const value = String(text || '').trim();
+      if(out) out.textContent = value;
+      if(status){ status.textContent = ''; status.style.display = 'none'; }
+      root.style.display = 'flex';
+      const ok = await copyText(value);
+      if(!ok && status){
+        status.textContent = 'Kopieren in die Zwischenablage fehlgeschlagen.';
+        status.style.display = 'block';
+      }
+      try{ const close = root.querySelector('#ib_pick_result_close'); if(close) close.focus(); }catch(e){}
+      return ok;
+    }
+
     function _fallbackNameFor(el){
       try{
         if(!el || !el.tagName) return 'element';
@@ -2599,12 +2744,7 @@
        }
       const extraInfo = _bestLongInfo(el);
       if(extraInfo) text = text + '\n\n' + extraInfo;
-      const ok = await copyText(text);
-      try{
-        if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-          window.InfluxBroPopup.show('UI Picker', ok ? ('Kopiert: ' + text) : ('Kopieren fehlgeschlagen: ' + text));
-        }
-      }catch(e){}
+      await _showPickResultDialog(text);
       stop();
     }
 
@@ -3002,6 +3142,42 @@
       try{ return String(value || 'dialog_unknown').trim().replace(/[^a-zA-Z0-9_.-]+/g, '_') || 'dialog_unknown'; }
       catch(e){ return 'dialog_unknown'; }
     }
+    function _dialogCssEsc(value){
+      try{ return (window.CSS && CSS.escape) ? CSS.escape(String(value || '')) : String(value || '').replace(/"/g, '\\"'); }
+      catch(e){ return String(value || '').replace(/"/g, '\\"'); }
+    }
+    function _dialogReadableText(value){
+      return String(value || '').replace(/\s+/g, ' ').trim();
+    }
+    function _dialogLooksTechnical(value){
+      const s = _dialogReadableText(value);
+      if(!s) return true;
+      if(/^dialog[._-]/i.test(s)) return true;
+      if(/^[a-z0-9_.-]+\.[a-z0-9_.-]+$/i.test(s) && !/\s/.test(s)) return true;
+      if(/^#?[a-z0-9_-]+$/i.test(s) && /[_-]/.test(s)) return true;
+      return false;
+    }
+    function _dialogTriggerElement(root){
+      try{
+        const trigger = _dialogReadableText(root && root.getAttribute ? (root.getAttribute('data-dialog-trigger') || '') : '');
+        if(!trigger) return null;
+        const esc = _dialogCssEsc(trigger);
+        return document.querySelector('[data-ui="' + esc + '"],[data-ib-pickkey="' + esc + '"],#' + esc);
+      }catch(e){ return null; }
+    }
+    function _dialogTriggerTitle(root){
+      try{
+        const el = _dialogTriggerElement(root);
+        if(!el) return '';
+        const visible = _dialogReadableText(el.textContent || '');
+        if(visible && !_dialogLooksTechnical(visible)) return visible;
+        const aria = _dialogReadableText(el.getAttribute ? (el.getAttribute('aria-label') || '') : '');
+        if(aria && !_dialogLooksTechnical(aria)) return aria;
+        const title = _dialogReadableText(el.getAttribute ? (el.getAttribute('title') || '') : '');
+        if(title && !_dialogLooksTechnical(title)) return title;
+      }catch(e){}
+      return '';
+    }
     function _manualDocTarget(key){
       const raw = String(key || '').trim();
       const known = MANUAL_DOC_TARGETS[raw];
@@ -3157,6 +3333,8 @@
     }
     function _dialogTitleText(root, panel){
       try{
+        const triggerTitle = _dialogTriggerTitle(root);
+        if(triggerTitle) return triggerTitle;
         const explicit = panel.querySelector('[data-dialog-title="1"]');
         if(explicit && String(explicit.textContent || '').trim()) return String(explicit.textContent || '').trim();
         const heading = panel.querySelector('h1, h2, h3, h4');
@@ -3310,10 +3488,6 @@
       try{
         let header = panel.querySelector('[data-dialog-header="1"]');
         if(!header){
-          header = panel.firstElementChild;
-          if(header) header.setAttribute('data-dialog-header', '1');
-        }
-        if(!header){
           header = document.createElement('div');
           header.setAttribute('data-dialog-header', '1');
           panel.insertBefore(header, panel.firstChild || null);
@@ -3332,13 +3506,6 @@
           textWrap.appendChild(titleEl);
         }
         titleEl.textContent = _dialogTitleText(root, panel);
-        Array.from(header.children || []).forEach((child)=>{
-          try{
-            if(!child || child === textWrap) return;
-            if(child.getAttribute && child.getAttribute('data-dialog-header-actions') === '1') return;
-            child.style.display = 'none';
-          }catch(e){}
-        });
         let headerActions = header.querySelector('[data-dialog-header-actions="1"]');
         if(!headerActions){
           headerActions = document.createElement('div');

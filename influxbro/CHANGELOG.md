@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.587
+
+### Enhancement
+
+- Dialoge / Picker: Die Dialogregeln beschreiben den Standard jetzt auch ohne HTML-Referenz vollstaendiger und schuetzen fachliche Kindinhalte vor pauschalem Ueberschreiben. Dialogtitel bevorzugen den lesbaren Text des ausloesenden Buttons; der Pick-Ergebnisdialog nach einem Pick ist minimal und kopiert den Picktext beim Oeffnen in die Zwischenablage. ([#557](https://github.com/thomas682/HA-Addons/issues/557))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.586
 
 ### Fix
