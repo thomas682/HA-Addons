@@ -2062,6 +2062,18 @@ def test_pick_result_dialog_is_minimal_and_copies_text():
     assert "Diese Regel gilt nur fuer den Dialog, der nach einem erfolgreichen Pick angezeigt wird" in picker_rules
 
 
+def test_multi_pick_result_uses_card_dialog():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert "async function _showPickMultiResultDialog(items)" in topbar
+    assert "Picker Multi Modus" in topbar
+    assert "ib_pick_result_cards" in topbar
+    assert "picker_result.card_item" in topbar
+    assert "picker_result.card_btn_close" in topbar
+    assert "data.splice(idx, 1);" in topbar
+    assert "await _showPickMultiResultDialog(multiItems.slice());" in topbar
+    assert "InfluxBroPopup.show('UI Picker (Multi)'" not in topbar
+
+
 def test_dialog_titles_prefer_readable_trigger_text_and_rules_link_picker():
     root = Path(__file__).resolve().parents[1]
     topbar = (root / "influxbro" / "app" / "templates" / "_topbar.html").read_text()

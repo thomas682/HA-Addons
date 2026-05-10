@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.590
+
+### Enhancement
+
+- Picker / Multi-Pick: Der Multi-Pick-Abschluss nutzt jetzt den Picker-Ergebnisdialog mit Titel `Picker Multi Modus`. Erfasste Elemente erscheinen als kompakte Karten mit Close-Symbol rechts; entfernte Karten aktualisieren die kopierte Ergebnisliste. ([#561](https://github.com/thomas682/HA-Addons/issues/561))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.589
 
 ### Fix

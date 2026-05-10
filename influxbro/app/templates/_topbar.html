@@ -2021,10 +2021,21 @@
 
       const header = document.createElement('div');
       header.style.display = 'flex';
+      header.style.alignItems = 'center';
       header.style.justifyContent = 'flex-end';
       header.style.gap = '6px';
       header.style.padding = '10px 12px';
       header.style.borderBottom = '1px solid #2a3345';
+
+      const title = document.createElement('div');
+      title.id = 'ib_pick_result_title';
+      title.setAttribute('data-ui', 'picker_result.title');
+      title.setAttribute('data-ib-pickkey', 'picker_result.title');
+      title.textContent = 'Picker Multi Modus';
+      title.style.display = 'none';
+      title.style.marginRight = 'auto';
+      title.style.fontWeight = '800';
+      title.style.fontSize = '14px';
 
       const body = document.createElement('pre');
       body.id = 'ib_pick_result_text';
@@ -2035,6 +2046,16 @@
       body.style.whiteSpace = 'pre-wrap';
       body.style.overflow = 'auto';
       body.style.font = '12px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+
+      const cards = document.createElement('div');
+      cards.id = 'ib_pick_result_cards';
+      cards.setAttribute('data-ui', 'picker_result.panel_cards');
+      cards.setAttribute('data-ib-pickkey', 'picker_result.panel_cards');
+      cards.style.display = 'none';
+      cards.style.padding = '12px 14px';
+      cards.style.overflow = 'auto';
+      cards.style.gap = '8px';
+      cards.style.flexDirection = 'column';
 
       const status = document.createElement('div');
       status.id = 'ib_pick_result_status';
@@ -2073,8 +2094,10 @@
       _stylePickResultButton(closeBtn);
 
       minBtn.addEventListener('click', ()=>{
-        const minimized = body.style.display !== 'none';
-        body.style.display = minimized ? 'none' : 'block';
+        const isMulti = title.style.display !== 'none';
+        const minimized = isMulti ? cards.style.display !== 'none' : body.style.display !== 'none';
+        body.style.display = minimized ? 'none' : (isMulti ? 'none' : 'block');
+        cards.style.display = minimized ? 'none' : (isMulti ? 'flex' : 'none');
         status.style.display = minimized ? 'none' : (status.textContent ? 'block' : 'none');
         minBtn.textContent = minimized ? '▢' : '—';
       });
@@ -2087,11 +2110,13 @@
       });
       closeBtn.addEventListener('click', ()=>{ root.style.display = 'none'; });
 
+      header.appendChild(title);
       header.appendChild(minBtn);
       header.appendChild(maxBtn);
       header.appendChild(closeBtn);
       panel.appendChild(header);
       panel.appendChild(body);
+      panel.appendChild(cards);
       panel.appendChild(status);
       root.appendChild(panel);
       document.body.appendChild(root);
@@ -2100,10 +2125,15 @@
 
     async function _showPickResultDialog(text){
       const root = _ensurePickResultDialog();
+      const title = root.querySelector('#ib_pick_result_title');
       const out = root.querySelector('#ib_pick_result_text');
+      const cards = root.querySelector('#ib_pick_result_cards');
       const status = root.querySelector('#ib_pick_result_status');
       const value = String(text || '').trim();
+      if(title) title.style.display = 'none';
       if(out) out.textContent = value;
+      if(out) out.style.display = 'block';
+      if(cards){ cards.style.display = 'none'; cards.textContent = ''; }
       if(status){ status.textContent = ''; status.style.display = 'none'; }
       root.style.display = 'flex';
       const ok = await copyText(value);
@@ -2111,6 +2141,78 @@
         status.textContent = 'Kopieren in die Zwischenablage fehlgeschlagen.';
         status.style.display = 'block';
       }
+      try{ const close = root.querySelector('#ib_pick_result_close'); if(close) close.focus(); }catch(e){}
+      return ok;
+    }
+
+    async function _showPickMultiResultDialog(items){
+      const root = _ensurePickResultDialog();
+      const title = root.querySelector('#ib_pick_result_title');
+      const out = root.querySelector('#ib_pick_result_text');
+      const cards = root.querySelector('#ib_pick_result_cards');
+      const status = root.querySelector('#ib_pick_result_status');
+      let data = Array.isArray(items) ? items.map((it)=>({ display: String((it && it.display) || '').trim() })).filter((it)=>it.display) : [];
+      function textValue(){ return data.map((it)=>String(it.display || '')).filter(Boolean).join('\n'); }
+      async function syncCopy(){
+        const value = textValue();
+        if(out) out.textContent = value;
+        const ok = value ? await copyText(value) : false;
+        if(status){
+          if(!value){ status.textContent = 'Kein Element ausgewaehlt.'; status.style.display = 'block'; }
+          else if(!ok){ status.textContent = 'Kopieren in die Zwischenablage fehlgeschlagen.'; status.style.display = 'block'; }
+          else { status.textContent = ''; status.style.display = 'none'; }
+        }
+        return ok;
+      }
+      function renderCards(){
+        if(!cards) return;
+        cards.textContent = '';
+        data.forEach((it, idx)=>{
+          const card = document.createElement('div');
+          card.setAttribute('data-ui', 'picker_result.card_item');
+          card.setAttribute('data-ib-pickkey', 'picker_result.card_item.' + String(idx + 1));
+          card.style.display = 'flex';
+          card.style.alignItems = 'center';
+          card.style.gap = '8px';
+          card.style.padding = '8px 10px';
+          card.style.border = '1px solid #2a3345';
+          card.style.borderRadius = '10px';
+          card.style.background = '#1d2330';
+          const text = document.createElement('code');
+          text.setAttribute('data-ui', 'picker_result.card_text');
+          text.setAttribute('data-ib-pickkey', 'picker_result.card_text.' + String(idx + 1));
+          text.textContent = String(it.display || '');
+          text.style.flex = '1 1 auto';
+          text.style.minWidth = '0';
+          text.style.overflow = 'hidden';
+          text.style.textOverflow = 'ellipsis';
+          text.style.whiteSpace = 'nowrap';
+          const close = document.createElement('button');
+          close.type = 'button';
+          close.setAttribute('data-ui', 'picker_result.card_btn_close');
+          close.setAttribute('data-ib-pickkey', 'picker_result.card_btn_close.' + String(idx + 1));
+          close.setAttribute('aria-label', 'Picker-Element entfernen');
+          close.setAttribute('title', 'Entfernen');
+          close.textContent = '×';
+          _stylePickResultButton(close);
+          close.addEventListener('click', (ev)=>{
+            try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+            data.splice(idx, 1);
+            renderCards();
+            syncCopy().catch(()=>{});
+          });
+          card.appendChild(text);
+          card.appendChild(close);
+          cards.appendChild(card);
+        });
+      }
+      if(title) title.style.display = 'block';
+      if(out) out.style.display = 'none';
+      if(cards) cards.style.display = 'flex';
+      if(status){ status.textContent = ''; status.style.display = 'none'; }
+      renderCards();
+      root.style.display = 'flex';
+      const ok = await syncCopy();
       try{ const close = root.querySelector('#ib_pick_result_close'); if(close) close.focus(); }catch(e){}
       return ok;
     }
@@ -2525,17 +2627,7 @@
 
     async function _multiFinish(){
       try{
-        const text = multiItems.map(it => String(it.display || '')).filter(Boolean).join(';');
-        if(!text){
-          try{ if(window.InfluxBroPopup && window.InfluxBroPopup.show) window.InfluxBroPopup.show('UI Picker (Multi)', 'Kein Element ausgewaehlt.'); }catch(e){}
-        }else{
-          const ok = await copyText(text);
-          try{
-            if(window.InfluxBroPopup && window.InfluxBroPopup.show){
-              window.InfluxBroPopup.show('UI Picker (Multi)', ok ? ('Kopiert (' + multiItems.length + ' Elemente): ' + text) : ('Kopieren fehlgeschlagen: ' + text));
-            }
-          }catch(e){}
-        }
+        await _showPickMultiResultDialog(multiItems.slice());
       }catch(e){}
       _multiCleanupAndStop();
     }
