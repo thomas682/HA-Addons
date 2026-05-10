@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.589
+
+### Fix
+
+- Mobile Layout / iPhone: Die Topbar/Pagecard bleibt weiterhin opak und am oberen Rand verankert, nutzt die iOS-Safe-Area aber nicht mehr als leeren Innenabstand vor dem `InfluxBro`-Titel. Dadurch ist die Titelzeile kompakter, ohne dass beim Scrollen Inhalt durchscheint. ([#560](https://github.com/thomas682/HA-Addons/issues/560))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.588
 
 ### Fix
