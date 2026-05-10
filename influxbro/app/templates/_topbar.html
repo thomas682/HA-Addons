@@ -3692,6 +3692,12 @@
           header.appendChild(headerActions);
         }
         headerActions.classList.add('window-actions');
+        panel.querySelectorAll('[data-dialog-header-actions="1"]').forEach((el)=>{
+          try{ if(el !== headerActions && !header.contains(el)) el.remove(); }catch(e){}
+        });
+        panel.querySelectorAll('#influxbro_popup_title').forEach((el)=>{
+          try{ if(!header.contains(el)){ const legacy = el.parentElement; if(legacy) legacy.style.display = 'none'; } }catch(e){}
+        });
         Array.from(headerActions.children || []).forEach((el)=>{
           try{
             if(el.matches && el.matches('[data-dialog-info-btn="1"],[data-dialog-doc-btn="1"],[data-dialog-window]')) return;

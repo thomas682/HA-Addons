@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.595
+
+### Fix
+
+- Dialoge: Legacy-Header-Aktionscontainer ausserhalb des Standard-Headers werden nun beim Oeffnen entfernt, damit alte Popup-Strukturen keine zusaetzlichen unklassifizierten Kopfbuttons mehr anzeigen. ([#568](https://github.com/thomas682/HA-Addons/issues/568))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.594
 
 ### Fix
