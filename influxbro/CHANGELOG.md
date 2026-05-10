@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.585
+
+### Enhancement
+
+- Tooltips / Designreferenzen: Die Tooltip-Regeln wurden einmalig gegen `chip-tooltip-professional.html` und `chart-tooltip-professional.html` abgeglichen; die HTML-Designs sind nun die verbindliche Referenz. Analyse-Chips erhalten professionelle Info-Tooltips mit Meta-Zeilen, Doku-Footer und dediziertem Info-Ausloeser; Graph-Hover nutzt einen datenpunktzentrierten Chart-Tooltip mit Wert, Zeitstempel, Delta, Bereich und Sparkline-Kontext. ([#553](https://github.com/thomas682/HA-Addons/issues/553))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.584
 
 ### Enhancement

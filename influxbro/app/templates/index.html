@@ -2702,12 +2702,62 @@ function _graphCtxHoverText(point, aggName){
 function _graphTooltipShowFromPoint(pt, extra){
   try{
     if(!(window.InfluxBroUnifiedTooltip && window.InfluxBroUnifiedTooltip.show)) return;
+    const y = toFiniteNumber(pt && pt.y);
+    const idx = Number(pt && pt.pointIndex);
+    const ys = (pt && pt.data && Array.isArray(pt.data.y)) ? pt.data.y.map(v => toFiniteNumber(v)).filter(v => v !== null) : [];
+    const all = ys.length ? ys : (LAST_ROWS || []).map(r => toFiniteNumber(r && r.value)).filter(v => v !== null);
+    const minV = all.length ? Math.min(...all) : y;
+    const maxV = all.length ? Math.max(...all) : y;
+    const avgV = all.length ? (all.reduce((a,b)=>a+b,0) / all.length) : y;
+    let prev = null;
+    try{
+      if(isFinite(idx) && idx > 0 && pt && pt.data && Array.isArray(pt.data.y)) prev = toFiniteNumber(pt.data.y[idx - 1]);
+    }catch(e){ prev = null; }
+    const delta = (y !== null && prev !== null) ? (y - prev) : 0;
+    const deltaAbs = Math.abs(delta);
+    const deltaClass = deltaAbs < 0.0000001 ? 'flat' : (delta > 0 ? 'up' : 'down');
+    const valueRange = (y !== null && minV !== null && maxV !== null && maxV !== minV) ? ((y - minV) / (maxV - minV) * 100) : 50;
+    const base = (typeof currentFilters === 'function') ? currentFilters() : {};
+    const sourceName = base && (base.friendly_name || base.entity_id || base.measurement || (pt && pt.data && pt.data.name)) ? (base.friendly_name || base.entity_id || base.measurement || pt.data.name) : 'Graphwert';
+    const bucket = [base && base.measurement, base && base.field].filter(Boolean).join(' · ') || 'InfluxDB · field';
+    let sparkPath = '';
+    try{
+      if(isFinite(idx) && pt && pt.data && Array.isArray(pt.data.y)){
+        const src = pt.data.y.map(v => toFiniteNumber(v));
+        const lo = Math.max(0, idx - 4);
+        const hi = Math.min(src.length - 1, idx + 4);
+        const vals = src.slice(lo, hi + 1).filter(v => v !== null);
+        if(vals.length >= 2){
+          const sMin = Math.min(...vals);
+          const sMax = Math.max(...vals);
+          const sRange = (sMax - sMin) || 1;
+          sparkPath = vals.map((v, i)=>{
+            const x = (i / Math.max(1, vals.length - 1)) * 252;
+            const yy = 32 - ((v - sMin) / sRange) * 30 - 1;
+            return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + yy.toFixed(1);
+          }).join(' ');
+        }
+      }
+    }catch(e){ sparkPath = ''; }
     const meta = {
+      kind: 'chart',
       title: (extra && extra.title) || String(pt && pt.data && pt.data.name ? pt.data.name : 'Graphwert'),
       desc: (extra && extra.desc) || 'Werte an der aktuellen Graphposition.',
       severity: 'low',
-      source: 'Graph',
+      source: bucket,
+      sourceName: sourceName,
+      bucket: bucket,
       active: 'Hover',
+      value: y !== null ? fmtNum(y) : String(pt && pt.y || ''),
+      unit: '',
+      timestamp: fmtTs(String(pt && pt.x || '')),
+      delta: (deltaClass === 'flat' ? '±0' : (delta > 0 ? '+' : '') + fmtNum(delta)),
+      deltaClass: deltaClass,
+      min: minV !== null ? fmtNum(minV) : '',
+      max: maxV !== null ? fmtNum(maxV) : '',
+      avg: avgV !== null ? ('⌀ ' + fmtNum(avgV)) : '',
+      rangePct: valueRange,
+      sparkPath: sparkPath,
       example: (extra && extra.example) || (`Zeit: ${String(pt && pt.x || '')}\nWert: ${String(pt && pt.y || '')}`),
       doc: (extra && extra.doc) || 'graph-values'
     };
@@ -2852,6 +2902,7 @@ async function refreshGraphContext(opts){
           line: { color: (fn === 'min') ? '#2c7fb8' : '#c62828', width: 1.4, simplify: false, shape: 'linear' },
           marker: { size: 5, symbol: 'circle', color: (fn === 'min') ? '#2c7fb8' : '#c62828' },
           hovertemplate: '%{text}<extra></extra>',
+          hoverinfo: 'none',
           showlegend: true,
         });
       }
@@ -2885,7 +2936,8 @@ async function refreshGraphContext(opts){
          margin: { l: 52, r: 10, t: 10, b: 42 },
          height: Math.round(baseH * sc),
          autosize: true,
-         xaxis: { type: 'date', fixedrange: true },
+          hovermode: 'closest',
+          xaxis: { type: 'date', fixedrange: true, showspikes: true, spikemode: 'across', spikesnap: 'cursor', spikecolor: 'rgba(0, 196, 255, 0.4)', spikedash: 'dot', spikethickness: 1 },
          yaxis: { automargin: true, fixedrange: true },
          shapes,
          showlegend: true,
@@ -4590,6 +4642,7 @@ function drawPlotly(rows){
         name: 'Min',
         line: { color: '#2c7fb8', width: 1.2, simplify: false, shape: 'linear' },
         hovertemplate: "%{x|%d.%m.%y %H:%M:%S.%L}<br>Min=%{y}<extra></extra>",
+        hoverinfo: 'none',
         showlegend: true,
       });
     }
@@ -4602,6 +4655,7 @@ function drawPlotly(rows){
         name: 'Max',
         line: { color: '#c62828', width: 1.2, simplify: false, shape: 'linear' },
         hovertemplate: "%{x|%d.%m.%y %H:%M:%S.%L}<br>Max=%{y}<extra></extra>",
+        hoverinfo: 'none',
         showlegend: true,
       });
     }
@@ -4616,6 +4670,7 @@ function drawPlotly(rows){
     // Disable Plotly line simplification (keeps sharp spikes / outliers visible).
     line: { color: "#1f77b4", width: 1.5, simplify: false, shape: "linear" },
     hovertemplate: "%{x|%d.%m.%y %H:%M:%S.%L}<br>%{y}<extra></extra>",
+    hoverinfo: 'none',
     customdata,
     name: "Wert",
   });
@@ -4642,6 +4697,12 @@ function drawPlotly(rows){
     xaxis: {
       type: "date",
       rangeslider: { visible: true, thickness: 0.12 },
+      showspikes: true,
+      spikemode: 'across',
+      spikesnap: 'cursor',
+      spikecolor: 'rgba(0, 196, 255, 0.4)',
+      spikedash: 'dot',
+      spikethickness: 1,
     },
     yaxis: { automargin: true },
     showlegend: true,
@@ -9297,9 +9358,12 @@ function renderAnalysisTypeLists(){
         const desc = String(meta.description || ('Erklaert den Analyse-Typ ' + label + '.'));
         const example = String(meta.example || '');
         const count = Number((ANALYSIS_STATE && ANALYSIS_STATE.foundByType && ANALYSIS_STATE.foundByType[t]) || 0) || 0;
-        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-ui="dashboard_analysis.chip_type.' + t + '" data-ib-pickkey="dashboard_analysis.chip_type.' + t + '" data-type="' + t + '" data-active="' + (active ? '1' : '0') + '" data-doc="' + _escAttr(String(meta.doc || t)) + '" data-tooltip-title="' + _escAttr(String(label || t)) + '" data-tooltip-desc="' + _escAttr(desc) + '" data-tooltip-example="' + _escAttr(example) + '" data-tooltip-severity="' + _escAttr(String(meta.severity || 'low')) + '" data-tooltip-count="' + _escAttr(String(count)) + '" tabindex="0" role="button" aria-label="' + _escAttr(label + ' – ' + (active ? 'aktiv' : 'deaktiviert')) + '" title="' + _escAttr(desc) + '">'
+        const key = 'dashboard_analysis.chip_type.' + t;
+        const status = active ? ('Aktiv · ' + count + ' Treffer') : 'Deaktiviert';
+        return '<div class="' + cls + '" style="--ib-chip-color:' + color + ';" data-ui="' + key + '" data-ib-pickkey="' + key + '" data-type="' + t + '" data-active="' + (active ? '1' : '0') + '" data-doc="' + _escAttr(String(meta.doc || t)) + '" data-tooltip-kind="chip" data-tooltip-title="' + _escAttr(String(label || t)) + '" data-tooltip-desc="' + _escAttr(desc) + '" data-tooltip-example="' + _escAttr(example) + '" data-tooltip-severity="' + _escAttr(String(meta.severity || 'low')) + '" data-tooltip-source="' + _escAttr(String(meta.source || 'Messwertprofil / Strategie')) + '" data-tooltip-status="' + _escAttr(status) + '" data-tooltip-count="' + _escAttr(String(count)) + '" tabindex="0" role="button" aria-label="' + _escAttr(label + ' – ' + (active ? 'aktiv' : 'deaktiviert')) + '" aria-describedby="ib_html_tooltip" title="' + _escAttr(desc) + '">'
           + '<div class="ib-chip-dot"></div>'
           + '<span class="ib-chip-label">' + label + '</span>'
+          + '<span class="ib-chip-info" role="button" tabindex="0" data-ui="' + key + '.info" data-ib-pickkey="' + key + '.info" data-doc="' + _escAttr(String(meta.doc || t)) + '" data-tooltip-kind="chip" data-tooltip-title="' + _escAttr(String(label || t)) + '" data-tooltip-desc="' + _escAttr(desc) + '" data-tooltip-example="' + _escAttr(example) + '" data-tooltip-severity="' + _escAttr(String(meta.severity || 'low')) + '" data-tooltip-source="' + _escAttr(String(meta.source || 'Messwertprofil / Strategie')) + '" data-tooltip-status="' + _escAttr(status) + '" aria-label="Mehr Details und Dokumentation öffnen">i</span>'
           + '</div>';
       }
 
@@ -9322,7 +9386,8 @@ function renderAnalysisTypeLists(){
             try{ ev.preventDefault(); }catch(e){}
           }
         });
-        el.addEventListener('click', ()=>{
+        el.addEventListener('click', (ev)=>{
+          try{ if(ev && ev.target && ev.target.closest && ev.target.closest('.ib-chip-info')) return; }catch(e){}
           const type = String(el.getAttribute('data-type') || '').trim();
           if(!type) return;
           const active = String(el.getAttribute('data-active') || '') === '1';
@@ -9341,6 +9406,27 @@ function renderAnalysisTypeLists(){
           saveOutlierStrategyOverride().catch(()=>{});
           renderAnalysisTypeLists();
           renderOutlierOverviewTable();
+        });
+      });
+      $selected.querySelectorAll('.ib-chip-info').forEach(info => {
+        info.addEventListener('click', (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); info.focus(); }catch(e){}
+          try{
+            const r = info.getBoundingClientRect();
+            const meta = {
+              kind: 'chip',
+              title: info.getAttribute('data-tooltip-title') || 'Info',
+              desc: info.getAttribute('data-tooltip-desc') || '',
+              key: info.getAttribute('data-ib-pickkey') || '',
+              severity: info.getAttribute('data-tooltip-severity') || 'low',
+              source: info.getAttribute('data-tooltip-source') || 'Messwertprofil / Strategie',
+              status: info.getAttribute('data-tooltip-status') || '',
+              example: info.getAttribute('data-tooltip-example') || '',
+              doc: info.getAttribute('data-doc') || '',
+              pinned: true,
+            };
+            if(window.InfluxBroUnifiedTooltip && window.InfluxBroUnifiedTooltip.show) window.InfluxBroUnifiedTooltip.show(meta, { left: r.left, bottom: r.bottom });
+          }catch(e){}
         });
       });
   }catch(e){}

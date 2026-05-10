@@ -780,21 +780,24 @@
       if(tip) return tip;
       tip = document.createElement('div');
       tip.id = 'ib_html_tooltip';
+      tip.setAttribute('role', 'tooltip');
       tip.style.position = 'fixed';
       tip.style.zIndex = '2147483647';
+      tip.style.width = 'min(360px, calc(100vw - 24px))';
       tip.style.maxWidth = '420px';
-      tip.style.padding = '12px 14px';
+      tip.style.padding = '0';
       tip.style.borderRadius = '12px';
       tip.style.background = '#1f2937';
       tip.style.color = '#f3f4f6';
-      tip.style.fontSize = '12px';
-      tip.style.lineHeight = '1.45';
-      tip.style.border = '1px solid #60a5fa';
+      tip.style.fontSize = '13px';
+      tip.style.lineHeight = '1.5';
+      tip.style.border = '1px solid #374151';
       tip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.14), 0 12px 24px rgba(0,0,0,0.18), 0 24px 40px rgba(0,0,0,0.22)';
       tip.style.pointerEvents = 'none';
       tip.style.opacity = '0';
       tip.style.visibility = 'hidden';
-      tip.style.transition = 'opacity 0.12s ease';
+      tip.style.transform = 'translateY(4px)';
+      tip.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
       document.body.appendChild(tip);
 
       // Doc button click.
@@ -934,6 +937,9 @@
       const severity = _norm(el && (el.getAttribute('data-tooltip-severity') || 'low')) || 'low';
       const example = _norm(el && (el.getAttribute('data-tooltip-example') || ''));
       const count = _norm(el && (el.getAttribute('data-tooltip-count') || ''));
+      const source = _norm(el && (el.getAttribute('data-tooltip-source') || ''));
+      const status = _norm(el && (el.getAttribute('data-tooltip-status') || ''));
+      const kind = _norm(el && (el.getAttribute('data-tooltip-kind') || 'chip')) || 'chip';
       const displayTitle = _norm(el && (el.getAttribute('data-tooltip-title') || title || '')) || _norm(_keyFromEl(el)) || 'Info';
       const displayKey = _norm(_keyFromEl(el));
       const displayDesc = _fallbackTooltipDesc(el, displayTitle, _norm(el && (el.getAttribute('data-tooltip-desc') || desc || '')), displayKey);
@@ -942,6 +948,9 @@
         desc: displayDesc,
         key: displayKey,
         severity,
+        source,
+        status,
+        kind,
         count,
         example,
         doc,
@@ -954,7 +963,7 @@
       try{ if(hideT) clearTimeout(hideT); }catch(e){}
       showT = null;
       hideT = null;
-      try{ if(tip){ tip.style.opacity = '0'; tip.style.visibility = 'hidden'; tip.style.pointerEvents = 'none'; tip.style.borderColor = '#60a5fa'; } }catch(e){}
+      try{ if(tip){ tip.style.opacity = '0'; tip.style.visibility = 'hidden'; tip.style.pointerEvents = 'none'; tip.style.borderColor = '#374151'; tip.style.transform = 'translateY(4px)'; } }catch(e){}
       lastEl = null;
       lastTitle = '';
       pinned = false;
@@ -963,7 +972,16 @@
 
     const DOC_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill-rule="evenodd" clip-rule="evenodd" d="M4 5.5H9C10.1046 5.5 11 6.39543 11 7.5V16.5C11 17.0523 10.5523 17.5 10 17.5H4C3.44772 17.5 3 17.0523 3 16.5V6.5C3 5.94772 3.44772 5.5 4 5.5ZM14 19.5C13.6494 19.5 13.3128 19.4398 13 19.3293V19.5C13 20.0523 12.5523 20.5 12 20.5C11.4477 20.5 11 20.0523 11 19.5V19.3293C10.6872 19.4398 10.3506 19.5 10 19.5H4C2.34315 19.5 1 18.1569 1 16.5V6.5C1 4.84315 2.34315 3.5 4 3.5H9C10.1947 3.5 11.2671 4.02376 12 4.85418C12.7329 4.02376 13.8053 3.5 15 3.5H20C21.6569 3.5 23 4.84315 23 6.5V16.5C23 18.1569 21.6569 19.5 20 19.5H14ZM13 7.5V16.5C13 17.0523 13.4477 17.5 14 17.5H20C20.5523 17.5 21 17.0523 21 16.5V6.5C21 5.94772 20.5523 5.5 20 5.5H15C13.8954 5.5 13 6.39543 13 7.5ZM5 7.5H9V9.5H5V7.5ZM15 7.5H19V9.5H15V7.5ZM19 10.5H15V12.5H19V10.5ZM5 10.5H9V12.5H5V10.5ZM19 13.5H15V15.5H19V13.5ZM5 13.5H9V15.5H5V13.5Z" fill="currentColor"></path></svg>';
 
-    function _render(text){
+    function _severityLabel(sev){
+      const s = String(sev || '').toLowerCase();
+      if(s === 'high' || s === 'hoch') return 'Hoch';
+      if(s === 'medium' || s === 'mittel') return 'Mittel';
+      if(s === 'low' || s === 'niedrig') return 'Niedrig';
+      if(s === 'ok' || s === 'aktiv') return 'Aktiv';
+      return _norm(sev) || 'Niedrig';
+    }
+
+    function _renderChipTooltip(text){
       const s = String(text || '').trim();
       if(!s) return '';
       const lines = s.split(/\r?\n/).map(x=>String(x||'').trim()).filter(x=>x !== '');
@@ -981,14 +999,43 @@
       const m = lastMeta || {};
       const sevColor = _severityColor(m.severity);
       const docKey = _esc(String(m.doc || m.key || keyRaw || ''));
-      const docBtn = docKey ? '<button type="button" data-ib-doc-key="' + docKey + '" style="display:inline-flex;align-items:center;gap:6px;border:1px solid #60a5fa;background:#1e3a8a;color:#dbeafe;border-radius:999px;padding:6px 10px;font-size:11px;cursor:pointer;">' + DOC_SVG + '<span>Dokumentation öffnen</span></button>' : '';
+      const docBtn = docKey ? '<button type="button" data-ib-doc-key="' + docKey + '" style="display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:#93c5fd;border-radius:5px;padding:4px 8px;margin-left:-8px;font-size:12px;font-weight:600;cursor:pointer;">' + DOC_SVG + '<span>Dokumentation öffnen</span></button>' : '';
       const keyHtml = _esc(keyRaw ? '<' + keyRaw + '>' : (m.key || ''));
-      const descHtml = '<div style="font-size:12px; line-height:1.55; color:#e5e7eb; margin:0 0 10px 0;">' + _esc(String(m.desc || desc || 'Zeigt Details und Dokumentation zu diesem Element.')) + '</div>';
-      const countHtml = m.count ? '<div style="display:inline-flex;align-items:center;gap:8px;border:1px solid #374151;border-radius:10px;background:rgba(255,255,255,0.03);padding:8px 10px;margin:0 0 10px 0;font-size:12px;color:#f3f4f6;"><span style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;">Treffer</span><strong>' + _esc(String(m.count || '0')) + '</strong></div>' : '';
-      const exampleHtml = m.example ? '<div style="border:1px solid #374151; border-radius:10px; background:#111827; padding:10px 11px; margin-bottom:10px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:#9ca3af;margin-bottom:5px;">Beispiel</div><code style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#d1fae5;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
-      const head = '<div style="display:flex;justify-content:flex-start;gap:10px;align-items:flex-start;margin-bottom:10px;"><div style="display:flex; gap:10px; align-items:flex-start; min-width:0;"><span style="display:inline-block;width:18px;height:18px;border-radius:999px;background:' + sevColor + ';flex:0 0 auto;margin-top:2px;"></span><div style="min-width:0;"><div style="font-weight:800;font-size:14px;color:#f9fafb;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#9ca3af;margin-top:2px;">' + keyHtml + '</div></div></div></div>';
-      const foot = '<div style="display:flex;justify-content:flex-start;gap:12px;align-items:center;">' + docBtn + '</div>';
-      return head + descHtml + countHtml + exampleHtml + foot;
+      const statusText = _norm(m.status) || (m.count ? ('Aktiv · ' + String(m.count) + ' Treffer') : 'Verfügbar');
+      const head = '<div style="padding:14px 16px 12px;border-bottom:1px solid #374151;display:flex;align-items:flex-start;gap:10px;"><div style="flex-shrink:0;width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:' + sevColor + '26;border:1px solid ' + sevColor + '66;"><span style="width:16px;height:16px;border-radius:50%;background:' + sevColor + ';display:block;"></span></div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;letter-spacing:-0.01em;color:#f9fafb;margin-bottom:2px;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:#9ca3af;font-weight:400;">' + keyHtml + '</div></div></div>';
+      const descHtml = '<div style="font-size:12.5px;line-height:1.55;color:#d1d5db;margin:0 0 14px 0;">' + _esc(String(m.desc || desc || 'Zeigt Details und Dokumentation zu diesem Element.')) + '</div>';
+      const metaHtml = '<div style="display:grid;grid-template-columns:70px 1fr;gap:6px 14px;font-size:11.5px;margin-bottom:14px;">'
+        + '<div style="color:#9ca3af;font-weight:600;">Schweregrad</div><div style="color:#e5e7eb;"><span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:' + sevColor + ';"></span>' + _esc(_severityLabel(m.severity)) + '</span></div>'
+        + '<div style="color:#9ca3af;font-weight:600;">Quelle</div><div style="color:#e5e7eb;"><code style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px;color:#e5e7eb;">' + _esc(String(m.source || 'InfluxBro UI')) + '</code></div>'
+        + '<div style="color:#9ca3af;font-weight:600;">Status</div><div style="color:#e5e7eb;">' + _esc(statusText) + '</div>'
+        + '</div>';
+      const exampleHtml = m.example ? '<div style="background:rgba(0,0,0,0.25);border:1px solid #374151;border-radius:6px;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#fbbf24;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="color:#9ca3af;font-size:10px;">▸</span><code style="font:inherit;color:inherit;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
+      const body = '<div style="padding:12px 16px 14px;">' + descHtml + metaHtml + exampleHtml + '</div>';
+      const foot = '<div style="border-top:1px solid #374151;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;">' + docBtn + '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#9ca3af;"><kbd style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;padding:1px 5px;font-size:10px;color:#e5e7eb;min-width:16px;text-align:center;font-weight:600;">?</kbd><span>für Doku</span></span></div>';
+      const arrow = '<div aria-hidden="true" style="position:absolute;top:-6px;left:28px;width:12px;height:12px;background:#1f2937;transform:rotate(45deg);border-radius:2px;border-left:1px solid #374151;border-top:1px solid #374151;"></div>';
+      return arrow + head + body + foot;
+    }
+
+    function _renderChartTooltip(){
+      const m = lastMeta || {};
+      const deltaClass = String(m.deltaClass || 'flat');
+      const deltaColor = deltaClass === 'up' ? '#ff8a5c' : (deltaClass === 'down' ? '#00ffcc' : '#94a8bd');
+      const deltaBg = deltaClass === 'up' ? 'rgba(255,107,53,0.1)' : (deltaClass === 'down' ? 'rgba(0,255,200,0.08)' : 'rgba(148,168,189,0.08)');
+      const rangePct = Math.max(0, Math.min(100, Number(m.rangePct || 0)));
+      const spark = String(m.sparkPath || '').trim();
+      const sparkHtml = spark ? '<div style="padding:10px 14px 12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:9px;color:#4a7a9b;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;">Verlauf · Kontext</span><span style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:9px;color:#4a7a9b;">nahe Punkte</span></div><svg viewBox="0 0 252 32" preserveAspectRatio="none" style="width:100%;height:32px;display:block;"><path d="' + _esc(spark) + '" fill="none" stroke="#00c4ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>' : '';
+      return '<div style="background:linear-gradient(165deg,#0e2233 0%,#081a28 100%);color:#d6eeff;border:1px solid rgba(0,196,255,0.25);border-radius:12px;overflow:hidden;box-shadow:0 4px 6px -2px rgba(0,0,0,0.4),0 12px 24px -8px rgba(0,0,0,0.5),0 24px 48px -12px rgba(0,0,0,0.6),0 0 0 1px rgba(0,196,255,0.05),inset 0 1px 0 rgba(255,255,255,0.04);">'
+        + '<div style="height:1px;margin:0 12px;background:linear-gradient(90deg,transparent,rgba(0,196,255,0.5),transparent);"></div>'
+        + '<div style="padding:11px 14px 10px;border-bottom:1px solid rgba(0,180,255,0.08);display:flex;align-items:center;gap:8px;"><div style="width:22px;height:22px;border-radius:5px;background:rgba(0,196,255,0.12);border:1px solid rgba(0,196,255,0.25);display:grid;place-items:center;flex-shrink:0;color:#00c4ff;">●</div><div style="flex:1;min-width:0;"><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;font-weight:600;color:#d6eeff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;">' + _esc(String(m.sourceName || m.title || 'Graphwert')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:9px;color:#4a7a9b;letter-spacing:0.05em;margin-top:1px;text-transform:uppercase;">' + _esc(String(m.bucket || m.source || 'InfluxDB · field')) + '</div></div></div>'
+        + '<div style="padding:14px 14px 12px;border-bottom:1px solid rgba(0,180,255,0.08);"><div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px;"><span style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:32px;font-weight:700;letter-spacing:-0.02em;color:#d6eeff;line-height:1;font-variant-numeric:tabular-nums;">' + _esc(String(m.value || m.title || '')) + '</span><span style="font-size:13px;font-weight:600;color:#94a8bd;margin-left:2px;">' + _esc(String(m.unit || '')) + '</span></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px;"><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;font-weight:600;background:' + deltaBg + ';color:' + deltaColor + ';border:1px solid rgba(148,168,189,0.15);">' + _esc(String(m.delta || '±0')) + '</span><span style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px;color:#4a7a9b;">vs. vorherig</span></div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#94a8bd;display:flex;align-items:center;gap:6px;margin-top:8px;">◷ <span>' + _esc(String(m.timestamp || '')) + '</span></div></div>'
+        + '<div style="padding:11px 14px 10px;border-bottom:1px solid rgba(0,180,255,0.08);"><div style="font-size:9px;color:#4a7a9b;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;font-weight:600;">Bereich aktuell</div><div style="position:relative;height:4px;background:rgba(0,180,255,0.08);border-radius:2px;margin-bottom:6px;"><div style="position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg,#00ffcc,#00c4ff,#ff6b35);border-radius:2px;opacity:0.4;"></div><div style="position:absolute;top:-2px;left:' + rangePct + '%;width:2px;height:8px;background:#00c4ff;border-radius:1px;box-shadow:0 0 6px #00c4ff;transform:translateX(-50%);"></div></div><div style="display:flex;justify-content:space-between;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px;font-variant-numeric:tabular-nums;"><span style="color:#00ffcc;">' + _esc(String(m.min || '')) + '</span><span style="color:#4a7a9b;font-size:9px;">' + _esc(String(m.avg || '')) + '</span><span style="color:#ff6b35;">' + _esc(String(m.max || '')) + '</span></div></div>'
+        + sparkHtml + '</div><div aria-hidden="true" style="position:absolute;bottom:-7px;left:50%;transform:translateX(-50%) rotate(45deg);width:12px;height:12px;background:linear-gradient(135deg,transparent 50%,#081a28 50%);border-right:1px solid rgba(0,196,255,0.25);border-bottom:1px solid rgba(0,196,255,0.25);"></div>';
+    }
+
+    function _render(text){
+      const m = lastMeta || {};
+      if(String(m.kind || '').toLowerCase() === 'chart') return _renderChartTooltip();
+      return _renderChipTooltip(text);
     }
 
     function _pos(ev){
@@ -1000,10 +1047,14 @@
         tip.style.left = '0px';
         tip.style.top = '0px';
         const r = tip.getBoundingClientRect();
-        const x = Math.max(8, Math.min(window.innerWidth - r.width - 8, x0 + pad));
-        const y = Math.max(8, Math.min(window.innerHeight - r.height - 8, y0 + pad));
+        const isChart = String(lastMeta && lastMeta.kind || '').toLowerCase() === 'chart';
+        const xWanted = isChart ? (x0 - (r.width / 2)) : (x0 + pad);
+        const yWanted = isChart ? (y0 - r.height - 16) : (y0 + pad);
+        const x = Math.max(8, Math.min(window.innerWidth - r.width - 8, xWanted));
+        const below = Math.max(8, Math.min(window.innerHeight - r.height - 8, y0 + pad));
+        const y = Math.max(8, Math.min(window.innerHeight - r.height - 8, yWanted));
         tip.style.left = x + 'px';
-        tip.style.top = y + 'px';
+        tip.style.top = (isChart && yWanted < 8 ? below : y) + 'px';
       }catch(e){}
     }
 
@@ -1081,10 +1132,12 @@
               const s = String(lastTitle || '').trim();
               if(!s) return;
               const box = _ensure();
+              box.style.width = (lastMeta && String(lastMeta.kind || '').toLowerCase() === 'chart') ? '280px' : 'min(360px, calc(100vw - 24px))';
               box.innerHTML = _render(s);
               _pos(ev);
               box.style.visibility = 'visible';
               box.style.opacity = '1';
+              box.style.transform = 'translateY(0)';
               box.style.pointerEvents = 'auto';
             }catch(e){}
           }, 220);
@@ -1119,7 +1172,7 @@
         }
         return;
       }
-      if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
+      if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.transform='translateY(0)'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
     }, true);
     document.addEventListener('keyup', (ev)=>{
       const key = String(ev.key || '');
@@ -1131,16 +1184,20 @@
     document.addEventListener('scroll', ()=>{ _hide(); }, true);
     window.InfluxBroUnifiedTooltip = {
       show(meta, anchorRect){
+        try{ if(_pickerModeActive() || !TOOLTIPS_ENABLED){ _hide(true); return; } }catch(e){}
         const box = _ensure();
-        pinned = false;
+        pinned = !!(meta && meta.pinned);
         lastMeta = meta || {};
         lastTitle = String((meta && (meta.title || meta.desc)) || '');
         box.innerHTML = _render(lastTitle || '', meta || {});
+        box.style.width = (lastMeta && String(lastMeta.kind || '').toLowerCase() === 'chart') ? '280px' : 'min(360px, calc(100vw - 24px))';
         const ev = { clientX: anchorRect ? anchorRect.left : 20, clientY: anchorRect ? anchorRect.bottom : 20 };
         _pos(ev);
         box.style.visibility = 'visible';
         box.style.opacity = '1';
-        box.style.pointerEvents = 'none';
+        box.style.transform = 'translateY(0)';
+        box.style.pointerEvents = pinned ? 'auto' : 'none';
+        box.style.borderColor = pinned ? '#60a5fa' : '#374151';
       },
       hide(){ _hide(true); }
     };

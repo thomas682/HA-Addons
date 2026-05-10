@@ -1094,9 +1094,12 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'document.addEventListener(\'keyup\'' in tooltips
     assert 'Dokumentation öffnen' in tooltips
     assert '? öffnet Doku' not in tooltips
-    assert 'Schweregrad' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
-    assert 'Datenquelle' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
-    assert 'Status' not in tooltips[tooltips.index('function _render('):tooltips.index('function _pos(')]
+    professional_block = tooltips[tooltips.index('function _renderChipTooltip('):tooltips.index('function _pos(')]
+    assert 'Schweregrad' in professional_block
+    assert 'Quelle' in professional_block
+    assert 'Status' in professional_block
+    assert '<kbd' in professional_block
+    assert 'function _renderChartTooltip()' in professional_block
     assert 'function _isTooltipEligible(el)' in tooltips
     assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('function _targetFrom(ev)')
     assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('</script>')
@@ -1140,7 +1143,9 @@ def test_dashboard_analysis_chips_use_only_standard_tooltip():
     assert 'data-tooltip-desc=' in block
     assert 'data-tooltip-example=' in block
     assert 'data-tooltip-count=' in block
-    assert 'data-chip-info' not in block
+    assert 'data-tooltip-source=' in block
+    assert 'data-tooltip-status=' in block
+    assert 'class="ib-chip-info"' in block
     assert '_showOutlierChipTooltip' not in block
 
 
@@ -1336,6 +1341,9 @@ def test_analysis_type_chips_use_professional_tooltips_with_docs():
     assert 'function _showOutlierChipTooltip(target, pinned)' not in body
     assert 'function _closePinnedOutlierChipTooltip()' not in body
     assert '? öffnet Doku' not in body
+    assert 'aria-describedby="ib_html_tooltip"' in body
+    assert 'data-tooltip-kind="chip"' in body
+    assert 'Mehr Details und Dokumentation öffnen' in body
 
 
 def test_unified_tooltip_engine_and_graph_adapter_exist():
@@ -1346,6 +1354,10 @@ def test_unified_tooltip_engine_and_graph_adapter_exist():
     assert 'function _metaFor(el, title, desc)' in tooltips
     assert 'Dokumentation öffnen' in tooltips
     assert "key === '?' || key === '/'" in tooltips
+    assert 'function _renderChipTooltip(text)' in tooltips
+    assert 'function _renderChartTooltip()' in tooltips
+    assert "kind: 'chart'" in index
+    assert "showspikes: true" in index
     assert 'function _graphTooltipShowFromPoint(pt, extra)' in index
     assert "$graphCtxPlot.on('plotly_hover'" in index
     assert "$plotly.on('plotly_hover'" in index
@@ -1976,7 +1988,7 @@ def test_stats_page_clears_expired_last_job_ids_before_cache_fallback():
 
 def test_tooltip_template_uses_short_description_plus_key_and_mentions_picker_suppression():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
-    tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "template-tooltips-rules.md").read_text()
     assert "return (t ? (t + '\\n' + suffix) : suffix);" in body
     assert 'base = _short(base, 110);' in body
     assert 'Tooltips must not be shown while `Picker` or `S-Picker` is active' in tmpl
