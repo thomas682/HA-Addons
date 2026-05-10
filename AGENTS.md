@@ -510,6 +510,9 @@ ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbes
 ### 2.2.1 Kompakte Chat-Ausgaben (PFLICHT)
 
 - Standard-Statusmeldungen nutzen eine einfache Checkliste mit maximal einer Zeile, z. B. `Checkliste: Kontext ✅ | Umsetzung 🔄 | QA ⬜ | Sicherheit ⬜ | Abschluss ⬜`.
+- Im Build-Modus ist diese Checkliste die Standardausgabe. Erfolgreiche Einzelaktionen wie Issue-Erstellung, ToDo-/Plan-State-Update, Dateiaenderung, Diff-Pruefung, QA-Start, Commit, Rebase, Push, Live-Update, Issue-Kommentar, Issue-Schluss und Signale werden nicht separat beschrieben.
+- Sichtbar bleiben im Build-Modus nur Phasenwechsel in der Checkliste, Fehler, Sicherheitsbefunde, Blocker, Entscheidungen/Rueckfragen, explizit angeforderte Details und der kompakte Abschlussbericht.
+- `plan_state.md`-Aktualisierungen werden im Chat nicht mehr einzeln gemeldet, ausser ein Blocker oder eine Abschluss-/Restpunktmeldung macht sie relevant.
 - Diffs, Diff-Stats, Patch-Inhalte, Plus/Minus-Darstellungen und Codeauszuege werden im Chat NICHT angezeigt. Der Agent meldet nur, dass die Pruefung oder Aenderung ausgefuehrt wird bzw. abgeschlossen ist.
 - Code-Stellenlisten, Dateinamenlisten, Zeilenreferenzen und Dateiinhalte werden NICHT angezeigt, ausser sie sind fuer eine Entscheidung, einen Blocker, einen Sicherheitsbefund, einen Fehlerfix oder eine explizite Nutzeranforderung erforderlich.
 - Datei-Lesevorgaenge, `Grep`-/Suchtreffer, Suchergebnislisten und Inhalte aus `Read`/Suchwerkzeugen werden im Chat nicht wiedergegeben; sichtbar genannt werden nur die daraus abgeleiteten Erkenntnisse, wenn sie fuer Bedienung, Entscheidungen, Blocker, Sicherheitsbefunde oder Abschluss relevant sind oder vom Nutzer explizit verlangt wurden.
