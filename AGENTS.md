@@ -312,13 +312,13 @@ Pflichtsequenz:
    ```
 
 6. Die Live-Version MUSS exakt der erwarteten Version entsprechen.
-7. Wenn sich die Live-Version tatsächlich geändert hat, MUSS zusätzlich diese Sprachausgabe erfolgen:
+7. Wenn sich die Live-Version tatsächlich geändert hat, MUSS zusätzlich genau diese Sprachausgabe erfolgen. Versionsnummern sind deutsch auszusprechen, z. B. `1.12.599` als `eins Punkt zwölf Punkt fünf neun neun`:
 
    ```bash
-   say -v Anna "Homeassistant wurde erfolgreich von version <alte_version> auf version <neue_version> aktualisiert"
+   say -v Anna "Homeassistant wurde erfolgreich von version <alte_version_ausgesprochen> auf version <neue_version_ausgesprochen> aktualisiert"
    ```
 
-8. GitHub-Issue-Abschluss, Abschlusssignal und Versionsansage dürfen erst danach erfolgen.
+8. GitHub-Issue-Abschluss und Abschlusssignal dürfen erst danach erfolgen. Eine separate Versionsansage nach Schritt F entfällt, wenn diese Home-Assistant-Live-Update-Sprachausgabe bereits erfolgt ist.
 
 Fehlverhalten:
 
@@ -420,9 +420,9 @@ Es gibt vier unterschiedliche Signalarten:
 3. Blockersignal
 4. Entscheidungssignal
 
-Die Home-Assistant-Live-Update-Sprachausgabe aus Schritt D2 ist zusätzlich zur Versionsansage auszuführen, aber nur nach erfolgreichem Live-Update und nur wenn sich die Live-Version tatsächlich geändert hat.
+Die Home-Assistant-Live-Update-Sprachausgabe aus Schritt D2 ist nur nach erfolgreichem Live-Update und nur bei tatsächlicher Versionsänderung auszuführen. Sie ersetzt im selben Abschlussfluss die separate Versionsansage für dieselbe Version.
 
-Alle Audio-/Sprachausgaben im Zusammenhang mit `afplay`, Abschluss-, Versions-, Blocker- und Entscheidungssignalen MUESSEN auf Deutsch formuliert sein. Produktnamen, technische Begriffe und Issue-Nummern duerfen unveraendert bleiben.
+Alle Audio-/Sprachausgaben im Zusammenhang mit `afplay`, Abschluss-, Versions-, Blocker- und Entscheidungssignalen MUESSEN auf Deutsch formuliert sein. Issue- und Versionsnummern MUESSEN sprechbar deutsch formuliert werden, z. B. `Issue 576` als `Issue fünf sieben sechs` und `1.12.599` als `eins Punkt zwölf Punkt fünf neun neun`. Produktnamen und technische Begriffe duerfen unveraendert bleiben.
 
 Das Abschlusssignal darf AUSSCHLIESSLICH ganz am Ende des vollständigen Abschlussflusses erfolgen.
 Pflichtreihenfolge vor jedem Abschlusssignal:
@@ -460,10 +460,10 @@ say "Fertig mit der Umsetzung von Issue <nummer>"
 
 Ohne aktives Issue bleibt die generische Ansage `Fertig mit der Umsetzung` bestehen.
 
-Wenn eine neue Add-on-Version erstellt wurde (Version in influxbro/config.yaml erhöht), wird zusätzlich und erst nach erfolgreichem Push die Versionsansage ausgeführt:
+Wenn eine neue Add-on-Version erstellt wurde (Version in influxbro/config.yaml erhöht), wird zusätzlich und erst nach erfolgreichem Push die Versionsansage ausgeführt. Sie wird NICHT ausgeführt, wenn im selben Abschlussfluss bereits die Home-Assistant-Live-Update-Sprachausgabe aus Schritt D2 für dieselbe Version erfolgt ist:
 
 ```bash
-say -v Anna "Generierung erfolgt, Version X Punkt Y Punkt Z wurde erzeugt"
+say -v Anna "Generierung erfolgt, Version <version_ausgesprochen> wurde erzeugt"
 ```
 
 Bei blockierenden Fehlern oder offenen Fragen wird das Blockersignal ausgeführt:
@@ -527,6 +527,7 @@ ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbes
 - Standard-Statusmeldungen nutzen eine einfache Checkliste mit maximal einer Zeile, z. B. `Checkliste: Kontext ✅ | Umsetzung 🔄 | QA ⬜ | Sicherheit ⬜ | Abschluss ⬜`.
 - Im Build-Modus ist diese Checkliste die Standardausgabe. Erfolgreiche Einzelaktionen wie Issue-Erstellung, ToDo-/Plan-State-Update, Dateiaenderung, Diff-Pruefung, QA-Start, Commit, Rebase, Push, Live-Update, Issue-Kommentar, Issue-Schluss und Signale werden nicht separat beschrieben.
 - Sichtbar bleiben im Build-Modus nur Phasenwechsel in der Checkliste, Fehler, Sicherheitsbefunde, Blocker, Entscheidungen/Rueckfragen, explizit angeforderte Details und der kompakte Abschlussbericht.
+- Details zu automatisch angelegten Folge-Issues, z. B. interne Zweckkommentare wie `# Creates follow-up ...`, werden im Chat nicht ausgegeben; sichtbar bleibt hoechstens die kompakte Checkliste oder der Abschlussbericht.
 - Kompakte Chat-Ausgaben reduzieren NUR die sichtbare Ausgabe, niemals die interne Pruefung. Diffs, Patch-Ergebnisse, Testlogs, Toolausgaben, API-Antworten und Update-Pollingdetails MUESSEN intern vollstaendig ausgewertet und fuer Entscheidungen genutzt werden; bei Fehlern, Abweichungen, Sicherheitsbefunden, Blockern oder expliziter Nachfrage werden die relevanten Details sichtbar gemacht.
 - `plan_state.md`-Aktualisierungen werden im Chat nicht mehr einzeln gemeldet, ausser ein Blocker oder eine Abschluss-/Restpunktmeldung macht sie relevant. Auch Tool-Erfolgsausgaben wie `Created plan_state.md`, `Updated plan_state.md` oder vergleichbare Schreibbestaetigungen werden nicht wiedergegeben.
 - Patch-/Apply-Patch-Erfolgsausgaben werden im Chat NICHT angezeigt. Dazu zaehlen Meldungen wie `Patched ...`, `Success. Updated files`, `Created ...`, `Deleted ...` oder Datei-/Zeilenzusammenfassungen erfolgreicher Patchvorgaenge. Sichtbar bleiben nur Patch-Fehler, Konflikte oder explizit angeforderte Patchdetails.
@@ -534,7 +535,7 @@ ToDo- und `plan_state.md`-Updates sind bei echten Statuswechseln Pflicht, insbes
 - Code-Stellenlisten, Dateinamenlisten, Zeilenreferenzen und Dateiinhalte werden NICHT angezeigt, ausser sie sind fuer eine Entscheidung, einen Blocker, einen Sicherheitsbefund, einen Fehlerfix oder eine explizite Nutzeranforderung erforderlich.
 - Datei-Lesevorgaenge, `Grep`-/Suchtreffer, Suchergebnislisten und Inhalte aus `Read`/Suchwerkzeugen werden im Chat nicht wiedergegeben; sichtbar genannt werden nur die daraus abgeleiteten Erkenntnisse, wenn sie fuer Bedienung, Entscheidungen, Blocker, Sicherheitsbefunde oder Abschluss relevant sind oder vom Nutzer explizit verlangt wurden.
 - Vollstaendige Tool-Ausgaben, Testlogs, Polling-Schleifen, Playwright-Details, Build-Logs und API-Rohantworten werden nicht in den Chat uebernommen, solange der Schritt erfolgreich ist.
-- Tests, QA, `rtk`-Tests, Smoke-Tests, Live-Tests und UI-Pruefungen erscheinen in der Checkliste nur als `passed`, `failed` oder `skipped`. Vor Testlaeufen reicht eine einzelne Startzeile wie `Test laeuft...`; erfolgreiche Testausgaben bleiben vollstaendig ausgeblendet.
+- Tests, QA, `rtk`-Tests, Smoke-Tests, Live-Tests und UI-Pruefungen erscheinen in der Checkliste nur als `passed`, `failed` oder `skipped`. Vor Testlaeufen reicht eine einzelne Startzeile wie `Test laeuft...`; erfolgreiche Testausgaben bleiben vollstaendig ausgeblendet. Interne Testkommentare oder Shell-Kommentarzeilen wie `# Runs live resize mouse smoke` werden nicht im Chat wiedergegeben.
 - Bei fehlgeschlagenen Pruefungen werden immer der relevante Fehlerkern, die Ursache/Klassifikation und der naechste Fix-Schritt ausgegeben.
 - Rebase-, Push-, Commit-, Home-Assistant-Update-, Live-Update- und Polling-Details werden nicht angezeigt, solange sie erfolgreich sind; sichtbar bleibt nur der Checklistenstatus und im Abschluss Commit, Version und Live-Version. Bei Fehlern werden Fehlerkern, Ursache/Klassifikation und naechster Fix-Schritt angezeigt.
 - Compaction- oder Kontextpflege-Vorgaenge werden nur als kurzer Hinweis gemeldet, z. B. `Kontext wird kompaktiert; Arbeitsstand bleibt erhalten.`
