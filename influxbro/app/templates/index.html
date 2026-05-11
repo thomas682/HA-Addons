@@ -1097,10 +1097,11 @@ Die Analyse kann darunter explizit mit oder ohne Cache gestartet werden."><svg v
 
     <details id="outlier_section" class="section" style="margin-top: 10px;" data-ui="dashboard_outliers.section_root" data-ib-pickkey="dashboard_outliers.section_root" title="dashboard_outliers.section_root">
       <summary><span class="ib_summary_row"><span>Ausreißer</span>
-        <!-- TOMBSTONE: TS-2026-0004 – Removed section summary info button; info lives in the table action bar (Issue #397). -->
+        <button type="button" class="ib_info_icon" data-ui="dashboard_outliers.btn_info" data-ib-pickkey="dashboard_outliers.btn_info" title="dashboard_outliers.btn_info" data-info-title="Dashboard: Ausreißer" data-info-body="Die Ausreißer-Section zeigt Treffer der letzten Analyse, ihre Ursache und den passenden Raw-Kontext.\n\nNutze die Tabellenaktionen, um Spaltenbreiten anzupassen, Umbruch oder Spaltenfilter zu aktivieren, Treffer zu kopieren und einzelne Ausreißer bewusst zu ignorieren oder wieder einzublenden.\n\nDer Einstellungen-Button springt zu den Dashboard-Ausreißer-Parametern; der Info-Button erklärt diese Section." aria-label="Info zu Ausreißern"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 17V11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="8" r="1" fill="currentColor"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
       </span></summary>
        <div class="table_wrap" id="raw_outlier_table_wrap" style="margin-top:10px;">
          <div class="table_title">Ausreißer</div>
+         <div class="muted" id="raw_outlier_section_desc" data-ui="dashboard_outliers.txt_section_desc" data-ib-pickkey="dashboard_outliers.txt_section_desc" title="dashboard_outliers.txt_section_desc" style="font-size:12px; opacity:0.78; line-height:1.4; margin:4px 0 8px 0;">Gefundene Ausreißer der aktuellen Analyse mit Ursache, Kontext und Aktionen zum Kopieren, Filtern, Ignorieren oder Wiederherstellen.</div>
          <!-- Ausreißer-Suchleiste (#raw_search_bar) wurde entfernt (Issue #330). -->
         <div class="table_head" style="min-width:0;">
           <div class="tbl_actions" data-ui="dashboard_outliers.row_table_actions" data-ib-pickkey="dashboard_outliers.row_table_actions" title="dashboard_outliers.row_table_actions">

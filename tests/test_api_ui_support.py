@@ -2123,7 +2123,10 @@ def test_pick_result_dialog_is_minimal_and_copies_text():
     assert "picker_result.btn_minimize" in topbar
     assert "picker_result.btn_maximize" in topbar
     assert "picker_result.btn_close" in topbar
-    assert "await _showPickResultDialog(text);" in topbar
+    assert "picker_result.btn_wrap" in topbar
+    assert "PICK_RESULT_WRAP_KEY" in topbar
+    assert "overflowWrap = enabled ? 'anywhere' : 'normal'" in topbar
+    assert "await _showPickResultDialog(text," in topbar
     assert "out.textContent = value;" in topbar
     assert "Kopieren in die Zwischenablage fehlgeschlagen." in topbar
     assert "Pick-Ergebnisdialog Minimalmodus" in picker_rules
@@ -2132,14 +2135,40 @@ def test_pick_result_dialog_is_minimal_and_copies_text():
 
 def test_multi_pick_result_uses_card_dialog():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
-    assert "async function _showPickMultiResultDialog(items)" in topbar
+    assert "async function _showPickMultiResultDialog(items," in topbar
     assert "Picker Multi Modus" in topbar
     assert "ib_pick_result_cards" in topbar
     assert "picker_result.card_item" in topbar
     assert "picker_result.card_btn_close" in topbar
     assert "data.splice(idx, 1);" in topbar
-    assert "await _showPickMultiResultDialog(multiItems.slice());" in topbar
+    assert "await _showPickMultiResultDialog(multiItems.slice()," in topbar
     assert "InfluxBroPopup.show('UI Picker (Multi)'" not in topbar
+
+
+def test_tooltip_docs_hotkey_removed_and_freeze_label_below_tooltip():
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    rules = (Path(__file__).resolve().parents[1] / "influxbro" / "template-tooltips-rules.md").read_text()
+    assert "overflowWrap = 'anywhere'" in tooltips
+    assert "overflow-wrap:anywhere" in tooltips
+    assert "<span>für Doku</span>" not in tooltips
+    assert "if(key === '?' || key === '/')" not in tooltips
+    assert "r.bottom + 6" in tooltips
+    assert "?`/`/` keys must not open tooltip documentation" in rules
+
+
+def test_dashboard_outlier_section_has_description_info_and_manual_docs():
+    root = Path(__file__).resolve().parents[1]
+    body = (root / "influxbro" / "app" / "templates" / "index.html").read_text()
+    manual = (root / "influxbro" / "MANUAL.md").read_text()
+    inventory = (root / "influxbro" / "UI_ELEMENT_DOCS.md").read_text()
+    dialog = (root / "influxbro" / "app" / "templates" / "_dialog.html").read_text()
+    assert 'data-ui="dashboard_outliers.btn_info"' in body
+    assert 'data-ui="dashboard_outliers.txt_section_desc"' in body
+    assert "Gefundene Ausreißer der aktuellen Analyse" in body
+    assert "dashboard.outlier_controls" in dialog
+    assert "### Dashboard UI-Steuerelemente" in manual
+    assert "#### dashboard_outliers.btn_autobreite" in manual
+    assert "### dashboard_outliers.btn_autobreite" in inventory
 
 
 def test_dialog_titles_prefer_readable_trigger_text_and_rules_link_picker():

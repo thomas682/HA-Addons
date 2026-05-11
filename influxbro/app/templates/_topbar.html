@@ -1998,6 +1998,36 @@
       }catch(e){}
     }
 
+    const PICK_RESULT_WRAP_KEY = 'influxbro.picker_result.wrap.v1';
+
+    function _pickResultWrapEnabled(){
+      try{ return localStorage.getItem(PICK_RESULT_WRAP_KEY) !== '0'; }catch(e){ return true; }
+    }
+
+    function _setPickResultWrap(root, enabled){
+      try{ localStorage.setItem(PICK_RESULT_WRAP_KEY, enabled ? '1' : '0'); }catch(e){}
+      try{
+        const out = root && root.querySelector ? root.querySelector('#ib_pick_result_text') : null;
+        const cards = root && root.querySelectorAll ? root.querySelectorAll('[data-ui="picker_result.card_text"]') : [];
+        const wrapBtn = root && root.querySelector ? root.querySelector('#ib_pick_result_wrap') : null;
+        if(out){
+          out.style.whiteSpace = enabled ? 'pre-wrap' : 'pre';
+          out.style.overflowWrap = enabled ? 'anywhere' : 'normal';
+        }
+        (cards || []).forEach((text)=>{
+          try{
+            text.style.whiteSpace = enabled ? 'normal' : 'nowrap';
+            text.style.overflowWrap = enabled ? 'anywhere' : 'normal';
+            text.style.textOverflow = enabled ? 'clip' : 'ellipsis';
+          }catch(e){}
+        });
+        if(wrapBtn){
+          wrapBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+          wrapBtn.classList.toggle('active', !!enabled);
+        }
+      }catch(e){}
+    }
+
     function _ensurePickResultDialog(){
       let root = document.getElementById('ib_pick_result_dialog');
       if(root) return root;
@@ -2087,6 +2117,15 @@
       minBtn.textContent = '—';
       _stylePickResultButton(minBtn);
 
+      const wrapBtn = document.createElement('button');
+      wrapBtn.id = 'ib_pick_result_wrap';
+      wrapBtn.setAttribute('data-ui', 'picker_result.btn_wrap');
+      wrapBtn.setAttribute('data-ib-pickkey', 'picker_result.btn_wrap');
+      wrapBtn.setAttribute('aria-label', 'Zeilenumbruch umschalten');
+      wrapBtn.setAttribute('title', 'Zeilenumbruch umschalten');
+      wrapBtn.textContent = '↵';
+      _stylePickResultButton(wrapBtn);
+
       const maxBtn = document.createElement('button');
       maxBtn.id = 'ib_pick_result_maximize';
       maxBtn.setAttribute('data-ui', 'picker_result.btn_maximize');
@@ -2113,6 +2152,10 @@
         status.style.display = minimized ? 'none' : (status.textContent ? 'block' : 'none');
         minBtn.textContent = minimized ? '▢' : '—';
       });
+      wrapBtn.addEventListener('click', (ev)=>{
+        try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+        _setPickResultWrap(root, !_pickResultWrapEnabled());
+      });
       maxBtn.addEventListener('click', ()=>{
         const maxed = root.getAttribute('data-maximized') === '1';
         root.setAttribute('data-maximized', maxed ? '0' : '1');
@@ -2124,6 +2167,7 @@
 
       header.appendChild(title);
       header.appendChild(minBtn);
+      header.appendChild(wrapBtn);
       header.appendChild(maxBtn);
       header.appendChild(closeBtn);
       panel.appendChild(header);
@@ -2132,6 +2176,7 @@
       panel.appendChild(status);
       root.appendChild(panel);
       document.body.appendChild(root);
+      _setPickResultWrap(root, _pickResultWrapEnabled());
       return root;
     }
 
@@ -2146,6 +2191,7 @@
       if(out) out.textContent = value;
       if(out) out.style.display = 'block';
       if(cards){ cards.style.display = 'none'; cards.textContent = ''; }
+      _setPickResultWrap(root, _pickResultWrapEnabled());
       if(status){ status.textContent = ''; status.style.display = 'none'; }
       root.style.display = 'flex';
       const ok = await copyText(value);
@@ -2223,6 +2269,7 @@
       if(cards) cards.style.display = 'flex';
       if(status){ status.textContent = ''; status.style.display = 'none'; }
       renderCards();
+      _setPickResultWrap(root, _pickResultWrapEnabled());
       root.style.display = 'flex';
       const ok = await syncCopy();
       try{ const close = root.querySelector('#ib_pick_result_close'); if(close) close.focus(); }catch(e){}

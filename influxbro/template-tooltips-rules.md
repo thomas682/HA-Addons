@@ -33,7 +33,7 @@ Required structure and behavior:
 - Header contains icon/severity visual, title and stable key/subtitle.
 - Body contains concise description, meta rows and optional example block.
 - Meta rows are optional; standard UI tooltips should stay concise and may omit severity/source/status metadata.
-- Footer contains a documentation action and a visible `?` shortcut hint when documentation exists.
+- Footer contains a documentation action when documentation exists. A `?` shortcut hint is not shown and the `?`/`/` keys must not open tooltip documentation.
 - Hover/focus shows the tooltip briefly; click/Enter/Space on the info affordance pins it so links are clickable.
 - Escape or outside click closes a pinned tooltip.
 - Touch opens the tooltip pinned directly.

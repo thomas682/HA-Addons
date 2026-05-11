@@ -31,11 +31,11 @@ Diese Regel gilt nur fuer den Dialog, der nach einem erfolgreichen Pick angezeig
 
 Pflichtverhalten:
 
-- Der Dialog zeigt ausschliesslich den gepickten Text und die Fensteraktionen `Minimieren`, `Maximieren` und `Schliessen`.
+- Der Dialog zeigt ausschliesslich den gepickten Text, die Umbruch-Aktion und die Fensteraktionen `Minimieren`, `Maximieren` und `Schliessen`.
 - Beim Oeffnen MUSS der gepickte Text automatisch in die Zwischenablage kopiert werden.
 - Wenn das Kopieren fehlschlaegt, MUSS der Dialog eine kurze sichtbare Statusmeldung anzeigen.
 - Der gepickte Text MUSS als Textinhalt gesetzt werden, niemals als unsanitized HTML.
 - Der Dialog darf keine Toolbar, keine Doku-/Info-Leiste, keinen Meta-Footer und keine fachfremden Kinder enthalten.
-- Fensteraktionen bleiben rechts oben und muessen tastaturbedienbar sein.
+- Umbruch- und Fensteraktionen bleiben rechts oben und muessen tastaturbedienbar sein.
 - Der Schliessen-Button schliesst nur den Pick-Ergebnisdialog und darf den Picker-Modus nicht erneut aktivieren.
 - Der Minimaldialog braucht stabile `data-ui` und `data-ib-pickkey` fuer Root, Text und Fensteraktionen.

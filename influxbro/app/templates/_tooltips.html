@@ -241,6 +241,19 @@
     'dashboard_outliers.btn_suche_beenden': 'Beendet die Ausreisser-Suche und entfernt die Markierungen.',
     'dashboard_outliers.btn_typ_auswahl': 'Oeffnet die Typauswahl: waehlt welche Ausreisser-Typen in der Suche beruecksichtigt werden.',
     'dashboard_outliers.btn_kopieren': 'Kopiert alle sichtbaren Ausreisser-Zeilen als TSV in die Zwischenablage.',
+    'dashboard_outliers.btn_info': 'Erklaert Zweck, Statuszeile und Aktionen der Ausreisser-Section.',
+    'dashboard_outliers.btn_settings': 'Springt zu den relevanten Einstellungen fuer die Ausreisser-Analyse.',
+    'dashboard_outliers.btn_autobreite': 'Passt die Spaltenbreiten der Ausreisser-Tabelle automatisch an den Inhalt an.',
+    'dashboard_outliers.btn_fensterbreite': 'Verteilt die Ausreisser-Tabelle auf die verfuegbare Fensterbreite.',
+    'dashboard_outliers.btn_spalten': 'Oeffnet die Auswahl zum Ein- und Ausblenden von Tabellenspalten.',
+    'dashboard_outliers.chk_umbruch': 'Schaltet Zeilenumbruch in der Ausreisser-Tabelle ein oder aus.',
+    'dashboard_outliers.chk_spaltenfilter': 'Blendet spaltenbezogene Filterfelder fuer die Ausreisser-Tabelle ein oder aus.',
+    'dashboard_outliers.btn_zeile_kopieren': 'Kopiert die aktuell markierte Ausreisser-Zeile.',
+    'dashboard_outliers.btn_ignorieren': 'Markiert den selektierten Ausreisser als bewusst ignoriert.',
+    'dashboard_outliers.btn_nicht_mehr_ignorieren': 'Hebt den Ignorieren-Status fuer den selektierten Ausreisser wieder auf.',
+    'dialog_raw_outlier_params.input_gap_seconds': 'Maximaler Abstand in Sekunden, ab dem eine Messwertluecke als Ausreisser gilt.',
+    'picker_result.btn_close': 'Schliesst den Picker-Ergebnisdialog, ohne den kopierten Text zu veraendern.',
+    'picker_result.btn_wrap': 'Schaltet den Zeilenumbruch im Picker-Ergebnisdialog ein oder aus.',
 
     // Backup
     'backup.take_dashboard': 'Uebernimmt measurement/field/entity_id/friendly_name aus dem Dashboard (aus Browser-Speicher).',
@@ -792,6 +805,8 @@
       tip.style.zIndex = '2147483647';
       tip.style.width = 'min(360px, calc(100vw - 24px))';
       tip.style.maxWidth = '420px';
+      tip.style.overflowWrap = 'anywhere';
+      tip.style.wordBreak = 'break-word';
       tip.style.padding = '0';
       tip.style.borderRadius = '12px';
       tip.style.background = '#1f2937';
@@ -1039,11 +1054,11 @@
       const docBtn = docKey ? '<button type="button" data-ib-doc-key="' + docKey + '" style="display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:#93c5fd;border-radius:5px;padding:4px 8px;margin-left:-8px;font-size:12px;font-weight:600;cursor:pointer;">' + DOC_SVG + '<span>Dokumentation öffnen</span></button>' : '';
       const keyHtml = _esc(keyRaw ? '<' + keyRaw + '>' : (m.key || ''));
       const statusText = _norm(m.status) || (m.count ? ('Aktiv · ' + String(m.count) + ' Treffer') : 'Verfügbar');
-      const head = '<div style="padding:14px 16px 12px;border-bottom:1px solid #374151;display:flex;align-items:flex-start;gap:10px;"><div style="flex-shrink:0;width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:' + sevColor + '26;border:1px solid ' + sevColor + '66;"><span style="width:16px;height:16px;border-radius:50%;background:' + sevColor + ';display:block;"></span></div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;letter-spacing:-0.01em;color:#f9fafb;margin-bottom:2px;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:#9ca3af;font-weight:400;">' + keyHtml + '</div></div></div>';
+      const head = '<div style="padding:14px 16px 12px;border-bottom:1px solid #374151;display:flex;align-items:flex-start;gap:10px;"><div style="flex-shrink:0;width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:' + sevColor + '26;border:1px solid ' + sevColor + '66;"><span style="width:16px;height:16px;border-radius:50%;background:' + sevColor + ';display:block;"></span></div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;letter-spacing:-0.01em;color:#f9fafb;margin-bottom:2px;overflow-wrap:anywhere;word-break:break-word;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:#9ca3af;font-weight:400;overflow-wrap:anywhere;word-break:break-word;">' + keyHtml + '</div></div></div>';
       const descHtml = '<div style="font-size:12.5px;line-height:1.55;color:#d1d5db;margin:0 0 14px 0;">' + _esc(String(m.desc || desc || 'Zeigt Details und Dokumentation zu diesem Element.')) + '</div>';
       const exampleHtml = m.example ? '<div style="background:rgba(0,0,0,0.25);border:1px solid #374151;border-radius:6px;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#fbbf24;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="color:#9ca3af;font-size:10px;">▸</span><code style="font:inherit;color:inherit;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
       const body = '<div style="padding:12px 16px 14px;">' + descHtml + exampleHtml + '</div>';
-      const foot = '<div style="border-top:1px solid #374151;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;">' + docBtn + '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#9ca3af;"><kbd style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;padding:1px 5px;font-size:10px;color:#e5e7eb;min-width:16px;text-align:center;font-weight:600;">?</kbd><span>für Doku</span></span></div>';
+      const foot = docBtn ? '<div style="border-top:1px solid #374151;padding:10px 16px;display:flex;align-items:center;justify-content:flex-start;gap:8px;">' + docBtn + '</div>' : '';
       const arrow = '<div aria-hidden="true" style="position:absolute;top:-6px;left:28px;width:12px;height:12px;background:#1f2937;transform:rotate(45deg);border-radius:2px;border-left:1px solid #374151;border-top:1px solid #374151;"></div>';
       return arrow + head + body + foot;
     }
@@ -1087,7 +1102,7 @@
         const y = Math.max(8, Math.min(window.innerHeight - r.height - 8, yWanted));
         tip.style.left = x + 'px';
         tip.style.top = (isChart && yWanted < 8 ? below : y) + 'px';
-        if(freezeLabel && pinned){ freezeLabel.style.left = Math.max(8, Math.min(window.innerWidth - 240, x + r.width + 8)) + 'px'; freezeLabel.style.top = y + 'px'; freezeLabel.style.display = 'block'; }
+        if(freezeLabel && pinned){ freezeLabel.style.left = Math.max(8, Math.min(window.innerWidth - 240, x)) + 'px'; freezeLabel.style.top = Math.min(window.innerHeight - 28, (isChart && yWanted < 8 ? below : y) + r.height + 6) + 'px'; freezeLabel.style.display = 'block'; }
       }catch(e){}
     }
 
@@ -1198,7 +1213,7 @@
           try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
           if(pinned){ _hide(true); return; }
           pinned = true; tip.style.pointerEvents = 'auto'; tip.style.borderColor = '#60a5fa'; tip.style.transform = 'translateY(0)';
-          try{ const r = tip.getBoundingClientRect(); if(freezeLabel){ freezeLabel.style.left = Math.max(8, Math.min(window.innerWidth - 240, r.right + 8)) + 'px'; freezeLabel.style.top = r.top + 'px'; freezeLabel.style.display = 'block'; } }catch(e){}
+          try{ const r = tip.getBoundingClientRect(); if(freezeLabel){ freezeLabel.style.left = Math.max(8, Math.min(window.innerWidth - 240, r.left)) + 'px'; freezeLabel.style.top = Math.min(window.innerHeight - 28, r.bottom + 6) + 'px'; freezeLabel.style.display = 'block'; } }catch(e){}
         }
         return;
       }
@@ -1207,14 +1222,6 @@
       if(!el || !el.getAttribute) return;
       const title = _norm(el.getAttribute('data-tooltip-desc')) || _storedTitle(el) || _stealTitle(el);
       if(!title) return;
-      if(key === '?' || key === '/'){
-        const meta = _metaFor(el, title.split('\n')[0], title);
-        if(meta && meta.doc){
-          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-          _openDoc(meta.doc);
-        }
-        return;
-      }
       if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.transform='translateY(0)'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
     }, true);
     document.addEventListener('scroll', ()=>{ _hide(); }, true);

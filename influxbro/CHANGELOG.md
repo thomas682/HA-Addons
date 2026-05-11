@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.600
+
+### Enhancement
+
+- Picker/Tooltips: Picker-Ergebnisdialoge koennen lange Referenzen umbrechen, Tooltips begrenzen lange Elementnamen, verzichten auf den `? fuer Doku`-Shortcut und zeigen den Shift-Freeze-Hinweis unterhalb des Tooltips. Die Dashboard-Ausreisser-Section erhaelt eine Kurzbeschreibung sowie Info-/Einstellungen-Zugriff und neue Tooltip-Handbuchziele. ([#578](https://github.com/thomas682/HA-Addons/issues/578))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.599
 
 ### Enhancement
