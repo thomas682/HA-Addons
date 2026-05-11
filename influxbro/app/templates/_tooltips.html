@@ -654,10 +654,10 @@
       const sel = [
         'button',
         'select',
+        'textarea',
+        'input:not([type="hidden"])',
         'input[type="checkbox"]',
-        // Keep a few explicit help blocks.
-        '.muted.help',
-        '[data-ui^="tip."]'
+        'a[href][data-tooltip-allow="1"]'
       ].join(',');
       const nodes = Array.from(root.querySelectorAll(sel));
       nodes.forEach(el => {
@@ -868,8 +868,8 @@
           </div>
           <iframe id="ib_doc_modal_iframe" style="flex:1 1 auto; width:100%; border:0;" src="about:blank"></iframe>
           <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; padding:10px 12px; border-top:1px solid #eee;">
-            <button id="ib_doc_modal_open" type="button" class="btn_sm" style="width:auto;" data-ui="docs_modal.btn_open_tab" data-ib-pickkey="docs_modal.btn_open_tab">Neuer Tab</button>
-            <button id="ib_doc_modal_close" type="button" class="btn_sm" style="width:auto;" data-ui="docs_modal.btn_close" data-ib-pickkey="docs_modal.btn_close">Schliessen</button>
+            <button id="ib_doc_modal_open" type="button" class="btn_sm" style="width:auto;" data-ui="docs_tooltip_modal.btn_open_tab" data-ib-pickkey="docs_tooltip_modal.btn_open_tab">Neuer Tab</button>
+            <button id="ib_doc_modal_close" type="button" class="btn_sm" style="width:auto;" data-ui="docs_tooltip_modal.btn_close" data-ib-pickkey="docs_tooltip_modal.btn_close">Schliessen</button>
           </div>
         </div>
       `;
@@ -944,14 +944,25 @@
     function _isTooltipEligible(el){
       try{
         if(!el || !el.matches) return false;
+        if(el.matches('[data-tooltip-disable="1"]')) return false;
         if(el.matches('.ib_section_desc_row, .ib_clear_row, nav.sidebar, .ib_bottombar, [data-ui$=".panel_filters"], [data-ui$=".section_root"]')) return false;
         if(el.matches('details, summary')) return false;
-        if(el.matches('button, a[href], select, textarea, label')) return true;
+        if(el.matches('button, select, textarea')) return true;
         if(el.matches('input:not([type="hidden"])')) return true;
+        if(el.matches('a[href]')) return el.getAttribute('data-tooltip-allow') === '1';
+        if(el.matches('label')){
+          const nested = el.querySelector && el.querySelector('input[type="checkbox"]');
+          if(nested) return true;
+          const forId = String(el.getAttribute('for') || '').trim();
+          if(forId){
+            const target = document.getElementById(forId);
+            return !!(target && target.matches && target.matches('input[type="checkbox"]'));
+          }
+          return false;
+        }
         const role = String(el.getAttribute('role') || '').trim().toLowerCase();
-        if(role === 'button' || role === 'link' || role === 'tab' || role === 'menuitem' || role === 'checkbox' || role === 'switch') return true;
-        const tabIndex = Number(el.getAttribute('tabindex'));
-        if(isFinite(tabIndex) && tabIndex >= 0) return true;
+        if(role === 'button' || role === 'checkbox' || role === 'switch') return true;
+        if(role === 'link') return el.getAttribute('data-tooltip-allow') === '1';
       }catch(e){}
       return false;
     }

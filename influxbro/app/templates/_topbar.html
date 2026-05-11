@@ -1193,7 +1193,7 @@
           if(!entry) return null;
           let el = null;
           if(entry.selector) el = document.querySelector(String(entry.selector));
-          if(!el && entry.ui) el = document.querySelector('[data-ui="' + String(entry.ui).replace(/"/g,'\\"') + '"]');
+          if(!el && entry.ui) el = document.querySelector('[data-' + 'ui="' + String(entry.ui).replace(/"/g,'\\"') + '"]');
           return el;
         }catch(e){ return null; }
       }
@@ -3199,6 +3199,9 @@
           [data-dialog-meta-copy="1"]{ width:24px; height:24px; display:inline-grid; place-items:center; padding:0; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--c-text-faint); box-shadow:none; opacity:.72; cursor:pointer; }
           [data-dialog-meta-copy="1"]:hover,[data-dialog-meta-copy="1"]:focus-visible{ opacity:1; color:var(--c-text); background:var(--c-bg-subtle); border-color:var(--c-border); }
           [data-dialog-meta-copy="1"][data-copy-state="ok"]{ color:var(--c-success); }
+          [data-dialog-resize-handle="1"]{ position:absolute; right:6px; bottom:6px; width:18px; height:18px; cursor:nwse-resize; z-index:3; border-radius:5px; opacity:.78; background:linear-gradient(135deg, transparent 0 45%, var(--c-text-faint) 46% 55%, transparent 56% 100%); touch-action:none; }
+          [data-dialog-resize-handle="1"]::after{ content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid var(--c-text-faint); border-bottom:2px solid var(--c-text-faint); border-radius:1px; }
+          [data-dialog-resize-handle="1"]:hover{ opacity:1; background:color-mix(in srgb, var(--c-accent) 14%, transparent); }
           [data-dialog-root="1"][data-dialog-maximized="1"], dialog[data-dialog-maximized="1"]{ width:100vw !important; max-width:100vw !important; height:100vh !important; max-height:100vh !important; margin:0 !important; padding:0 !important; inset:0 !important; align-items:stretch !important; justify-content:stretch !important; }
           [data-dialog-maximized="1"] .ib-dialog-v2, [data-dialog-maximized="1"] [data-dialog-panel="1"]{ width:calc(100vw - 24px) !important; max-width:calc(100vw - 24px) !important; height:calc(100vh - 24px) !important; max-height:calc(100vh - 24px) !important; margin:12px !important; border-radius:14px !important; }
           @media (max-width: 640px){
@@ -3338,7 +3341,7 @@
         root.style.display = 'none';
         root.style.position = 'fixed';
         root.style.inset = '0';
-        root.style.zIndex = '2147483646';
+        root.style.zIndex = '2147483647';
         root.style.background = 'rgba(0,0,0,0.45)';
         root.style.alignItems = 'center';
         root.style.justifyContent = 'center';
@@ -3437,6 +3440,28 @@
         if(status) status.textContent = String(idx + 1) + ' / ' + String(marks.length);
       }catch(e){}
     }
+    function _manualShowMainOnly(doc){
+      try{
+        if(!doc) return;
+        const st = doc.createElement('style');
+        st.textContent = `
+          header, .ib_topbar, .ib_pagecard, nav, .sidebar, .brandwrap, .ib_bottombar { display:none !important; }
+          body { margin:0 !important; padding:0 !important; }
+          .shell { display:block !important; min-height:0 !important; }
+          main.content[data-ib-pickkey="manual_page.main"], main.content[data-ui="manual_page.main"] { display:block !important; padding:12px !important; }
+        `;
+        doc.head.appendChild(st);
+        const main = doc.querySelector('main.content[data-ib-pickkey="manual_page.main"], main.content[data-ui="manual_page.main"]');
+        if(main){
+          Array.from(doc.body.children || []).forEach((el)=>{
+            try{
+              if(el === main || (el.contains && el.contains(main))) return;
+              el.style.display = 'none';
+            }catch(e){}
+          });
+        }
+      }catch(e){}
+    }
     function _openManualDoc(key, opts){
       try{
         const target = _manualDocTarget(key);
@@ -3474,6 +3499,7 @@
               const st = doc.createElement('style');
               st.textContent = '.md, .manual_layout, .content { font-size: {{ (cfg.get("ui_manual_dialog_font_px") or 11) | int }}px !important; } .toc { font-size: {{ (cfg.get("ui_manual_dialog_font_px") or 11) | int }}px !important; } mark.ib_doc_search_mark { background:#ffec80; border-radius:4px; padding:0 2px; }';
               doc.head.appendChild(st);
+              _manualShowMainOnly(doc);
               _manualSearch(root, 1);
             }catch(e){}
           };
@@ -3481,6 +3507,7 @@
         }
         const open = root.querySelector('#ib_doc_modal_open');
         if(open) open.onclick = ()=>{ try{ document.querySelectorAll('[data-dialog-root="1"]').forEach((dlg)=>{ try{ dlg.style.display = 'none'; }catch(e){} }); location.href = href; }catch(e){} };
+        root.style.zIndex = '2147483647';
         root.style.display = 'flex';
         setTimeout(setDesc, 80);
       }catch(e){}
@@ -3624,6 +3651,9 @@
     function _dialogProfileSizeKey(root){
       try{ return 'influxbro.dialog.' + _dialogSafeKey(_dialogName(root)) + '.size'; }catch(e){ return ''; }
     }
+    function _dialogProfilePositionKey(root){
+      try{ return 'influxbro.dialog.' + _dialogSafeKey(_dialogName(root)) + '.position'; }catch(e){ return ''; }
+    }
     function _dialogApplyProfileSize(root, panel){
       try{
         const key = _dialogProfileSizeKey(root);
@@ -3635,6 +3665,75 @@
         const h = Math.max(220, Math.min(Number(data.height_px || 0), Math.max(220, window.innerHeight - 48)));
         if(isFinite(w) && w > 0) panel.style.width = Math.round(w) + 'px';
         if(isFinite(h) && h > 0) panel.style.height = Math.round(h) + 'px';
+      }catch(e){}
+    }
+    function _dialogClampPosition(left, top, panel){
+      try{
+        const rect = panel && panel.getBoundingClientRect ? panel.getBoundingClientRect() : null;
+        const w = rect && rect.width ? rect.width : Number(parseFloat(panel.style.width || '0')) || 320;
+        const h = rect && rect.height ? rect.height : Number(parseFloat(panel.style.height || '0')) || 220;
+        const pad = 8;
+        const maxLeft = Math.max(pad, window.innerWidth - Math.min(w, window.innerWidth - pad * 2) - pad);
+        const maxTop = Math.max(pad, window.innerHeight - Math.min(h, window.innerHeight - pad * 2) - pad);
+        return {
+          left: Math.round(Math.max(pad, Math.min(Number(left) || pad, maxLeft))),
+          top: Math.round(Math.max(pad, Math.min(Number(top) || pad, maxTop))),
+        };
+      }catch(e){ return { left: 12, top: 12 }; }
+    }
+    function _dialogSetPosition(root, panel, left, top){
+      try{
+        const pos = _dialogClampPosition(left, top, panel);
+        root.setAttribute('data-dialog-positioned', '1');
+        if(root.style){ root.style.alignItems = 'flex-start'; root.style.justifyContent = 'flex-start'; }
+        panel.style.position = 'fixed';
+        panel.style.left = pos.left + 'px';
+        panel.style.top = pos.top + 'px';
+        panel.style.margin = '0';
+      }catch(e){}
+    }
+    function _dialogApplyProfilePosition(root, panel){
+      try{
+        const key = _dialogProfilePositionKey(root);
+        const prof = window.InfluxBroUiProfiles || {};
+        const raw = key && prof.items && prof.items[key] ? String(prof.items[key]) : '';
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        const left = Number(data.left_px);
+        const top = Number(data.top_px);
+        if(isFinite(left) && isFinite(top)) _dialogSetPosition(root, panel, left, top);
+      }catch(e){}
+    }
+    function _dialogSaveProfilePosition(root, panel){
+      try{
+        if(!root || !panel || root.getAttribute('data-dialog-maximized') === '1') return;
+        if(root.getAttribute('data-dialog-positioned') !== '1') return;
+        const prof = window.InfluxBroUiProfiles || {};
+        if(!prof.saveItem) return;
+        const rect = panel.getBoundingClientRect ? panel.getBoundingClientRect() : null;
+        if(!rect) return;
+        const payload = JSON.stringify({left_px: Math.round(rect.left), top_px: Math.round(rect.top)});
+        const key = _dialogProfilePositionKey(root);
+        if(!key) return;
+        prof.items = prof.items || {};
+        if(String(prof.items[key] || '') === payload) return;
+        prof.items[key] = payload;
+        prof.saveItem(key, payload).catch(()=>{});
+      }catch(e){}
+    }
+    function _dialogResetGeometry(root, panel){
+      try{
+        if(root && root.removeAttribute) root.removeAttribute('data-dialog-positioned');
+        if(root && root.style){ root.style.alignItems = 'center'; root.style.justifyContent = 'center'; }
+        ['position','left','top','margin','width','height'].forEach((key)=>{ try{ panel.style[key] = ''; }catch(e){} });
+        const prof = window.InfluxBroUiProfiles || {};
+        const sizeKey = _dialogProfileSizeKey(root);
+        const posKey = _dialogProfilePositionKey(root);
+        if(prof.items){ delete prof.items[sizeKey]; delete prof.items[posKey]; }
+        if(prof.saveItem){
+          if(sizeKey) prof.saveItem(sizeKey, '').catch(()=>{});
+          if(posKey) prof.saveItem(posKey, '').catch(()=>{});
+        }
       }catch(e){}
     }
     function _dialogSaveProfileSize(root, panel){
@@ -3706,7 +3805,7 @@
         if(root.tagName !== 'DIALOG' && root.style){
           root.style.overflow = root.style.overflow || 'auto';
           root.style.padding = root.style.padding || '12px';
-          if(root.style.display === 'flex'){
+          if(root.style.display === 'flex' && root.getAttribute('data-dialog-positioned') !== '1'){
             root.style.alignItems = 'center';
             root.style.justifyContent = 'center';
           }
@@ -3718,6 +3817,7 @@
         const rect = panel.getBoundingClientRect ? panel.getBoundingClientRect() : null;
         if(rect && rect.width > maxW) panel.style.width = maxW + 'px';
         if(rect && rect.height > maxH) panel.style.height = maxH + 'px';
+        if(root.getAttribute('data-dialog-positioned') === '1') _dialogSetPosition(root, panel, rect ? rect.left : 12, rect ? rect.top : 12);
       }catch(e){}
     }
     function _ensureDialogHeaderActions(root, panel, closeSelector){
@@ -3968,10 +4068,59 @@
     }
     function _ensureDialogResize(root, panel){
       try{
-        if(String(root.getAttribute('data-dialog-template') || '') !== 'dialog_confirm_action') panel.style.resize = 'both';
+        const isConfirm = String(root.getAttribute('data-dialog-template') || '') === 'dialog_confirm_action';
+        panel.style.position = panel.style.position || 'relative';
+        panel.style.resize = 'none';
         panel.style.overflow = 'hidden';
         panel.style.minWidth = panel.style.minWidth || '320px';
         panel.style.minHeight = panel.style.minHeight || '220px';
+        if(!isConfirm){
+          let handle = panel.querySelector('[data-dialog-resize-handle="1"]');
+          if(!handle){
+            handle = document.createElement('div');
+            handle.setAttribute('data-dialog-resize-handle', '1');
+            handle.setAttribute('data-ui', _dialogSafeKey(_dialogName(root)) + '.handle_resize');
+            handle.setAttribute('data-ib-pickkey', _dialogSafeKey(_dialogName(root)) + '.handle_resize');
+            handle.setAttribute('title', 'Dialoggroesse aendern');
+            panel.appendChild(handle);
+          }
+          if(handle.dataset.ibDialogResizeBound !== '1'){
+            handle.dataset.ibDialogResizeBound = '1';
+            handle.addEventListener('pointerdown', (ev)=>{
+              try{
+                if(root.getAttribute('data-dialog-maximized') === '1') return;
+                ev.preventDefault(); ev.stopPropagation();
+                handle.setPointerCapture && handle.setPointerCapture(ev.pointerId);
+                const startRect = panel.getBoundingClientRect();
+                const state = { x: ev.clientX, y: ev.clientY, w: startRect.width, h: startRect.height };
+                const move = (mv)=>{
+                  try{
+                    const maxW = Math.max(320, window.innerWidth - 24);
+                    const maxH = Math.max(220, window.innerHeight - 24);
+                    const nextW = Math.max(320, Math.min(maxW, state.w + (mv.clientX - state.x)));
+                    const nextH = Math.max(220, Math.min(maxH, state.h + (mv.clientY - state.y)));
+                    panel.style.width = Math.round(nextW) + 'px';
+                    panel.style.height = Math.round(nextH) + 'px';
+                    if(root.getAttribute('data-dialog-positioned') === '1'){
+                      const r = panel.getBoundingClientRect();
+                      _dialogSetPosition(root, panel, r.left, r.top);
+                    }
+                  }catch(e){}
+                };
+                const up = ()=>{
+                  try{ document.removeEventListener('pointermove', move, true); document.removeEventListener('pointerup', up, true); }catch(e){}
+                  _dialogSaveProfileSize(root, panel);
+                  _dialogSaveProfilePosition(root, panel);
+                };
+                document.addEventListener('pointermove', move, true);
+                document.addEventListener('pointerup', up, true);
+              }catch(e){}
+            }, true);
+            handle.addEventListener('dblclick', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); _dialogResetGeometry(root, panel); }catch(e){} }, true);
+          }
+        }else{
+          panel.querySelectorAll('[data-dialog-resize-handle="1"]').forEach((el)=>{ try{ el.remove(); }catch(e){} });
+        }
         if(panel.dataset.ibDialogResizeObserver !== '1' && window.ResizeObserver){
           panel.dataset.ibDialogResizeObserver = '1';
           let timer = null;
@@ -3988,6 +4137,34 @@
           });
           ro.observe(panel);
         }
+      }catch(e){}
+    }
+    function _ensureDialogDrag(root, panel){
+      try{
+        const header = panel.querySelector('[data-dialog-header="1"]');
+        if(!header || header.dataset.ibDialogDragBound === '1') return;
+        header.dataset.ibDialogDragBound = '1';
+        header.style.cursor = 'move';
+        header.style.userSelect = 'none';
+        header.addEventListener('pointerdown', (ev)=>{
+          try{
+            if(root.getAttribute('data-dialog-maximized') === '1') return;
+            const target = ev && ev.target ? ev.target : null;
+            if(target && target.closest && target.closest('button,input,select,textarea,a,[data-dialog-window],[data-dialog-info-btn="1"],[data-dialog-doc-btn="1"],[data-dialog-resize-handle="1"]')) return;
+            ev.preventDefault();
+            header.setPointerCapture && header.setPointerCapture(ev.pointerId);
+            const rect = panel.getBoundingClientRect();
+            const state = { dx: ev.clientX - rect.left, dy: ev.clientY - rect.top };
+            _dialogSetPosition(root, panel, rect.left, rect.top);
+            const move = (mv)=>{ try{ _dialogSetPosition(root, panel, mv.clientX - state.dx, mv.clientY - state.dy); }catch(e){} };
+            const up = ()=>{
+              try{ document.removeEventListener('pointermove', move, true); document.removeEventListener('pointerup', up, true); }catch(e){}
+              _dialogSaveProfilePosition(root, panel);
+            };
+            document.addEventListener('pointermove', move, true);
+            document.addEventListener('pointerup', up, true);
+          }catch(e){}
+        }, true);
       }catch(e){}
     }
     function _ensureDialogContentRegion(panel){
@@ -4061,11 +4238,13 @@
         panel.classList.add('ib-dialog-v2', tpl.replace(/_/g, '-'));
         if(!panel.getAttribute('data-dialog-panel')) panel.setAttribute('data-dialog-panel', '1');
         _dialogApplyProfileSize(root, panel);
+        _dialogApplyProfilePosition(root, panel);
         _ensureDialogHeaderActions(root, panel, opts && opts.closeSelector ? opts.closeSelector : null);
         _ensureDialogDescription(root, panel);
         _ensureDialogContentRegion(panel);
         _ensureDialogFooter(root, opts && opts.closeSelector ? opts.closeSelector : null, { buttonClass: 'btn_sm ib_dialog_superpicker', superpicker: false });
         _ensureDialogResize(root, panel);
+        _ensureDialogDrag(root, panel);
         _ensureDialogMeta(root, panel);
         _ensureDialogInfoButton(root, panel);
         _ensureDialogKeyboard(root, panel, opts && opts.closeSelector ? opts.closeSelector : null);

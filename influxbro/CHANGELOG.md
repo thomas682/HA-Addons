@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.598
+
+### Fix
+
+- Dialoge: Standarddialoge sind ueber den Kopfbereich verschiebbar, nutzen einen robusten rechten unteren Resize-Handle mit Reset per Doppelklick, oeffnen die integrierte Doku ueber dem aktuellen Dialog und zeigen dort nur den Handbuch-Hauptinhalt; Tooltips sind auf Controls begrenzt, Links nur mit `data-tooltip-allow="1"`. ([#575](https://github.com/thomas682/HA-Addons/issues/575))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.597
 
 ### Fix

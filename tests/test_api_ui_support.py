@@ -1143,7 +1143,9 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'function _isTooltipEligible(el)' in tooltips
     assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('function _targetFrom(ev)')
     assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('</script>')
-    assert "el.matches('button, a[href], select, textarea, label')" in tooltips
+    assert "el.matches('button, select, textarea')" in tooltips
+    assert "el.matches('a[href]')) return el.getAttribute('data-tooltip-allow') === '1';" in tooltips
+    assert "if(el.matches('details, summary')) return false;" in tooltips
 
 
 def test_tooltips_are_not_globally_blocked_for_pagecard_and_statusbar_buttons():
