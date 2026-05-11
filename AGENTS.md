@@ -169,6 +169,8 @@ Als erledigt gilt die Aufgabe erst, wenn: Sicherheitsprüfung durchgeführt, Bef
 
 #### Schritt B – Pflicht-QA
 
+Wenn ausschliesslich nicht app-relevante Dateien geaendert werden, entfallen App-QA, Syntaxpruefung, Docker-Verifikation, UI-Verifikation und Live-Tests. Dazu zaehlen insbesondere reine Agent-/Repository-Regeln, lokale Plan-/Arbeitsdateien, nicht ausgelieferte Hilfsdateien und Dokumentation ausserhalb des Add-ons, sofern sie das ausgelieferte Add-on, dessen Laufzeitverhalten, UI, API, Container, Startverhalten, Konfiguration oder Abhaengigkeiten nicht beeinflussen. In diesem Fall genuegt die inhaltliche Plausibilitaetspruefung der geaenderten Regel-/Dokumentationsdateien; der Abschlussbericht muss kurz nennen, dass App-QA wegen Nicht-App-Scope entfaellt.
+
 Reihenfolge einhalten:
 
 1. Syntaxprüfung (immer Pflicht): `python -m py_compile influxbro/app/app.py`
@@ -195,7 +197,7 @@ Abschlussbericht QA:**
 
 Betroffene Dateitypen: `*.py`, `*.html`, `*.js`, `*.css`, Dockerfile, Shell-/Startskripte, Laufzeit-Konfigurationen.
 
-Nicht app-relevante Dateien erzwingen KEINEN Add-on-Versionsbump, sofern sie das ausgelieferte Add-on, dessen Laufzeitverhalten, UI, API, Container, Startverhalten, Konfiguration oder Abhaengigkeiten nicht beeinflussen. Dazu zaehlen insbesondere reine Agent-/Repository-Regeln, lokale Plan-/Arbeitsdateien, nicht ausgelieferte Hilfsdateien und Dokumentation ausserhalb des Add-ons. Wenn keine Add-on-Version erhoeht wird, entfallen Changelog-Eintrag zur Add-on-Version und Home-Assistant-Live-Update.
+Nicht app-relevante Dateien erzwingen KEINEN Add-on-Versionsbump, sofern sie das ausgelieferte Add-on, dessen Laufzeitverhalten, UI, API, Container, Startverhalten, Konfiguration oder Abhaengigkeiten nicht beeinflussen. Dazu zaehlen insbesondere reine Agent-/Repository-Regeln, lokale Plan-/Arbeitsdateien, nicht ausgelieferte Hilfsdateien und Dokumentation ausserhalb des Add-ons. Wenn keine Add-on-Version erhoeht wird, entfallen Changelog-Eintrag zur Add-on-Version, App-QA, Docker-Verifikation, UI-/Live-Test und Home-Assistant-Live-Update.
 
 Pflichtschritte:
 
@@ -1257,12 +1259,13 @@ Beispiele: Abschnitt geöffnet/geschlossen (`*_open`), Tabellenhöhen, Splitter-
 
 - `http://192.168.2.200:8099` für alle Home Assistant-gestützten Live-Integrationstests verwenden.
 - Localhost nur für isolierte lokale Entwicklung oder container-lokale Verifikation.
+- Ausnahme/Pflicht fuer Live-UI- und Playwright-Tests: Der Browser darf das Live-Add-on NICHT direkt ueber `192.168.2.200:8099` ansteuern. Stattdessen MUSS ein lokaler HTTP-Proxy auf `127.0.0.1:8099` gestartet werden, der alle Requests an `http://192.168.2.200:8099` weiterleitet. `127.0.0.1:8099` bedeutet in diesem Kontext ausschliesslich Proxy zum Live-System, nicht lokal gestartete App.
 
 ### 14.2 Playwright E2E-Tests
 
-- Konfiguration: `playwright.config.js` (baseURL: `http://192.168.2.200:8099`)
+- Konfiguration: `playwright.config.js` (baseURL: `http://127.0.0.1:8099` fuer den lokalen Live-Proxy)
 - Tests: `tests/e2e/*.spec.js`
-- Ausführen: `npx playwright test`
+- Ausführen bei Live-UI-Tests: zuerst lokalen HTTP-Proxy `127.0.0.1:8099 -> http://192.168.2.200:8099` starten, dann `HA_URL=http://127.0.0.1:8099 npx playwright test ...` verwenden. Direkte Playwright-Aufrufe gegen `192.168.2.200:8099` sind verboten, weil sie in dieser Umgebung unzuverlaessig sind.
 - Chat-Ausgabe: Playwright-/UI-/Live-Test-Start nur mit einer Zeile zu Zweck und erwarteter Antwortzeit/Timeout melden, z. B. `UI-Test laeuft: Playwright, Timeout 300s.` Erfolgreiche Ausgaben ausblenden; Ergebnis nur als `passed` oder `failed` in der Checkliste melden. Einzelne Browser-Schritte, Locator-Details, Screenshots, Traces und Polling-Details nur bei Fehlschlag oder auf Nachfrage nennen.
 - Smoke-Tests nur ausfuehren, wenn die Aenderung sicherheits-, start-, API-, Update-, UI-kritisch oder groesser ist, wenn die erste Umsetzung fehlerhaft war, wenn vorherige Live-/Playwright-/Timeout-Probleme relevant sind oder wenn der Nutzer sie explizit verlangt. Sonst in der Checkliste als `skipped` mit Kurzgrund markieren.
 
@@ -1285,7 +1288,7 @@ Vor dem Testlauf gegen das Live-System MUSS der Versionsstand geprüft werden:
 2. Mit Version in `influxbro/config.yaml` vergleichen
 3. Stimmen die Versionen NICHT überein: Nutzer warnen, fragen ob nur API-Tests oder warten bis Live-System aktualisiert ist
 4. Stimmen die Versionen ÜBEREIN: fragen ob zusätzlich Playwright E2E-Browser-Tests ausgeführt werden sollen
-5. Bei Bestätigung: `npx playwright test` ausführen und Ergebnis kompakt als `passed` oder `failed` melden; Timeout/erwartete Antwortzeit vor Start nennen.
+5. Bei Bestätigung: lokalen HTTP-Proxy `127.0.0.1:8099 -> http://192.168.2.200:8099` starten, `HA_URL=http://127.0.0.1:8099 npx playwright test ...` ausführen und Ergebnis kompakt als `passed` oder `failed` melden; Timeout/erwartete Antwortzeit vor Start nennen.
 
 ### 14.4 Robuster lokaler Start / Healthcheck (PFLICHT)
 
