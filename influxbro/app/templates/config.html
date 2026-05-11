@@ -71,6 +71,10 @@
     .grid > .section_note { padding:8px 12px; font-size:12px; opacity:0.6; border-bottom:1px solid #eee; }
     .grid > .section_note:last-child { border-bottom:none; }
     .grid > .section_note .muted { opacity:0.7; font-size:12px; }
+    .ib_settings_context_chip { display:none; align-items:center; gap:10px; padding:10px 12px; border:1px solid #cfe0ff; border-radius:12px; background:#f4f8ff; margin-top:12px; }
+    .ib_settings_context_chip strong { font-size:13px; }
+    .ib_settings_context_chip button { height:30px; padding:4px 10px; }
+    .ib_context_hidden { display:none !important; }
     .card { border: 1px solid #ddd; border-radius: 10px; padding: 0; margin-top: 12px; overflow:hidden; }
     details.card { padding: 0; }
     details.card > summary { list-style: none; cursor: pointer; padding: 12px; font-weight: 700; }
@@ -216,6 +220,12 @@
       Einstellungen werden in <code>/data/influx_browser_config.json</code> gespeichert (persistent).
       Token/Passwort erscheinen als <code>********</code>.
     </div>
+  </div>
+
+  <div id="settings_context_chip" class="ib_settings_context_chip" data-ui="config_settings.context_chip" data-ib-pickkey="config_settings.context_chip">
+    <strong id="settings_context_label">Kontextfilter</strong>
+    <span class="muted">Es werden nur passende Parameter angezeigt.</span>
+    <button id="settings_context_clear" type="button" class="btn_sm" data-ui="config_settings.btn_context_clear" data-ib-pickkey="config_settings.btn_context_clear">Filter loeschen</button>
   </div>
 
   <details class="card" open data-ui="config_settings.section_yaml" data-ib-pickkey="config_settings.section_yaml" title="settings.section.yaml">
@@ -449,6 +459,12 @@
                 <option value="same_tab">Gleicher Tab</option>
                 <option value="modal">Modal</option>
               </select>
+            </div>
+          </div>
+          <div class="param_row" data-settings-ref="dashboard:manual,global:manual">
+            <div class="param_label">Handbuchdialog Schriftgroesse<span class="param_hint">Schriftgroesse des integrierten Handbuchauszugs in Dialogen.</span></div>
+            <div class="param_control">
+              <input id="ui_manual_dialog_font_px" class="cfg_num_wide" type="number" min="8" max="16" />
             </div>
           </div>
         </div>
@@ -1763,7 +1779,7 @@ const ids = [
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_gui_title_px","ui_gui_heading_px","ui_gui_body_px","ui_gui_meta_px","ui_tbl_title_px","ui_tbl_head_px","ui_tbl_cell_px",
-  "ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_analysis_cache_hidden_color","ui_checkbox_scale","ui_theme_mode","ui_theme_accent",
+  "ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_manual_dialog_font_px","ui_analysis_cache_hidden_color","ui_checkbox_scale","ui_theme_mode","ui_theme_accent",
   "ui_analysis_cache_missing_color",
   "ui_picker_outline_auto","ui_picker_outline_light_bg","ui_picker_outline_dark_bg","ui_superpicker_shortcut","perf_corr_causal_gap_ms","perf_corr_timer_gap_ms","perf_corr_dep_zoom_pct",
   "outlier_gap_seconds_default",
@@ -3129,6 +3145,7 @@ function setForm(cfg){
   _setVal(el.ui_nav_helper_history_limit, cfg.ui_nav_helper_history_limit ?? 10);
   _setVal(el.ui_nav_helper_highlight_color, cfg.ui_nav_helper_highlight_color ?? '#FF9900');
   _setVal(el.ui_nav_helper_highlight_duration_ms, cfg.ui_nav_helper_highlight_duration_ms ?? 1400);
+  _setVal(el.ui_manual_dialog_font_px, cfg.ui_manual_dialog_font_px ?? 11);
   _setVal(el.ui_analysis_cache_hidden_color, cfg.ui_analysis_cache_hidden_color ?? '#b0b0b0');
   _setVal(el.ui_analysis_cache_missing_color, cfg.ui_analysis_cache_missing_color ?? '#b00020');
   _setChecked(el.ui_picker_outline_auto, (cfg.ui_picker_outline_auto !== false));
@@ -3330,6 +3347,7 @@ function getForm(){
     ui_nav_helper_history_limit: parseInt(el.ui_nav_helper_history_limit.value, 10),
     ui_nav_helper_highlight_color: String(el.ui_nav_helper_highlight_color.value || '').trim(),
     ui_nav_helper_highlight_duration_ms: parseInt(el.ui_nav_helper_highlight_duration_ms.value, 10),
+    ui_manual_dialog_font_px: parseInt(el.ui_manual_dialog_font_px.value, 10),
     ui_analysis_cache_hidden_color: String(el.ui_analysis_cache_hidden_color.value || '').trim(),
     ui_analysis_cache_missing_color: String(el.ui_analysis_cache_missing_color.value || '').trim(),
     ui_picker_outline_auto: _isChecked(el.ui_picker_outline_auto),
@@ -3572,6 +3590,74 @@ async function load(){
 
   const card = document.getElementById("loadyaml_card");
   if(card) card.style.display = "none";
+  try{ applySettingsContextFilter(); }catch(e){}
+}
+
+const SETTINGS_CONTEXT_KEY = 'influxbro.settings.context.v1';
+const SETTINGS_CONTEXTS = {
+  'dashboard:selection': { label: 'Dashboard: Messwertauswahl', ids: ['ui_sel_auto_width','ui_sel_width_px','selector_query_limit_enabled','selector_query_limit_days','ui_filter_label_width_px','ui_filter_control_width_px','ui_filter_search_width_px'] },
+  'dashboard:caching': { label: 'Dashboard: Caching', ids: ['dash_cache_enabled','dash_cache_auto_update','dash_cache_refresh_mode','dash_cache_refresh_hours','dash_cache_refresh_daily_at','dash_cache_max_items','dash_cache_max_mb','dash_cache_update_on_use_if_stale','ui_analysis_cache_hidden_color','ui_analysis_cache_missing_color'] },
+  'dashboard:analysis': { label: 'Dashboard: Analyse', ids: ['ui_analysis_max_age_years','ui_query_manual_max_points','ui_graph_jump_padding_intervals','ui_decimals'] },
+  'dashboard:outliers': { label: 'Dashboard: Ausreisser', ids: ['ui_raw_outlier_display_limit_per_type','ui_raw_outlier_search_limit','outlier_gap_seconds_default','outlier_context_before_points','outlier_context_after_points','outlier_bounds_min_default','outlier_bounds_max_default','outlier_recovery_valid_streak_default'] },
+  'dashboard:raw': { label: 'Dashboard: Raw Daten', ids: ['ui_raw_max_points','ui_raw_center_max_points','ui_raw_center_range_default','ui_raw_center_min_points','ui_raw_target_chunk_ms','ui_table_visible_rows','ui_table_row_height_px','ui_table_header_bg','ui_table_header_fg','ui_table_min_empty_rows'] },
+  'dashboard:graph': { label: 'Dashboard: Graph', ids: ['ui_graph_ctx_before_minutes','ui_graph_ctx_after_minutes','ui_edit_graph_buffer_minutes','ui_edit_graph_max_points','ui_edit_neighbors_n','ui_edit_details_visible_rows'] },
+  'dashboard:manual': { label: 'Handbuchdialog', ids: ['ui_manual_dialog_font_px','ui_tooltip_doc_open_mode'] },
+};
+
+function _settingsContextFromUrl(){
+  try{
+    const params = new URLSearchParams(String(location.search || ''));
+    const raw = String(params.get('settings_ref') || params.get('context') || '').trim();
+    if(raw) return raw;
+  }catch(e){}
+  try{ return String(sessionStorage.getItem(SETTINGS_CONTEXT_KEY) || '').trim(); }catch(e){ return ''; }
+}
+
+function _rowMatchesSettingsContext(row, ctx, allowedIds){
+  try{
+    if(!row) return false;
+    const refs = String(row.getAttribute('data-settings-ref') || '').split(',').map(x=>x.trim()).filter(Boolean);
+    if(refs.includes(ctx)) return true;
+    const controls = Array.from(row.querySelectorAll('input[id], select[id], textarea[id]'));
+    return controls.some(node => allowedIds.has(String(node.id || '')));
+  }catch(e){ return false; }
+}
+
+function applySettingsContextFilter(){
+  try{
+    const ctx = _settingsContextFromUrl();
+    const spec = ctx ? SETTINGS_CONTEXTS[ctx] : null;
+    const chip = document.getElementById('settings_context_chip');
+    const label = document.getElementById('settings_context_label');
+    const clear = document.getElementById('settings_context_clear');
+    if(!spec){
+      document.querySelectorAll('.ib_context_hidden').forEach((node)=>{ try{ node.classList.remove('ib_context_hidden'); }catch(e){} });
+      if(chip) chip.style.display = 'none';
+      return;
+    }
+    try{ sessionStorage.setItem(SETTINGS_CONTEXT_KEY, ctx); }catch(e){}
+    if(label) label.textContent = 'Kontextfilter: ' + String(spec.label || ctx);
+    if(chip) chip.style.display = 'flex';
+    if(clear && !clear.__ib_context_bound){
+      clear.__ib_context_bound = true;
+      clear.addEventListener('click', ()=>{
+        try{ sessionStorage.removeItem(SETTINGS_CONTEXT_KEY); }catch(e){}
+        try{ history.replaceState(null, '', location.pathname); }catch(e){}
+        applySettingsContextFilter();
+      });
+    }
+    const allowed = new Set((spec.ids || []).map(String));
+    document.querySelectorAll('main.content .param_row').forEach((row)=>{
+      const visible = _rowMatchesSettingsContext(row, ctx, allowed);
+      row.classList.toggle('ib_context_hidden', !visible);
+    });
+    document.querySelectorAll('main.content .section_note, main.content .table_wrap').forEach((node)=>{ node.classList.add('ib_context_hidden'); });
+    document.querySelectorAll('main.content details.card').forEach((card)=>{
+      const hasVisible = !!card.querySelector('.param_row:not(.ib_context_hidden)');
+      card.classList.toggle('ib_context_hidden', !hasVisible);
+      if(hasVisible) card.open = true;
+    });
+  }catch(e){}
 }
 
 

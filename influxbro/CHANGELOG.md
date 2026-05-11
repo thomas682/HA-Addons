@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.596
+
+### Enhancement
+
+- UI-Navigation: Topbar/Sidebar starten direkt unter der Titelzeile; Picker-, Super-Picker- und Multi-Pick-Dialoge zeigen eindeutige Modustitel; Tooltips lassen sich global ueber die Topbar schalten, per Shift einfrieren und im Dialog-/Picker-Kontext zuverlaessig unterdruecken. Der Handbuchdialog bietet eine integrierte Suche mit Vor/Zurueck-Markierung, und Section-Settings springen mit Kontextfilter zu den passenden Einstellungen. ([#571](https://github.com/thomas682/HA-Addons/issues/571))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.595
 
 ### Fix

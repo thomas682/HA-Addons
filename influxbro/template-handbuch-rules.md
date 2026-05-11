@@ -58,10 +58,13 @@ Aus `AGENTS.md` transferierte Grundregeln fuer Handbuch-UI:
 - Pflichtstruktur:
   - Kopf mit Titel `Handbuch`
   - fachliche Kurzbeschreibung
+  - interne Suchleiste mit Vor/Zurueck und sichtbarer Trefferzaehlung
   - iframe oder integrierter Inhaltsbereich im gleichen Origin-/Ingress-Kontext
-  - Footer mit Aktionen `Im Handbuch oeffnen`, optional `Auf GitHub ansehen`, `Schliessen`
+  - Footer mit Aktionen `Im Handbuch oeffnen` und `Schliessen`
 - Der Dialog muss per Tastatur bedienbar sein und bei `F1` denselben Resolver nutzen wie der sichtbare Handbuchbutton.
 - Der Dialog darf externe Inhalte nicht als Primaerinhalt laden.
+- Die Dialogsuche muss Treffer im geladenen Handbuchinhalt markieren und Vor-/Zurueck-Navigation anbieten.
+- Die Dialogschrift darf konfigurierbar sein, muss aber innerhalb kleiner, lesbarer Grenzen bleiben.
 
 ## 6. Bilder und Assets
 
@@ -78,7 +81,7 @@ Resolver-Fallback in dieser Reihenfolge:
 2. Alias-Key mit stabilem Anchor
 3. Interne Suche (`?q=<Suchtext>`)
 4. Handbuch-Startseite mit sichtbarem Hinweis, dass kein exakter Eintrag existiert
-5. Optionaler GitHub-Link als externe Zusatzaktion
+5. Vollstaendige Handbuchseite als interne Zusatzaktion
 
 ## 8. Tests
 

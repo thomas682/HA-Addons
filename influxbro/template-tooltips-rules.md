@@ -15,6 +15,9 @@ Applies to all pages and interactive elements.
 - Tooltip line 2: the stable element name in parentheses, e.g. `(dashboard_caching.btn_cache_pruefen)`.
 - Prefer concise functional wording over long explanations.
 - Tooltips must not be shown while `Picker` or `S-Picker` is active.
+- Tooltips must not be shown while a modal/dialog overlay is visible.
+- The global Topbar tooltip toggle is authoritative and persists via `ui_tooltips_enabled`.
+- Pressing `Shift` on a visible tooltip toggles freeze mode. Freeze mode must show a blue visible label and keep tooltip actions clickable until `Shift`, `Esc` or an outside click closes it.
 - If no explicit tooltip exists, derive a short tooltip from nearby label/help text.
 - Do not use long prose paragraphs in native `title` tooltips.
 - Detailed explanations still belong into info popups or professional tooltip bodies, not into native browser hover tooltips.
@@ -29,7 +32,7 @@ Required structure and behavior:
 - Tooltip container uses a professional dark panel with arrow, header, body and footer.
 - Header contains icon/severity visual, title and stable key/subtitle.
 - Body contains concise description, meta rows and optional example block.
-- Meta rows include contextually relevant values such as severity, source and active/status/count.
+- Meta rows are optional; standard UI tooltips should stay concise and may omit severity/source/status metadata.
 - Footer contains a documentation action and a visible `?` shortcut hint when documentation exists.
 - Hover/focus shows the tooltip briefly; click/Enter/Space on the info affordance pins it so links are clickable.
 - Escape or outside click closes a pinned tooltip.
@@ -59,5 +62,6 @@ Required structure and behavior:
 ## Picker Compatibility
 
 - Picker and S-Picker always suppress visible tooltips.
+- Multi-Pick mouse interactions must not be disturbed by tooltip hover/freeze behavior.
 - Dynamically generated visible tooltip triggers must keep stable `data-ui` and `data-ib-pickkey` values.
 - Fallback tooltip text must never include user-entered values that could be secrets.

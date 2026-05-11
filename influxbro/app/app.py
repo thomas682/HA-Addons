@@ -1963,6 +1963,7 @@ DEFAULT_CFG = {
     # Tooltip documentation open mode (portable setting; exported/imported)
     # Allowed: new_tab, same_tab, modal
     "ui_tooltip_doc_open_mode": "new_tab",
+    "ui_manual_dialog_font_px": 11,
 
     # Backups (must live under /config, /data or /share)
     "backup_dir": str(DEFAULT_BACKUP_DIR),
@@ -25232,6 +25233,7 @@ def api_set_config():
     _clamp_int("ui_page_search_highlight_duration_ms", 8000, 200, 10000)
     _clamp_int("ui_nav_helper_history_limit", 10, 1, 100)
     _clamp_int("ui_nav_helper_highlight_duration_ms", 1400, 200, 10000)
+    _clamp_int("ui_manual_dialog_font_px", 11, 8, 16)
     _clamp_int("ui_status_bar_height_px", 38, 28, 90)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_table_min_empty_rows", 5, 0, 50)

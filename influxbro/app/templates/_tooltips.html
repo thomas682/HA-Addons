@@ -747,8 +747,15 @@
     let showT = null;
     let hideT = null;
     let pinned = false;
-    let shiftHeld = false;
     let lastMeta = null;
+    let freezeLabel = null;
+
+    function _visibleDialogOpen(){
+      try{
+        if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.visibleDialog && window.InfluxBroDialogStandards.visibleDialog()) return true;
+        return !!document.querySelector('[data-dialog-root="1"][style*="display: flex"], [data-dialog-root="1"][style*="display:block"], dialog[open]');
+      }catch(e){ return false; }
+    }
 
     // Hard-disable native browser tooltips: move title -> data-ib-title and remove title attr.
     function _stealTitle(el){
@@ -799,6 +806,21 @@
       tip.style.transform = 'translateY(4px)';
       tip.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
       document.body.appendChild(tip);
+      freezeLabel = document.createElement('div');
+      freezeLabel.id = 'ib_html_tooltip_freeze_label';
+      freezeLabel.textContent = '<shift taste drücken zum lösen>';
+      freezeLabel.style.position = 'fixed';
+      freezeLabel.style.zIndex = '2147483647';
+      freezeLabel.style.display = 'none';
+      freezeLabel.style.padding = '3px 8px';
+      freezeLabel.style.borderRadius = '999px';
+      freezeLabel.style.background = '#1d4ed8';
+      freezeLabel.style.color = '#fff';
+      freezeLabel.style.fontSize = '11px';
+      freezeLabel.style.fontWeight = '700';
+      freezeLabel.style.boxShadow = '0 6px 18px rgba(29,78,216,0.28)';
+      freezeLabel.style.pointerEvents = 'none';
+      document.body.appendChild(freezeLabel);
 
       // Doc button click.
       tip.addEventListener('click', (ev)=>{
@@ -922,7 +944,9 @@
     function _isTooltipEligible(el){
       try{
         if(!el || !el.matches) return false;
-        if(el.matches('button, a[href], summary, select, textarea, label')) return true;
+        if(el.matches('.ib_section_desc_row, .ib_clear_row, nav.sidebar, .ib_bottombar, [data-ui$=".panel_filters"], [data-ui$=".section_root"]')) return false;
+        if(el.matches('details, summary')) return false;
+        if(el.matches('button, a[href], select, textarea, label')) return true;
         if(el.matches('input:not([type="hidden"])')) return true;
         const role = String(el.getAttribute('role') || '').trim().toLowerCase();
         if(role === 'button' || role === 'link' || role === 'tab' || role === 'menuitem' || role === 'checkbox' || role === 'switch') return true;
@@ -940,8 +964,9 @@
       const source = _norm(el && (el.getAttribute('data-tooltip-source') || ''));
       const status = _norm(el && (el.getAttribute('data-tooltip-status') || ''));
       const kind = _norm(el && (el.getAttribute('data-tooltip-kind') || 'chip')) || 'chip';
-      const displayTitle = _norm(el && (el.getAttribute('data-tooltip-title') || title || '')) || _norm(_keyFromEl(el)) || 'Info';
+      let displayTitle = _norm(el && (el.getAttribute('data-tooltip-title') || title || '')) || 'Tooltip';
       const displayKey = _norm(_keyFromEl(el));
+      if(displayKey && (displayTitle === displayKey || /^[a-z0-9_]+(\.[a-z0-9_]+)+$/i.test(displayTitle))) displayTitle = 'Tooltip';
       const displayDesc = _fallbackTooltipDesc(el, displayTitle, _norm(el && (el.getAttribute('data-tooltip-desc') || desc || '')), displayKey);
       return {
         title: displayTitle,
@@ -958,12 +983,13 @@
     }
 
     function _hide(force){
-      if((pinned || shiftHeld) && !force) return;
+      if(pinned && !force) return;
       try{ if(showT) clearTimeout(showT); }catch(e){}
       try{ if(hideT) clearTimeout(hideT); }catch(e){}
       showT = null;
       hideT = null;
       try{ if(tip){ tip.style.opacity = '0'; tip.style.visibility = 'hidden'; tip.style.pointerEvents = 'none'; tip.style.borderColor = '#374151'; tip.style.transform = 'translateY(4px)'; } }catch(e){}
+      try{ if(freezeLabel) freezeLabel.style.display = 'none'; }catch(e){}
       lastEl = null;
       lastTitle = '';
       pinned = false;
@@ -1004,13 +1030,8 @@
       const statusText = _norm(m.status) || (m.count ? ('Aktiv · ' + String(m.count) + ' Treffer') : 'Verfügbar');
       const head = '<div style="padding:14px 16px 12px;border-bottom:1px solid #374151;display:flex;align-items:flex-start;gap:10px;"><div style="flex-shrink:0;width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:' + sevColor + '26;border:1px solid ' + sevColor + '66;"><span style="width:16px;height:16px;border-radius:50%;background:' + sevColor + ';display:block;"></span></div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;letter-spacing:-0.01em;color:#f9fafb;margin-bottom:2px;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:#9ca3af;font-weight:400;">' + keyHtml + '</div></div></div>';
       const descHtml = '<div style="font-size:12.5px;line-height:1.55;color:#d1d5db;margin:0 0 14px 0;">' + _esc(String(m.desc || desc || 'Zeigt Details und Dokumentation zu diesem Element.')) + '</div>';
-      const metaHtml = '<div style="display:grid;grid-template-columns:70px 1fr;gap:6px 14px;font-size:11.5px;margin-bottom:14px;">'
-        + '<div style="color:#9ca3af;font-weight:600;">Schweregrad</div><div style="color:#e5e7eb;"><span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:' + sevColor + ';"></span>' + _esc(_severityLabel(m.severity)) + '</span></div>'
-        + '<div style="color:#9ca3af;font-weight:600;">Quelle</div><div style="color:#e5e7eb;"><code style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px;color:#e5e7eb;">' + _esc(String(m.source || 'InfluxBro UI')) + '</code></div>'
-        + '<div style="color:#9ca3af;font-weight:600;">Status</div><div style="color:#e5e7eb;">' + _esc(statusText) + '</div>'
-        + '</div>';
       const exampleHtml = m.example ? '<div style="background:rgba(0,0,0,0.25);border:1px solid #374151;border-radius:6px;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#fbbf24;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="color:#9ca3af;font-size:10px;">▸</span><code style="font:inherit;color:inherit;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
-      const body = '<div style="padding:12px 16px 14px;">' + descHtml + metaHtml + exampleHtml + '</div>';
+      const body = '<div style="padding:12px 16px 14px;">' + descHtml + exampleHtml + '</div>';
       const foot = '<div style="border-top:1px solid #374151;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;">' + docBtn + '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:#9ca3af;"><kbd style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;padding:1px 5px;font-size:10px;color:#e5e7eb;min-width:16px;text-align:center;font-weight:600;">?</kbd><span>für Doku</span></span></div>';
       const arrow = '<div aria-hidden="true" style="position:absolute;top:-6px;left:28px;width:12px;height:12px;background:#1f2937;transform:rotate(45deg);border-radius:2px;border-left:1px solid #374151;border-top:1px solid #374151;"></div>';
       return arrow + head + body + foot;
@@ -1055,6 +1076,7 @@
         const y = Math.max(8, Math.min(window.innerHeight - r.height - 8, yWanted));
         tip.style.left = x + 'px';
         tip.style.top = (isChart && yWanted < 8 ? below : y) + 'px';
+        if(freezeLabel && pinned){ freezeLabel.style.left = Math.max(8, Math.min(window.innerWidth - 240, x + r.width + 8)) + 'px'; freezeLabel.style.top = y + 'px'; freezeLabel.style.display = 'block'; }
       }catch(e){}
     }
 
@@ -1114,7 +1136,8 @@
 
     document.addEventListener('mousemove', (ev)=>{
       try{
-        if(_pickerModeActive() || !TOOLTIPS_ENABLED) { _hide(true); return; }
+        if(_pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED) { _hide(true); return; }
+        if(pinned) return;
         const el = _targetFrom(ev);
         if(!el){ _hide(); return; }
         const rawTitle = _stealTitle(el);
@@ -1153,12 +1176,21 @@
       try{
         const t = ev && ev.target ? ev.target : null;
         if(tip && t && (t === tip || (t.closest && t.closest('#ib_html_tooltip')))) return;
+        if(pinned){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _hide(true); return; }
       }catch(e){}
-      _hide();
+      _hide(true);
     }, true);
     document.addEventListener('keydown', (ev)=>{
       const key = String(ev.key || '');
-      if(key === 'Shift'){ shiftHeld = true; if(tip && tip.style.visibility === 'visible'){ pinned = true; tip.style.pointerEvents = 'auto'; tip.style.borderColor = '#60a5fa'; } return; }
+      if(key === 'Shift'){
+        if(tip && tip.style.visibility === 'visible'){
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          if(pinned){ _hide(true); return; }
+          pinned = true; tip.style.pointerEvents = 'auto'; tip.style.borderColor = '#60a5fa'; tip.style.transform = 'translateY(0)';
+          try{ const r = tip.getBoundingClientRect(); if(freezeLabel){ freezeLabel.style.left = Math.max(8, Math.min(window.innerWidth - 240, r.right + 8)) + 'px'; freezeLabel.style.top = r.top + 'px'; freezeLabel.style.display = 'block'; } }catch(e){}
+        }
+        return;
+      }
       if(key === 'Escape'){ _hide(true); return; }
       const el = document.activeElement;
       if(!el || !el.getAttribute) return;
@@ -1174,17 +1206,10 @@
       }
       if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.transform='translateY(0)'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
     }, true);
-    document.addEventListener('keyup', (ev)=>{
-      const key = String(ev.key || '');
-      if(key !== 'Shift') return;
-      shiftHeld = false;
-      pinned = false;
-      _hide(true);
-    }, true);
     document.addEventListener('scroll', ()=>{ _hide(); }, true);
     window.InfluxBroUnifiedTooltip = {
       show(meta, anchorRect){
-        try{ if(_pickerModeActive() || !TOOLTIPS_ENABLED){ _hide(true); return; } }catch(e){}
+        try{ if(_pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED){ _hide(true); return; } }catch(e){}
         const box = _ensure();
         pinned = !!(meta && meta.pinned);
         lastMeta = meta || {};

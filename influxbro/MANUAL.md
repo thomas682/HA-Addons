@@ -91,9 +91,9 @@ Neu: Top-Leiste (Profil + Zoom)
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.
     - Direkte Pick-Eingabe: Wenn du einen String wie `<PICK:...|...>` eingibst und Enter drueckst, wird exakt dieses Element gesucht (Page-Mismatch / Nichttreffer wird klar gemeldet).
   - Picker / S-Picker: kopiert eine kanonische Elementkennung in die Zwischenablage. Neu: Vollformat mit stabiler Produktkennung + exakter Instanzkennung: `<PICK:<Page>|v=1;pk=<product_key>;ik=<instance_key>>`. Legacy-Referenzen ohne `v=1` bleiben lesbar.
-    - Nach einem Pick erscheint ein reduzierter Ergebnisdialog mit dem gepickten Text sowie Minimieren, Maximieren und Schliessen. Der Text wird beim Oeffnen automatisch in die Zwischenablage kopiert; falls das Kopieren im Browser blockiert wird, zeigt der Dialog einen kurzen Fehlerhinweis.
+    - Nach einem Pick erscheint ein reduzierter Ergebnisdialog mit dem Modustitel `Picker` oder `Super Picker`, dem gepickten Text sowie Minimieren, Maximieren und Schliessen. Der Text wird beim Oeffnen automatisch in die Zwischenablage kopiert; falls das Kopieren im Browser blockiert wird, zeigt der Dialog einen kurzen Fehlerhinweis.
     - `oltype` wird nur angehaengt, wenn das Element ein `data-cache-oltype` Attribut besitzt (es wird nur der Wert kopiert, kein Key-Name).
-  - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elementen; `Ende` oeffnet den Dialog `Picker Multi Modus` mit kompakten Karten. Jede Karte kann ueber das Close-Symbol rechts entfernt werden, danach wird die kopierte Ergebnisliste aktualisiert.
+  - Picker / S-Picker Multi-Pick (Shift+Klick): startet einen Mehrfach-Pick. Unter der Pagecard erscheint eine Statusleiste mit den erfassten Elementen; `Ende` oeffnet je nach Modus den Dialog `Picker Multi Modus` oder `Super Picker Multi Modus` mit kompakten Karten. Jede Karte kann ueber das Close-Symbol rechts entfernt werden, danach wird die kopierte Ergebnisliste aktualisiert.
   - Neu: Button `Verschieben` (Icon mit 2 Quadraten + Pfeil). Dieser oeffnet den Einstellungen-Organizer.
     - Wenn du eine Aktion auswaehlst und nicht auf der Seite `Einstellungen` bist, wird automatisch nach `Einstellungen` gewechselt.
     - Funktionen: Parameterzeilen zwischen Bereichen verschieben; Hauptpunkte/Unterpunkte verschieben oder umbenennen; benutzerdefinierte Hauptpunkte/Unterpunkte erzeugen; loeschen nur wenn wirklich leer (Systempunkte sind gesperrt).
@@ -102,7 +102,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Zoom wird im Browser gespeichert (pro Browser/Client) und skaliert die komplette UI proportional (auch Tabellen/Graphen/Buttongroessen).
 - Neu: Wenn im Browser noch keine Zoomstufe gespeichert ist, wird beim ersten Laden automatisch eine passende Default-Zoomstufe je nach Viewport-Breite gesetzt (z.B. iPhone groesser, Desktop 100%). Danach kannst du wie gewohnt mit `-`/`+` anpassen.
 - Der globale Start-Fallback `safeReveal` bleibt aktiv, meldet normale Start-Enthuellungen aber nicht mehr als Warnung. Warnungen erscheinen nur noch bei echten Browserfehlern oder unbehandelten Promise-Fehlern.
-- Standard-Tooltips erscheinen nur noch auf wirklich interaktiven Elementen wie Buttons, Links und Eingaben. Wenn du bei einem sichtbaren Tooltip `Shift` gedrueckt haeltst, bleibt dieser offen, damit du den kleinen Button `Dokumentation oeffnen` oder andere interaktive Inhalte direkt im Tooltip benutzen kannst; ein separater Tooltip-Schalter innerhalb des Tooltips wird nicht mehr angezeigt. Die Tooltip-Ziellogik wird direkt im Tooltip-Script geladen, damit dieses Verhalten beim Seitenstart zuverlaessig aktiv ist.
+- Standard-Tooltips erscheinen nur noch auf wirklich interaktiven Elementen wie Buttons, Links und Eingaben. Der Topbar-Button `Tooltips` schaltet sie seitenuebergreifend ein oder aus. Bei einem sichtbaren Tooltip friert `Shift` den Tooltip ein; ein blaues Label zeigt den Freeze-Zustand, erneutes `Shift`, `Esc` oder ein Aussenklick loest ihn wieder. Picker, S-Picker und sichtbare Dialoge unterdruecken Tooltips weiterhin.
 - Analyse-Chips und Graph-Hover nutzen jetzt die professionellen Tooltip-Designs aus den HTML-Referenzen: Chip-Tooltips zeigen Titel, stabile Kennung, Beschreibung, Schweregrad, Quelle, Status, Beispiel und Doku-Footer; Graph-Tooltips zeigen Datenquelle, Wert, Zeitstempel, Delta, Wertebereich und einen kleinen Verlaufskontext. Picker und S-Picker unterdruecken weiterhin sichtbare Tooltips.
 - Globale Dialoge wie Query-/Info-Popup, Bestaetigung, Issue Composer und Smart Bug Assistant nutzen die neue Dialogstruktur mit Kopfbereich, Beschreibung, Info/Handbuch im Header, Inhaltsbereich, Footer-Meta und Tastaturbedienung (`Esc`, `F1`, `Ctrl+I`). Sichtbare S-Picker-Buttons erscheinen in Dialogen nicht; der konfigurierte Shortcut bleibt dialogbezogen nutzbar.
 - Dashboard-Dialoge wie Ausreisser-Parameter, Strategieinfo, Referenzdetails, JSON-Hilfe, Aenderungsvorschau, Reparatur-Assistent, Messwertinfos-Laufzeitdetails und gefiltertes Analyse-Logging verwenden ebenfalls stabile Dialog-Pickkeys und die Template-v2-Bereiche fuer Kopf, Toolbar, Inhalt und Footer.
@@ -115,8 +115,8 @@ Neu: Top-Leiste (Profil + Zoom)
 
 - Handbuchbuttons, Tooltip-Doku-Buttons und `F1` oeffnen die passende Hilfe direkt im integrierten Handbuchdialog.
 - Der Sprung erfolgt ueber stabile Dokumentationsziele, damit der Dialog zur fachlich richtigen Stelle springt und nicht nur eine ungefaehre Suche ausfuehrt.
+- Der integrierte Dialog besitzt eine eigene Suche im geladenen Handbuchauszug. `Weiter`, `Zurueck` und Enter springen zwischen gelb markierten Treffern; die Dialog-Schriftgroesse ist in den Einstellungen als `Handbuchdialog Schriftgroesse` konfigurierbar.
 - Der Button `Im Handbuch oeffnen` wechselt bei Bedarf zur vollstaendigen Handbuchseite im gleichen Add-on-Kontext.
-- Der optionale GitHub-Link ist nur ein externer Fallback; die integrierte Hilfe verwendet die lokal installierte Add-on-Version.
 - Bilder im Handbuch werden weiterhin intern geladen und funktionieren auch im integrierten Handbuchdialog.
 
 ### Messwertinfo-Laufzeitdetails
@@ -638,7 +638,7 @@ Hinweis: Zeitstempel werden im gesamten UI inklusive Millisekunden angezeigt.
 - Das Info-Icon (i) erklaert je Tabelle Sinn/Zweck, Spalten und Aktionen (falls vorhanden).
 - Hinweis: im Dashboard-Bereich `Ausreißer` wird die Tabelleninfo (sowie Spalten ein-/ausblenden) in der Action-Leiste direkt ueber der Tabelle angezeigt.
 - Zusaetzlich haben viele Bereiche neben dem Bereichstitel ein Info-Icon, das die komplette Sektion ausfuehrlich erklaert (Popup ist resizable, hat Umbruch + Copy).
-- Bereichsaktionen (Info/Zu Einstellungen) stehen nicht mehr in der Summary-Titelzeile, sondern als eigene Zeile direkt im Section-Body (mit kurzer Beschreibung). Diese Infozeile nutzt immer die volle Summary-Breite.
+- Bereichsaktionen (Info/Zu Einstellungen) stehen als eigene Zeile direkt im Section-Body (mit kurzer Beschreibung). `Zu Einstellungen` oeffnet die Einstellungsseite mit einem Kontextfilter-Chip und zeigt nur die passenden Parameter; `Filter loeschen` stellt die vollstaendige Einstellungsseite wieder her.
 - Tabellen-Kopfzeilen koennen global in den Einstellungen farblich angepasst werden (Hintergrund/Textfarbe). Leere Tabellen zeigen mindestens eine konfigurierbare Anzahl leerer Zeilen.
 - Die Summary-Balken fuer einklappbare Bereiche laufen jetzt ueber die komplette Summary-Zeile inklusive Auf-/Zuklappsymbol und verwenden ein einheitliches Balken-Layout.
 
@@ -811,6 +811,7 @@ Raw Daten (DB):
 - Native Browser-Tooltips (grau) sind global deaktiviert, damit es keine Doppel-Tooltips geben kann.
 - Tabellen-Tooltips zeigen bei Tabellenzellen den sichtbaren Zelltext; der UI-Key steht weiterhin im Tooltip-Suffix.
 - Tooltips besitzen zusaetzlich einen Doku-Button, der das Handbuch oeffnet und nach dem jeweiligen UI-Key sucht (Open-Mode: gleicher Tab / neuer Tab / modal; konfigurierbar in den Einstellungen).
+- Der Topbar-Button `Tooltips` speichert die globale Tooltip-Aktivierung direkt. Ein gefrorener Tooltip blockiert darunterliegende Klicks, bis du ihn per `Shift`, `Esc` oder Aussenklick loest.
 
 So erreichst du den Tooltip-Doku-Link:
 

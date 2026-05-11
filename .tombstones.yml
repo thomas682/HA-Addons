@@ -72,3 +72,18 @@
     removed: []
     redirects: []
   ci_reference: "user-request-2026-04-24"
+
+- path: "influxbro/app/templates/_topbar.html"
+  tombstone_id: "TS-2026-0006"
+  reason: "Remove topbar Param-Hilfe button; contextual Section settings buttons now provide the settings navigation"
+  owner: "thomas"
+  impacted_selectors:
+    - "#ib_param_help_toggle"
+    - "[data-ui=nav_main.btn_param_help]"
+  impacted_actions:
+    - "Topbar: Param-Hilfe Overlay ein-/ausblenden"
+  migration_plan: "Use the settings gear in each section header; it opens the settings page with a section-specific filter."
+  route_plan:
+    removed: []
+    redirects: []
+  ci_reference: "#571"

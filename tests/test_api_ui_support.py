@@ -503,10 +503,12 @@ def test_monitor_page_does_not_force_topbar_search_to_full_width():
 
 def test_nav_uses_dynamic_pagecard_height_for_desktop_layout():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
-    assert 'top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px);' in body
+    assert 'var(--ib-content-top-gap, 0px)' in body
+    assert 'top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px));' in body
     assert (
-        'height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px));' in body
-        or 'height: max(240px, calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + 20px)));' in body
+        'height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px)));' in body
+        or 'height: max(240px, calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px)));' in body
+        or 'max-height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px)));' in body
     )
 
 
@@ -1126,19 +1128,21 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'Tooltips</label>' not in tooltips
     assert 'if(key === \'Shift\'){' in tooltips
     assert 'pinned = true;' in tooltips
-    assert 'document.addEventListener(\'keyup\'' in tooltips
+    assert '<shift taste drücken zum lösen>' in tooltips
+    assert 'if(pinned){ _hide(true); return; }' in tooltips
+    assert '_visibleDialogOpen()' in tooltips
     assert 'Dokumentation öffnen' in tooltips
     assert '? öffnet Doku' not in tooltips
     professional_block = tooltips[tooltips.index('function _renderChipTooltip('):tooltips.index('function _pos(')]
-    assert 'Schweregrad' in professional_block
-    assert 'Quelle' in professional_block
-    assert 'Status' in professional_block
+    assert 'Schweregrad' not in professional_block
+    assert 'Quelle' not in professional_block
+    assert 'Status' not in professional_block
     assert '<kbd' in professional_block
     assert 'function _renderChartTooltip()' in professional_block
     assert 'function _isTooltipEligible(el)' in tooltips
     assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('function _targetFrom(ev)')
     assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('</script>')
-    assert "el.matches('button, a[href], summary, select, textarea, label')" in tooltips
+    assert "el.matches('button, a[href], select, textarea, label')" in tooltips
 
 
 def test_tooltips_are_not_globally_blocked_for_pagecard_and_statusbar_buttons():
@@ -1434,7 +1438,8 @@ def test_navigation_helper_controls_and_config_exist():
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'id="ib_nav_back"' in topbar
     assert 'id="ib_nav_forward"' in topbar
-    assert 'id="ib_param_help_toggle"' in topbar
+    assert 'id="ib_tooltip_toggle"' in topbar
+    assert 'ui_tooltips_enabled' in topbar
     assert 'const NAV_HISTORY_KEY = ' in topbar
     assert 'const PARAM_LINKS = {' in topbar
     assert "sessionStorage.setItem('influxbro_nav_context_v1'" in nav
@@ -1450,9 +1455,21 @@ def test_navigation_helper_uses_pending_target_and_html_badges():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
     assert 'const NAV_PENDING_KEY = ' in topbar
     assert 'function _consumePendingNav(){' in topbar
-    assert 'function _renderParamHelpBadges(){' in topbar
-    assert 'ib_param_hint_badge' in topbar
+    assert 'function _renderParamHelpBadges(){' not in topbar
+    assert 'ib_param_hint_badge' not in topbar
     assert "_navigateToEntry(entry);" in topbar
+
+
+def test_manual_dialog_search_and_settings_context_filter_exist():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
+    assert 'id="ib_doc_modal_search"' in topbar
+    assert 'function _manualSearch(root, dir)' in topbar
+    assert 'ib_doc_search_mark' in topbar
+    assert 'settings_ref=' in topbar
+    assert 'const SETTINGS_CONTEXTS = {' in config
+    assert 'function applySettingsContextFilter(){' in config
+    assert 'id="settings_context_chip"' in config
 
 
 def test_settings_restructure_script_and_general_navigation_params_exist():
