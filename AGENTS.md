@@ -449,6 +449,15 @@ afplay /System/Library/Sounds/Glass.aiff
 say "Fertig mit der Umsetzung"
 ```
 
+Wenn ein aktives Issue existiert, MUSS die Sprachausgabe die Issue-Nummer nennen:
+
+```bash
+afplay /System/Library/Sounds/Glass.aiff
+say "Fertig mit der Umsetzung von Issue <nummer>"
+```
+
+Ohne aktives Issue bleibt die generische Ansage `Fertig mit der Umsetzung` bestehen.
+
 Wenn eine neue Add-on-Version erstellt wurde (Version in influxbro/config.yaml erhöht), wird zusätzlich und erst nach erfolgreichem Push die Versionsansage ausgeführt:
 
 ```bash
