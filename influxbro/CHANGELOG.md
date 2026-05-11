@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.599
+
+### Enhancement
+
+- Dialoge: Die zentrale Standarddialog-Logik ist aus der Topbar in ein eigenes Template ausgelagert, damit der Topbar-Code kleiner bleibt und Dialoganpassungen isolierter wartbar sind. ([#576](https://github.com/thomas682/HA-Addons/issues/576))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.598
 
 ### Fix

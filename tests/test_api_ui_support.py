@@ -5,6 +5,13 @@ from pathlib import Path
 import re
 
 
+def _topbar_runtime_text() -> str:
+    root = Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates"
+    topbar = (root / "_topbar.html").read_text()
+    dialog = (root / "_dialog.html").read_text()
+    return topbar.replace('{% include "_dialog.html" %}', dialog)
+
+
 def test_bugreport_meta_includes_recent_ui_actions(load_app_module, tmp_path):
     cfg_root = tmp_path / "config"
     data_root = tmp_path / "data"
@@ -225,6 +232,7 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     nav_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    dialog_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_dialog.html").read_text()
     tooltips_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
 
     assert 'id="ui_longwait_threshold_ms"' in config_body
@@ -276,15 +284,16 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "if(u.includes('/api/perf_stats')) return false;" in tooltips_body
     assert "if(u.includes('/api/sysinfo')) return false;" in tooltips_body
     assert 'window.InfluxBroEnsureSummarySettingsButtons = function(){' in topbar
-    assert 'window.InfluxBroDialogStandards = {' in topbar
+    assert '{% include "_dialog.html" %}' in topbar
+    assert 'window.InfluxBroDialogStandards = {' in dialog_body
     assert 'window.InfluxBroSafeReveal = safeReveal;' in topbar
     assert "window.addEventListener('unhandledrejection'" in topbar
     assert "ui_superpicker_shortcut: 'ctrl+s'" in topbar
     assert 'function _shortcutMatches(ev){' in topbar
     assert 'async function _openConfiguredSuperpicker(){' in topbar
     assert 'window.InfluxBroSummaryConfigButtonMeta = function(detailsEl){' in topbar
-    assert 'function _dialogName(root){' in topbar
-    assert "data-dialog-enhanced', '1'" in topbar
+    assert 'function _dialogName(root){' in dialog_body
+    assert "data-dialog-enhanced', '1'" in dialog_body
     assert "data-dialog-panel=\"1\"" in index_body
     assert 'let multiDrag = null;' in topbar
     assert "id=\"ib_mp_drag\"" in topbar
@@ -892,7 +901,7 @@ def test_dbinfo_storage_table_exposes_safe_delete_selection():
 
 
 def test_dialog_standardization_avoids_generic_dialog_pickkeys():
-    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    topbar = _topbar_runtime_text()
     index_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "return 'dialog_unknown';" in topbar
@@ -909,7 +918,7 @@ def test_dialog_standardization_avoids_generic_dialog_pickkeys():
 
 
 def test_dialog_template_v2_basis_for_global_dialogs():
-    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    topbar = _topbar_runtime_text()
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert "ib_dialog_standard_styles_v2" in topbar
     assert "--c-bg:" in topbar
@@ -935,7 +944,7 @@ def test_dialog_template_v2_basis_for_global_dialogs():
 
 def test_dialog_descriptions_and_meta_copy_are_specific():
     root = Path(__file__).resolve().parents[1] / "influxbro"
-    topbar = (root / "app" / "templates" / "_topbar.html").read_text()
+    topbar = _topbar_runtime_text()
     rules = (root / "template-dialog-rules.md").read_text()
 
     assert "const DIALOG_DESCRIPTION_LINES = {" in topbar
@@ -964,7 +973,7 @@ def test_dialog_descriptions_and_meta_copy_are_specific():
 
 
 def test_dialog_help_buttons_live_in_header_before_window_actions():
-    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    topbar = _topbar_runtime_text()
     rules = (Path(__file__).resolve().parents[1] / "influxbro" / "template-dialog-rules.md").read_text()
     assert "let infoBtn = headerActions.querySelector('[data-dialog-info-btn=\"1\"]');" in topbar
     assert "let restoreBtn = headerActions.querySelector('[data-dialog-window=\"restore\"]');" in topbar
@@ -980,7 +989,7 @@ def test_handbook_rules_and_resolver_are_centralized():
     root = Path(__file__).resolve().parents[1]
     agents = (root / "AGENTS.md").read_text()
     handbuch_rules = (root / "influxbro" / "template-handbuch-rules.md").read_text()
-    topbar = (root / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    topbar = _topbar_runtime_text()
     tooltips = (root / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     manual = (root / "influxbro" / "app" / "templates" / "manual.html").read_text()
     manual_md = (root / "influxbro" / "MANUAL.md").read_text()
@@ -1464,7 +1473,7 @@ def test_navigation_helper_uses_pending_target_and_html_badges():
 
 
 def test_manual_dialog_search_and_settings_context_filter_exist():
-    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    topbar = _topbar_runtime_text()
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'id="ib_doc_modal_search"' in topbar
     assert 'function _manualSearch(root, dir)' in topbar
@@ -1714,7 +1723,7 @@ def test_dashboard_strategy_type_cards_keep_pickkeys_and_local_overrides():
 
 
 def test_dialogs_are_content_sized_and_profile_persisted():
-    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    topbar = _topbar_runtime_text()
     nav = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
     dashboard = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
     assert ".ib-dialog-v2{ background:var(--c-surface)" in topbar
@@ -1730,7 +1739,7 @@ def test_dialogs_are_content_sized_and_profile_persisted():
 
 
 def test_dialog_maximize_uses_viewport_size_not_fit_content():
-    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    topbar = _topbar_runtime_text()
     assert "[data-dialog-root=\"1\"][data-dialog-maximized=\"1\"]" in topbar
     assert "dialog[data-dialog-maximized=\"1\"]" in topbar
     assert "width:100vw !important" in topbar
@@ -1862,7 +1871,7 @@ def test_dialogs_hide_superpicker_buttons_and_keep_footer_normalizer():
     logs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "logs.html").read_text()
     dq_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "dq.html").read_text()
     jobs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
-    topbar_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    topbar_body = _topbar_runtime_text()
     tooltips_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     assert 'data-dialog-root="1"' in index_body
     assert 'btn_superpicker' not in index_body
@@ -2135,7 +2144,7 @@ def test_multi_pick_result_uses_card_dialog():
 
 def test_dialog_titles_prefer_readable_trigger_text_and_rules_link_picker():
     root = Path(__file__).resolve().parents[1]
-    topbar = (root / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    topbar = _topbar_runtime_text()
     dialog_rules = (root / "influxbro" / "template-dialog-rules.md").read_text()
     assert "function _dialogTriggerTitle(root)" in topbar
     assert "const triggerTitle = _dialogTriggerTitle(root);" in topbar
