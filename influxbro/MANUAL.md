@@ -79,6 +79,7 @@ Neu: Sidebar (Desktop)
 Neu: Top-Leiste (Profil + Zoom)
 
 - Ganz oben gibt es eine fixe Leiste (scrollt nicht mit), die immer sichtbar bleibt.
+- Navigation und Hauptinhalt beginnen direkt unter dieser fixen Leiste; die Hoehe wird aus der sichtbaren Top-Leiste abgeleitet, damit kein zusaetzlicher leerer Abstand entsteht.
 - Auf sehr schmalen Breiten (z.B. iPhone) kannst du den rechten Block (Profil/Picker/Zoom/Suche/Buttons) ueber den Menu-Button ein- und ausklappen. Der Zustand wird im Browser gespeichert.
 - Auf iPhone wird die tatsaechliche Hoehe der Titelzeile laufend nachgemessen, damit der Dashboard-Inhalt immer unterhalb der fixierten Titelzeile beginnt und nicht dahinter liegt.
 - Auf iPhone deckt die Titelzeile den oberen Bereich opak ab, bleibt dabei aber kompakt ohne leeren Safe-Area-Innenabstand oberhalb von `InfluxBro`.

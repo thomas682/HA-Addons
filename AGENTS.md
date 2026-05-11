@@ -422,6 +422,8 @@ Es gibt vier unterschiedliche Signalarten:
 
 Die Home-Assistant-Live-Update-Sprachausgabe aus Schritt D2 ist zusätzlich zur Versionsansage auszuführen, aber nur nach erfolgreichem Live-Update und nur wenn sich die Live-Version tatsächlich geändert hat.
 
+Alle Audio-/Sprachausgaben im Zusammenhang mit `afplay`, Abschluss-, Versions-, Blocker- und Entscheidungssignalen MUESSEN auf Deutsch formuliert sein. Produktnamen, technische Begriffe und Issue-Nummern duerfen unveraendert bleiben.
+
 Das Abschlusssignal darf AUSSCHLIESSLICH ganz am Ende des vollständigen Abschlussflusses erfolgen.
 Pflichtreihenfolge vor jedem Abschlusssignal:
 

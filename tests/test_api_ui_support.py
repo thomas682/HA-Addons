@@ -504,11 +504,12 @@ def test_monitor_page_does_not_force_topbar_search_to_full_width():
 def test_nav_uses_dynamic_pagecard_height_for_desktop_layout():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_nav.html").read_text()
     assert 'var(--ib-content-top-gap, 0px)' in body
-    assert 'top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px));' in body
+    assert 'top: calc(var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px));' in body
+    assert 'top: calc(var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px));' not in body
     assert (
-        'height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px)));' in body
-        or 'height: max(240px, calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px)));' in body
-        or 'max-height: calc(100vh - (var(--ib-topbar-h, 0px) + var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px)));' in body
+        'height: calc(100vh - (var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px)));' in body
+        or 'height: max(240px, calc(100vh - (var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px)));' in body
+        or 'max-height: calc(100vh - (var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px)));' in body
     )
 
 

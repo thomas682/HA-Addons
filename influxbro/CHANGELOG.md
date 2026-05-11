@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.597
+
+### Fix
+
+- Layout: Sidebar, Splitter, Mobile-Drawer und Hauptbereich verwenden fuer den Start unter der fixen Topbar nur noch die echte Pagecard-Hoehe statt zusaetzlich `--ib-topbar-h`; dadurch entfaellt der leere Abstand unter der Titelzeile. ([#574](https://github.com/thomas682/HA-Addons/issues/574))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.596
 
 ### Enhancement
