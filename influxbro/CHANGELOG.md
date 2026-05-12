@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.607
+
+### Fix
+
+- Dialoge: Der Resize-Handle startet das Ziehen jetzt auch dann, wenn native Dialog-Top-Layer den direkten Handle-Listener nicht ausloesen und das Pointer-Down nur im Dokument-Capture-Pfad ankommt. ([#583](https://github.com/thomas682/HA-Addons/issues/583))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.606
 
 ### Fix

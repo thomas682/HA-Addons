@@ -1222,6 +1222,15 @@
             };
             handle.addEventListener('pointerdown', startResize, true);
             handle.addEventListener('mousedown', startResize, true);
+            const startResizeFromDocument = (ev)=>{
+              try{
+                const hits = document.elementsFromPoint ? document.elementsFromPoint(ev.clientX, ev.clientY) : [];
+                if(Array.prototype.indexOf.call(hits, handle) < 0) return;
+                startResize(ev);
+              }catch(e){}
+            };
+            document.addEventListener('pointerdown', startResizeFromDocument, true);
+            document.addEventListener('mousedown', startResizeFromDocument, true);
             handle.addEventListener('dblclick', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); _dialogResetGeometry(root, panel); }catch(e){} }, true);
           }
         }else{

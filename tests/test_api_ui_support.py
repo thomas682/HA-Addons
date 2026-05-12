@@ -1250,6 +1250,10 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert 'user-select:text; cursor:text;' in dialog
     assert 'const startResize = (ev)=>{' in dialog
     assert "handle.addEventListener('mousedown', startResize, true);" in dialog
+    assert 'const startResizeFromDocument = (ev)=>{' in dialog
+    assert 'document.elementsFromPoint(ev.clientX, ev.clientY)' in dialog
+    assert "document.addEventListener('pointerdown', startResizeFromDocument, true);" in dialog
+    assert "document.addEventListener('mousedown', startResizeFromDocument, true);" in dialog
     assert "window.addEventListener('mousemove', move, true);" in dialog
     assert "window.addEventListener('mouseup', up, true);" in dialog
     assert "document.addEventListener('pointercancel', up, true);" in dialog
