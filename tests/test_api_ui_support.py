@@ -1249,6 +1249,7 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert "else reject(new Error('copy failed'));" in dialog
     assert 'user-select:text; cursor:text;' in dialog
     assert 'const startResize = (ev)=>{' in dialog
+    assert 'if(ev && typeof ev.clientX === \'number\' && typeof ev.clientY === \'number\') move(ev);' in dialog
     assert "handle.addEventListener('mousedown', startResize, true);" in dialog
     assert 'const startResizeFromDocument = (ev)=>{' in dialog
     assert 'document.elementsFromPoint(ev.clientX, ev.clientY)' in dialog

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.609
+
+### Fix
+
+- Dialoge: Der Resize-Fallback berechnet die Endgroesse jetzt auch beim Loslassen des Handles, falls ein nativer Dialog-Top-Layer waehrend des Drags keine Move-Events liefert. ([#583](https://github.com/thomas682/HA-Addons/issues/583))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.608
 
 ### Fix

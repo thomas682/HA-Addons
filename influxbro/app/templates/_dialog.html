@@ -1195,8 +1195,9 @@
                     }
                   }catch(e){}
                 };
-                const up = ()=>{
+                const up = (ev)=>{
                   if(!activeResize) return;
+                  try{ if(ev && typeof ev.clientX === 'number' && typeof ev.clientY === 'number') move(ev); }catch(e){}
                   const done = activeResize;
                   activeResize = null;
                   try{ document.removeEventListener('pointermove', move, true); document.removeEventListener('pointerup', up, true); document.removeEventListener('pointercancel', up, true); }catch(e){}
