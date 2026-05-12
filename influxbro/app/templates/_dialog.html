@@ -668,6 +668,13 @@
         }));
       }catch(e){}
     }
+    function _notifyDialogOpened(root){
+      try{
+        document.dispatchEvent(new CustomEvent('influxbro:dialog-opened', {
+          detail: { name: _dialogName(root) }
+        }));
+      }catch(e){}
+    }
     function _closeDialog(root, closeSelector){
       try{
         const host = _dialogRoot(root) || root;
@@ -1264,6 +1271,7 @@
           if(root.getAttribute('data-dialog-open-logged') !== '1'){
             root.setAttribute('data-dialog-open-logged', '1');
             _dialogReport('dialog_open', root, { trigger: root.getAttribute('data-dialog-trigger') || '' });
+            _notifyDialogOpened(root);
           }
           return;
         }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.604
+
+### Fix
+
+- Tooltips: Sichtbare Dialoge werden nun ueber zentrale Open-/Close-Signale und computed-style-basierte Dialogerkennung erkannt, damit Tooltips in allen Dialogen unterdrueckt und nach dem Schliessen wieder reaktiviert werden. ([#583](https://github.com/thomas682/HA-Addons/issues/583))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.603
 
 ### Fix

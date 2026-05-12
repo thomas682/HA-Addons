@@ -767,7 +767,16 @@
     function _visibleDialogOpen(){
       try{
         if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.visibleDialog && window.InfluxBroDialogStandards.visibleDialog()) return true;
-        return !!document.querySelector('[data-dialog-root="1"][style*="display: flex"], [data-dialog-root="1"][style*="display:block"], dialog[open]');
+        const candidates = Array.from(document.querySelectorAll('dialog,[data-dialog-root="1"],[role="dialog"],.dlg_backdrop,.modal'));
+        for(let i = candidates.length - 1; i >= 0; i -= 1){
+          const el = candidates[i];
+          if(!el) continue;
+          if(el.tagName === 'DIALOG' && el.open) return true;
+          const st = window.getComputedStyle ? window.getComputedStyle(el) : null;
+          const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+          if(st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0' && rect && rect.width > 0 && rect.height > 0) return true;
+        }
+        return false;
       }catch(e){ return false; }
     }
 
@@ -1294,6 +1303,13 @@
         _stealAllTitles(document.body);
       }catch(e){}
     }, true);
+    document.addEventListener('influxbro:dialog-opened', ()=>{
+      try{ _hide(true); }catch(e){}
+    }, true);
+    try{
+      const dialogMo = new MutationObserver(()=>{ try{ if(_visibleDialogOpen()) _hide(true); }catch(e){} });
+      dialogMo.observe(document.documentElement || document.body, { subtree:true, attributes:true, attributeFilter:['style','class','open','aria-hidden'] });
+    }catch(e){}
     window.InfluxBroUnifiedTooltip = {
       show(meta, anchorRect){
         try{ if(_pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED){ _hide(true); return; } }catch(e){}
