@@ -1013,14 +1013,20 @@
     function _dialogVisible(root){
       try{
         if(!root) return false;
-        if(root.tagName === 'DIALOG') return !!root.open || root.style.display === 'block';
+        if(root.hidden || String(root.getAttribute && root.getAttribute('aria-hidden') || '').toLowerCase() === 'true') return false;
+        if(root.tagName === 'DIALOG'){
+          if(root.open) return true;
+          const ds = window.getComputedStyle ? window.getComputedStyle(root) : null;
+          const dr = root.getBoundingClientRect ? root.getBoundingClientRect() : null;
+          return !!(root.style.display === 'block' && ds && ds.display !== 'none' && ds.visibility !== 'hidden' && ds.opacity !== '0' && dr && dr.width > 0 && dr.height > 0);
+        }
         const st = window.getComputedStyle ? window.getComputedStyle(root) : null;
         const rect = root.getBoundingClientRect ? root.getBoundingClientRect() : null;
         if(root.closest){
           const parentDialog = root.closest('dialog');
           if(parentDialog && !(!!parentDialog.open || parentDialog.style.display === 'block')) return false;
         }
-        return !!(st && st.display !== 'none' && st.visibility !== 'hidden' && rect && rect.width > 0 && rect.height > 0);
+        return !!(st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0' && rect && rect.width > 0 && rect.height > 0);
       }catch(e){ return false; }
     }
     function _dialogInfoText(root){

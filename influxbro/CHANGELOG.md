@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.605
+
+### Fix
+
+- Tooltips: Nach dem Schliessen von Dialogen werden geschlossene Dialogreste nicht mehr als sichtbar gewertet und Pointer-/Mouse-Over reaktiviert Tooltips wieder am aktuellen Ziel, damit der Tooltip am `Feld leeren`-Button ohne Aus-/Einschalten zurueckkehrt. ([#583](https://github.com/thomas682/HA-Addons/issues/583))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.604
 
 ### Fix

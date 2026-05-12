@@ -1149,6 +1149,10 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert "document.addEventListener('influxbro:dialog-closed'" in tooltips
     assert "document.addEventListener('influxbro:dialog-opened'" in tooltips
     assert '_stealAllTitles(document.body);' in tooltips
+    assert 'function _targetFromNode(t)' in tooltips
+    assert 'function _handleTooltipPointer(ev, delay)' in tooltips
+    assert "document.addEventListener('pointermove', (ev)=>{ _handleTooltipPointer(ev, 220); }, true);" in tooltips
+    assert "document.addEventListener('pointerover', (ev)=>{ _handleTooltipPointer(ev, 220); }, true);" in tooltips
     assert 'Dokumentation öffnen' in tooltips
     assert '? öffnet Doku' not in tooltips
     professional_block = tooltips[tooltips.index('function _renderChipTooltip('):tooltips.index('function _pos(')]
@@ -1158,7 +1162,7 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'Shift druecken zum Fixieren' in professional_block
     assert 'function _renderChartTooltip()' in professional_block
     assert 'function _isTooltipEligible(el)' in tooltips
-    assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('function _targetFrom(ev)')
+    assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('function _targetFromNode(t)')
     assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('</script>')
     assert "el.matches('button, select, textarea')" in tooltips
     assert "el.matches('a[href]')) return el.getAttribute('data-tooltip-allow') === '1';" in tooltips
@@ -1180,6 +1184,11 @@ def test_dialog_close_reenables_tooltips():
     assert "document.addEventListener('influxbro:dialog-opened'" in tooltips
     assert "new MutationObserver" in tooltips
     assert "if(_visibleDialogOpen()) _hide(true);" in tooltips
+    assert "else setTimeout(_rearmTooltipAfterDialog, 80);" in tooltips
+    assert "setTimeout(_rearmTooltipAfterDialog, 60);" in tooltips
+    assert "setTimeout(_rearmTooltipAfterDialog, 240);" in tooltips
+    assert "function _rearmTooltipAfterDialog()" in tooltips
+    assert "document.elementFromPoint(lastPointer.x, lastPointer.y)" in tooltips
     assert "_hide(true);" in tooltips
 
 

@@ -763,6 +763,7 @@
     let lastMeta = null;
     let freezeLabel = null;
     let lastKeyEvent = null;
+    let lastPointer = null;
 
     function _visibleDialogOpen(){
       try{
@@ -774,6 +775,7 @@
           if(el.tagName === 'DIALOG' && el.open) return true;
           const st = window.getComputedStyle ? window.getComputedStyle(el) : null;
           const rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+          if(el.hidden || String(el.getAttribute && el.getAttribute('aria-hidden') || '').toLowerCase() === 'true') continue;
           if(st && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0' && rect && rect.width > 0 && rect.height > 0) return true;
         }
         return false;
@@ -1153,9 +1155,8 @@
       }catch(e){}
     }
 
-    function _targetFrom(ev){
+    function _targetFromNode(t){
       try{
-        const t = ev && ev.target ? ev.target : null;
         if(!t || !t.closest) return null;
         // Keep tooltip stable while hovering its own content.
         if(tip && (t === tip || (t.closest && t.closest('#ib_html_tooltip')))) return lastEl;
@@ -1170,12 +1171,87 @@
       }
     }
 
+    function _targetFrom(ev){
+      try{ return _targetFromNode(ev && ev.target ? ev.target : null); }catch(e){ return null; }
+    }
+
+    function _rememberPointer(ev){
+      try{
+        if(ev && typeof ev.clientX === 'number' && typeof ev.clientY === 'number') lastPointer = { x: ev.clientX, y: ev.clientY };
+      }catch(e){}
+    }
+
+    function _eventFromPointer(){
+      try{
+        if(!lastPointer) return null;
+        return { clientX: lastPointer.x, clientY: lastPointer.y, target: document.elementFromPoint(lastPointer.x, lastPointer.y) };
+      }catch(e){ return null; }
+    }
+
+    function _showTooltipFor(el, ev, delay){
+      try{
+        if(!el){ _hide(); return; }
+        const rawTitle = _stealTitle(el);
+        const title = _norm(el.getAttribute && el.getAttribute('data-tooltip-desc')) || rawTitle.trim() || _storedTitle(el) || ((el === lastEl) ? String(lastTitle || '').trim() : '');
+        if(!title){ _hide(); return; }
+
+        if(el !== lastEl){
+          _hide();
+          lastEl = el;
+          lastTitle = title;
+          lastMeta = _metaFor(el, title.split('\n')[0], title);
+          showT = setTimeout(()=>{
+            try{
+              if(!lastEl || _pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED) return;
+              const s = String(lastTitle || '').trim();
+              if(!s) return;
+              const box = _ensure();
+              box.style.width = (lastMeta && String(lastMeta.kind || '').toLowerCase() === 'chart') ? '280px' : 'min(360px, calc(100vw - 24px))';
+              box.innerHTML = _render(s);
+              _pos(ev);
+              box.style.visibility = 'visible';
+              box.style.opacity = '1';
+              box.style.transform = 'translateY(0)';
+              box.style.pointerEvents = 'auto';
+            }catch(e){}
+          }, Math.max(0, Number(delay || 0)));
+        }
+
+        _ensure();
+        _pos(ev);
+      }catch(e){}
+    }
+
+    function _handleTooltipPointer(ev, delay){
+      try{
+        _rememberPointer(ev);
+        if(_pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED) { _hide(true); return; }
+        if(pinned) return;
+        const el = _targetFrom(ev);
+        if(!el){ _hide(); return; }
+        _showTooltipFor(el, ev, delay);
+      }catch(e){}
+    }
+
+    function _rearmTooltipAfterDialog(){
+      try{
+        if(_pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED) return;
+        const ev = _eventFromPointer();
+        if(!ev) return;
+        const el = _targetFrom(ev);
+        if(!el) return;
+        _showTooltipFor(el, ev, 120);
+      }catch(e){}
+    }
+
     // Capture mouseover early enough to prevent native tooltips from triggering.
     document.addEventListener('mouseover', (ev)=>{
       try{
+        _rememberPointer(ev);
         const el = _targetFrom(ev);
         if(!el) return;
         _stealTitle(el);
+        _handleTooltipPointer(ev, 220);
       }catch(e){}
     }, true);
 
@@ -1207,42 +1283,9 @@
       mo.observe(document.documentElement || document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['title'] });
     }catch(e){}
 
-    document.addEventListener('mousemove', (ev)=>{
-      try{
-        if(_pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED) { _hide(true); return; }
-        if(pinned) return;
-        const el = _targetFrom(ev);
-        if(!el){ _hide(); return; }
-        const rawTitle = _stealTitle(el);
-        const title = _norm(el.getAttribute && el.getAttribute('data-tooltip-desc')) || rawTitle.trim() || _storedTitle(el) || ((el === lastEl) ? String(lastTitle || '').trim() : '');
-        if(!title){ _hide(); return; }
-
-        if(el !== lastEl){
-          _hide();
-          lastEl = el;
-          lastTitle = title;
-          lastMeta = _metaFor(el, title.split('\n')[0], title);
-          showT = setTimeout(()=>{
-            try{
-              if(!lastEl) return;
-              const s = String(lastTitle || '').trim();
-              if(!s) return;
-              const box = _ensure();
-              box.style.width = (lastMeta && String(lastMeta.kind || '').toLowerCase() === 'chart') ? '280px' : 'min(360px, calc(100vw - 24px))';
-              box.innerHTML = _render(s);
-              _pos(ev);
-              box.style.visibility = 'visible';
-              box.style.opacity = '1';
-              box.style.transform = 'translateY(0)';
-              box.style.pointerEvents = 'auto';
-            }catch(e){}
-          }, 220);
-        }
-
-        _ensure();
-        _pos(ev);
-      }catch(e){}
-    }, true);
+    document.addEventListener('mousemove', (ev)=>{ _handleTooltipPointer(ev, 220); }, true);
+    document.addEventListener('pointermove', (ev)=>{ _handleTooltipPointer(ev, 220); }, true);
+    document.addEventListener('pointerover', (ev)=>{ _handleTooltipPointer(ev, 220); }, true);
 
     document.addEventListener('mouseleave', ()=>{ _hide(); }, true);
     document.addEventListener('mousedown', (ev)=>{
@@ -1301,13 +1344,15 @@
       try{
         _hide(true);
         _stealAllTitles(document.body);
+        setTimeout(_rearmTooltipAfterDialog, 60);
+        setTimeout(_rearmTooltipAfterDialog, 240);
       }catch(e){}
     }, true);
     document.addEventListener('influxbro:dialog-opened', ()=>{
       try{ _hide(true); }catch(e){}
     }, true);
     try{
-      const dialogMo = new MutationObserver(()=>{ try{ if(_visibleDialogOpen()) _hide(true); }catch(e){} });
+      const dialogMo = new MutationObserver(()=>{ try{ if(_visibleDialogOpen()) _hide(true); else setTimeout(_rearmTooltipAfterDialog, 80); }catch(e){} });
       dialogMo.observe(document.documentElement || document.body, { subtree:true, attributes:true, attributeFilter:['style','class','open','aria-hidden'] });
     }catch(e){}
     window.InfluxBroUnifiedTooltip = {
