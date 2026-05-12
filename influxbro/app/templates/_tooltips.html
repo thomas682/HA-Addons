@@ -762,6 +762,7 @@
     let pinned = false;
     let lastMeta = null;
     let freezeLabel = null;
+    let lastKeyEvent = null;
 
     function _visibleDialogOpen(){
       try{
@@ -1243,14 +1244,37 @@
       }catch(e){}
       _hide(true);
     }, true);
-    document.addEventListener('keydown', (ev)=>{
+    function _tooltipIsVisible(){
+      try{
+        if(!tip) return false;
+        const st = window.getComputedStyle ? window.getComputedStyle(tip) : null;
+        return (st ? st.visibility : tip.style.visibility) === 'visible' && String(st ? st.opacity : tip.style.opacity) !== '0';
+      }catch(e){
+        return !!(tip && tip.style && tip.style.visibility === 'visible');
+      }
+    }
+    function _pinVisibleTooltip(){
+      try{
+        if(!_tooltipIsVisible()) return false;
+        if(pinned){ _hide(true); return true; }
+        pinned = true;
+        tip.style.pointerEvents = 'auto';
+        tip.style.borderColor = '#60a5fa';
+        tip.style.transform = 'translateY(0)';
+        try{ const r = tip.getBoundingClientRect(); if(freezeLabel){ freezeLabel.style.left = Math.max(8, Math.min(window.innerWidth - 240, r.left)) + 'px'; freezeLabel.style.top = Math.min(window.innerHeight - 28, r.bottom + 6) + 'px'; freezeLabel.style.display = 'block'; } }catch(e){}
+        return true;
+      }catch(e){ return false; }
+    }
+    function _onTooltipKeydown(ev){
+      try{
+        if(ev && ev === lastKeyEvent) return;
+        lastKeyEvent = ev || null;
+        setTimeout(()=>{ try{ if(lastKeyEvent === ev) lastKeyEvent = null; }catch(e){} }, 0);
+      }catch(e){}
       const key = String(ev.key || '');
       if(key === 'Shift'){
-        if(tip && tip.style.visibility === 'visible'){
+        if(_pinVisibleTooltip()){
           try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-          if(pinned){ _hide(true); return; }
-          pinned = true; tip.style.pointerEvents = 'auto'; tip.style.borderColor = '#60a5fa'; tip.style.transform = 'translateY(0)';
-          try{ const r = tip.getBoundingClientRect(); if(freezeLabel){ freezeLabel.style.left = Math.max(8, Math.min(window.innerWidth - 240, r.left)) + 'px'; freezeLabel.style.top = Math.min(window.innerHeight - 28, r.bottom + 6) + 'px'; freezeLabel.style.display = 'block'; } }catch(e){}
         }
         return;
       }
@@ -1260,7 +1284,9 @@
       const title = _norm(el.getAttribute('data-tooltip-desc')) || _storedTitle(el) || _stealTitle(el);
       if(!title) return;
       if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.transform='translateY(0)'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
-    }, true);
+    }
+    try{ window.addEventListener('keydown', _onTooltipKeydown, true); }catch(e){}
+    document.addEventListener('keydown', _onTooltipKeydown, true);
     document.addEventListener('scroll', ()=>{ _hide(); }, true);
     document.addEventListener('influxbro:dialog-closed', ()=>{
       try{

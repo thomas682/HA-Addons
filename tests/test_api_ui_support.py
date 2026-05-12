@@ -1138,8 +1138,12 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'Tooltips</label>' not in tooltips
     assert 'if(key === \'Shift\'){' in tooltips
     assert 'pinned = true;' in tooltips
+    assert 'function _tooltipIsVisible()' in tooltips
+    assert 'function _pinVisibleTooltip()' in tooltips
+    assert "window.addEventListener('keydown', _onTooltipKeydown, true);" in tooltips
+    assert "document.addEventListener('keydown', _onTooltipKeydown, true);" in tooltips
     assert 'Shift oder Esc loest die Fixierung' in tooltips
-    assert 'if(pinned){ _hide(true); return; }' in tooltips
+    assert 'if(pinned){ _hide(true); return true; }' in tooltips
     assert '_visibleDialogOpen()' in tooltips
     assert "document.addEventListener('influxbro:dialog-closed'" in tooltips
     assert '_stealAllTitles(document.body);' in tooltips

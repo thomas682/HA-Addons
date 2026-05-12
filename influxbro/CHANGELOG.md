@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.603
+
+### Fix
+
+- Tooltips: Die Shift-Fixierung reagiert direkt nach dem ersten App-Aufruf, ohne dass die Tooltip-Funktion vorher aus- und wieder eingeschaltet werden muss. ([#582](https://github.com/thomas682/HA-Addons/issues/582))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.602
 
 ### Fix
