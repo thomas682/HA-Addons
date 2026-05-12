@@ -1165,7 +1165,7 @@
                 if(root.getAttribute('data-dialog-maximized') === '1') return;
                 if(activeResize) return;
                 ev.preventDefault(); ev.stopPropagation();
-                if(ev.pointerId !== undefined && handle.setPointerCapture) handle.setPointerCapture(ev.pointerId);
+                try{ if(ev.pointerId !== undefined && handle.setPointerCapture) handle.setPointerCapture(ev.pointerId); }catch(e){}
                 const startRect = panel.getBoundingClientRect();
                 const cs = window.getComputedStyle ? window.getComputedStyle(panel) : null;
                 const minW = Math.max(320, parseFloat(cs && cs.minWidth) || 320);

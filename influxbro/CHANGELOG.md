@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.608
+
+### Fix
+
+- Dialoge: Der dokumentweite Resize-Fallback ist jetzt fehlertolerant gegen `setPointerCapture`-Abbrueche, damit der Resize-Handle auch im nativen Dialog-Top-Layer live startet. ([#583](https://github.com/thomas682/HA-Addons/issues/583))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.607
 
 ### Fix
