@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.606
+
+### Fix
+
+- Dialoge/Picker: Picker-Overlays und Picker-Ergebnisdialoge bleiben bei offenem Dialog im aktuellen Dialogkontext oben sichtbar, Picker- und Dialog-Meta-Kopien melden fehlgeschlagene Clipboard-Fallbacks korrekt, und der Dialog-Resize-Handle reagiert robuster auf Pointer- und Maus-Drag. ([#583](https://github.com/thomas682/HA-Addons/issues/583))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.605
 
 ### Fix

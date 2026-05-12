@@ -223,10 +223,10 @@
           [data-dialog-toolbar="1"]{ display:flex; align-items:center; gap:8px; padding:10px 18px; border-bottom:1px solid var(--c-border); background:var(--c-surface); flex-wrap:wrap; }
           [data-dialog-content="1"]{ flex:1 1 auto; min-height:0; overflow:auto; padding:18px 20px; background:var(--c-surface); }
           [data-dialog-footer="1"]{ display:flex; align-items:center; gap:12px; padding:12px 16px 12px 18px; border-top:1px solid var(--c-border); background:var(--c-surface); margin-top:auto; }
-          [data-dialog-meta="1"]{ display:inline-flex; align-items:center; gap:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:10.5px; color:var(--c-text-faint); white-space:nowrap; margin-right:auto; }
+          [data-dialog-meta="1"]{ display:inline-flex; align-items:center; gap:6px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:10.5px; color:var(--c-text-faint); white-space:nowrap; margin-right:auto; user-select:text; cursor:text; }
           [data-dialog-meta="1"]::before{ content:''; width:6px; height:6px; border-radius:50%; background:var(--c-text-faint); }
-          [data-dialog-meta-text="1"]{ overflow:hidden; text-overflow:ellipsis; max-width:min(42vw, 420px); }
-          [data-dialog-meta-copy="1"]{ width:24px; height:24px; display:inline-grid; place-items:center; padding:0; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--c-text-faint); box-shadow:none; opacity:.72; cursor:pointer; }
+          [data-dialog-meta-text="1"]{ overflow:hidden; text-overflow:ellipsis; max-width:min(42vw, 420px); user-select:text; cursor:text; }
+          [data-dialog-meta-copy="1"]{ width:24px; height:24px; display:inline-grid; place-items:center; padding:0; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--c-text-faint); box-shadow:none; opacity:.72; cursor:pointer; user-select:none; }
           [data-dialog-meta-copy="1"]:hover,[data-dialog-meta-copy="1"]:focus-visible{ opacity:1; color:var(--c-text); background:var(--c-bg-subtle); border-color:var(--c-border); }
           [data-dialog-meta-copy="1"][data-copy-state="ok"]{ color:var(--c-success); }
           [data-dialog-resize-handle="1"]{ position:absolute; right:4px; bottom:4px; width:28px; height:28px; cursor:nwse-resize; z-index:20; border-radius:8px; opacity:.88; background:linear-gradient(135deg, transparent 0 42%, var(--c-text-faint) 43% 48%, transparent 49% 56%, var(--c-text-faint) 57% 62%, transparent 63% 100%); touch-action:none; user-select:none; }
@@ -548,21 +548,38 @@
       const value = String(text || '');
       if(typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(value);
       return new Promise((resolve, reject)=>{
+        let ta = null;
         try{
-          const ta = document.createElement('textarea');
+          ta = document.createElement('textarea');
           ta.value = value;
           ta.setAttribute('readonly', 'readonly');
           ta.style.position = 'fixed';
           ta.style.left = '-9999px';
           ta.style.top = '0';
+          ta.style.opacity = '0';
           document.body.appendChild(ta);
+          ta.focus();
           ta.select();
+          try{ ta.setSelectionRange(0, ta.value.length); }catch(e){}
           const ok = document.execCommand('copy');
-          ta.remove();
           if(ok) resolve();
           else reject(new Error('copy failed'));
         }catch(e){ reject(e); }
+        finally{ try{ if(ta && ta.parentElement) ta.parentElement.removeChild(ta); }catch(e){} }
       });
+    }
+
+    window.InfluxBroLayerStack = window.InfluxBroLayerStack || {
+      value: 100000,
+      next(){ this.value += 10; return this.value; }
+    };
+
+    function _bringDialogToFront(root){
+      try{
+        if(!root || !root.style || !window.InfluxBroLayerStack || !window.InfluxBroLayerStack.next) return;
+        if(root.tagName === 'DIALOG' && root.open) return;
+        root.style.zIndex = String(window.InfluxBroLayerStack.next());
+      }catch(e){}
     }
     function _dialogPage(){
       try{
@@ -1142,23 +1159,30 @@
           }
           if(handle.dataset.ibDialogResizeBound !== '1'){
             handle.dataset.ibDialogResizeBound = '1';
-            handle.addEventListener('pointerdown', (ev)=>{
+            let activeResize = null;
+            const startResize = (ev)=>{
               try{
                 if(root.getAttribute('data-dialog-maximized') === '1') return;
+                if(activeResize) return;
                 ev.preventDefault(); ev.stopPropagation();
-                handle.setPointerCapture && handle.setPointerCapture(ev.pointerId);
+                if(ev.pointerId !== undefined && handle.setPointerCapture) handle.setPointerCapture(ev.pointerId);
                 const startRect = panel.getBoundingClientRect();
                 const cs = window.getComputedStyle ? window.getComputedStyle(panel) : null;
                 const minW = Math.max(320, parseFloat(cs && cs.minWidth) || 320);
                 const minH = Math.max(220, parseFloat(cs && cs.minHeight) || 220);
-                const state = { x: ev.clientX, y: ev.clientY, w: startRect.width, h: startRect.height };
                 const prevCursor = document.body.style.cursor;
                 const prevSelect = document.body.style.userSelect;
+                const pointerId = ev.pointerId;
+                const state = { x: ev.clientX, y: ev.clientY, w: startRect.width, h: startRect.height };
+                activeResize = { pointerId, prevCursor, prevSelect };
                 document.body.style.cursor = 'nwse-resize';
                 document.body.style.userSelect = 'none';
                 const move = (mv)=>{
                   try{
+                    if(!activeResize) return;
                     mv.preventDefault && mv.preventDefault();
+                    mv.stopPropagation && mv.stopPropagation();
+                    if(typeof mv.clientX !== 'number' || typeof mv.clientY !== 'number') return;
                     const maxW = Math.max(minW, window.innerWidth - 24);
                     const maxH = Math.max(minH, window.innerHeight - 24);
                     const nextW = Math.max(minW, Math.min(maxW, state.w + (mv.clientX - state.x)));
@@ -1172,16 +1196,32 @@
                   }catch(e){}
                 };
                 const up = ()=>{
-                  try{ document.removeEventListener('pointermove', move, true); document.removeEventListener('pointerup', up, true); }catch(e){}
-                  try{ handle.releasePointerCapture && handle.releasePointerCapture(ev.pointerId); }catch(e){}
-                  try{ document.body.style.cursor = prevCursor; document.body.style.userSelect = prevSelect; }catch(e){}
+                  if(!activeResize) return;
+                  const done = activeResize;
+                  activeResize = null;
+                  try{ document.removeEventListener('pointermove', move, true); document.removeEventListener('pointerup', up, true); document.removeEventListener('pointercancel', up, true); }catch(e){}
+                  try{ window.removeEventListener('pointermove', move, true); window.removeEventListener('pointerup', up, true); window.removeEventListener('pointercancel', up, true); }catch(e){}
+                  try{ document.removeEventListener('mousemove', move, true); document.removeEventListener('mouseup', up, true); }catch(e){}
+                  try{ window.removeEventListener('mousemove', move, true); window.removeEventListener('mouseup', up, true); }catch(e){}
+                  try{ if(done.pointerId !== undefined && handle.releasePointerCapture) handle.releasePointerCapture(done.pointerId); }catch(e){}
+                  try{ document.body.style.cursor = done.prevCursor; document.body.style.userSelect = done.prevSelect; }catch(e){}
                   _dialogSaveProfileSize(root, panel);
                   _dialogSaveProfilePosition(root, panel);
                 };
                 document.addEventListener('pointermove', move, true);
                 document.addEventListener('pointerup', up, true);
+                document.addEventListener('pointercancel', up, true);
+                window.addEventListener('pointermove', move, true);
+                window.addEventListener('pointerup', up, true);
+                window.addEventListener('pointercancel', up, true);
+                document.addEventListener('mousemove', move, true);
+                document.addEventListener('mouseup', up, true);
+                window.addEventListener('mousemove', move, true);
+                window.addEventListener('mouseup', up, true);
               }catch(e){}
-            }, true);
+            };
+            handle.addEventListener('pointerdown', startResize, true);
+            handle.addEventListener('mousedown', startResize, true);
             handle.addEventListener('dblclick', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); _dialogResetGeometry(root, panel); }catch(e){} }, true);
           }
         }else{
@@ -1273,6 +1313,7 @@
       try{
         const visible = _dialogVisible(root);
         if(visible){
+          _bringDialogToFront(root);
           _clampDialog(root, panel);
           if(root.getAttribute('data-dialog-open-logged') !== '1'){
             root.setAttribute('data-dialog-open-logged', '1');

@@ -1772,6 +1772,31 @@
       let multiDrag = null;
       const MULTI_OUTLINE_ATTR = 'data-ib-multipick-outline';
 
+      function _pickerLayerHost(){
+        try{
+          if(pickerScopeRoot){
+            const host = pickerScopeRoot.closest ? pickerScopeRoot.closest('dialog,[data-dialog-root="1"],[role="dialog"]') : null;
+            return host || pickerScopeRoot || document.body;
+          }
+        }catch(e){}
+        return document.body;
+      }
+
+      function _appendToPickerLayer(el){
+        try{
+          const host = _pickerLayerHost();
+          if(el && host && el.parentElement !== host) host.appendChild(el);
+        }catch(e){}
+      }
+
+      function _bringPickerLayerToFront(el){
+        try{
+          if(window.InfluxBroLayerStack && window.InfluxBroLayerStack.next && el && el.style){
+            el.style.zIndex = String(window.InfluxBroLayerStack.next());
+          }
+        }catch(e){}
+      }
+
       // Picker outline config (loaded best-effort from /api/config on start)
       let PICKER_CFG = {
         ui_picker_outline_auto: true,
@@ -1912,7 +1937,7 @@
         // prevent long-press selection on mobile
         scrim.style.userSelect = 'none';
         scrim.style.webkitUserSelect = 'none';
-        document.body.appendChild(scrim);
+        _appendToPickerLayer(scrim);
       }
       if(!overlay){
         overlay = document.createElement('div');
@@ -1923,7 +1948,7 @@
         overlay.style.background = 'rgba(11,11,12,0.06)';
         overlay.style.borderRadius = '8px';
         overlay.style.display = 'none';
-        document.body.appendChild(overlay);
+        _appendToPickerLayer(overlay);
       }
       if(!badge){
         badge = document.createElement('div');
@@ -1939,8 +1964,14 @@
         badge.style.maxWidth = 'min(70vw, 640px)';
         badge.style.wordBreak = 'break-word';
         badge.style.display = 'none';
-        document.body.appendChild(badge);
+        _appendToPickerLayer(badge);
       }
+      _appendToPickerLayer(scrim);
+      _appendToPickerLayer(overlay);
+      _appendToPickerLayer(badge);
+      _bringPickerLayerToFront(scrim);
+      _bringPickerLayerToFront(overlay);
+      _bringPickerLayerToFront(badge);
     }
 
     function suppressTitles(){
@@ -1968,18 +1999,23 @@
       const s = String(txt || '').trim();
       if(!s) return false;
       try{ if(navigator && navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(s); return true; } }catch(e){}
+      let ta = null;
       try{
-        const ta = document.createElement('textarea');
+        ta = document.createElement('textarea');
         ta.value = s;
         ta.setAttribute('readonly','readonly');
         ta.style.position = 'fixed';
         ta.style.left = '-9999px';
+        ta.style.top = '0';
+        ta.style.opacity = '0';
         document.body.appendChild(ta);
+        ta.focus();
         ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        return true;
+        try{ ta.setSelectionRange(0, ta.value.length); }catch(e){}
+        const ok = document.execCommand('copy');
+        return !!ok;
       }catch(e){ return false; }
+      finally{ try{ if(ta && ta.parentElement) ta.parentElement.removeChild(ta); }catch(e){} }
     }
 
     function _stylePickResultButton(btn){
@@ -2030,7 +2066,11 @@
 
     function _ensurePickResultDialog(){
       let root = document.getElementById('ib_pick_result_dialog');
-      if(root) return root;
+      if(root){
+        _appendToPickerLayer(root);
+        _bringPickerLayerToFront(root);
+        return root;
+      }
       root = document.createElement('div');
       root.id = 'ib_pick_result_dialog';
       root.setAttribute('role', 'dialog');
@@ -2176,6 +2216,7 @@
       panel.appendChild(status);
       root.appendChild(panel);
       document.body.appendChild(root);
+      _appendToPickerLayer(root);
       _setPickResultWrap(root, _pickResultWrapEnabled());
       return root;
     }
@@ -2193,8 +2234,10 @@
       if(cards){ cards.style.display = 'none'; cards.textContent = ''; }
       _setPickResultWrap(root, _pickResultWrapEnabled());
       if(status){ status.textContent = ''; status.style.display = 'none'; }
-      root.style.display = 'flex';
       const ok = await copyText(value);
+      _appendToPickerLayer(root);
+      _bringPickerLayerToFront(root);
+      root.style.display = 'flex';
       if(!ok && status){
         status.textContent = 'Kopieren in die Zwischenablage fehlgeschlagen.';
         status.style.display = 'block';
@@ -2270,8 +2313,10 @@
       if(status){ status.textContent = ''; status.style.display = 'none'; }
       renderCards();
       _setPickResultWrap(root, _pickResultWrapEnabled());
-      root.style.display = 'flex';
       const ok = await syncCopy();
+      _appendToPickerLayer(root);
+      _bringPickerLayerToFront(root);
+      root.style.display = 'flex';
       try{ const close = root.querySelector('#ib_pick_result_close'); if(close) close.focus(); }catch(e){}
       return ok;
     }
@@ -2617,7 +2662,7 @@
       multiBar.setAttribute('data-ib-pickkey', 'picker_multi.panel_bar');
       multiBar.setAttribute('data-ib-instancekey', 'picker_multi.panel_bar');
       multiBar.setAttribute('title', 'picker_multi.panel_bar');
-      document.body.appendChild(multiBar);
+      _appendToPickerLayer(multiBar);
       return multiBar;
     }
 
@@ -2641,6 +2686,8 @@
         + '<button type="button" id="ib_mp_cancel" class="btn_sm" data-ui="picker_multi.btn_abbruch" data-ib-pickkey="picker_multi.btn_abbruch" style="width:auto;">Abbruch</button>'
         + '</div>';
       multiBar.style.display = 'block';
+      _appendToPickerLayer(multiBar);
+      _bringPickerLayerToFront(multiBar);
 
       // Wire chip click to toggle/remove.
       try{

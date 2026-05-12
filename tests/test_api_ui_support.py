@@ -1220,15 +1220,39 @@ def test_nav_back_prefers_previous_page_instead_of_same_page_controls():
 
 def test_dialog_superpicker_uses_active_dialog_scope():
     topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    dialog = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_dialog.html").read_text()
     assert 'let pickerScopeRoot = null;' in topbar
     assert 'function _normalizePickerScopeRoot(root)' in topbar
     assert 'const panel = host.querySelector ? host.querySelector(\'[data-dialog-panel="1"]\') : null;' in topbar
+    assert 'function _pickerLayerHost()' in topbar
+    assert 'function _appendToPickerLayer(el)' in topbar
+    assert 'function _bringPickerLayerToFront(el)' in topbar
+    assert 'window.InfluxBroLayerStack' in dialog
+    assert 'if(root){' in topbar
+    assert '_appendToPickerLayer(root);' in topbar
+    assert '_bringPickerLayerToFront(root);' in topbar
     assert 'function _withinPickerScope(el)' in topbar
     assert 'function _pickerTargetDepth(el)' in topbar
     assert '_withinPickerScope(cand)' in topbar
     assert '.sort((a, b)=>_pickerTargetDepth(b) - _pickerTargetDepth(a));' in topbar
     assert 'pickerScopeRoot = _normalizePickerScopeRoot(opts && opts.scopeRoot ? opts.scopeRoot : null);' in topbar
     assert 'setTimeout(()=>{ start({ scopeRoot: dialogRoot }).catch(()=>{}); }, 0);' in topbar
+
+
+def test_dialog_picker_clipboard_and_resize_are_robust():
+    root = Path(__file__).resolve().parents[1]
+    topbar = (root / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    dialog = (root / "influxbro" / "app" / "templates" / "_dialog.html").read_text()
+    assert "const ok = document.execCommand('copy');" in topbar
+    assert 'return !!ok;' in topbar
+    assert "const ok = document.execCommand('copy');" in dialog
+    assert "else reject(new Error('copy failed'));" in dialog
+    assert 'user-select:text; cursor:text;' in dialog
+    assert 'const startResize = (ev)=>{' in dialog
+    assert "handle.addEventListener('mousedown', startResize, true);" in dialog
+    assert "window.addEventListener('mousemove', move, true);" in dialog
+    assert "window.addEventListener('mouseup', up, true);" in dialog
+    assert "document.addEventListener('pointercancel', up, true);" in dialog
 
 
 def test_dashboard_analysis_chips_use_only_standard_tooltip():
