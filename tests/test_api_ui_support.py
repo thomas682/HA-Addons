@@ -1138,7 +1138,7 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'Tooltips</label>' not in tooltips
     assert 'if(key === \'Shift\'){' in tooltips
     assert 'pinned = true;' in tooltips
-    assert '<shift taste drücken zum lösen>' in tooltips
+    assert 'Shift oder Esc loest die Fixierung' in tooltips
     assert 'if(pinned){ _hide(true); return; }' in tooltips
     assert '_visibleDialogOpen()' in tooltips
     assert 'Dokumentation öffnen' in tooltips
@@ -1147,7 +1147,7 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'Schweregrad' not in professional_block
     assert 'Quelle' not in professional_block
     assert 'Status' not in professional_block
-    assert '<kbd' in professional_block
+    assert 'Shift druecken zum Fixieren' in professional_block
     assert 'function _renderChartTooltip()' in professional_block
     assert 'function _isTooltipEligible(el)' in tooltips
     assert tooltips.index('function _isTooltipEligible(el)') < tooltips.index('function _targetFrom(ev)')
@@ -1477,6 +1477,8 @@ def test_manual_dialog_search_and_settings_context_filter_exist():
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'id="ib_doc_modal_search"' in topbar
     assert 'function _manualSearch(root, dir)' in topbar
+    assert "if(opts && opts.embedded) params.set('embedded', '1');" in topbar
+    assert 'iframe.src = embeddedHref;' in topbar
     assert 'ib_doc_search_mark' in topbar
     assert 'settings_ref=' in topbar
     assert 'const SETTINGS_CONTEXTS = {' in config

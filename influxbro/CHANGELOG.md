@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.601
+
+### Fix
+
+- Tooltip-/Handbuch-Dialoge: Tooltip-Hinweise nutzen konkrete Elementtexte, der Shift-Freeze-Hinweis ist klarer formuliert, Handbuch-Dialoge laden nur den eingebetteten Handbuchinhalt und der Dialog-Resize-Handle ist groesser und robuster bedienbar. ([#580](https://github.com/thomas682/HA-Addons/issues/580))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.600
 
 ### Enhancement

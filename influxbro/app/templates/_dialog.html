@@ -229,8 +229,8 @@
           [data-dialog-meta-copy="1"]{ width:24px; height:24px; display:inline-grid; place-items:center; padding:0; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--c-text-faint); box-shadow:none; opacity:.72; cursor:pointer; }
           [data-dialog-meta-copy="1"]:hover,[data-dialog-meta-copy="1"]:focus-visible{ opacity:1; color:var(--c-text); background:var(--c-bg-subtle); border-color:var(--c-border); }
           [data-dialog-meta-copy="1"][data-copy-state="ok"]{ color:var(--c-success); }
-          [data-dialog-resize-handle="1"]{ position:absolute; right:6px; bottom:6px; width:18px; height:18px; cursor:nwse-resize; z-index:3; border-radius:5px; opacity:.78; background:linear-gradient(135deg, transparent 0 45%, var(--c-text-faint) 46% 55%, transparent 56% 100%); touch-action:none; }
-          [data-dialog-resize-handle="1"]::after{ content:''; position:absolute; right:3px; bottom:3px; width:8px; height:8px; border-right:2px solid var(--c-text-faint); border-bottom:2px solid var(--c-text-faint); border-radius:1px; }
+          [data-dialog-resize-handle="1"]{ position:absolute; right:4px; bottom:4px; width:28px; height:28px; cursor:nwse-resize; z-index:20; border-radius:8px; opacity:.88; background:linear-gradient(135deg, transparent 0 42%, var(--c-text-faint) 43% 48%, transparent 49% 56%, var(--c-text-faint) 57% 62%, transparent 63% 100%); touch-action:none; user-select:none; }
+          [data-dialog-resize-handle="1"]::after{ content:''; position:absolute; right:6px; bottom:6px; width:11px; height:11px; border-right:2px solid var(--c-text-faint); border-bottom:2px solid var(--c-text-faint); border-radius:1px; }
           [data-dialog-resize-handle="1"]:hover{ opacity:1; background:color-mix(in srgb, var(--c-accent) 14%, transparent); }
           [data-dialog-root="1"][data-dialog-maximized="1"], dialog[data-dialog-maximized="1"]{ width:100vw !important; max-width:100vw !important; height:100vh !important; max-height:100vh !important; margin:0 !important; padding:0 !important; inset:0 !important; align-items:stretch !important; justify-content:stretch !important; }
           [data-dialog-maximized="1"] .ib-dialog-v2, [data-dialog-maximized="1"] [data-dialog-panel="1"]{ width:calc(100vw - 24px) !important; max-width:calc(100vw - 24px) !important; height:calc(100vh - 24px) !important; max-height:calc(100vh - 24px) !important; margin:12px !important; border-radius:14px !important; }
@@ -347,11 +347,12 @@
         exact: false,
       };
     }
-    function _manualHrefFor(key){
+    function _manualHrefFor(key, opts){
       const target = _manualDocTarget(key);
       const params = new URLSearchParams();
       if(target.doc) params.set('doc', String(target.doc));
       if(target.query) params.set('q', String(target.query));
+      if(opts && opts.embedded) params.set('embedded', '1');
       let href = './manual' + (String(params).trim() ? ('?' + String(params)) : '');
       if(target.anchor) href += '#' + encodeURIComponent(String(target.anchor));
       return href;
@@ -496,6 +497,7 @@
       try{
         const target = _manualDocTarget(key);
         const href = _manualHrefFor(key);
+        const embeddedHref = _manualHrefFor(key, { embedded: true });
         if(opts && opts.mode === 'same_tab'){
           try{ location.href = href; }catch(e){}
           return;
@@ -533,7 +535,7 @@
               _manualSearch(root, 1);
             }catch(e){}
           };
-          iframe.src = href;
+          iframe.src = embeddedHref;
         }
         const open = root.querySelector('#ib_doc_modal_open');
         if(open) open.onclick = ()=>{ try{ document.querySelectorAll('[data-dialog-root="1"]').forEach((dlg)=>{ try{ dlg.style.display = 'none'; }catch(e){} }); location.href = href; }catch(e){} };
@@ -1122,13 +1124,21 @@
                 ev.preventDefault(); ev.stopPropagation();
                 handle.setPointerCapture && handle.setPointerCapture(ev.pointerId);
                 const startRect = panel.getBoundingClientRect();
+                const cs = window.getComputedStyle ? window.getComputedStyle(panel) : null;
+                const minW = Math.max(320, parseFloat(cs && cs.minWidth) || 320);
+                const minH = Math.max(220, parseFloat(cs && cs.minHeight) || 220);
                 const state = { x: ev.clientX, y: ev.clientY, w: startRect.width, h: startRect.height };
+                const prevCursor = document.body.style.cursor;
+                const prevSelect = document.body.style.userSelect;
+                document.body.style.cursor = 'nwse-resize';
+                document.body.style.userSelect = 'none';
                 const move = (mv)=>{
                   try{
-                    const maxW = Math.max(320, window.innerWidth - 24);
-                    const maxH = Math.max(220, window.innerHeight - 24);
-                    const nextW = Math.max(320, Math.min(maxW, state.w + (mv.clientX - state.x)));
-                    const nextH = Math.max(220, Math.min(maxH, state.h + (mv.clientY - state.y)));
+                    mv.preventDefault && mv.preventDefault();
+                    const maxW = Math.max(minW, window.innerWidth - 24);
+                    const maxH = Math.max(minH, window.innerHeight - 24);
+                    const nextW = Math.max(minW, Math.min(maxW, state.w + (mv.clientX - state.x)));
+                    const nextH = Math.max(minH, Math.min(maxH, state.h + (mv.clientY - state.y)));
                     panel.style.width = Math.round(nextW) + 'px';
                     panel.style.height = Math.round(nextH) + 'px';
                     if(root.getAttribute('data-dialog-positioned') === '1'){
@@ -1139,6 +1149,8 @@
                 };
                 const up = ()=>{
                   try{ document.removeEventListener('pointermove', move, true); document.removeEventListener('pointerup', up, true); }catch(e){}
+                  try{ handle.releasePointerCapture && handle.releasePointerCapture(ev.pointerId); }catch(e){}
+                  try{ document.body.style.cursor = prevCursor; document.body.style.userSelect = prevSelect; }catch(e){}
                   _dialogSaveProfileSize(root, panel);
                   _dialogSaveProfilePosition(root, panel);
                 };

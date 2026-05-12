@@ -51,14 +51,30 @@
     .search_meta { font-size:12px; opacity:.8; min-width:72px; text-align:center; }
     mark.ib_search_hit { background:#ffe08a; color:inherit; padding:0 1px; border-radius:3px; }
     mark.ib_search_hit.active { background:#ff9900; color:#111; box-shadow:0 0 0 2px rgba(255,153,0,0.18); }
-    .manual_doc_target { scroll-margin-top: calc(var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px) + 24px); }
+    .manual_doc_target { scroll-margin-top: calc(var(--ib-pagecard-live-h, 0px) + var(--ib-content-top-gap, 0px) + 72px); }
     .manual_doc_target.active_doc_target { outline: 3px solid #ff9900; outline-offset: 4px; border-radius: 8px; background: rgba(255,153,0,0.08); }
+    body.manual_embedded { background:#fff; }
+    body.manual_embedded .shell { display:block; min-height:0; }
+    body.manual_embedded .content { padding:12px; }
+    body.manual_embedded h2, body.manual_embedded .muted { display:none; }
+    body.manual_embedded .searchbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      margin: -12px -12px 12px -12px;
+      padding: 10px 12px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      box-shadow: 0 6px 14px rgba(15,23,42,0.06);
+    }
+    body.manual_embedded .toc { top: 58px; max-height: calc(100vh - 76px); }
+    body.manual_embedded .manual_doc_target { scroll-margin-top: 86px; }
   </style>
 </head>
-<body>
-  {% include "_topbar.html" %}
+<body class="{% if embedded %}manual_embedded{% endif %}">
+  {% if not embedded %}{% include "_topbar.html" %}{% endif %}
   <div class="shell">
-    {% include "_nav.html" %}
+    {% if not embedded %}{% include "_nav.html" %}{% endif %}
     <main class="content" data-ui="manual_page.main" data-ib-pickkey="manual_page.main" title="manual.page">
       <h2>Handbuch</h2>
       <div class="muted">Quelle: <code>influxbro/MANUAL.md</code></div>

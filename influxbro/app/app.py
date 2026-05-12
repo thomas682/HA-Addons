@@ -10262,6 +10262,7 @@ def snapshots_page():
 @app.get("/manual")
 def manual_page():
     cfg = load_cfg()
+    embedded = str(request.args.get("embedded") or "").strip().lower() in {"1", "true", "yes", "on"}
     manual = ""
     try:
         manual = (APP_DIR / "MANUAL.md").read_text(encoding="utf-8")
@@ -10273,6 +10274,7 @@ def manual_page():
         allow_delete=True,
         nav="manual",
         manual_text=manual,
+        embedded=embedded,
     )
 
 

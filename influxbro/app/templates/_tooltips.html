@@ -36,10 +36,10 @@
     'dashboard_selection.input_measurement_filter_value': 'Measurement-Name oder Teil davon zur Eingrenzung der Quellenauswahl.',
     'dashboard_selection.input_field': 'Feldauswahl: bestimmt welches _field der Serie geladen wird.',
     'dashboard_selection.input_field_value': 'Field-Name (z.B. value, temperature, humidity).',
-    'dashboard_selection.input_entity': 'Entity-Tag: filtert nach Home Assistant entity_id.',
-    'dashboard_selection.input_entity_value': 'entity_id-Tag zur weiteren Eingrenzung der Serie.',
+    'dashboard_selection.input_entity': 'Entity-Auswahl: filtert die Zeitreihe nach einer Home-Assistant-Entity-ID.',
+    'dashboard_selection.input_entity_value': 'Hier koennen Sie die Home-Assistant-Entity auswaehlen oder eintippen, um die Zeitreihe auf diese Entity zu filtern.',
     'dashboard_selection.input_friendly_name': 'Friendly-Name-Tag: filtert nach dem lesbaren Namen der Serie.',
-    'dashboard_selection.input_friendly_name_value': 'friendly_name-Tag zur komfortablen Serienauswahl.',
+    'dashboard_selection.input_friendly_name_value': 'Hier koennen Sie den lesbaren Home-Assistant-Namen auswaehlen oder eintippen, um die Serie einzugrenzen.',
     'dashboard_selection.select_range': 'Zeitraumauswahl fuer Graph und Tabelle (Preset oder Benutzerdefiniert).',
     'dashboard_selection.select_range_value': 'Vordefinierte Zeitspannen (1h, 6h, 12h, 24h, 7d, 30d, 90d, 365d, this_year, 12mo, 24mo, all) oder Benutzerdefiniert.',
     'dashboard_selection.txt_range_bounds': 'Zeigt den aktuell gewaehlten Zeitraum als Von/Bis an.',
@@ -823,7 +823,7 @@
       document.body.appendChild(tip);
       freezeLabel = document.createElement('div');
       freezeLabel.id = 'ib_html_tooltip_freeze_label';
-      freezeLabel.textContent = '<shift taste drücken zum lösen>';
+      freezeLabel.textContent = 'Shift oder Esc loest die Fixierung';
       freezeLabel.style.position = 'fixed';
       freezeLabel.style.zIndex = '2147483647';
       freezeLabel.style.display = 'none';
@@ -855,10 +855,14 @@
       return tip;
     }
 
-    function _docHrefFor(key){
+    function _docHrefFor(key, opts){
       try{
-        if(window.InfluxBroManualDocs && window.InfluxBroManualDocs.href) return window.InfluxBroManualDocs.href(key);
-        return './manual?q=' + encodeURIComponent(String(key || '').trim());
+        if(window.InfluxBroManualDocs && window.InfluxBroManualDocs.href) return window.InfluxBroManualDocs.href(key, opts || null);
+        const params = new URLSearchParams();
+        const q = String(key || '').trim();
+        if(q) params.set('q', q);
+        if(opts && opts.embedded) params.set('embedded', '1');
+        return './manual' + (String(params).trim() ? ('?' + String(params)) : '');
       }catch(e){ return './manual'; }
     }
 
@@ -902,6 +906,7 @@
         try{ window.InfluxBroManualDocs.open(key); return; }catch(e){}
       }
       const href = _docHrefFor(key);
+      const embeddedHref = _docHrefFor(key, { embedded: true });
       const mode = String(DOC_OPEN_MODE || 'new_tab');
       if(mode === 'same_tab'){
         try{ location.href = href; }catch(e){}
@@ -910,7 +915,7 @@
       if(mode === 'modal'){
         const root = _ensureDocModal();
         try{ root.style.display = 'block'; }catch(e){}
-        try{ const iframe = root.querySelector('#ib_doc_modal_iframe'); if(iframe) iframe.src = href; }catch(e){}
+        try{ const iframe = root.querySelector('#ib_doc_modal_iframe'); if(iframe) iframe.src = embeddedHref; }catch(e){}
         try{
           const open = root.querySelector('#ib_doc_modal_open');
           if(open){
@@ -942,14 +947,37 @@
       if(!r.ok || !j.ok) throw new Error(j && j.error ? j.error : ('HTTP ' + r.status));
     }
 
+    function _labelForTooltipElement(el, title, key){
+      const rawTitle = _norm(title);
+      if(rawTitle && rawTitle !== 'Tooltip' && rawTitle !== _norm(key)) return rawTitle;
+      try{
+        if(el){
+          const id = _norm(el.getAttribute('id') || '');
+          if(id){
+            const label = document.querySelector('label[for="' + CSS.escape(id) + '"]');
+            const txt = _norm(label && label.textContent);
+            if(txt) return txt;
+          }
+          const labelled = _norm(el.getAttribute('aria-label') || el.getAttribute('placeholder') || '');
+          if(labelled) return labelled;
+        }
+      }catch(e){}
+      const rawKey = _norm(key);
+      if(rawKey){
+        const tail = rawKey.split('.').pop() || rawKey;
+        return tail.replace(/^(input|select|btn|panel|txt|chk)_/i, '').replace(/_/g, ' ');
+      }
+      return 'dieses Element';
+    }
+
     function _fallbackTooltipDesc(el, title, desc, key){
       const raw = _norm(desc);
       if(raw && raw !== _norm(title) && raw !== _norm(key)) return raw;
-      const label = _norm(title) || _norm(key) || 'dieses Element';
+      const label = _labelForTooltipElement(el, title, key);
       try{
         if(el && el.matches){
           if(el.matches('button, [role="button"]')) return 'Fuehrt die Aktion fuer ' + label + ' aus.';
-          if(el.matches('input, select, textarea')) return 'Steuert die Eingabe oder Auswahl fuer ' + label + '.';
+          if(el.matches('input, select, textarea')) return 'Hier koennen Sie einen Wert fuer ' + label + ' auswaehlen oder eingeben.';
           if(el.matches('a')) return 'Oeffnet den Bereich oder die Dokumentation zu ' + label + '.';
         }
       }catch(e){}
@@ -992,7 +1020,7 @@
       const kind = _norm(el && (el.getAttribute('data-tooltip-kind') || 'chip')) || 'chip';
       let displayTitle = _norm(el && (el.getAttribute('data-tooltip-title') || title || '')) || 'Tooltip';
       const displayKey = _norm(_keyFromEl(el));
-      if(displayKey && (displayTitle === displayKey || /^[a-z0-9_]+(\.[a-z0-9_]+)+$/i.test(displayTitle))) displayTitle = 'Tooltip';
+      if(displayKey && (displayTitle === displayKey || /^[a-z0-9_]+(\.[a-z0-9_]+)+$/i.test(displayTitle))) displayTitle = _labelForTooltipElement(el, '', displayKey);
       const displayDesc = _fallbackTooltipDesc(el, displayTitle, _norm(el && (el.getAttribute('data-tooltip-desc') || desc || '')), displayKey);
       return {
         title: displayTitle,
@@ -1052,13 +1080,14 @@
       const sevColor = _severityColor(m.severity);
       const docKey = _esc(String(m.doc || m.key || keyRaw || ''));
       const docBtn = docKey ? '<button type="button" data-ib-doc-key="' + docKey + '" style="display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:#93c5fd;border-radius:5px;padding:4px 8px;margin-left:-8px;font-size:12px;font-weight:600;cursor:pointer;">' + DOC_SVG + '<span>Dokumentation öffnen</span></button>' : '';
+      const pinHint = '<span style="margin-left:auto;color:#9ca3af;font-size:10.5px;line-height:1.25;">Shift druecken zum Fixieren</span>';
       const keyHtml = _esc(keyRaw ? '<' + keyRaw + '>' : (m.key || ''));
       const statusText = _norm(m.status) || (m.count ? ('Aktiv · ' + String(m.count) + ' Treffer') : 'Verfügbar');
       const head = '<div style="padding:14px 16px 12px;border-bottom:1px solid #374151;display:flex;align-items:flex-start;gap:10px;"><div style="flex-shrink:0;width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:' + sevColor + '26;border:1px solid ' + sevColor + '66;"><span style="width:16px;height:16px;border-radius:50%;background:' + sevColor + ';display:block;"></span></div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;letter-spacing:-0.01em;color:#f9fafb;margin-bottom:2px;overflow-wrap:anywhere;word-break:break-word;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:#9ca3af;font-weight:400;overflow-wrap:anywhere;word-break:break-word;">' + keyHtml + '</div></div></div>';
       const descHtml = '<div style="font-size:12.5px;line-height:1.55;color:#d1d5db;margin:0 0 14px 0;">' + _esc(String(m.desc || desc || 'Zeigt Details und Dokumentation zu diesem Element.')) + '</div>';
       const exampleHtml = m.example ? '<div style="background:rgba(0,0,0,0.25);border:1px solid #374151;border-radius:6px;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#fbbf24;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="color:#9ca3af;font-size:10px;">▸</span><code style="font:inherit;color:inherit;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
       const body = '<div style="padding:12px 16px 14px;">' + descHtml + exampleHtml + '</div>';
-      const foot = docBtn ? '<div style="border-top:1px solid #374151;padding:10px 16px;display:flex;align-items:center;justify-content:flex-start;gap:8px;">' + docBtn + '</div>' : '';
+      const foot = '<div style="border-top:1px solid #374151;padding:9px 16px;display:flex;align-items:center;justify-content:flex-start;gap:8px;">' + docBtn + pinHint + '</div>';
       const arrow = '<div aria-hidden="true" style="position:absolute;top:-6px;left:28px;width:12px;height:12px;background:#1f2937;transform:rotate(45deg);border-radius:2px;border-left:1px solid #374151;border-top:1px solid #374151;"></div>';
       return arrow + head + body + foot;
     }
