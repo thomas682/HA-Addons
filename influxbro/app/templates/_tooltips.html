@@ -896,7 +896,7 @@
       try{ if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.enhance) window.InfluxBroDialogStandards.enhance(root, { name: 'dialog.docs_modal', template: 'dialog_info_popup', trigger: 'tooltip.docs', closeSelector: '#ib_doc_modal_close' }); }catch(e){}
       try{
         const close = root.querySelector('#ib_doc_modal_close');
-        if(close) close.addEventListener('click', ()=>{ try{ root.style.display='none'; }catch(e){}; });
+        if(close) close.addEventListener('click', ()=>{ try{ root.style.display='none'; _notifyDialogClosed(root); }catch(e){}; });
       }catch(e){}
       return root;
     }
@@ -925,6 +925,14 @@
         return;
       }
       try{ location.href = href; }catch(e){}
+    }
+
+    function _notifyDialogClosed(root){
+      try{
+        document.dispatchEvent(new CustomEvent('influxbro:dialog-closed', {
+          detail: { name: root && root.getAttribute ? String(root.getAttribute('data-dialog-name') || root.id || '') : '' }
+        }));
+      }catch(e){}
     }
 
     function _severityColor(sev){
@@ -1254,6 +1262,12 @@
       if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.transform='translateY(0)'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
     }, true);
     document.addEventListener('scroll', ()=>{ _hide(); }, true);
+    document.addEventListener('influxbro:dialog-closed', ()=>{
+      try{
+        _hide(true);
+        _stealAllTitles(document.body);
+      }catch(e){}
+    }, true);
     window.InfluxBroUnifiedTooltip = {
       show(meta, anchorRect){
         try{ if(_pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED){ _hide(true); return; } }catch(e){}

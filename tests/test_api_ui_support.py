@@ -1141,6 +1141,8 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'Shift oder Esc loest die Fixierung' in tooltips
     assert 'if(pinned){ _hide(true); return; }' in tooltips
     assert '_visibleDialogOpen()' in tooltips
+    assert "document.addEventListener('influxbro:dialog-closed'" in tooltips
+    assert '_stealAllTitles(document.body);' in tooltips
     assert 'Dokumentation öffnen' in tooltips
     assert '? öffnet Doku' not in tooltips
     professional_block = tooltips[tooltips.index('function _renderChipTooltip('):tooltips.index('function _pos(')]
@@ -1155,6 +1157,18 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert "el.matches('button, select, textarea')" in tooltips
     assert "el.matches('a[href]')) return el.getAttribute('data-tooltip-allow') === '1';" in tooltips
     assert "if(el.matches('details, summary')) return false;" in tooltips
+
+
+def test_dialog_close_reenables_tooltips():
+    root = Path(__file__).resolve().parents[1]
+    dialog = (root / "influxbro" / "app" / "templates" / "_dialog.html").read_text()
+    tooltips = (root / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert "function _notifyDialogClosed(root)" in dialog
+    assert "influxbro:dialog-closed" in dialog
+    assert "if(!_dialogVisible(host)) _notifyDialogClosed(host);" in dialog
+    assert "function _notifyDialogClosed(root)" in tooltips
+    assert "document.addEventListener('influxbro:dialog-closed'" in tooltips
+    assert "_hide(true);" in tooltips
 
 
 def test_tooltips_are_not_globally_blocked_for_pagecard_and_statusbar_buttons():

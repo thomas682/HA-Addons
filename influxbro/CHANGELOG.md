@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.602
+
+### Fix
+
+- Tooltips: Nach dem Schliessen eines Dialogs wird der Tooltip-Zustand zurueckgesetzt und die Tooltip-Titel werden erneut eingesammelt, damit Tooltips danach wieder angezeigt werden. ([#581](https://github.com/thomas682/HA-Addons/issues/581))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.601
 
 ### Fix
