@@ -1258,6 +1258,10 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert 'function _clipboardHost(preferred)' in dialog
     assert 'host.appendChild(ta);' in dialog
     assert '_copyTextToClipboard(current, meta.closest' in dialog
+    assert 'function _dialogSuperpickerShortcut(ev)' in dialog
+    assert "if(key !== 's') return false;" in dialog
+    assert 'if(!(ev && (ev.ctrlKey || ev.metaKey))) return false;' in dialog
+    assert 'window.InfluxBroOpenSuperpickerFromDialog(root);' in dialog
     assert 'user-select:text; cursor:text;' in dialog
     assert 'const startResize = (ev)=>{' in dialog
     assert 'if(ev && typeof ev.clientX === \'number\' && typeof ev.clientY === \'number\') move(ev);' in dialog

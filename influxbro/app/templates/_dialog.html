@@ -1310,6 +1310,17 @@
     function _focusables(root){
       try{ return Array.from(root.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')).filter((el)=>!el.disabled && el.offsetParent !== null); }catch(e){ return []; }
     }
+    function _dialogSuperpickerShortcut(ev){
+      try{
+        const key = String((ev && ev.key) || '').toLowerCase();
+        if(key !== 's') return false;
+        if(!(ev && (ev.ctrlKey || ev.metaKey))) return false;
+        if(ev.altKey) return false;
+        const target = ev.target;
+        if(target && target.id === 'ui_superpicker_shortcut') return false;
+        return !!window.InfluxBroOpenSuperpickerFromDialog;
+      }catch(e){ return false; }
+    }
     function _ensureDialogKeyboard(root, panel, closeSelector){
       try{
         if(root.dataset.ibDialogKeys === '1') return;
@@ -1317,6 +1328,12 @@
         root.addEventListener('keydown', (ev)=>{
           try{
             const key = String(ev.key || '');
+            if(_dialogSuperpickerShortcut(ev)){
+              ev.preventDefault();
+              ev.stopPropagation();
+              window.InfluxBroOpenSuperpickerFromDialog(root);
+              return;
+            }
             if(key === 'Escape' || ((ev.ctrlKey || ev.metaKey) && key.toLowerCase() === 'w')){ ev.preventDefault(); _closeDialog(root, closeSelector); return; }
             if(key === 'F1'){ ev.preventDefault(); _openDialogManual(root); return; }
             if((ev.ctrlKey || ev.metaKey) && key.toLowerCase() === 'i'){ ev.preventDefault(); _openDialogTemplateInfo(root); return; }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.612
+
+### Fix
+
+- Dialoge/Picker: Native Dialoge fangen den Super-Picker-Shortcut nun direkt am Dialog ab, damit `Ctrl+S` und `Ctrl+Shift+S` auch im Dialog-Top-Layer den Picker starten. ([#583](https://github.com/thomas682/HA-Addons/issues/583))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.611
 
 ### Fix
