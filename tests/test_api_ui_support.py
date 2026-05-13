@@ -1279,6 +1279,7 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert 'function _clipboardHost(preferred)' in dialog
     assert 'host.appendChild(ta);' in dialog
     assert '_copyTextToClipboard(current, meta.closest' in dialog
+    assert "host.close(); if(host.style) host.style.display = 'none';" in dialog
     assert 'function _dialogSuperpickerShortcut(ev)' in dialog
     assert "if(key !== 's') return false;" in dialog
     assert 'if(!(ev && (ev.ctrlKey || ev.metaKey))) return false;' in dialog

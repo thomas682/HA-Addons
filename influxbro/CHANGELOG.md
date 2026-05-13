@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.615
+
+### Fix
+
+- Dialoge: Native Dialoge setzen beim Schliessen nun auch den Inline-Displayzustand zurueck, damit der obere Schliessen-Button den Dialog mit einem Klick wirklich aus der Sichtbarkeit entfernt. ([#585](https://github.com/thomas682/HA-Addons/issues/585))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.614
 
 ### Fix

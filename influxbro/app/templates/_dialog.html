@@ -715,7 +715,7 @@
     function _closeDialog(root, closeSelector){
       try{
         const host = _dialogRoot(root) || root;
-        if(host && typeof host.close === 'function' && host.open){ host.close(); _notifyDialogClosed(host); return; }
+        if(host && typeof host.close === 'function' && host.open){ host.close(); if(host.style) host.style.display = 'none'; _notifyDialogClosed(host); return; }
         if(host && host.style){ host.style.display = 'none'; _notifyDialogClosed(host); }
       }catch(e){}
     }
