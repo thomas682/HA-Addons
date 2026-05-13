@@ -1151,8 +1151,9 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert '_stealAllTitles(document.body);' in tooltips
     assert 'function _targetFromNode(t)' in tooltips
     assert 'function _handleTooltipPointer(ev, delay)' in tooltips
-    assert "document.addEventListener('pointermove', (ev)=>{ _handleTooltipPointer(ev, 220); }, true);" in tooltips
-    assert "document.addEventListener('pointerover', (ev)=>{ _handleTooltipPointer(ev, 220); }, true);" in tooltips
+    assert 'TOOLTIP_DELAY_MS' in tooltips
+    assert "document.addEventListener('pointermove', (ev)=>{ _handleTooltipPointer(ev, TOOLTIP_DELAY_MS); }, true);" in tooltips
+    assert "document.addEventListener('pointerover', (ev)=>{ _handleTooltipPointer(ev, TOOLTIP_DELAY_MS); }, true);" in tooltips
     assert 'Dokumentation öffnen' in tooltips
     assert '? öffnet Doku' not in tooltips
     professional_block = tooltips[tooltips.index('function _renderChipTooltip('):tooltips.index('function _pos(')]
@@ -1310,6 +1311,35 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert "window.addEventListener('pointerdown', startDragFromDocument, true);" in dialog
     assert "window.addEventListener('pointermove', move, true);" in dialog
     assert "window.addEventListener('mousemove', move, true);" in dialog
+
+
+def test_settings_tooltip_delay_and_popup_radial_menu_exist():
+    root = Path(__file__).resolve().parents[1]
+    app_py = (root / "influxbro" / "app" / "app.py").read_text()
+    config = (root / "influxbro" / "app" / "templates" / "config.html").read_text()
+    tooltips = (root / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    assert '"ui_tooltip_show_delay_ms": 2000' in app_py
+    assert '_clamp_int("ui_tooltip_show_delay_ms", 2000, 0, 10000)' in app_py
+    assert 'id="ui_tooltip_show_delay_ms"' in config
+    assert 'Wartezeit bis ein Tooltip nach dem Hover sichtbar wird.' in config
+    assert 'Beschreibung nicht gefunden' in config
+    assert 'Siehe Tooltip.' not in config
+    assert 'settings.ui_tooltip_show_delay_ms' in tooltips
+    assert 'config_settings.input_ui_tooltip_show_delay_ms' in tooltips
+    assert 'TOOLTIP_DELAY_MS = Math.max(0, Math.min(10000' in tooltips
+    assert 'Beschreibung nicht gefunden' in tooltips
+    assert 'influxbro_popup_radial_toggle' in tooltips
+    assert 'influxbro_popup_radial_menu' in tooltips
+    assert 'influxbro_popup_wrap_btn' in tooltips
+    assert 'influxbro_popup_search_toggle' in tooltips
+    assert 'POPUP_WRAP_SVG' in tooltips
+    assert 'POPUP_ARROW_UP_SVG' in tooltips
+    assert 'POPUP_ARROW_DOWN_SVG' in tooltips
+    assert 'https://github.com/djjackYT/qb-radialmenu-npstyle' in tooltips
+    assert 'no upstream source is copied' in tooltips
+    assert "searchInput.style.display = 'none';" in tooltips
+    assert "searchInput.style.height = '1.35em';" in tooltips
+    assert "wrapCb.dispatchEvent(new Event('change', { bubbles: true }));" in tooltips
 
 
 def test_dashboard_analysis_chips_use_only_standard_tooltip():

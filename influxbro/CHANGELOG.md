@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.619
+
+### Enhancement
+
+- Einstellungen/Tooltips: Tooltip-Verzoegerung ist nun mit Default 2 Sekunden konfigurierbar, fehlende Parameterbeschreibungen zeigen `Beschreibung nicht gefunden`, und der Query-Info-Dialog buendelt seine Aktionen in einem kompakten Radialmenue. ([#586](https://github.com/thomas682/HA-Addons/issues/586))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.618
 
 ### Fix

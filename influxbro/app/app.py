@@ -1959,6 +1959,7 @@ DEFAULT_CFG = {
 
     # Tooltips
     "ui_tooltips_enabled": True,
+    "ui_tooltip_show_delay_ms": 2000,
 
     # Tooltip documentation open mode (portable setting; exported/imported)
     # Allowed: new_tab, same_tab, modal
@@ -25236,6 +25237,7 @@ def api_set_config():
     _clamp_int("ui_nav_helper_history_limit", 10, 1, 100)
     _clamp_int("ui_nav_helper_highlight_duration_ms", 1400, 200, 10000)
     _clamp_int("ui_manual_dialog_font_px", 11, 8, 16)
+    _clamp_int("ui_tooltip_show_delay_ms", 2000, 0, 10000)
     _clamp_int("ui_status_bar_height_px", 38, 28, 90)
     _clamp_int("ui_table_row_height_px", 13, 9, 60)
     _clamp_int("ui_table_min_empty_rows", 5, 0, 50)
