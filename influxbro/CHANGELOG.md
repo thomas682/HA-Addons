@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.614
+
+### Fix
+
+- Dialoge/Handbuch: Dialoge schliessen wieder mit einem Klick, Drag/Resize reagieren live waehrend der Mausbewegung, die Handbuchsuche nutzt die Dialog-Suchdarstellung, Textfelder erhalten ein Inline-Clear-X und der Handbuchdialog bleibt oberhalb des ausloesenden Dialogs. ([#585](https://github.com/thomas682/HA-Addons/issues/585))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.613
 
 ### Enhancement

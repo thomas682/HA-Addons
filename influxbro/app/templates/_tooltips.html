@@ -1662,7 +1662,7 @@
       if(document.getElementById('ib_clear_style')) return;
       const st = document.createElement('style');
       st.id = 'ib_clear_style';
-      st.textContent = '.ib_clear_row{display:flex;align-items:center;gap:8px;width:100%}.ib_clear_row>input,.ib_clear_row>select,.ib_clear_row>textarea{flex:1 1 auto;min-width:0}.ib_clear_btn{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd5e2;border-radius:10px;background:#fff;cursor:pointer;flex:0 0 auto;font-size:14px;font-weight:700;line-height:1}.ib_clear_btn:hover{background:#f6f7fb}.ib_clear_btn svg{width:16px;height:16px;pointer-events:none}';
+      st.textContent = '.ib_clear_row{display:flex;align-items:center;gap:8px;width:100%}.ib_clear_row>input,.ib_clear_row>select,.ib_clear_row>textarea{flex:1 1 auto;min-width:0}.ib_clear_row.ib_clear_inline{position:relative;gap:0}.ib_clear_row.ib_clear_inline>input{padding-right:38px!important}.ib_clear_row.ib_clear_inline>.ib_clear_btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:3;width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:#64748b}.ib_clear_row.ib_clear_inline>.ib_clear_btn:hover{background:#e2e8f0;color:#0f172a}.ib_clear_btn{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd5e2;border-radius:10px;background:#fff;cursor:pointer;flex:0 0 auto;font-size:14px;font-weight:700;line-height:1}.ib_clear_btn:hover{background:#f6f7fb}.ib_clear_btn svg{width:16px;height:16px;pointer-events:none}';
       document.head.appendChild(st);
     }catch(e){}
   }
@@ -1673,11 +1673,16 @@
       ensureStyle();
       const targetId = String(btn.getAttribute('data-clear-for') || '').trim();
       if(!targetId) return;
+      const el = document.getElementById(targetId);
+      const row = btn.closest ? btn.closest('.ib_clear_row') : null;
+      const type = String(el && el.getAttribute ? (el.getAttribute('type') || 'text') : '').toLowerCase();
+      const inlineTypes = ['','text','search','email','url','tel','password','number'];
+      if(row && el && el.tagName === 'INPUT' && inlineTypes.includes(type)) row.classList.add('ib_clear_inline');
       btn.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
-        const el = document.getElementById(targetId);
-        if(!el) return;
-        clearValue(el);
+        const target = document.getElementById(targetId);
+        if(!target) return;
+        clearValue(target);
       });
       btn.dataset.ibClearReady = '1';
     }catch(e){}

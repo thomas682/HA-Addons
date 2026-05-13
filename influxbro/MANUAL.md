@@ -112,15 +112,15 @@ Neu: Top-Leiste (Profil + Zoom)
 - Config-/DQ-/Export-/Backup-Dialoge wie Verbindungstest-Erfolg, Icon-SVG-Editor, Datenqualitaets-Details, Export-Zielauswahl und Backup-Verifikation folgen ebenfalls dem Template-v2-Dialogstandard mit stabilen Pickkeys und Footer-/Toolbar-Bereichen.
 - Alle bekannten Dialoge zeigen direkt unter der Titelzeile nur noch eine kurze, dezente Beschreibungszeile zur konkreten Funktion. Der Meta-Hinweis im Footer besitzt einen dezenten Kopierbutton, der den vollstaendigen Meta-String (`pk`, Template und Dialogname) in die Zwischenablage kopiert; der sichtbare Meta-Text ist bei Bedarf mit der Maus markierbar.
 - Dialogtitel verwenden bevorzugt den lesbaren Text des Buttons oder UI-Elements, das den Dialog geoeffnet hat. Technische Kennungen wie `data-ui` oder `data-dialog-trigger` bleiben Debug-/Picker-Daten und werden nicht als sichtbarer Fenstertitel verwendet, solange ein lesbarer Ausloesertext verfuegbar ist.
-- Standarddialoge koennen am Kopfbereich verschoben und unten rechts ueber den vergroesserten sichtbaren Handle vergroessert oder verkleinert werden. Ein Doppelklick auf den Resize-Handle setzt Groesse und Position zurueck.
+- Standarddialoge koennen am Kopfbereich live verschoben und unten rechts ueber den vergroesserten sichtbaren Handle live vergroessert oder verkleinert werden. Ein Doppelklick auf den Resize-Handle setzt Groesse und Position zurueck.
 
 ## Handbuch und Dokumentationsspruenge
 
 - Handbuchbuttons, Tooltip-Doku-Buttons und `F1` oeffnen die passende Hilfe direkt im integrierten Handbuchdialog.
 - Der Sprung erfolgt ueber stabile Dokumentationsziele, damit der Dialog zur fachlich richtigen Stelle springt und nicht nur eine ungefaehre Suche ausfuehrt.
-- Der integrierte Dialog besitzt eine eigene Suche im geladenen Handbuchauszug. `Weiter`, `Zurueck` und Enter springen zwischen gelb markierten Treffern; die Dialog-Schriftgroesse ist in den Einstellungen als `Handbuchdialog Schriftgroesse` konfigurierbar.
+- Der integrierte Dialog und die vollstaendige Handbuchseite nutzen dieselbe Suche im geladenen Handbuchauszug. `Weiter`, `Zurueck` und Enter springen zwischen gelb markierten Treffern; die Dialog-Schriftgroesse ist in den Einstellungen als `Handbuchdialog Schriftgroesse` konfigurierbar.
 - Wenn die Doku aus einem Dialog geoeffnet wird, erscheint der Handbuchdialog ueber dem aktuellen Dialog und laedt den eingebetteten Handbuch-Hauptinhalt ohne Topbar, Sidebar oder sonstige App-Navigation. Die Suche bleibt oben im Handbuchauszug fixiert.
-- Der Button `Im Handbuch oeffnen` wechselt bei Bedarf zur vollstaendigen Handbuchseite im gleichen Add-on-Kontext.
+- Der Button `Im Handbuch oeffnen` sitzt im Handbuchdialog oben in der Titelleiste und wechselt bei Bedarf zur vollstaendigen Handbuchseite im gleichen Add-on-Kontext.
 - Bilder im Handbuch werden weiterhin intern geladen und funktionieren auch im integrierten Handbuchdialog.
 
 ### Messwertinfo-Laufzeitdetails
@@ -323,7 +323,7 @@ Die Auswahlelemente sind auf maximal 60% Breite begrenzt; Labels und Hinweistext
 Die Labels `Einheit` und `Feld` zeigen wieder die aktuelle Anzahl der verfuegbaren Optionen direkt daneben an.
 Auch nach dynamischen Refreshs und Vorschlagslisten-Updates werden keine Inline-Breiten mehr gesetzt, damit diese 60%-Begrenzung stabil wirksam bleibt.
 
-Alle Felder, die frueher automatisch einen Clear-Button erhalten haben, besitzen jetzt dauerhaft einen statischen Clear-Button mit dem urspruenglichen Papierkorb-Icon direkt neben dem Feld.
+Reine Textfelder, die automatisch einen Clear-Button erhalten, zeigen das Loeschen-X direkt im Eingabefeld. Auswahlfelder und andere Nicht-Textfelder behalten den separaten Clear-Button neben dem Feld.
 
 Die vier Auswahlfelder `_measurement`, `_field`, `friendly_name` und `entity_id` verwenden dieselbe Kaskadenlogik wie auf der Backup-Seite. Wenn du eines der Felder aenderst, werden die anderen Listen sofort mit den gefilterten Datenbankwerten neu geladen. Die Vorschlagslisten respektieren jetzt auch den aktuell gewaehlten Dashboard-Zeitraum. Bei `All` wird standardmaessig ueber den gesamten verfuegbaren Zeitraum gesucht, damit auch historische `friendly_name`-/`entity_id`-Varianten gefunden werden. In `Einstellungen -> Dashboard -> Messwertauswahl` kannst du optional eine bewusste Einschraenkung auf X Tage aktivieren; ein explizit gesetzter benutzerdefinierter Start/Stop behaelt dabei Vorrang. Beim Dashboard-Start werden die Selector-Listen einmal deterministisch geladen; ein zusaetzlicher zeitversetzter Hintergrund-Reload wird nicht mehr gestartet.
 

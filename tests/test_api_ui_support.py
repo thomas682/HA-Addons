@@ -1283,6 +1283,10 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert "if(key !== 's') return false;" in dialog
     assert 'if(!(ev && (ev.ctrlKey || ev.metaKey))) return false;' in dialog
     assert 'window.InfluxBroOpenSuperpickerFromDialog(root);' in dialog
+    assert 'const DIALOG_DOC_OPEN_SVG' in dialog
+    assert "const isDocsModal = _dialogName(root) === 'dialog.docs_modal';" in dialog
+    assert 'openManual.setAttribute(\'data-dialog-open-manual-top\', \'1\');' in dialog
+    assert 'window.InfluxBroLayerStack.next()' in dialog
     assert 'user-select:text; cursor:text;' in dialog
     assert 'const startResize = (ev)=>{' in dialog
     assert 'if(ev && typeof ev.clientX === \'number\' && typeof ev.clientY === \'number\') move(ev);' in dialog
@@ -1294,6 +1298,10 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert "window.addEventListener('mousemove', move, true);" in dialog
     assert "window.addEventListener('mouseup', up, true);" in dialog
     assert "document.addEventListener('pointercancel', up, true);" in dialog
+    assert 'const startDrag = (ev)=>{' in dialog
+    assert "header.addEventListener('mousedown', startDrag, true);" in dialog
+    assert "window.addEventListener('pointermove', move, true);" in dialog
+    assert "window.addEventListener('mousemove', move, true);" in dialog
 
 
 def test_dashboard_analysis_chips_use_only_standard_tooltip():
@@ -1574,12 +1582,19 @@ def test_navigation_helper_uses_pending_target_and_html_badges():
 
 def test_manual_dialog_search_and_settings_context_filter_exist():
     topbar = _topbar_runtime_text()
+    tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
+    manual = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "manual.html").read_text()
     config = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "config.html").read_text()
     assert 'id="ib_doc_modal_search"' in topbar
     assert 'function _manualSearch(root, dir)' in topbar
     assert "if(opts && opts.embedded) params.set('embedded', '1');" in topbar
     assert 'iframe.src = embeddedHref;' in topbar
     assert 'ib_doc_search_mark' in topbar
+    assert 'id="manual_search_status"' in manual
+    assert 'Im Handbuchauszug suchen...' in manual
+    assert '$status.textContent = MANUAL_HITS.length ?' in manual
+    assert '.ib_clear_row.ib_clear_inline' in tooltips
+    assert "row.classList.add('ib_clear_inline');" in tooltips
     assert 'settings_ref=' in topbar
     assert 'const SETTINGS_CONTEXTS = {' in config
     assert 'function applySettingsContextFilter(){' in config
