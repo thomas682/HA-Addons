@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.620
+
+### Fix
+
+- Dialoge: Native Dialoge werden beim Schliessen nun immer mit `close()`, entferntem `open`-Attribut und zurueckgesetztem Displayzustand geschlossen, damit der Info-Dialog keine blockierende Top-Layer-Leiche hinterlaesst. ([#587](https://github.com/thomas682/HA-Addons/issues/587))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.619
 
 ### Enhancement

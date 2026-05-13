@@ -715,8 +715,13 @@
     function _closeDialog(root, closeSelector){
       try{
         const host = _dialogRoot(root) || root;
-        if(host && typeof host.close === 'function' && host.open){ host.close(); if(host.style) host.style.display = 'none'; _notifyDialogClosed(host); return; }
-        if(host && host.style){ host.style.display = 'none'; _notifyDialogClosed(host); }
+        if(!host) return;
+        if(String(host.tagName || '').toUpperCase() === 'DIALOG'){
+          try{ if(typeof host.close === 'function' && host.open) host.close(); }catch(e){}
+          try{ host.removeAttribute('open'); }catch(e){}
+        }
+        if(host.style) host.style.display = 'none';
+        _notifyDialogClosed(host);
       }catch(e){}
     }
     function _setDialogRestoreState(root, disabled){

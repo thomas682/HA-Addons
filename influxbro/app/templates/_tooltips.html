@@ -3467,6 +3467,17 @@
 
     POPUP_REFS = { root, card, title, pre, meta, metaFooter: popupMetaFooter, copyBtn, settingsBtn, logsBtn, radialMenu, searchToggle, split, historyBox };
 
+    function _closeDialogElementSafe(el){
+      try{
+        if(!el) return;
+        if(String(el.tagName || '').toUpperCase() === 'DIALOG'){
+          try{ if(typeof el.close === 'function' && el.open) el.close(); }catch(e){}
+          try{ el.removeAttribute('open'); }catch(e){}
+        }
+        if(el.style) el.style.display = 'none';
+      }catch(e){}
+    }
+
     function close(){
       try{ CURRENT_POPUP_BASE_TITLE = ''; }catch(e){}
       try{ CURRENT_POPUP_BASE_TEXT = ''; }catch(e){}
@@ -3474,8 +3485,7 @@
       try{ CURRENT_COPY_TEXT = ''; }catch(e){}
       try{ CURRENT_POPUP_LOGS_ACTIVE = false; }catch(e){}
       try{ logsBtn.style.background = ''; logsBtn.style.borderColor = ''; logsBtn.style.fontWeight = '400'; }catch(e){}
-      try{ if(typeof root.close === 'function' && root.open) root.close(); }catch(e){}
-      try{ root.style.display = 'none'; }catch(e){}
+      _closeDialogElementSafe(root);
     }
 
     btn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} close(); });
@@ -3756,8 +3766,7 @@
       try{
         if(CONFIRM_REFS && CONFIRM_REFS.root){
           const root = CONFIRM_REFS.root;
-          try{ if(typeof root.close === 'function' && root.open) root.close(); }catch(e){}
-          root.style.display = 'none';
+          _closeDialogElementSafe(root);
         }
       }catch(e){}
       try{
