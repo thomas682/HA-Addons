@@ -1286,6 +1286,9 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert 'window.InfluxBroOpenSuperpickerFromDialog(root);' in dialog
     assert 'const DIALOG_DOC_OPEN_SVG' in dialog
     assert "const isDocsModal = _dialogName(root) === 'dialog.docs_modal';" in dialog
+    assert '[data-dialog-open-manual-top="1"]' in dialog
+    assert 'if(!openManual){' in dialog
+    assert "openManual.id = 'ib_doc_modal_open';" in dialog
     assert 'openManual.setAttribute(\'data-dialog-open-manual-top\', \'1\');' in dialog
     assert 'window.InfluxBroLayerStack.next()' in dialog
     assert 'user-select:text; cursor:text;' in dialog

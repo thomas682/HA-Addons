@@ -937,7 +937,7 @@
         });
         Array.from(headerActions.children || []).forEach((el)=>{
           try{
-            if(el.matches && el.matches('[data-dialog-info-btn="1"],[data-dialog-doc-btn="1"],[data-dialog-window]')) return;
+            if(el.matches && el.matches('[data-dialog-info-btn="1"],[data-dialog-doc-btn="1"],[data-dialog-open-manual-top="1"],[data-dialog-window]')) return;
             el.remove();
           }catch(e){}
         });
@@ -958,7 +958,14 @@
         const isDocsModal = _dialogName(root) === 'dialog.docs_modal';
         if(isDocsModal){
           headerActions.querySelectorAll('[data-dialog-doc-btn="1"]').forEach((btn)=>{ try{ btn.remove(); }catch(e){} });
-          const openManual = root.querySelector('#ib_doc_modal_open');
+          let openManual = root.querySelector('#ib_doc_modal_open');
+          if(!openManual){
+            openManual = document.createElement('button');
+            openManual.id = 'ib_doc_modal_open';
+            openManual.type = 'button';
+            openManual.setAttribute('data-ui', 'docs_modal.btn_open_manual');
+            openManual.setAttribute('data-ib-pickkey', 'docs_modal.btn_open_manual');
+          }
           if(openManual){
             openManual.classList.add('win-btn');
             openManual.setAttribute('data-dialog-open-manual-top', '1');

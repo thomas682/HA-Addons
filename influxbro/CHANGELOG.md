@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.616
+
+### Fix
+
+- Handbuchdialog: Der Button `Im Handbuch oeffnen` wird im Dialog-Header robust erzeugt und bei erneuter Dialog-Standardisierung nicht mehr entfernt. ([#585](https://github.com/thomas682/HA-Addons/issues/585))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.615
 
 ### Fix
