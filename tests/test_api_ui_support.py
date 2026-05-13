@@ -1239,6 +1239,27 @@ def test_dialog_superpicker_uses_active_dialog_scope():
     assert 'setTimeout(()=>{ start({ scopeRoot: dialogRoot }).catch(()=>{}); }, 0);' in topbar
 
 
+def test_pickkey_reference_model_attrs_are_generated():
+    topbar = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
+    assert 'function _pagePickkeyFor(el)' in topbar
+    assert "return 'Dialog.' + name;" in topbar
+    assert "return page === 'dashboard' ? 'Dashboard'" in topbar
+    assert 'function _rolePickkeyFor(el)' in topbar
+    assert "return 'help';" in topbar
+    assert "return 'checkbox';" in topbar
+    assert "return 'button';" in topbar
+    assert 'function _labelPickkeyFor(el)' in topbar
+    assert "el.getAttribute('data-title')" in topbar
+    assert "el.getAttribute('aria-label')" in topbar
+    assert 'function _ensureReferencePickkeys(el)' in topbar
+    assert "el.setAttribute('data-ib-page-pickkey', page);" in topbar
+    assert "el.setAttribute('data-ib-role-pickkey', role);" in topbar
+    assert "el.setAttribute('data-ib-label-pickkey', label);" in topbar
+    assert "el.setAttribute('data-ib-instance-pickkey', ik);" in topbar
+    assert "el.setAttribute('data-ib-reference-pickkey'" in topbar
+    assert '_ensurePickkey(el); _ensureInstancekey(el); _ensureReferencePickkeys(el);' in topbar
+
+
 def test_dialog_picker_clipboard_and_resize_are_robust():
     root = Path(__file__).resolve().parents[1]
     topbar = (root / "influxbro" / "app" / "templates" / "_topbar.html").read_text()

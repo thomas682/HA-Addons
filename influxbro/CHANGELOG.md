@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.613
+
+### Enhancement
+
+- Picker: UI-Elemente erhalten automatisch lesbare Referenzattribute fuer Seite/Dialog, Rolle, Label und konkrete Instanz, damit Bugreports und Playwright-Tests statische und dynamische Elemente eindeutiger adressieren koennen. ([#584](https://github.com/thomas682/HA-Addons/issues/584))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.612
 
 ### Fix

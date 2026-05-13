@@ -766,6 +766,69 @@
         return String(seg || 'page').toLowerCase();
       }catch(e){ return 'page'; }
     }
+    function _pagePickkeyFor(el){
+      try{
+        const dlg = el && el.closest ? el.closest('dialog,[data-dialog-root="1"],[role="dialog"]') : null;
+        if(dlg){
+          const name = _normKey(dlg.getAttribute('data-dialog-name')) || _normKey(dlg.id) || 'dialog';
+          return 'Dialog.' + name;
+        }
+        const page = _pageKey();
+        return page === 'dashboard' ? 'Dashboard' : page.replace(/(^|_)([a-z])/g, (m, p, c)=>p + c.toUpperCase());
+      }catch(e){ return 'Page'; }
+    }
+    function _rolePickkeyFor(el){
+      try{
+        const tag = String(el && el.tagName || '').toLowerCase();
+        const type = String(el && el.getAttribute && el.getAttribute('type') || '').toLowerCase();
+        const role = _normKey(el && el.getAttribute && el.getAttribute('role'));
+        const cls = String(el && el.className || '').toLowerCase();
+        if(tag === 'button' && (cls.includes('help') || cls.includes('info') || el.getAttribute('data-help'))) return 'help';
+        if(type === 'checkbox') return 'checkbox';
+        if(tag === 'button' || role === 'button') return 'button';
+        if(tag === 'select') return 'select';
+        if(tag === 'textarea') return 'text';
+        if(tag === 'input') return type === 'checkbox' ? 'checkbox' : 'text';
+        if(tag === 'a') return 'link';
+        if(tag === 'dialog' || role === 'dialog') return 'dialog';
+        if(tag === 'table') return 'table';
+        if(tag === 'details' || tag === 'summary') return 'section';
+      }catch(e){}
+      return 'text';
+    }
+    function _labelPickkeyFor(el){
+      try{
+        const vals = [
+          el.getAttribute('data-title'),
+          el.getAttribute('aria-label'),
+          el.getAttribute('title'),
+          el.getAttribute('placeholder'),
+          el.getAttribute('name'),
+          el.textContent,
+        ];
+        for(const raw of vals){
+          const label = _normKey(String(raw || '').replace(/\s+/g, '_').slice(0, 80));
+          if(label) return label;
+        }
+      }catch(e){}
+      return 'unlabeled';
+    }
+    function _ensureReferencePickkeys(el){
+      try{
+        if(!el || !el.getAttribute || !el.setAttribute) return;
+        if(_isInertPickNode(el)) return;
+        const page = _pagePickkeyFor(el);
+        const role = _rolePickkeyFor(el);
+        const label = _labelPickkeyFor(el);
+        const pk = _normKey(el.getAttribute('data-ib-pickkey')) || 'unknown';
+        const ik = _normKey(el.getAttribute('data-ib-instancekey')) || pk;
+        el.setAttribute('data-ib-page-pickkey', page);
+        el.setAttribute('data-ib-role-pickkey', role);
+        el.setAttribute('data-ib-label-pickkey', label);
+        el.setAttribute('data-ib-instance-pickkey', ik);
+        el.setAttribute('data-ib-reference-pickkey', page + ';role=' + role + ';label=' + label + ';pk=' + pk + ';ik=' + ik);
+      }catch(e){}
+    }
     function _anchorKeyFor(el){
       try{
         const a = el.closest && el.closest('[data-ib-pickkey],[data-ui],[id]');
@@ -964,7 +1027,7 @@
           'nav.sidebar',
           '.nav_item',
         ].join(',');
-         document.querySelectorAll(sel).forEach((el)=>{ _ensurePickkey(el); _ensureInstancekey(el); });
+         document.querySelectorAll(sel).forEach((el)=>{ _ensurePickkey(el); _ensureInstancekey(el); _ensureReferencePickkeys(el); });
          _dedupeAutoInstancekeys();
          _validatePickRegistry();
        }catch(e){}
