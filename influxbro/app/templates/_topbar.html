@@ -92,18 +92,18 @@
       box-shadow: 0 2px 8px rgba(11, 87, 208, 0.28);
     }
 
-    /* Bottom error status bar */
+    /* Bottom error status bar — extends under home indicator, padding pushes content up */
     .ib_bottombar {
       position: fixed;
       left: 0;
       right: 0;
-      bottom: env(safe-area-inset-bottom, 0px);
+      bottom: 0;
       z-index: 9999;
-      height: calc(var(--ib-bottombar-h) * var(--ib-zoom-scale));
+      height: calc(var(--ib-bottombar-h) * var(--ib-zoom-scale) + env(safe-area-inset-bottom, 0px));
       display: flex;
       align-items: center;
       gap: calc(10px * var(--ib-zoom-scale));
-      padding: calc(6px * var(--ib-zoom-scale)) calc(12px * var(--ib-zoom-scale));
+      padding: calc(6px * var(--ib-zoom-scale)) calc(12px * var(--ib-zoom-scale)) calc(6px * var(--ib-zoom-scale) + env(safe-area-inset-bottom, 0px));
       padding-left: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-left, 0px));
       padding-right: calc((12px * var(--ib-zoom-scale)) + env(safe-area-inset-right, 0px));
       box-sizing: border-box;
@@ -134,9 +134,25 @@
     @media (max-width: 980px){
       :root { --ib-bottombar-h: 46px; }
       /* Keep vertical centering even when wrapping (prevents OK/ERR chips from looking off-center). */
-      .ib_bottombar { flex-wrap: wrap; height: var(--ib-bottombar-h); align-items: center; align-content: flex-start; }
+      .ib_bottombar { flex-wrap: wrap; height: calc(var(--ib-bottombar-h) + env(safe-area-inset-bottom, 0px)); align-items: center; align-content: flex-start; }
       .ib_bottombar .msg { width: 100%; }
     }
+
+    /* iOS Safe Area: dialog overlays respect notch and home indicator on all pages */
+    [data-dialog-root="1"][style*="position:fixed"],
+    [data-dialog-root="1"][style*="position: fixed"],
+    .modal {
+      padding-top: max(20px, env(safe-area-inset-top, 20px)) !important;
+      padding-bottom: max(20px, env(safe-area-inset-bottom, 20px)) !important;
+      padding-left: max(12px, env(safe-area-inset-left, 12px)) !important;
+      padding-right: max(12px, env(safe-area-inset-right, 12px)) !important;
+    }
+
+    /* touch-action: manipulation — prevents 300ms delay and unwanted zoom on all interactive elements */
+    button, a, input, select, textarea, [role="button"], [tabindex] {
+      touch-action: manipulation;
+    }
+
     .ib_topbar {
       position: fixed;
       top: env(safe-area-inset-top, 0px);
@@ -267,6 +283,12 @@
       .ib_pagecard .actions .topbar_profile_group .ib_clear_row { flex:1 0 100%; max-width:none; }
       .ib_pagecard .title { width:100%; }
       .ib_pagecard .branddonate { width:100%; }
+      /* iOS Safari: prevent input focus auto-zoom (min 16px required) — covers iPhone and iPad */
+      input, select, textarea { font-size: max(16px, var(--ui-font-zoomed)) !important; }
+      /* Touch targets: ensure all content-area buttons meet Apple HIG 44px minimum */
+      main button, main select, main input[type="button"], main input[type="submit"] {
+        min-height: 44px;
+      }
     }
 
     /* iPhone / small mobile: collapse/expand the heavy actions row */
@@ -285,9 +307,6 @@
       .ib_pagecard .actions .ib_topbar_mobile_toggle { display:inline-flex; }
       .ib_pagecard .actions .ib_nav_mobile_toggle { display:inline-flex; }
       #ib_topbar_mobile_panel[hidden] { display:none !important; }
-
-      /* iOS Safari: prevent input focus auto-zoom */
-      input, select, textarea { font-size: 16px !important; }
 
       /* Touch targets (Apple HIG) */
       .ib_pagecard .actions button,

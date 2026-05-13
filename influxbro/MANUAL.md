@@ -75,6 +75,12 @@ Neu: Sidebar (Desktop)
 - Wenn der Hauptbereich auf Desktop zeitweise leer wirkt: Ursache war ein Overlay-DIV, der als Grid-Child in `.shell` die rechte Spalte belegt hat. Das Overlay wird jetzt auf `body` gemountet.
 - Mobile: Die Navigation wird als Drawer (Hamburger) genutzt und ueber den Button in der Titelzeile ein-/ausgeblendet.
   - Hinweis: Der Drawer startet beim erneuten Oeffnen der App wieder geschlossen (damit der Inhalt sofort sichtbar ist).
+- iPhone / iOS Safari: Die App ist fuer iPhone und iPad vollstaendig optimiert.
+  - Alle Seiten verwenden `viewport-fit=cover`, damit der Inhalt den vollen Bildschirm einschliesslich Notch und Home-Indicator nutzt.
+  - Die untere Statusleiste reicht bis zum Bildschirmrand und beruecksichtigt `safe-area-inset-bottom`, sodass Buttons nicht hinter dem Home-Indicator verschwinden.
+  - Dialoge und Overlays beruecksichtigen die Safe-Area-Einschraenkungen an allen vier Seiten.
+  - Die virtuelle Tastatur verschiebt das Layout nicht mehr (dynamische Viewport-Hoehe `dvh`).
+  - Alle Buttons und Eingabefelder haben mindestens 44px Touch-Hoehe (Apple HIG).
 
 Neu: Top-Leiste (Profil + Zoom)
 

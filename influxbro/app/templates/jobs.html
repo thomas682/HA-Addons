@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>InfluxBro – Jobs &amp; Cache</title>
   <style>
     :root {
@@ -16,7 +16,7 @@
       --ui-timer-disabled-opacity: {{ (cfg.get('ui_timer_disabled_opacity') or 72) | int }};
     }
     body { font-family: system-ui, sans-serif; margin: 0; }
-    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    .shell { display:grid; grid-template-columns: 260px 1fr; min-height: 100dvh; }
     @media (max-width: 980px){ .shell { grid-template-columns: 1fr; } }
     .sidebar { padding: 14px; border-right: 1px solid #eee; }
     @media (max-width: 980px){ .sidebar { border-right: 0; border-bottom: 1px solid #eee; } }

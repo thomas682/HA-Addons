@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.543
+
+### Fix
+
+- Mobile / iOS Safari: Statusleiste am unteren Bildschirmrand (`ib_bottombar`) wird jetzt korrekt bis unter den Home-Indicator gestreckt (`bottom: 0`). Die Hoehe und das untere Padding beruecksichtigen `env(safe-area-inset-bottom)`, sodass der Inhalt nicht hinter dem Home-Indicator verschwindet.
+- Mobile / iOS Safari: Alle Seiten-Templates erhalten `viewport-fit=cover`, damit der Content den vollen Bildschirm einschliesslich Notch und Home-Indicator nutzen kann.
+- Mobile / iOS Safari: Dialog-Overlays (`[data-dialog-root]`, `.modal`) beruecksichtigen jetzt Safe-Area-Insets an allen vier Seiten.
+- Mobile / iOS Safari: Eingabefelder verwenden ab 980px Bildschirmbreite mindestens 16px Schriftgroesse, um den automatischen Zoom beim Fokussieren zu verhindern.
+- Mobile / iOS Safari: Alle Buttons und Formulareingaben im Inhaltsbereich haben ab 980px eine Mindesthoehe von 44px (Apple HIG Touch-Target-Vorgabe).
+- Mobile / iOS Safari: Alle interaktiven Elemente erhalten `touch-action: manipulation`, um die 300ms Tap-Verzoegerung zu eliminieren.
+- Mobile / iOS Safari: `min-height: 100vh` auf `100dvh` umgestellt, um Layout-Verschiebungen durch die virtuelle Tastatur zu vermeiden.
+- Maintenance: Tested with Home Assistant Core: 2026.5.0
+
 ## 1.12.542
 
 ### Fix
