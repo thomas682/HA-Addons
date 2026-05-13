@@ -86,7 +86,7 @@ Neu: Top-Leiste (Profil + Zoom)
 - Auf iPhone wird `nav.donate` rechts neben dem Brand angezeigt (statt als eigene Zeile), damit die Titelzeile kompakter bleibt.
 - iOS Hinweis: Eingabefelder nutzen auf iPhone mindestens 16px Schriftgroesse, damit Safari beim Antippen nicht automatisch hineinzoomt.
 - Enthalten:
-  - Profil-Auswahl inkl. `Anwenden`, `Speichern`, aktuelle Version und Anzeige des aktiven Farbschemas (`Thema: ...`).
+  - Profil-Auswahl inkl. `Anwenden`, `Speichern`, aktuelle Version und Anzeige des aktiven Farbschemas (`Thema: ...`). Das Farbschema kann direkt daneben in der Topbar weitergeschaltet werden; die Auswahl wird in den Einstellungen gespeichert.
     - Hinweis: Die Buttons `Anwenden`, `Speichern`, `Picker` und `S-Picker` sind in der Topbar icon-only (Tooltip/aria-label bleibt erhalten).
   - Zoom-Steuerung: `-` / `+` und die aktuelle Zoomstufe in `%`.
   - Seitensuche: durchsucht Controls und wichtige sichtbare Texte auf der aktuellen Seite und springt zu Treffern.

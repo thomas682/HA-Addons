@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.622
+
+### Enhancement
+
+- Topbar: Das angezeigte Farbschema kann nun direkt in der Topbar weitergeschaltet werden; die Auswahl wird gespeichert und sofort angewendet. ([#588](https://github.com/thomas682/HA-Addons/issues/588))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.621
 
 ### Enhancement

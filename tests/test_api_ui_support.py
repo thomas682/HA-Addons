@@ -289,6 +289,13 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'window.InfluxBroSafeReveal = safeReveal;' in topbar
     assert 'id="ib_theme_badge"' in topbar
     assert 'data-ib-pickkey="topbar_theme.badge_current"' in topbar
+    assert 'id="ib_theme_cycle"' in topbar
+    assert 'data-ib-pickkey="topbar_theme.btn_cycle"' in topbar
+    assert "const THEME_MODES = ['system','light','dark','dark_blue','high_contrast'];" in topbar
+    assert 'function _nextThemeMode(mode){' in topbar
+    assert 'async function _persistThemeMode(mode){' in topbar
+    assert "fetch('./api/config'" in topbar
+    assert 'ui_theme_mode: next' in topbar
     assert 'function _updateThemeBadge(mode, effective){' in topbar
     assert "'Thema: System ('" in topbar
     assert "_updateThemeBadge(m, m);" in topbar
