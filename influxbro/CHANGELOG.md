@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.621
+
+### Enhancement
+
+- Topbar: Das aktuell aktive Farbschema wird nun direkt oben in der Topbar/Pagecard als `Thema: ...` angezeigt und bei Live-Aenderungen aus den Einstellungen aktualisiert. ([#588](https://github.com/thomas682/HA-Addons/issues/588))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.620
 
 ### Fix

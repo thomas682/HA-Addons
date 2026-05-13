@@ -247,6 +247,21 @@
     .ib_pagecard .brand { font-weight:900; letter-spacing:.2px; font-size: var(--ib-font-gui-title); line-height:1; margin:0; }
     .ib_pagecard .byline { font-size: var(--ib-font-gui-meta); opacity:.8; margin-top:0; line-height:1; }
     .ib_pagecard .hintline { font-size: var(--ib-font-gui-meta); opacity:.75; line-height:1; margin-top:2px; }
+    .ib_theme_badge {
+      display:inline-flex;
+      align-items:center;
+      width:max-content;
+      max-width:100%;
+      margin-top:3px;
+      padding:2px 7px;
+      border:1px solid var(--ib-border, rgba(0,0,0,0.14));
+      border-radius:999px;
+      background:color-mix(in srgb, var(--ib-surface-2, #f1f3f6) 88%, transparent);
+      color:var(--ib-text, #1f2933);
+      font-size:var(--ib-font-gui-meta);
+      line-height:1.2;
+      white-space:nowrap;
+    }
     .ib_pagecard .branddonate { display:flex; flex-direction:row; align-items:center; gap: calc(8px * var(--ib-zoom-scale)); flex-wrap:wrap; }
     .ib_pagecard .title { font-weight: 800; font-size: var(--ib-pagecard-title-size); min-width:120px; line-height: 1.1; }
     .ib_pagecard .actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; min-width:0; }
@@ -603,6 +618,35 @@
 
     let _mql = null;
     let _onSystemChange = null;
+    function _themeModeLabel(mode){
+      const m = String(mode || '').trim().toLowerCase();
+      if(m === 'system') return 'System';
+      if(m === 'dark') return 'Dunkel';
+      if(m === 'dark_blue') return 'Dunkel Blau';
+      if(m === 'high_contrast') return 'Hoher Kontrast';
+      return 'Hell';
+    }
+    function _effectiveThemeLabel(theme){
+      const t = String(theme || '').trim().toLowerCase();
+      if(t === 'dark') return 'Dunkel';
+      if(t === 'dark_blue') return 'Dunkel Blau';
+      if(t === 'high_contrast') return 'Hoher Kontrast';
+      return 'Hell';
+    }
+    function _updateThemeBadge(mode, effective){
+      try{
+        const el = document.getElementById('ib_theme_badge');
+        if(!el) return;
+        const m = String(mode || 'system').trim().toLowerCase();
+        const eff = String(effective || document.documentElement.getAttribute('data-theme') || 'light');
+        const text = m === 'system'
+          ? 'Thema: System (' + _effectiveThemeLabel(eff) + ')'
+          : 'Thema: ' + _themeModeLabel(m);
+        el.textContent = text;
+        el.setAttribute('aria-label', text);
+        el.setAttribute('title', 'Aktives Farbschema: ' + text.replace('Thema: ', ''));
+      }catch(e){}
+    }
     function _applyTheme(theme){
       try{ document.documentElement.setAttribute('data-theme', String(theme || 'light')); }catch(e){}
     }
@@ -624,15 +668,18 @@
           _mql = window.matchMedia('(prefers-color-scheme: dark)');
           const isDark = !!(_mql && _mql.matches);
           _applyTheme(isDark ? 'dark' : 'light');
-          _onSystemChange = ()=>{ try{ _applyTheme(_mql && _mql.matches ? 'dark' : 'light'); }catch(e){} };
+          _updateThemeBadge(m, isDark ? 'dark' : 'light');
+          _onSystemChange = ()=>{ try{ const eff = _mql && _mql.matches ? 'dark' : 'light'; _applyTheme(eff); _updateThemeBadge('system', eff); }catch(e){} };
           try{ if(_mql && _mql.addEventListener) _mql.addEventListener('change', _onSystemChange); }catch(e){}
           try{ if(_mql && _mql.addListener) _mql.addListener(_onSystemChange); }catch(e){}
         }catch(e){
           _applyTheme('light');
+          _updateThemeBadge(m, 'light');
         }
         return;
       }
       _applyTheme(m);
+      _updateThemeBadge(m, m);
     }
 
     window.InfluxBroTheme = {
@@ -644,6 +691,8 @@
     };
 
     apply(CFG_MODE, CFG_ACC);
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=>_updateThemeBadge(CFG_MODE, document.documentElement.getAttribute('data-theme') || 'light'), { once: true });
+    else setTimeout(()=>_updateThemeBadge(CFG_MODE, document.documentElement.getAttribute('data-theme') || 'light'), 0);
   })();
   </script>
 
@@ -3275,6 +3324,8 @@
       <div class="brand">InfluxBro</div>
       <div class="byline">by Thomas Schatz</div>
       <span class="meta hintline" id="ui_profile_hint">Version: {{ addon_version }}</span>
+      {% set _ib_theme_mode = ((cfg.get('ui_theme_mode') or 'system') if cfg else 'system') %}
+      <span class="ib_theme_badge" id="ib_theme_badge" data-ui="topbar_theme.badge_current" data-ib-pickkey="topbar_theme.badge_current" title="Aktives Farbschema">Thema: {{ {'system':'System','light':'Hell','dark':'Dunkel','dark_blue':'Dunkel Blau','high_contrast':'Hoher Kontrast'}.get(_ib_theme_mode, _ib_theme_mode) }}</span>
     </div>
     <div class="branddonate" data-ui="nav_main.panel_donate" data-ib-pickkey="nav_main.panel_donate" title="nav.donate">
       <a href="https://www.paypal.com/donate/?hosted_button_id=ZWZE3WM4NBUW6" target="_blank" rel="noreferrer" style="display:inline-block; vertical-align:middle;">

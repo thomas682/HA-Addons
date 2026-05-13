@@ -287,6 +287,11 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert '{% include "_dialog.html" %}' in topbar
     assert 'window.InfluxBroDialogStandards = {' in dialog_body
     assert 'window.InfluxBroSafeReveal = safeReveal;' in topbar
+    assert 'id="ib_theme_badge"' in topbar
+    assert 'data-ib-pickkey="topbar_theme.badge_current"' in topbar
+    assert 'function _updateThemeBadge(mode, effective){' in topbar
+    assert "'Thema: System ('" in topbar
+    assert "_updateThemeBadge(m, m);" in topbar
     assert "window.addEventListener('unhandledrejection'" in topbar
     assert "ui_superpicker_shortcut: 'ctrl+s'" in topbar
     assert 'function _shortcutMatches(ev){' in topbar
