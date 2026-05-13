@@ -1145,9 +1145,10 @@
       return _renderChipTooltip(text);
     }
 
-    function _pos(ev){
+    function _pos(ev, force){
       try{
         if(!tip) return;
+        if(pinned && !force && tip.style.visibility === 'visible') return;
         const pad = 14;
         const x0 = (ev && typeof ev.clientX === 'number') ? ev.clientX : 0;
         const y0 = (ev && typeof ev.clientY === 'number') ? ev.clientY : 0;
@@ -1349,7 +1350,7 @@
       if(!el || !el.getAttribute) return;
       const title = _norm(el.getAttribute('data-tooltip-desc')) || _storedTitle(el) || _stealTitle(el);
       if(!title) return;
-      if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.transform='translateY(0)'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}); return; }
+      if(key === 'Enter' || key === ' '){ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} pinned = true; lastEl = el; lastTitle = title; lastMeta = _metaFor(el, title.split('\n')[0], title); const box = _ensure(); box.innerHTML = _render(title); box.style.visibility='visible'; box.style.opacity='1'; box.style.transform='translateY(0)'; box.style.pointerEvents='auto'; box.style.borderColor='#60a5fa'; _pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}, true); return; }
     }
     try{ window.addEventListener('keydown', _onTooltipKeydown, true); }catch(e){}
     document.addEventListener('keydown', _onTooltipKeydown, true);

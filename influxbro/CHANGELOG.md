@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.628
+
+### Fix
+
+- Tooltips: Gepinnte Tooltips ignorieren nach dem Freeze weitere automatische Positionsupdates. ([#591](https://github.com/thomas682/HA-Addons/issues/591))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.627
 
 ### Fix

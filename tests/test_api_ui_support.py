@@ -1189,6 +1189,8 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'if(pinned) return;' in tooltips
     assert 'if(ev && ev.shiftKey && _pinVisibleTooltip()) return;' in tooltips
     assert 'if(pinned) return;\n        if(_pickerModeActive()' in tooltips
+    assert 'if(pinned && !force && tip.style.visibility === \'visible\') return;' in tooltips
+    assert '_pos({clientX:(el.getBoundingClientRect().left+12), clientY:(el.getBoundingClientRect().bottom+12)}, true);' in tooltips
     assert "document.addEventListener('mouseleave', ()=>{ if(pinned) return; _hide(); }, true);" in tooltips
     assert "document.addEventListener('scroll', ()=>{ if(pinned) return; _hide(); }, true);" in tooltips
     assert 'function _tooltipIsVisible()' in tooltips
