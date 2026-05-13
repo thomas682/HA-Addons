@@ -1300,7 +1300,7 @@
     document.addEventListener('pointermove', (ev)=>{ _handleTooltipPointer(ev, TOOLTIP_DELAY_MS); }, true);
     document.addEventListener('pointerover', (ev)=>{ _handleTooltipPointer(ev, TOOLTIP_DELAY_MS); }, true);
 
-    document.addEventListener('mouseleave', ()=>{ _hide(); }, true);
+    document.addEventListener('mouseleave', ()=>{ if(pinned) return; _hide(); }, true);
     document.addEventListener('mousedown', (ev)=>{
       try{
         const t = ev && ev.target ? ev.target : null;
@@ -1353,7 +1353,7 @@
     }
     try{ window.addEventListener('keydown', _onTooltipKeydown, true); }catch(e){}
     document.addEventListener('keydown', _onTooltipKeydown, true);
-    document.addEventListener('scroll', ()=>{ _hide(); }, true);
+    document.addEventListener('scroll', ()=>{ if(pinned) return; _hide(); }, true);
     document.addEventListener('influxbro:dialog-closed', ()=>{
       try{
         _hide(true);

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.626
+
+### Fix
+
+- Tooltips: Aktiver Shift-Freeze schuetzt den Tooltip nun auch vor globalen Mouseleave-/Scroll-Hide-Pfaden. ([#591](https://github.com/thomas682/HA-Addons/issues/591))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.625
 
 ### Fix
