@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.610
+
+### Fix
+
+- Dialoge/Picker: Clipboard-Fallbacks kopieren jetzt im aktiven Dialog-/Picker-Layer, und Picker-Referenzen bleiben im Clipboard kompakt ohne lange `data-help`-Texte. ([#583](https://github.com/thomas682/HA-Addons/issues/583))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.609
 
 ### Fix

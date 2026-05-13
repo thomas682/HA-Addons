@@ -544,12 +544,24 @@
         setTimeout(setDesc, 80);
       }catch(e){}
     }
-    function _copyTextToClipboard(text){
+    function _clipboardHost(preferred){
+      try{
+        if(preferred && preferred.appendChild) return preferred;
+        const active = document.activeElement;
+        const scoped = active && active.closest ? active.closest('dialog,[data-dialog-root="1"],[role="dialog"]') : null;
+        if(scoped && scoped.appendChild) return scoped;
+        const dlg = (window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.visibleDialog) ? window.InfluxBroDialogStandards.visibleDialog() : null;
+        if(dlg && dlg.appendChild) return dlg;
+      }catch(e){}
+      return document.body;
+    }
+    function _copyTextToClipboard(text, preferredHost){
       const value = String(text || '');
       if(typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(value);
       return new Promise((resolve, reject)=>{
         let ta = null;
         try{
+          const host = _clipboardHost(preferredHost);
           ta = document.createElement('textarea');
           ta.value = value;
           ta.setAttribute('readonly', 'readonly');
@@ -557,7 +569,7 @@
           ta.style.left = '-9999px';
           ta.style.top = '0';
           ta.style.opacity = '0';
-          document.body.appendChild(ta);
+          host.appendChild(ta);
           ta.focus();
           ta.select();
           try{ ta.setSelectionRange(0, ta.value.length); }catch(e){}
@@ -1112,7 +1124,7 @@
           copyBtn.addEventListener('click', (ev)=>{
             try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
             const current = metaLabel ? String(metaLabel.textContent || '') : metaText;
-            _copyTextToClipboard(current).then(()=>{
+            _copyTextToClipboard(current, meta.closest('dialog,[data-dialog-root="1"],[role="dialog"]') || panel || meta).then(()=>{
               try{
                 copyBtn.setAttribute('data-copy-state', 'ok');
                 copyBtn.setAttribute('title', 'Kopiert');

@@ -1995,12 +1995,24 @@
       tooltipSuppressed = [];
     }
 
-    async function copyText(txt){
+    function _copyHost(preferred){
+      try{
+        if(preferred && preferred.appendChild) return preferred;
+        const root = document.getElementById('ib_pick_result_dialog');
+        if(root && root.parentElement && root.style.display !== 'none') return root.parentElement;
+        const host = _pickerLayerHost();
+        if(host && host.appendChild) return host;
+      }catch(e){}
+      return document.body;
+    }
+
+    async function copyText(txt, preferredHost){
       const s = String(txt || '').trim();
       if(!s) return false;
       try{ if(navigator && navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(s); return true; } }catch(e){}
       let ta = null;
       try{
+        const host = _copyHost(preferredHost);
         ta = document.createElement('textarea');
         ta.value = s;
         ta.setAttribute('readonly','readonly');
@@ -2008,7 +2020,7 @@
         ta.style.left = '-9999px';
         ta.style.top = '0';
         ta.style.opacity = '0';
-        document.body.appendChild(ta);
+        host.appendChild(ta);
         ta.focus();
         ta.select();
         try{ ta.setSelectionRange(0, ta.value.length); }catch(e){}
@@ -2221,7 +2233,7 @@
       return root;
     }
 
-    async function _showPickResultDialog(text, modeLabel){
+    async function _showPickResultDialog(text, modeLabel, copyTextValue){
       const root = _ensurePickResultDialog();
       const title = root.querySelector('#ib_pick_result_title');
       const out = root.querySelector('#ib_pick_result_text');
@@ -2234,9 +2246,10 @@
       if(cards){ cards.style.display = 'none'; cards.textContent = ''; }
       _setPickResultWrap(root, _pickResultWrapEnabled());
       if(status){ status.textContent = ''; status.style.display = 'none'; }
-      const ok = await copyText(value);
       _appendToPickerLayer(root);
       _bringPickerLayerToFront(root);
+      const copyValue = String(copyTextValue || value || '').trim();
+      const ok = await copyText(copyValue, root.parentElement || root);
       root.style.display = 'flex';
       if(!ok && status){
         status.textContent = 'Kopieren in die Zwischenablage fehlgeschlagen.';
@@ -2943,9 +2956,7 @@
          if(olType) parts.push(olType);
          text = '<' + parts.join(',') + '>';
        }
-      const extraInfo = _bestLongInfo(el);
-      if(extraInfo) text = text + '\n\n' + extraInfo;
-      await _showPickResultDialog(text, readSuper() ? 'Super Picker' : 'Picker');
+      await _showPickResultDialog(text, readSuper() ? 'Super Picker' : 'Picker', text);
       stop();
     }
 

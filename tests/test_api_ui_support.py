@@ -952,7 +952,7 @@ def test_dialog_descriptions_and_meta_copy_are_specific():
     assert "function _dialogShortDescription(value)" in topbar
     assert "lines.slice(0, 1)" in topbar
     assert "data-dialog-meta-copy" in topbar
-    assert "_copyTextToClipboard(current)" in topbar
+    assert "_copyTextToClipboard(current, meta.closest" in topbar
     assert "'.btn_meta_copy'" in topbar
     assert "data-copy-state', 'ok'" in topbar
     assert "Bekannte Dialoge MÜSSEN fachlich spezifische Kurzbeschreibungen erhalten" in rules
@@ -1245,8 +1245,15 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     dialog = (root / "influxbro" / "app" / "templates" / "_dialog.html").read_text()
     assert "const ok = document.execCommand('copy');" in topbar
     assert 'return !!ok;' in topbar
+    assert 'function _copyHost(preferred)' in topbar
+    assert 'host.appendChild(ta);' in topbar
+    assert 'await _showPickResultDialog(text, readSuper() ? \'Super Picker\' : \'Picker\', text);' in topbar
+    assert "text = text + '\\n\\n' + extraInfo" not in topbar
     assert "const ok = document.execCommand('copy');" in dialog
     assert "else reject(new Error('copy failed'));" in dialog
+    assert 'function _clipboardHost(preferred)' in dialog
+    assert 'host.appendChild(ta);' in dialog
+    assert '_copyTextToClipboard(current, meta.closest' in dialog
     assert 'user-select:text; cursor:text;' in dialog
     assert 'const startResize = (ev)=>{' in dialog
     assert 'if(ev && typeof ev.clientX === \'number\' && typeof ev.clientY === \'number\') move(ev);' in dialog
