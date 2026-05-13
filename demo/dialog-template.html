@@ -426,55 +426,6 @@ document.addEventListener('mousemove', e=>dialogs.forEach(d=>d.move(e.clientX,e.
 document.addEventListener('mouseup',   ()=>dialogs.forEach(d=>d.up()));
 document.addEventListener('touchmove', e=>{ const t=e.touches[0]; dialogs.forEach(d=>d.move(t.clientX,t.clientY)); },{passive:true});
 document.addEventListener('touchend',  ()=>dialogs.forEach(d=>d.up()));
-/* ── FAB JS ── */
-(function(){
-  const wrap = document.getElementById('fab');
-  const main = document.getElementById('fab-main');
-  const items = wrap.querySelectorAll('.fab-item');
-  const backdrop = document.getElementById('fab-backdrop');
-
-  /* Quarter-circle arc: item 0 = straight up, last = straight left.
-     theta goes 0 → π/2, giving tx: 0→-R (left), ty: -R→0 (up to level). */
-  const R = 176, n = items.length;
-  items.forEach((item, i) => {
-    const theta = (i / (n - 1)) * (Math.PI / 2);
-    item.style.setProperty('--tx', (-Math.sin(theta) * R).toFixed(1) + 'px');
-    item.style.setProperty('--ty', (-Math.cos(theta) * R).toFixed(1) + 'px');
-  });
-
-  function toggle(){ wrap.classList.toggle('open'); }
-  function close(){ wrap.classList.remove('open'); }
-
-  main.addEventListener('click', e => { e.stopPropagation(); toggle(); });
-  backdrop.addEventListener('click', close);
-
-  /* Search satellite: click icon → show input inline */
-  const searchBtn   = document.getElementById('fab-search-btn');
-  const searchInput = document.getElementById('fab-search-input');
-  const searchText  = document.getElementById('fab-search-text');
-  if (searchBtn) {
-    searchBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      const visible = searchInput.style.display !== 'none';
-      searchInput.style.display = visible ? 'none' : 'inline-block';
-      searchText.style.display  = visible ? 'inline' : 'none';
-      if (!visible) { searchInput.focus(); }
-    });
-    searchInput.addEventListener('click', e => e.stopPropagation());
-  }
-
-  /* Umbruch toggle: visual feedback on button */
-  const umbruchBtn = document.getElementById('fab-umbruch');
-  let umbruchOn = true;
-  if (umbruchBtn) {
-    umbruchBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      umbruchOn = !umbruchOn;
-      umbruchBtn.style.background = umbruchOn ? 'var(--accent)' : '';
-      umbruchBtn.style.color      = umbruchOn ? '#fff' : '';
-    });
-  }
-})();
 </script>
 
 <!-- Circular FAB — 8 Satelliten -->
@@ -528,6 +479,60 @@ document.addEventListener('touchend',  ()=>dialogs.forEach(d=>d.up()));
   <button class="fab-main" id="fab-main" title="Aktionen">＋</button>
 </div>
 <div id="fab-backdrop" class="fab-backdrop"></div>
+
+<!-- FAB JS — must run AFTER FAB HTML is in the DOM -->
+<script>
+(function(){
+  const wrap     = document.getElementById('fab');
+  const main     = document.getElementById('fab-main');
+  const backdrop = document.getElementById('fab-backdrop');
+  const items    = wrap.querySelectorAll('.fab-item');
+
+  /* Quarter-circle arc: item 0 = straight up, last = straight left.
+     theta 0→π/2: tx 0→-R, ty -R→0  */
+  const R = 176, n = items.length;
+  items.forEach((item, i) => {
+    const theta = (i / (n - 1)) * (Math.PI / 2);
+    item.style.setProperty('--tx', (-Math.sin(theta) * R).toFixed(1) + 'px');
+    item.style.setProperty('--ty', (-Math.cos(theta) * R).toFixed(1) + 'px');
+  });
+
+  function toggle(){ wrap.classList.toggle('open'); }
+  function close() { wrap.classList.remove('open'); }
+
+  main.addEventListener('click', e => { e.stopPropagation(); toggle(); });
+  backdrop.addEventListener('click', close);
+
+  /* Search satellite: icon click → expand inline input */
+  const searchBtn   = document.getElementById('fab-search-btn');
+  const searchInput = document.getElementById('fab-search-input');
+  const searchText  = document.getElementById('fab-search-text');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = searchInput.style.display !== 'none';
+      searchInput.style.display = open ? 'none' : 'inline-block';
+      searchText.style.display  = open ? 'inline' : 'none';
+      if (!open) searchInput.focus();
+    });
+    searchInput.addEventListener('click', e => e.stopPropagation());
+  }
+
+  /* Umbruch toggle */
+  const umbruchBtn = document.getElementById('fab-umbruch');
+  let umbruchOn = true;
+  if (umbruchBtn) {
+    umbruchBtn.style.background = 'var(--accent)';
+    umbruchBtn.style.color = '#fff';
+    umbruchBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      umbruchOn = !umbruchOn;
+      umbruchBtn.style.background = umbruchOn ? 'var(--accent)' : '';
+      umbruchBtn.style.color      = umbruchOn ? '#fff' : '';
+    });
+  }
+})();
+</script>
 
 </body>
 </html>
