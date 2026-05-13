@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.611
+
+### Fix
+
+- Picker: Der Super-Picker-Shortcut wird nun auch im nativen Dialog-Top-Layer ueber `window` abgefangen und akzeptiert `Ctrl+Shift+S` als Alias fuer `Ctrl+S`. ([#583](https://github.com/thomas682/HA-Addons/issues/583))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.610
 
 ### Fix

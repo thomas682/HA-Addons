@@ -1249,6 +1249,10 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert 'host.appendChild(ta);' in topbar
     assert 'await _showPickResultDialog(text, readSuper() ? \'Super Picker\' : \'Picker\', text);' in topbar
     assert "text = text + '\\n\\n' + extraInfo" not in topbar
+    assert 'if(wantShift && !(ev && ev.shiftKey)) return false;' in topbar
+    assert 'async function _onSuperpickerShortcut(ev)' in topbar
+    assert "window.addEventListener('keydown', _onSuperpickerShortcut, true);" in topbar
+    assert "document.addEventListener('keydown', _onSuperpickerShortcut, true);" in topbar
     assert "const ok = document.execCommand('copy');" in dialog
     assert "else reject(new Error('copy failed'));" in dialog
     assert 'function _clipboardHost(preferred)' in dialog

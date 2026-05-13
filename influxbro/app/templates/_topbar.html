@@ -1839,7 +1839,7 @@
           if(!!(ev && ev.ctrlKey) !== wantCtrl) return false;
           if(!!(ev && ev.metaKey) !== wantMeta) return false;
           if(!!(ev && ev.altKey) !== wantAlt) return false;
-          if(!!(ev && ev.shiftKey) !== wantShift) return false;
+          if(wantShift && !(ev && ev.shiftKey)) return false;
           return true;
         }catch(e){ return false; }
       }
@@ -3068,17 +3068,23 @@
           }, true);
         }
       }catch(e){}
+      let lastShortcutEvent = null;
+      async function _onSuperpickerShortcut(ev){
+        try{
+          if(ev && ev === lastShortcutEvent) return;
+          lastShortcutEvent = ev || null;
+          setTimeout(()=>{ try{ if(lastShortcutEvent === ev) lastShortcutEvent = null; }catch(e){} }, 0);
+          const activeEl = document.activeElement;
+          if(activeEl && String(activeEl.id || '') === 'ui_superpicker_shortcut') return;
+          if(!_shortcutMatches(ev)) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          await _openConfiguredSuperpicker();
+        }catch(e){}
+      }
       try{
-        document.addEventListener('keydown', async (ev)=>{
-          try{
-            const activeEl = document.activeElement;
-            if(activeEl && String(activeEl.id || '') === 'ui_superpicker_shortcut') return;
-            if(!_shortcutMatches(ev)) return;
-            ev.preventDefault();
-            ev.stopPropagation();
-            await _openConfiguredSuperpicker();
-          }catch(e){}
-        }, true);
+        window.addEventListener('keydown', _onSuperpickerShortcut, true);
+        document.addEventListener('keydown', _onSuperpickerShortcut, true);
       }catch(e){}
       applySuperUi();
     }
