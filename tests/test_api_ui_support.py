@@ -1187,6 +1187,7 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'pinned = true;' in tooltips
     assert 'clearTimeout(showT); showT = null;' in tooltips
     assert 'if(pinned) return;' in tooltips
+    assert 'if(ev && ev.shiftKey && _pinVisibleTooltip()) return;' in tooltips
     assert 'function _tooltipIsVisible()' in tooltips
     assert 'function _pinVisibleTooltip()' in tooltips
     assert "window.addEventListener('keydown', _onTooltipKeydown, true);" in tooltips

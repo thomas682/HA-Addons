@@ -1238,6 +1238,7 @@
       try{
         _rememberPointer(ev);
         if(_pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED) { _hide(true); return; }
+        if(ev && ev.shiftKey && _pinVisibleTooltip()) return;
         if(pinned) return;
         const el = _targetFrom(ev);
         if(!el){ _hide(); return; }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.625
+
+### Fix
+
+- Tooltips: Der Shift-Freeze wird jetzt auch direkt im Pointer-Pfad aktiviert, damit der Tooltip im Live-Browser nicht mit der Maus weiterwandert. ([#591](https://github.com/thomas682/HA-Addons/issues/591))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.624
 
 ### Fix
