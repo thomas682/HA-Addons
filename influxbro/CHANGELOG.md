@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.627
+
+### Fix
+
+- Tooltips: Gefrorene Tooltips werden bei reiner Pointerbewegung nicht mehr durch Dialog-/Picker-Suppressionschecks ausgeblendet. ([#591](https://github.com/thomas682/HA-Addons/issues/591))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.626
 
 ### Fix
