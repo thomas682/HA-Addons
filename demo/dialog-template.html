@@ -160,11 +160,15 @@ html[data-theme=hc] .fab-main{background:#ff0;color:#000}
 }
 .fab-wrap.open .fab-item{opacity:1;pointer-events:auto;transform:translate(var(--tx),var(--ty)) scale(1)}
 
-/* staggered delays when opening */
+/* staggered delays when opening — 8 items */
 .fab-wrap.open .fab-item:nth-child(1){transition-delay:0ms}
-.fab-wrap.open .fab-item:nth-child(2){transition-delay:50ms}
-.fab-wrap.open .fab-item:nth-child(3){transition-delay:95ms}
-.fab-wrap.open .fab-item:nth-child(4){transition-delay:135ms}
+.fab-wrap.open .fab-item:nth-child(2){transition-delay:30ms}
+.fab-wrap.open .fab-item:nth-child(3){transition-delay:57ms}
+.fab-wrap.open .fab-item:nth-child(4){transition-delay:81ms}
+.fab-wrap.open .fab-item:nth-child(5){transition-delay:102ms}
+.fab-wrap.open .fab-item:nth-child(6){transition-delay:120ms}
+.fab-wrap.open .fab-item:nth-child(7){transition-delay:135ms}
+.fab-wrap.open .fab-item:nth-child(8){transition-delay:148ms}
 
 .fab-sub{
   width:44px;height:44px;border-radius:50%;border:1px solid var(--border);
@@ -429,13 +433,13 @@ document.addEventListener('touchend',  ()=>dialogs.forEach(d=>d.up()));
   const items = wrap.querySelectorAll('.fab-item');
   const backdrop = document.getElementById('fab-backdrop');
 
-  /* Position sub-buttons on a quarter-circle arc (90° → 180°) */
-  const R = 88, startDeg = 90, endDeg = 180;
+  /* Quarter-circle arc: item 0 = straight up, last = straight left.
+     theta goes 0 → π/2, giving tx: 0→-R (left), ty: -R→0 (up to level). */
+  const R = 176, n = items.length;
   items.forEach((item, i) => {
-    const deg = startDeg + (i / (items.length - 1)) * (endDeg - startDeg);
-    const rad = deg * Math.PI / 180;
-    item.style.setProperty('--tx', (-Math.cos(rad) * R).toFixed(1) + 'px');
-    item.style.setProperty('--ty', (-Math.sin(rad) * R).toFixed(1) + 'px');
+    const theta = (i / (n - 1)) * (Math.PI / 2);
+    item.style.setProperty('--tx', (-Math.sin(theta) * R).toFixed(1) + 'px');
+    item.style.setProperty('--ty', (-Math.cos(theta) * R).toFixed(1) + 'px');
   });
 
   function toggle(){ wrap.classList.toggle('open'); }
@@ -444,37 +448,82 @@ document.addEventListener('touchend',  ()=>dialogs.forEach(d=>d.up()));
   main.addEventListener('click', e => { e.stopPropagation(); toggle(); });
   backdrop.addEventListener('click', close);
 
-  /* Wire sub-buttons to show/hide their target dialog */
-  wrap.querySelectorAll('.fab-sub[data-target]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      close();
-      const target = document.getElementById(btn.dataset.target);
-      if(target) target.style.display = target.style.display === 'none' ? '' : '';
-      /* bring to front */
-      document.querySelectorAll('.dlg-wrap').forEach(w => w.style.zIndex = 100);
-      if(target) target.style.zIndex = 110;
+  /* Search satellite: click icon → show input inline */
+  const searchBtn   = document.getElementById('fab-search-btn');
+  const searchInput = document.getElementById('fab-search-input');
+  const searchText  = document.getElementById('fab-search-text');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const visible = searchInput.style.display !== 'none';
+      searchInput.style.display = visible ? 'none' : 'inline-block';
+      searchText.style.display  = visible ? 'inline' : 'none';
+      if (!visible) { searchInput.focus(); }
     });
-  });
+    searchInput.addEventListener('click', e => e.stopPropagation());
+  }
+
+  /* Umbruch toggle: visual feedback on button */
+  const umbruchBtn = document.getElementById('fab-umbruch');
+  let umbruchOn = true;
+  if (umbruchBtn) {
+    umbruchBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      umbruchOn = !umbruchOn;
+      umbruchBtn.style.background = umbruchOn ? 'var(--accent)' : '';
+      umbruchBtn.style.color      = umbruchOn ? '#fff' : '';
+    });
+  }
 })();
 </script>
 
-<!-- Circular FAB -->
+<!-- Circular FAB — 8 Satelliten -->
 <div id="fab" class="fab-wrap">
+  <!-- Item 1: straight up -->
   <div class="fab-item">
-    <button class="fab-sub" data-target="w1" title="Confirm Dialog">🗑️</button>
-    <span class="fab-label">Löschen-Dialog</span>
+    <button class="fab-sub" title="Umbruch" id="fab-umbruch">⏎</button>
+    <span class="fab-label">Umbruch</span>
   </div>
+  <!-- Item 2 -->
   <div class="fab-item">
-    <button class="fab-sub" data-target="w2" title="Log Viewer">📋</button>
-    <span class="fab-label">Log-Viewer</span>
+    <button class="fab-sub" title="Zurück">←</button>
+    <span class="fab-label">Zurück</span>
   </div>
+  <!-- Item 3 -->
   <div class="fab-item">
-    <button class="fab-sub" data-target="w3" title="Formular">⚙️</button>
-    <span class="fab-label">Formular</span>
+    <button class="fab-sub" title="Weiter">→</button>
+    <span class="fab-label">Weiter</span>
   </div>
+  <!-- Item 4 -->
   <div class="fab-item">
-    <button class="fab-sub" data-target="w4" title="Alert">⚠️</button>
-    <span class="fab-label">Alert</span>
+    <button class="fab-sub" title="Bugreport">🐛</button>
+    <span class="fab-label">Bugreport</span>
+  </div>
+  <!-- Item 5 -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Fehler melden">📢</button>
+    <span class="fab-label">Fehler melden (Smart Assist)</span>
+  </div>
+  <!-- Item 6 -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Logs 5min">⏱</button>
+    <span class="fab-label">Logs (5 min)</span>
+  </div>
+  <!-- Item 7 -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Jump Logs">⏭</button>
+    <span class="fab-label">Jump Logs</span>
+  </div>
+  <!-- Item 8: straight left — text input satellite -->
+  <div class="fab-item" id="fab-search-item">
+    <button class="fab-sub" title="Suche" id="fab-search-btn">🔍</button>
+    <span class="fab-label" id="fab-search-label">
+      <input id="fab-search-input" type="text" placeholder="Suche…"
+        style="width:130px;padding:5px 10px;border:1px solid var(--border);
+               border-radius:6px;background:var(--surface);color:var(--text);
+               font-size:12px;outline:none;display:none"/>
+      <span id="fab-search-text">Suche…</span>
+    </span>
   </div>
   <button class="fab-main" id="fab-main" title="Aktionen">＋</button>
 </div>
