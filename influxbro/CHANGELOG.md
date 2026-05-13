@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.623
+
+### Enhancement
+
+- Theme: Zentrale Flaechen, Buttons, Eingaben, Tabellen, Topbar/Bottombar, Suchergebnisse und Query-/Info-Popups nutzen nun die Theme-Tokens der Standarddialoge als Referenz. ([#590](https://github.com/thomas682/HA-Addons/issues/590))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.622
 
 ### Enhancement

@@ -1902,6 +1902,7 @@
 
     const card = document.createElement('div');
     card.id = 'influxbro_popup_card';
+    card.className = 'ib_popup_theme_surface';
     card.setAttribute('data-dialog-panel', '1');
     card.setAttribute('data-dialog-name', 'dialog.query_info');
     card.setAttribute('data-dialog-template', 'dialog_info_popup');
@@ -1910,7 +1911,9 @@
     card.setAttribute('data-ib-pickkey', 'dialog_query_info.panel');
     card.style.maxWidth = 'calc(100vw - 24px)';
     card.style.margin = '8vh auto 12px auto';
-    card.style.background = '#fff';
+    card.style.background = 'var(--ib-surface, #fff)';
+    card.style.color = 'var(--ib-text, #1f2933)';
+    card.style.border = '1px solid var(--ib-border, rgba(0,0,0,0.14))';
     card.style.borderRadius = '16px';
     card.style.boxShadow = '0 12px 60px rgba(0,0,0,0.28)';
     card.style.padding = '14px 14px 12px 14px';
@@ -1997,8 +2000,9 @@
     radialToggle.style.width = '34px';
     radialToggle.style.height = '34px';
     radialToggle.style.borderRadius = '999px';
-    radialToggle.style.border = '1px solid rgba(30,41,59,0.22)';
-    radialToggle.style.background = '#fff';
+    radialToggle.style.border = '1px solid var(--ib-border, rgba(30,41,59,0.22))';
+    radialToggle.style.background = 'var(--ib-button-bg, #fff)';
+    radialToggle.style.color = 'var(--ib-button-text, #1f2933)';
     radialToggle.style.cursor = 'pointer';
     radialToggle.style.display = 'inline-flex';
     radialToggle.style.alignItems = 'center';
@@ -2016,9 +2020,10 @@
     radialMenu.style.gridTemplateColumns = 'repeat(4, 34px)';
     radialMenu.style.gap = '8px';
     radialMenu.style.padding = '8px';
-    radialMenu.style.border = '1px solid rgba(30,41,59,0.16)';
+    radialMenu.style.border = '1px solid var(--ib-border, rgba(30,41,59,0.16))';
     radialMenu.style.borderRadius = '18px';
-    radialMenu.style.background = 'rgba(255,255,255,0.98)';
+    radialMenu.style.background = 'color-mix(in srgb, var(--ib-surface, #fff) 96%, transparent)';
+    radialMenu.style.color = 'var(--ib-text, #1f2933)';
     radialMenu.style.boxShadow = '0 12px 34px rgba(15,23,42,0.18)';
     radialMenu.style.zIndex = '20';
 
@@ -2099,7 +2104,7 @@
     const copyBtn = document.createElement('button');
     copyBtn.id = 'influxbro_popup_copy';
     copyBtn.type = 'button';
-    copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg>';
+    copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="currentColor" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="currentColor" stroke-width="1.5"></path></svg>';
     copyBtn.setAttribute('aria-label', 'Zwischenablage');
     copyBtn.setAttribute('title', 'Zwischenablage');
     _radialIconButton(copyBtn, 'Zwischenablage', copyBtn.innerHTML);
@@ -2194,9 +2199,10 @@
     pre.id = 'influxbro_popup_pre';
     pre.style.margin = '0';
     pre.style.padding = '10px 12px';
-    pre.style.border = '1px solid #eee';
+    pre.style.border = '1px solid var(--ib-border, #eee)';
     pre.style.borderRadius = '12px';
-    pre.style.background = '#fafafa';
+    pre.style.background = 'var(--ib-surface-2, #fafafa)';
+    pre.style.color = 'var(--ib-text, #1f2933)';
     pre.style.whiteSpace = 'pre';
     pre.style.overflowWrap = 'anywhere';
     pre.style.overflow = 'auto';
@@ -2210,15 +2216,16 @@
     split.style.height = '10px';
     split.style.cursor = 'row-resize';
     split.style.borderRadius = '999px';
-    split.style.background = 'linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.16), rgba(0,0,0,0.08))';
+    split.style.background = 'linear-gradient(180deg, transparent, var(--ib-border, rgba(0,0,0,0.16)), transparent)';
     split.style.flex = '0 0 auto';
 
     const historyBox = document.createElement('div');
     historyBox.id = 'influxbro_popup_history';
     historyBox.style.display = 'none';
-    historyBox.style.border = '1px solid #eee';
+    historyBox.style.border = '1px solid var(--ib-border, #eee)';
     historyBox.style.borderRadius = '12px';
-    historyBox.style.background = '#fff';
+    historyBox.style.background = 'var(--ib-surface, #fff)';
+    historyBox.style.color = 'var(--ib-text, #1f2933)';
     historyBox.style.overflow = 'hidden';
     historyBox.style.minHeight = '48px';
     historyBox.style.flex = '0 0 180px';
@@ -3958,7 +3965,8 @@
           clearBtn.style.height = '34px';
           clearBtn.style.borderRadius = '8px';
           clearBtn.style.border = '1px solid #ddd';
-          clearBtn.style.background = '#fff';
+          clearBtn.style.background = 'var(--ib-button-bg, #fff)';
+          clearBtn.style.color = 'var(--ib-button-text, #1f2933)';
 
           const lastBtn = document.createElement('button');
           lastBtn.type = 'button';
@@ -3968,14 +3976,15 @@
           lastBtn.style.padding = '8px 12px';
           lastBtn.style.height = '34px';
           lastBtn.style.borderRadius = '8px';
-          lastBtn.style.border = '1px solid #ddd';
-          lastBtn.style.background = '#fff';
+          lastBtn.style.border = '1px solid var(--ib-border, #ddd)';
+          lastBtn.style.background = 'var(--ib-button-bg, #fff)';
+          lastBtn.style.color = 'var(--ib-button-text, #1f2933)';
           lastBtn.disabled = true;
 
           const copyQueryBtn = document.createElement('button');
           copyQueryBtn.type = 'button';
           copyQueryBtn.id = 'influxbro_querytest_copy';
-          copyQueryBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg>';
+          copyQueryBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="currentColor" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="currentColor" stroke-width="1.5"></path></svg>';
           copyQueryBtn.style.cursor = 'pointer';
           copyQueryBtn.style.padding = '8px 10px';
           copyQueryBtn.style.height = '34px';
@@ -3994,9 +4003,10 @@
           statusLine.style.fontSize = '12px';
           statusLine.style.opacity = '0.85';
           statusLine.style.padding = '6px 10px';
-          statusLine.style.background = '#fafafa';
+          statusLine.style.background = 'var(--ib-surface-2, #fafafa)';
+          statusLine.style.color = 'var(--ib-text, #1f2933)';
           statusLine.style.borderRadius = '8px';
-          statusLine.style.border = '1px solid #eee';
+          statusLine.style.border = '1px solid var(--ib-border, #eee)';
           statusLine.style.whiteSpace = 'pre-wrap';
 
           const resultWrap = document.createElement('div');
@@ -4004,9 +4014,10 @@
           resultWrap.style.flex = '1 1 auto';
           resultWrap.style.minHeight = '80px';
           resultWrap.style.overflow = 'auto';
-          resultWrap.style.border = '1px solid #eee';
+          resultWrap.style.border = '1px solid var(--ib-border, #eee)';
           resultWrap.style.borderRadius = '12px';
-          resultWrap.style.background = '#fafafa';
+          resultWrap.style.background = 'var(--ib-surface-2, #fafafa)';
+          resultWrap.style.color = 'var(--ib-text, #1f2933)';
 
           const resultPre = document.createElement('pre');
           resultPre.id = 'influxbro_querytest_result';
@@ -4061,9 +4072,10 @@
           historyPanel.id = 'influxbro_querytest_history_panel';
           historyPanel.style.display = 'none';
           historyPanel.style.flex = '0 0 auto';
-          historyPanel.style.border = '1px solid #eee';
+          historyPanel.style.border = '1px solid var(--ib-border, #eee)';
           historyPanel.style.borderRadius = '12px';
-          historyPanel.style.background = '#fafafa';
+          historyPanel.style.background = 'var(--ib-surface-2, #fafafa)';
+          historyPanel.style.color = 'var(--ib-text, #1f2933)';
           historyPanel.style.padding = '10px 12px';
           historyPanel.style.maxHeight = '260px';
           historyPanel.style.overflow = 'auto';
@@ -4074,7 +4086,7 @@
           const copyResultBtn = document.createElement('button');
           copyResultBtn.type = 'button';
           copyResultBtn.id = 'influxbro_querytest_copy_result';
-          copyResultBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="#1C274C" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="#1C274C" stroke-width="1.5"></path></svg>';
+          copyResultBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" aria-hidden="true" focusable="false"><path d="M6 11C6 8.17157 6 6.75736 6.87868 5.87868C7.75736 5 9.17157 5 12 5H15C17.8284 5 19.2426 5 20.1213 5.87868C21 6.75736 21 8.17157 21 11V16C21 18.8284 21 20.2426 20.1213 21.1213C19.2426 22 17.8284 22 15 22H12C9.17157 22 7.75736 22 6.87868 21.1213C6 20.2426 6 18.8284 6 16V11Z" stroke="currentColor" stroke-width="1.5"></path><path d="M6 19C4.34315 19 3 17.6569 3 16V10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H15C16.6569 2 18 3.34315 18 5" stroke="currentColor" stroke-width="1.5"></path></svg>';
           copyResultBtn.style.cursor = 'pointer';
           copyResultBtn.style.padding = '8px 10px';
           copyResultBtn.style.height = '34px';

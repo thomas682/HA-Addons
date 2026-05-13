@@ -604,6 +604,23 @@
     body { background: var(--ib-bg) !important; color: var(--ib-text) !important; }
     .muted { color: var(--ib-text-muted) !important; }
 
+    body a { color: var(--ib-primary) !important; }
+    body hr { border-color: var(--ib-border) !important; }
+    main.content,
+    .content,
+    .panel,
+    .box,
+    .form_box,
+    .settings_box,
+    .profile_box,
+    .ib_pagecard_results,
+    .ib_error_actions,
+    .ib_popup_theme_surface {
+      background: var(--ib-surface) !important;
+      color: var(--ib-text) !important;
+      border-color: var(--ib-border) !important;
+    }
+
     .card,
     .table_wrap,
     .table_box,
@@ -615,21 +632,58 @@
       color: var(--ib-text) !important;
     }
 
+    .ib_theme_tokenized,
+    [data-ib-theme="surface"] {
+      background: var(--ib-surface) !important;
+      color: var(--ib-text) !important;
+      border-color: var(--ib-border) !important;
+    }
+
+    .ib_theme_tokenized_2,
+    [data-ib-theme="surface-2"] {
+      background: var(--ib-surface-2) !important;
+      color: var(--ib-text) !important;
+      border-color: var(--ib-border) !important;
+    }
+
     input, select, textarea {
       background: var(--ib-input-bg) !important;
       color: var(--ib-input-text) !important;
       border-color: var(--ib-border) !important;
     }
 
+    body button,
+    .ib_pagecard_results button {
+      background: var(--ib-button-bg) !important;
+      color: var(--ib-button-text) !important;
+      border-color: var(--ib-button-border) !important;
+    }
+
+    body button:hover,
+    .ib_pagecard_results button:hover {
+      background: var(--ib-button-hover-bg) !important;
+    }
+
+    body button.active,
+    body button[aria-pressed="true"] {
+      background: var(--ib-primary) !important;
+      border-color: var(--ib-primary) !important;
+      color: var(--ib-primary-text) !important;
+    }
+
     th { background: var(--ib-table-header-bg) !important; color: var(--ib-table-header-text) !important; }
     th, td { border-color: var(--ib-border) !important; }
     tr.selected { background: var(--ib-table-selected) !important; }
     tbody tr:hover td { background: var(--ib-table-row-hover) !important; }
+    table, tbody, tr, td { color: var(--ib-text) !important; }
 
     .err { color: var(--ib-danger) !important; }
     .ok { color: var(--ib-success) !important; }
 
     .ib_topbar { background: color-mix(in srgb, var(--ib-surface) 96%, transparent) !important; border-bottom: 1px solid var(--ib-border) !important; }
+    .ib_pagecard { background-color: var(--ib-surface) !important; color: var(--ib-text) !important; border-bottom-color: var(--ib-border) !important; }
+    .ib_bottombar { background: var(--ib-statusbar-bg) !important; color: var(--ib-statusbar-fg) !important; border-top-color: var(--ib-border) !important; }
+    .ib_bottombar .chip { background: var(--ib-surface-2) !important; color: var(--ib-text) !important; border-color: var(--ib-border) !important; }
     .ib_topbar .zoom { border-left: 1px solid var(--ib-border) !important; }
     .ib_cfg_icon, .ib_cfg_back_icon { background: var(--ib-surface) !important; color: var(--ib-text) !important; border-color: var(--ib-border) !important; }
   </style>

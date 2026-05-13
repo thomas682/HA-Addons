@@ -299,6 +299,12 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert 'function _updateThemeBadge(mode, effective){' in topbar
     assert "'Thema: System ('" in topbar
     assert "_updateThemeBadge(m, m);" in topbar
+    assert 'main.content,' in topbar
+    assert '.ib_pagecard_results,' in topbar
+    assert '.ib_theme_tokenized,' in topbar
+    assert '[data-ib-theme="surface"]' in topbar
+    assert 'body button[aria-pressed="true"]' in topbar
+    assert '.ib_bottombar .chip { background: var(--ib-surface-2)' in topbar
     assert "window.addEventListener('unhandledrejection'" in topbar
     assert "ui_superpicker_shortcut: 'ctrl+s'" in topbar
     assert 'function _shortcutMatches(ev){' in topbar
@@ -312,6 +318,12 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "cfgBtn.setAttribute('data-ib-pickkey'" in topbar
     assert 'if(window.InfluxBroEnsureSummarySettingsButtons){' in tooltips_body
     assert "card.setAttribute('data-dialog-template', 'dialog_info_popup');" in tooltips_body
+    assert "card.className = 'ib_popup_theme_surface';" in tooltips_body
+    assert "card.style.background = 'var(--ib-surface, #fff)';" in tooltips_body
+    assert "radialMenu.style.background = 'color-mix(in srgb, var(--ib-surface, #fff) 96%, transparent)';" in tooltips_body
+    assert "pre.style.background = 'var(--ib-surface-2, #fafafa)';" in tooltips_body
+    assert "historyBox.style.background = 'var(--ib-surface, #fff)';" in tooltips_body
+    assert 'stroke="#1C274C"' not in tooltips_body
     assert "m.includes('signal is aborted without reason')" in tooltips_body
     assert 'id="ui_superpicker_shortcut"' in config_body
     assert "function _shouldTrackLongWait(url, headers)" in tooltips_body
