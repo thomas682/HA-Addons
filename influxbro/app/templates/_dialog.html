@@ -1260,12 +1260,16 @@
             const startResizeFromDocument = (ev)=>{
               try{
                 const hits = document.elementsFromPoint ? document.elementsFromPoint(ev.clientX, ev.clientY) : [];
-                if(Array.prototype.indexOf.call(hits, handle) < 0) return;
+                const rect = handle.getBoundingClientRect ? handle.getBoundingClientRect() : null;
+                const byRect = rect && ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom;
+                if(Array.prototype.indexOf.call(hits, handle) < 0 && !byRect) return;
                 startResize(ev);
               }catch(e){}
             };
             document.addEventListener('pointerdown', startResizeFromDocument, true);
             document.addEventListener('mousedown', startResizeFromDocument, true);
+            window.addEventListener('pointerdown', startResizeFromDocument, true);
+            window.addEventListener('mousedown', startResizeFromDocument, true);
             handle.addEventListener('dblclick', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); _dialogResetGeometry(root, panel); }catch(e){} }, true);
           }
         }else{
@@ -1350,6 +1354,19 @@
         };
         header.addEventListener('pointerdown', startDrag, true);
         header.addEventListener('mousedown', startDrag, true);
+        const startDragFromDocument = (ev)=>{
+          try{
+            const hits = document.elementsFromPoint ? document.elementsFromPoint(ev.clientX, ev.clientY) : [];
+            const rect = header.getBoundingClientRect ? header.getBoundingClientRect() : null;
+            const byRect = rect && ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom;
+            if(Array.prototype.indexOf.call(hits, header) < 0 && !byRect) return;
+            startDrag(ev);
+          }catch(e){}
+        };
+        document.addEventListener('pointerdown', startDragFromDocument, true);
+        document.addEventListener('mousedown', startDragFromDocument, true);
+        window.addEventListener('pointerdown', startDragFromDocument, true);
+        window.addEventListener('mousedown', startDragFromDocument, true);
       }catch(e){}
     }
     function _ensureDialogContentRegion(panel){

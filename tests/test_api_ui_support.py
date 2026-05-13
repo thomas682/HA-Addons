@@ -1296,14 +1296,18 @@ def test_dialog_picker_clipboard_and_resize_are_robust():
     assert 'if(ev && typeof ev.clientX === \'number\' && typeof ev.clientY === \'number\') move(ev);' in dialog
     assert "handle.addEventListener('mousedown', startResize, true);" in dialog
     assert 'const startResizeFromDocument = (ev)=>{' in dialog
+    assert 'const byRect = rect && ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom;' in dialog
     assert 'document.elementsFromPoint(ev.clientX, ev.clientY)' in dialog
     assert "document.addEventListener('pointerdown', startResizeFromDocument, true);" in dialog
     assert "document.addEventListener('mousedown', startResizeFromDocument, true);" in dialog
+    assert "window.addEventListener('pointerdown', startResizeFromDocument, true);" in dialog
     assert "window.addEventListener('mousemove', move, true);" in dialog
     assert "window.addEventListener('mouseup', up, true);" in dialog
     assert "document.addEventListener('pointercancel', up, true);" in dialog
     assert 'const startDrag = (ev)=>{' in dialog
     assert "header.addEventListener('mousedown', startDrag, true);" in dialog
+    assert 'const startDragFromDocument = (ev)=>{' in dialog
+    assert "window.addEventListener('pointerdown', startDragFromDocument, true);" in dialog
     assert "window.addEventListener('pointermove', move, true);" in dialog
     assert "window.addEventListener('mousemove', move, true);" in dialog
 

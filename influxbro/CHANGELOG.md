@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.617
+
+### Fix
+
+- Dialoge: Drag- und Resize-Start erkennen nun auch im nativen Dialog-Top-Layer ueber Fenster-/Dokument-Fallbacks und Koordinatenpruefung, damit Bewegung und Groessenaenderung live waehrend des Ziehens starten. ([#585](https://github.com/thomas682/HA-Addons/issues/585))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.616
 
 ### Fix
