@@ -57,6 +57,8 @@ Solange offenen Aufgaben in der aktuellen ToDo-Liste und `./.opencode/plan_state
 - Body: vollständige Beschreibung
 - Der Issue-Body MUSS zusätzlich einen eigenen Abschnitt `## Ursprüngliche Nutzeranweisung` enthalten.
 - In diesem Abschnitt MUSS die ursprüngliche Chat-Anweisung des Nutzers möglichst wortgetreu übernommen werden.
+- Die ursprüngliche Nutzeranweisung MUSS unübersetzt in der Originalsprache des Nutzers erfasst werden.
+- Schreibt der Nutzer Deutsch, MUSS dieser Abschnitt deutsch bleiben; englische Übersetzungen, englische Zusammenfassungen oder sprachliche Glättungen sind dort VERBOTEN.
 - Die ursprüngliche Nutzeranweisung darf nicht sinngemäß ersetzt, gekürzt oder stillschweigend geglättet werden.
 - Falls die Anforderung aus mehreren zusammengehörigen Chat-Nachrichten besteht, MÜSSEN alle relevanten Nachrichten chronologisch in diesem Abschnitt dokumentiert werden.
 - Technische Interpretationen, Ableitungen und Akzeptanzkriterien gehören NICHT in diesen Abschnitt, sondern in die normale Issue-Beschreibung.
@@ -312,23 +314,15 @@ Pflichtsequenz:
    ```
 
 6. Die Live-Version MUSS exakt der erwarteten Version entsprechen.
-7. Wenn sich die Live-Version tatsächlich geändert hat, MUSS zusätzlich genau diese Sprachausgabe erfolgen. Versionsnummern sind deutsch auszusprechen, z. B. `1.12.599` als `eins Punkt zwölf Punkt fünf neun neun`:
+7. Wenn sich die Live-Version tatsächlich geändert hat, MUSS zusätzlich eine deutsche lokale Audio-Benachrichtigung auf dem Agent-Rechner ausgelöst werden. Versionsnummern sind deutsch auszusprechen, z. B. `1.12.599` als `eins Punkt zwölf Punkt fünf neun neun`. Home-Assistant-, Alexa-, Notify-, TTS- oder HA-Servicecalls sind für diese Audioausgabe VERBOTEN.
 
-   ```bash
-   say -v Anna "Homeassistant wurde erfolgreich von version <alte_version_ausgesprochen> auf version <neue_version_ausgesprochen> aktualisiert"
-   ```
-
-8. GitHub-Issue-Abschluss und Abschlusssignal dürfen erst danach erfolgen. Eine separate Versionsansage nach Schritt F entfällt, wenn diese Home-Assistant-Live-Update-Sprachausgabe bereits erfolgt ist.
+8. GitHub-Issue-Abschluss und Abschlusssignal dürfen erst danach erfolgen. Eine separate Versionsansage nach Schritt F entfällt, wenn diese lokale Live-Update-Sprachausgabe bereits erfolgt ist.
 
 Fehlverhalten:
 
 - Schlägt der Home-Assistant-Update-Flow fehl, ist das ein Blocker.
 - Weicht die Live-Version von der erwarteten Version ab, ist das ein Blocker.
-- Bei Blocker: Fehler im Chat melden, diese Sprachausgabe ausführen, Issue NICHT schließen, keine Abschlussmeldung erzeugen, offenen Rest in ToDo-Liste und `./.opencode/plan_state.md` dokumentieren.
-
-  ```bash
-  say "Homeassistant konnte nicht erfolgreich aktualisiert werden"
-  ```
+- Bei Blocker: Fehler im Chat melden, eine deutsche lokale Blocker-Audio-Benachrichtigung auf dem Agent-Rechner auslösen, Issue NICHT schließen, keine Abschlussmeldung erzeugen, offenen Rest in ToDo-Liste und `./.opencode/plan_state.md` dokumentieren. Home-Assistant-, Alexa-, Notify-, TTS- oder HA-Servicecalls sind für diese Audioausgabe VERBOTEN.
 
 #### Schritt E – GitHub-Issue abschließen
 
@@ -420,9 +414,11 @@ Es gibt vier unterschiedliche Signalarten:
 3. Blockersignal
 4. Entscheidungssignal
 
-Die Home-Assistant-Live-Update-Sprachausgabe aus Schritt D2 ist nur nach erfolgreichem Live-Update und nur bei tatsächlicher Versionsänderung auszuführen. Sie ersetzt im selben Abschlussfluss die separate Versionsansage für dieselbe Version.
+Die lokale Live-Update-Sprachausgabe aus Schritt D2 ist nur nach erfolgreichem Live-Update und nur bei tatsächlicher Versionsänderung auszuführen. Sie ersetzt im selben Abschlussfluss die separate Versionsansage für dieselbe Version. Eine Home-Assistant-Live-Update-Sprachausgabe ist VERBOTEN.
 
-Alle Audio-/Sprachausgaben im Zusammenhang mit `afplay`, Abschluss-, Versions-, Blocker- und Entscheidungssignalen MUESSEN auf Deutsch formuliert sein. Issue- und Versionsnummern MUESSEN sprechbar deutsch formuliert werden, z. B. `Issue 576` als `Issue fünf sieben sechs` und `1.12.599` als `eins Punkt zwölf Punkt fünf neun neun`. Produktnamen und technische Begriffe duerfen unveraendert bleiben.
+Alle Audio-/Sprachausgaben im Zusammenhang mit Abschluss-, Versions-, Blocker- und Entscheidungssignalen MUESSEN auf Deutsch formuliert sein. Issue- und Versionsnummern MUESSEN sprechbar deutsch formuliert werden, z. B. `Issue 576` als `Issue fünf sieben sechs` und `1.12.599` als `eins Punkt zwölf Punkt fünf neun neun`. Produktnamen und technische Begriffe duerfen unveraendert bleiben.
+
+Die technische Umsetzung der Audioausgabe erfolgt ausschließlich lokal auf dem Agent-Rechner. Home Assistant, Alexa, HA-Notify, HA-TTS, `notify.*`, `tts.*`, `browser_mod.notification` und sonstige HA-Servicecalls duerfen fuer Abschluss-, Versions-, Blocker- oder Entscheidungssignale NIEMALS verwendet werden. Lokale System-Audioausgaben wie `say`, `afplay` oder vergleichbare lokale Mechanismen sind erlaubt. Wenn lokale Audioausgabe technisch nicht verfügbar ist, bleibt das Signal Best-Effort.
 
 Das Abschlusssignal darf AUSSCHLIESSLICH ganz am Ende des vollständigen Abschlussflusses erfolgen.
 Pflichtreihenfolge vor jedem Abschlusssignal:
@@ -441,43 +437,21 @@ VERBOTEN:
 - Abschlusssignal vor erfolgreichem Commit
 - Abschlusssignal vor erfolgreichem Push
 - Versionsansage vor erfolgreichem Push
-- Home-Assistant-Live-Update-Sprachausgabe ohne erfolgreiche D2-Verifikation oder ohne tatsächliche Versionsänderung
+- jede Home-Assistant-, Alexa-, HA-Notify-, HA-TTS- oder HA-Servicecall-basierte Audioausgabe
+- lokale Live-Update-Sprachausgabe ohne erfolgreiche D2-Verifikation oder ohne tatsächliche Versionsänderung
 - Abschlusssignal oder Versionsansage, wenn Commit oder Push fehlgeschlagen ist
 
-Nach erfolgreicher Fertigstellung wird das Abschlusssignal ausgeführt:
+Nach erfolgreicher Fertigstellung wird das Abschlusssignal als deutsche lokale Audio-Benachrichtigung auf dem Agent-Rechner ausgelöst.
 
-```bash
-afplay /System/Library/Sounds/Glass.aiff
-say "Fertig mit der Umsetzung"
-```
-
-Wenn ein aktives Issue existiert, MUSS die Sprachausgabe die Issue-Nummer nennen:
-
-```bash
-afplay /System/Library/Sounds/Glass.aiff
-say "Fertig mit der Umsetzung von Issue <nummer>"
-```
+Wenn ein aktives Issue existiert, MUSS die lokale Audio-Benachrichtigung die Issue-Nummer nennen.
 
 Ohne aktives Issue bleibt die generische Ansage `Fertig mit der Umsetzung` bestehen.
 
-Wenn eine neue Add-on-Version erstellt wurde (Version in influxbro/config.yaml erhöht), wird zusätzlich und erst nach erfolgreichem Push die Versionsansage ausgeführt. Sie wird NICHT ausgeführt, wenn im selben Abschlussfluss bereits die Home-Assistant-Live-Update-Sprachausgabe aus Schritt D2 für dieselbe Version erfolgt ist:
+Wenn eine neue Add-on-Version erstellt wurde (Version in influxbro/config.yaml erhöht), wird zusätzlich und erst nach erfolgreichem Push eine deutsche lokale Versions-Audio-Benachrichtigung ausgelöst. Sie wird NICHT ausgeführt, wenn im selben Abschlussfluss bereits die lokale Live-Update-Sprachausgabe aus Schritt D2 für dieselbe Version erfolgt ist.
 
-```bash
-say -v Anna "Generierung erfolgt, Version <version_ausgesprochen> wurde erzeugt"
-```
+Bei blockierenden Fehlern oder offenen Fragen wird das Blockersignal als deutsche lokale Audio-Benachrichtigung ausgelöst.
 
-Bei blockierenden Fehlern oder offenen Fragen wird das Blockersignal ausgeführt:
-
-```bash
-afplay /System/Library/Sounds/Basso.aiff
-say "Einige Punkte muessten noch beantwortet werden"
-```
-
-Wenn der Agent auf eine Entscheidung des Nutzers wartet, wird das Entscheidungssignal ausgeführt:
-
-```bash
-say "Entscheidung erforderlich"
-```
+Wenn der Agent auf eine Entscheidung des Nutzers wartet, wird das Entscheidungssignal als deutsche lokale Audio-Benachrichtigung ausgelöst.
 
 Hinweis: Audio-Signale sind Best-Effort. Ein fehlendes Signal macht eine abgeschlossene Aufgabe NICHT ungültig.
 Abgeschlossen ist eine Aufgabe AUSSCHLIESSLICH, wenn alle Pflichtschritte A bis F ausgeführt wurden.
