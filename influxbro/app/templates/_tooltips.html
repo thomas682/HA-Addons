@@ -1214,6 +1214,7 @@
           showT = setTimeout(()=>{
             try{
               if(!lastEl || _pickerModeActive() || _visibleDialogOpen() || !TOOLTIPS_ENABLED) return;
+              if(pinned) return;
               const s = String(lastTitle || '').trim();
               if(!s) return;
               const box = _ensure();
@@ -1320,6 +1321,7 @@
       try{
         if(!_tooltipIsVisible()) return false;
         if(pinned){ _hide(true); return true; }
+        try{ clearTimeout(showT); showT = null; }catch(e){}
         pinned = true;
         tip.style.pointerEvents = 'auto';
         tip.style.borderColor = '#60a5fa';

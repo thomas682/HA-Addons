@@ -951,6 +951,7 @@ Externe APIs (z. B. Alibaba Qwen) können Anfragen bei zu schnellem Traffic able
 - Bei einer neuen fachlichen Anfrage fragt der Agent, ob daraus ein Issue erstellt oder die Änderung direkt umgesetzt werden soll.
 - Bezieht sich die Anfrage eindeutig auf ein bestehendes Issue, arbeitet der Agent direkt daran weiter, ohne erneut zu fragen.
 - Bei einer neuen Fehlermeldung MUSS vor dem Anlegen eines neuen Bug-Issues geprueft werden, ob derselbe Fehler in geschlossenen Issues der letzten 2 Monate bereits dokumentiert ist. Geprueft werden Titel, Body und relevante Kommentare. Bei eindeutigem Treffer MUSS dieses Issue wieder geoeffnet, mit der neuen Fehlermeldung ergaenzt und weiterbearbeitet werden; ein neues gleichlautendes Issue ist dann VERBOTEN.
+- Enthält ein neues Issue mehrere Punkte, MUSS jeder Punkt vor der Umsetzung gegen geschlossene Issues der letzten 2 Monate geprueft werden. Wurde ein Punkt dort bereits behandelt, MUSS im neuen Issue eine klickbare Referenz auf das alte Issue dokumentiert werden. Der Punkt wird im alten Issue als erneuter Befund ergaenzt; das alte Issue wird wieder geoeffnet und nach Abschluss des aktuell aktiven Issues als Unter-/Folgeissue weiterbearbeitet. Nicht betroffene Punkte des neuen Issues werden im aktuellen Issue weiter umgesetzt.
 
 - Offene Aufgaben in der aktiven ToDo-Liste und offene Punkte in `./.opencode/plan_state.md` blockieren standardmäßig den Start neuer Issues.
 - Bei blockiertem Zustand meldet der Agent die offenen Punkte und startet kein neues Issue.

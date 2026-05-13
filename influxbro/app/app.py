@@ -2726,6 +2726,17 @@ def _ui_profile_ensure_auto_profile(kind: str) -> str:
     return pid
 
 
+def _ui_profile_is_known_default_id(pid: str) -> bool:
+    try:
+        known = {
+            _profile_id_from_label(_ui_profile_default_label(kind))
+            for kind in ("desktop", "mobile", "tablet", "wide_desktop")
+        }
+        return str(pid or "").strip() in {p for p in known if p}
+    except Exception:
+        return False
+
+
 def _ui_profile_public(pid: str) -> dict[str, Any] | None:
     prof = _profile_load(pid)
     if not prof:
@@ -33544,6 +33555,9 @@ def api_ui_profiles_get():
     if not _profile_id_ok(pid):
         return jsonify({"ok": False, "error": "invalid profile id"}), 400
     prof = _profile_load(pid)
+    if not prof and _ui_profile_is_known_default_id(pid):
+        _profile_save(pid, pid, _ui_items_snapshot(prefix="influxbro"))
+        prof = _profile_load(pid)
     if not prof:
         return jsonify({"ok": False, "error": "profile not found"}), 404
     return jsonify({"ok": True, "profile": _ui_profile_public(pid)})
@@ -33606,6 +33620,9 @@ def api_ui_profiles_save_item():
     if not _ui_state_val_ok(value):
         return jsonify({"ok": False, "error": "invalid value"}), 400
     prof = _profile_load(pid)
+    if not prof and _ui_profile_is_known_default_id(pid):
+        _profile_save(pid, pid, _ui_items_snapshot(prefix="influxbro"))
+        prof = _profile_load(pid)
     if not prof:
         return jsonify({"ok": False, "error": "profile not found"}), 404
     label = str(prof.get("label") or pid)

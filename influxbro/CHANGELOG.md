@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.624
+
+### Fix
+
+- UI-Profile/Handbuch/Tooltips: Fehlende Standard-UI-Profile werden beim Speichern von Dialoggroessen wiederhergestellt, die Handbuch-Suchleiste wurde in Vollseite/Dialog bereinigt und Tooltip-Freeze per Shift blockiert ausstehende Positionsupdates. ([#591](https://github.com/thomas682/HA-Addons/issues/591))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.623
 
 ### Enhancement

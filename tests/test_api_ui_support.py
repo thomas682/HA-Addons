@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import json
 import re
 
 
@@ -88,6 +89,28 @@ def test_ui_profiles_auto_assign_and_save_dialog_item(load_app_module, tmp_path)
     lj = listed.get_json()
     assert lj["active"] == "PC"
     assert lj["active_profile"]["items"][key] == '{"width_px":720,"height_px":640}'
+
+
+def test_ui_profiles_save_item_recreates_missing_default_profile(load_app_module, tmp_path):
+    app_mod = load_app_module(config_dir=tmp_path / "config", data_dir=tmp_path / "data")
+    app_mod.UI_PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+    (app_mod.UI_PROFILES_DIR / "Custom.json").write_text(
+        json.dumps({"id": "Custom", "label": "Custom", "items": {}}),
+        encoding="utf-8",
+    )
+    client = app_mod.app.test_client()
+
+    key = "influxbro.dialog.dialog.query_info.size"
+    save = client.post(
+        "/api/ui_profiles/save_item",
+        json={"id": "PC", "key": key, "value": '{"width_px":860,"height_px":520}'},
+    )
+
+    assert save.status_code == 200
+    sj = save.get_json()
+    assert sj["ok"] is True
+    assert sj["profile"]["id"] == "PC"
+    assert sj["profile"]["items"][key] == '{"width_px":860,"height_px":520}'
 
 
 def test_config_clamps_new_ui_fields(load_app_module, tmp_path):
@@ -1162,6 +1185,8 @@ def test_standard_tooltip_has_shift_hold_pin_and_doc_button():
     assert 'Tooltips</label>' not in tooltips
     assert 'if(key === \'Shift\'){' in tooltips
     assert 'pinned = true;' in tooltips
+    assert 'clearTimeout(showT); showT = null;' in tooltips
+    assert 'if(pinned) return;' in tooltips
     assert 'function _tooltipIsVisible()' in tooltips
     assert 'function _pinVisibleTooltip()' in tooltips
     assert "window.addEventListener('keydown', _onTooltipKeydown, true);" in tooltips
@@ -1656,6 +1681,8 @@ def test_manual_dialog_search_and_settings_context_filter_exist():
     assert 'ib_doc_search_mark' in topbar
     assert 'id="manual_search_status"' in manual
     assert 'Im Handbuchauszug suchen...' in manual
+    assert 'data-clear-for="manual_search"' not in manual
+    assert "const bar = root.querySelector('#ib_doc_modal_searchbar'); if(bar) bar.remove();" in topbar
     assert '$status.textContent = MANUAL_HITS.length ?' in manual
     assert '.ib_clear_row.ib_clear_inline' in tooltips
     assert "row.classList.add('ib_clear_inline');" in tooltips
