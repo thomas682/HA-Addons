@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="de" data-theme="light">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Dialog Template – InfluxBRO</title>
+  <style>
+    /* ── Theme-Variablen ────────────────────────────────────────────── */
+    :root {
+      --ib-bg:          #f7f8fa;
+      --ib-surface:     #ffffff;
+      --ib-surface-2:   #f1f3f6;
+      --ib-border:      #d7dce2;
+      --ib-text:        #1f2933;
+      --ib-text-muted:  #6b7280;
+      --ib-btn-bg:      #eef3ff;
+      --ib-btn-fg:      #103a7c;
+      --ib-btn-border:  #cad7f2;
+      --ib-btn-hover:   #dce7ff;
+      --ib-btn-active:  #cddcff;
+      --ib-accent:      #0b57d0;
+      --ib-shadow:      0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+      --ib-radius:      16px;
+      --ib-radius-sm:   10px;
+    }
+    html[data-theme="dark"] {
+      --ib-bg:          #0f1115;
+      --ib-surface:     #161a22;
+      --ib-surface-2:   #1d2330;
+      --ib-border:      #2a3345;
+      --ib-text:        #e5e7eb;
+      --ib-text-muted:  #9aa4b2;
+      --ib-btn-bg:      #1a2540;
+      --ib-btn-fg:      #93b4ff;
+      --ib-btn-border:  #2a3f6a;
+      --ib-btn-hover:   #223060;
+      --ib-btn-active:  #1c2850;
+      --ib-accent:      #6ea8fe;
+      --ib-shadow:      0 8px 32px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3);
+    }
+    html[data-theme="dark_blue"] {
+      --ib-bg:          #061325;
+      --ib-surface:     #0b1b33;
+      --ib-surface-2:   #102542;
+      --ib-border:      #1a355a;
+      --ib-text:        #dbe7ff;
+      --ib-text-muted:  #9bb0d6;
+      --ib-btn-bg:      #102040;
+      --ib-btn-fg:      #a8c8ff;
+      --ib-btn-border:  #1e3a6a;
+      --ib-btn-hover:   #163060;
+      --ib-btn-active:  #122855;
+      --ib-accent:      #5ba3ff;
+      --ib-shadow:      0 8px 32px rgba(0,0,50,0.5), 0 2px 8px rgba(0,0,30,0.4);
+    }
+    html[data-theme="high_contrast"] {
+      --ib-bg:          #000000;
+      --ib-surface:     #000000;
+      --ib-surface-2:   #111111;
+      --ib-border:      #ffffff;
+      --ib-text:        #ffffff;
+      --ib-text-muted:  #cccccc;
+      --ib-btn-bg:      #000000;
+      --ib-btn-fg:      #ffffff;
+      --ib-btn-border:  #ffffff;
+      --ib-btn-hover:   #222222;
+      --ib-btn-active:  #333333;
+      --ib-accent:      #ffff00;
+      --ib-shadow:      0 0 0 2px #ffffff;
+    }
+
+    /* ── Reset & Body ────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      background: var(--ib-bg);
+      color: var(--ib-text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      gap: 16px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* ── Theme-Switcher ────────────────────────────────────────────── */
+    .theme-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .theme-bar button {
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--ib-border);
+      background: var(--ib-surface);
+      color: var(--ib-text);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      touch-action: manipulation;
+    }
+    .theme-bar button:hover   { background: var(--ib-btn-hover); }
+    .theme-bar button.active  { background: var(--ib-accent); color: #fff; border-color: var(--ib-accent); }
+
+    /* ── Dialog-Overlay ────────────────────────────────────────────── */
+    .dlg-overlay {
+      position: relative;
+      width: min(640px, 100%);
+    }
+
+    /* ── Dialog-Card ────────────────────────────────────────────────── */
+    .dlg {
+      background: var(--ib-surface);
+      border: 1px solid var(--ib-border);
+      border-radius: var(--ib-radius);
+      box-shadow: var(--ib-shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    /* ── Header ────────────────────────────────────────────────────── */
+    .dlg-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px 14px;
+      border-bottom: 1px solid var(--ib-border);
+      gap: 12px;
+    }
+    .dlg-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--ib-text);
+      flex: 1;
+    }
+    .dlg-header-icons {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid var(--ib-border);
+      background: transparent;
+      color: var(--ib-text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      transition: background 0.12s, color 0.12s;
+      touch-action: manipulation;
+    }
+    .icon-btn:hover { background: var(--ib-surface-2); color: var(--ib-text); }
+    .icon-btn.close:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+
+    /* ── Beschreibungsband ────────────────────────────────────────────── */
+    .dlg-desc {
+      background: var(--ib-surface-2);
+      border-bottom: 1px solid var(--ib-border);
+      padding: 10px 18px;
+      font-size: 12px;
+      color: var(--ib-text-muted);
+      line-height: 1.5;
+    }
+
+    /* ── Body ────────────────────────────────────────────────────────── */
+    .dlg-body {
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ── Control-Zeile ────────────────────────────────────────────── */
+    .dlg-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .dlg-controls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ib-text);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .dlg-controls input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--ib-accent);
+      cursor: pointer;
+    }
+    .dlg-controls input[type="text"] {
+      flex: 1;
+      min-width: 80px;
+      padding: 8px 12px;
+      border: 1px solid var(--ib-border);
+      border-radius: var(--ib-radius-sm);
+      background: var(--ib-surface-2);
+      color: var(--ib-text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .dlg-controls input[type="text"]:focus {
+      border-color: var(--ib-accent);
+    }
+
+    /* ── Buttons allgemein ────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--ib-btn-border);
+      background: var(--ib-btn-bg);
+      color: var(--ib-btn-fg);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, transform 0.1s;
+      touch-action: manipulation;
+      min-height: 44px;
+    }
+    .btn:hover  { background: var(--ib-btn-hover); }
+    .btn:active { background: var(--ib-btn-active); transform: translateY(1px); }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    @media (max-width: 600px) {
+      .btn { min-height: 44px; }
+    }
+
+    /* ── Aktions-Buttons Zeile ───────────────────────────────────────────── */
+    .dlg-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Inhaltsbereich (monospace) ──────────────────────────────────────────── */
+    .dlg-content {
+      background: var(--ib-surface-2);
+      border: 1px solid var(--ib-border);
+      border-radius: var(--ib-radius-sm);
+      padding: 14px 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: var(--ib-text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    /* ── Footer ────────────────────────────────────────────────────── */
+    .dlg-footer {
+      border-top: 1px solid var(--ib-border);
+      padding: 9px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--ib-text-muted);
+      font-family: ui-monospace, monospace;
+      flex-wrap: wrap;
+    }
+    .dlg-footer .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ib-text-muted);
+      flex-shrink: 0;
+    }
+    .dlg-footer-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .dlg-footer-copy {
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.15s;
+      touch-action: manipulation;
+    }
+    .dlg-footer-copy:hover { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- Theme-Switcher -->
+  <div class="theme-bar">
+    <button onclick="setTheme('light')"         class="active" id="btn-light">Hell</button>
+    <button onclick="setTheme('dark')"                         id="btn-dark">Dunkel</button>
+    <button onclick="setTheme('dark_blue')"                    id="btn-dark_blue">Dunkel Blau</button>
+    <button onclick="setTheme('high_contrast')"                id="btn-high_contrast">Hoher Kontrast</button>
+  </div>
+
+  <!-- Dialog -->
+  <div class="dlg-overlay">
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+
+      <!-- Header -->
+      <div class="dlg-header">
+        <span class="dlg-title" id="dlg-title">Zeitraum</span>
+        <div class="dlg-header-icons">
+          <button class="icon-btn" title="Info" aria-label="Info">ⓘ</button>
+          <button class="icon-btn" title="Tabelle" aria-label="Tabelle">⊞</button>
+          <button class="icon-btn" title="QR-Code" aria-label="QR-Code">⊟</button>
+          <button class="icon-btn" title="Vollbild" aria-label="Vollbild">⛶</button>
+          <button class="icon-btn close" title="Schliessen" aria-label="Schliessen">✕</button>
+        </div>
+      </div>
+
+      <!-- Beschreibungsband -->
+      <div class="dlg-desc">
+        Abfrage-, Diagnose- oder Hinweistexte im Detail lesen.
+      </div>
+
+      <!-- Body -->
+      <div class="dlg-body">
+
+        <!-- Control-Zeile -->
+        <div class="dlg-controls">
+          <label>
+            <input type="checkbox" checked/>
+            Umbruch
+          </label>
+          <input type="text" placeholder="Suche…" aria-label="Suche"/>
+          <button class="btn">Zurueck</button>
+          <button class="btn">Weiter</button>
+          <button class="btn btn-icon" title="Kopieren" aria-label="Kopieren">⧉</button>
+        </div>
+
+        <!-- Aktions-Buttons -->
+        <div class="dlg-actions">
+          <button class="btn">Bugreport</button>
+          <button class="btn">Fehler melden (Smart Assist)</button>
+          <button class="btn">Logs (5min)</button>
+          <button class="btn">Jump Logs</button>
+        </div>
+
+        <!-- Inhaltsbereich -->
+        <div class="dlg-content" id="dlg-content">Steuert den Zeitbereich fuer Graph und Tabelle. Bei Benutzerdefiniert kannst du Start/Stop setzen. Der angezeigte Bereich wird als lokale Zeit interpretiert und als UTC an die API gesendet.</div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="dlg-footer">
+        <div class="dlg-footer-meta">
+          <span class="dot"></span>
+          <span>pk: unknown | tpl: dialog_info_popup pk: dialog_query_info.root | tpl: dialog_info_popup | dlg: dialog.qu…</span>
+        </div>
+        <button class="dlg-footer-copy" title="Meta kopieren" aria-label="Meta kopieren" onclick="copyMeta()">⧉</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function setTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      document.querySelectorAll('.theme-bar button').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById('btn-' + t);
+      if (btn) btn.classList.add('active');
+    }
+    function copyMeta() {
+      const txt = document.querySelector('.dlg-footer-meta')?.textContent?.trim() || '';
+      navigator.clipboard?.writeText(txt).catch(() => {});
+    }
+  </script>
+</body>
+</html>
