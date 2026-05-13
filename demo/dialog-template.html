@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="de" data-theme="light">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Dialog Variants – InfluxBRO</title>
+<style>
+:root {
+  --bg:       #f0f2f5;
+  --surface:  #ffffff;
+  --s2:       #f4f6f9;
+  --border:   #e2e6ea;
+  --text:     #1a1d23;
+  --muted:    #6b7280;
+  --accent:   #2563eb;
+  --accent2:  #1d4ed8;
+  --danger:   #dc2626;
+  --success:  #16a34a;
+  --warn:     #d97706;
+  --btn-bg:   #eff6ff;
+  --btn-fg:   #1e40af;
+  --btn-b:    #bfdbfe;
+  --btn-h:    #dbeafe;
+  --shadow:   0 4px 6px -1px rgba(0,0,0,.07),0 10px 30px -5px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.04);
+  --shadow-drag: 0 8px 16px -2px rgba(0,0,0,.12),0 20px 50px -8px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);
+  --r:  12px;
+  --rs: 8px;
+}
+html[data-theme=dark]{
+  --bg:#111318;--surface:#1c2030;--s2:#242840;--border:#2d3450;
+  --text:#e8eaf2;--muted:#8b95b0;--accent:#4f86f7;--accent2:#3b72e8;
+  --btn-bg:#1e2d52;--btn-fg:#93b4ff;--btn-b:#2d4278;--btn-h:#253560;
+  --shadow:0 4px 6px -1px rgba(0,0,0,.3),0 10px 30px -5px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.04);
+  --shadow-drag:0 8px 16px -2px rgba(0,0,0,.5),0 20px 50px -8px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06);
+}
+html[data-theme=dark_blue]{
+  --bg:#04101f;--surface:#091829;--s2:#0d2035;--border:#163050;
+  --text:#d6e8ff;--muted:#7aa0cc;--accent:#4899ff;--accent2:#3580e8;
+  --btn-bg:#0e2040;--btn-fg:#90c0ff;--btn-b:#1c3c68;--btn-h:#132a55;
+  --shadow:0 4px 6px -1px rgba(0,0,40,.4),0 10px 30px -5px rgba(0,0,40,.5),0 0 0 1px rgba(100,160,255,.06);
+  --shadow-drag:0 8px 16px -2px rgba(0,0,40,.6),0 20px 50px -8px rgba(0,0,40,.65),0 0 0 1px rgba(100,160,255,.1);
+}
+html[data-theme=hc]{
+  --bg:#000;--surface:#000;--s2:#111;--border:#fff;
+  --text:#fff;--muted:#ccc;--accent:#ff0;--accent2:#ff0;
+  --btn-bg:#000;--btn-fg:#fff;--btn-b:#fff;--btn-h:#222;
+  --shadow:0 0 0 2px #fff;--shadow-drag:0 0 0 3px #fff;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;background:var(--bg);color:var(--text);min-height:100dvh;transition:background .2s,color .2s}
+
+/* Theme bar */
+.theme-bar{position:fixed;top:14px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:999;background:var(--surface);padding:6px 10px;border-radius:999px;border:1px solid var(--border);box-shadow:var(--shadow)}
+.theme-bar button{padding:5px 14px;border-radius:999px;border:1px solid transparent;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;touch-action:manipulation}
+.theme-bar button:hover{background:var(--s2);color:var(--text)}
+.theme-bar button.on{background:var(--accent);color:#fff}
+
+/* hint */
+.hint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--muted);pointer-events:none;white-space:nowrap;opacity:.7}
+
+/* ── Shared dialog base ── */
+.dlg-wrap{position:fixed;z-index:100;min-width:280px;min-height:160px}
+.dlg{width:100%;height:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;transition:background .2s,border-color .2s,box-shadow .15s}
+.dlg.dragging{box-shadow:var(--shadow-drag)}
+
+.dlg-header{display:flex;align-items:center;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--border);cursor:grab;user-select:none;flex-shrink:0}
+.dlg-header:active{cursor:grabbing}
+.dlg-title{font-size:15px;font-weight:700;color:var(--text);flex:1;line-height:1.3}
+.dlg-subtitle{font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}
+
+.icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:.12s;touch-action:manipulation}
+.icon-btn:hover{background:var(--s2);color:var(--text)}
+.icon-btn.close:hover{background:#fee2e2;color:#b91c1c;border-color:#fca5a5}
+
+.dlg-body{padding:14px 16px;display:flex;flex-direction:column;gap:10px;flex:1;overflow:auto;min-height:0}
+.dlg-footer{border-top:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:var(--rs);border:1px solid var(--btn-b);background:var(--btn-bg);color:var(--btn-fg);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:.12s;touch-action:manipulation}
+.btn:hover{background:var(--btn-h)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent2)}
+.btn.primary:hover{background:var(--accent2)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{background:var(--s2);color:var(--text)}
+.btn.danger{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+.btn.danger:hover{background:#fee2e2}
+html[data-theme=dark] .btn.danger,html[data-theme=dark_blue] .btn.danger{background:#3b0a0a;color:#f87171;border-color:#7f1d1d}
+html[data-theme=hc] .btn.primary{background:#ff0;color:#000;border-color:#ff0}
+
+/* ── Variant 1: Standard / Confirm ── */
+.v1 .dlg-header{background:var(--surface)}
+.v1 .dlg-icon{width:36px;height:36px;border-radius:10px;background:var(--btn-bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.v1 .body-text{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* ── Variant 2: Info / Log Viewer ── */
+.v2 .dlg-desc{background:var(--s2);border-bottom:1px solid var(--border);padding:8px 16px;font-size:11.5px;color:var(--muted);line-height:1.5;flex-shrink:0}
+.v2 .ctrl-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex-shrink:0}
+.v2 .ctrl-row input[type=text]{flex:1;min-width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--rs);background:var(--s2);color:var(--text);font-size:12px;outline:none;transition:.15s}
+.v2 .ctrl-row input[type=text]:focus{border-color:var(--accent)}
+.v2 .ctrl-row input[type=checkbox]{accent-color:var(--accent);cursor:pointer}
+.v2 .log-box{background:var(--s2);border:1px solid var(--border);border-radius:var(--rs);padding:12px;font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.65;white-space:pre-wrap;word-break:break-word;overflow-y:auto;flex:1;min-height:60px}
+.v2 .action-row{display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0}
+
+/* ── Variant 3: Form Dialog ── */
+.v3 .field{display:flex;flex-direction:column;gap:4px}
+.v3 label{font-size:12px;font-weight:600;color:var(--muted)}
+.v3 input,.v3 select,.v3 textarea{padding:8px 12px;border:1px solid var(--border);border-radius:var(--rs);background:var(--s2);color:var(--text);font-size:13px;outline:none;transition:.15s;width:100%;font-family:inherit}
+.v3 input:focus,.v3 select:focus,.v3 textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)}
+.v3 textarea{resize:none;height:80px}
+.v3 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.v3 .tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:var(--btn-bg);color:var(--btn-fg);border:1px solid var(--btn-b);font-size:11px}
+
+/* ── Variant 4: Compact Alert ── */
+.v4 .dlg-header{padding:12px 14px 10px}
+.v4 .alert-stripe{height:4px;background:linear-gradient(90deg,var(--accent),var(--accent2));flex-shrink:0}
+.v4.warn-mode .alert-stripe{background:linear-gradient(90deg,#f59e0b,#d97706)}
+.v4.err-mode  .alert-stripe{background:linear-gradient(90deg,#ef4444,#dc2626)}
+.v4.ok-mode   .alert-stripe{background:linear-gradient(90deg,#22c55e,#16a34a)}
+.v4 .body-text{font-size:13px;color:var(--muted);line-height:1.6}
+.v4 .meta-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.v4 .chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid var(--border);color:var(--muted);background:var(--s2)}
+.v4 .chip.ok{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
+.v4 .chip.err{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
+.v4 .chip.warn{border-color:#fde68a;background:#fffbeb;color:#b45309}
+html[data-theme=dark] .v4 .chip.ok{background:#052e16;border-color:#166534;color:#4ade80}
+html[data-theme=dark] .v4 .chip.err{background:#450a0a;border-color:#7f1d1d;color:#f87171}
+html[data-theme=dark] .v4 .chip.warn{background:#431407;border-color:#92400e;color:#fbbf24}
+html[data-theme=dark_blue] .v4 .chip.ok{background:#022c16;border-color:#166534;color:#4ade80}
+html[data-theme=dark_blue] .v4 .chip.err{background:#3b0a0a;border-color:#7f1d1d;color:#f87171}
+
+/* Resize handle */
+.dlg-resize{position:absolute;bottom:0;right:0;width:20px;height:20px;cursor:se-resize;display:flex;align-items:flex-end;justify-content:flex-end;padding:3px;color:var(--muted);opacity:.35;transition:opacity .15s;touch-action:none;z-index:1}
+.dlg-resize:hover{opacity:.9}
+
+/* Separator */
+.sep{height:1px;background:var(--border);margin:2px 0}
+
+/* ── Circular FAB ── */
+.fab-wrap{position:fixed;bottom:24px;right:24px;z-index:200}
+
+.fab-main{
+  width:56px;height:56px;border-radius:50%;
+  background:var(--accent);color:#fff;border:none;cursor:pointer;
+  font-size:22px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.28);
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1),background .2s,box-shadow .2s;
+  position:relative;z-index:2;touch-action:manipulation;
+}
+.fab-main:hover{box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.fab-wrap.open .fab-main{transform:rotate(45deg);background:var(--accent2)}
+html[data-theme=hc] .fab-main{background:#ff0;color:#000}
+
+.fab-item{
+  position:absolute;bottom:0;right:0;
+  transform:translate(0,0) scale(.4);
+  opacity:0;pointer-events:none;
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .2s;
+}
+.fab-wrap.open .fab-item{opacity:1;pointer-events:auto;transform:translate(var(--tx),var(--ty)) scale(1)}
+
+/* stagger delays set dynamically by JS (FAB_CFG multi-orbit) */
+
+.fab-sub{
+  width:44px;height:44px;border-radius:50%;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);
+  transition:background .15s,transform .15s,box-shadow .15s;touch-action:manipulation;
+  position:relative;
+}
+.fab-sub:hover{background:var(--s2);transform:scale(1.1);box-shadow:0 4px 14px rgba(0,0,0,.24)}
+.fab-sub:active{transform:scale(.95)}
+
+.fab-label{
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  z-index:300;
+  background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;
+  white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.12);
+  opacity:0;pointer-events:none;
+  transition:opacity .15s;
+}
+.fab-sub:hover ~ .fab-label,
+.fab-item:hover .fab-label{opacity:1}
+
+/* backdrop to close on outside click */
+.fab-backdrop{position:fixed;inset:0;z-index:199;display:none}
+.fab-wrap.open ~ .fab-backdrop{display:block}
+</style>
+</head>
+<body>
+
+<div class="theme-bar">
+  <button onclick="setTheme('light')" class="on" id="btn-light">Hell</button>
+  <button onclick="setTheme('dark')"              id="btn-dark">Dunkel</button>
+  <button onclick="setTheme('dark_blue')"         id="btn-dark_blue">Dunkel Blau</button>
+  <button onclick="setTheme('hc')"                id="btn-hc">Hoher Kontrast</button>
+</div>
+<div class="hint">Ziehen: Titelzeile &nbsp;&middot;&nbsp; Resize: Ecke rechts unten</div>
+
+<!-- ── Variante 1: Standard Confirm ── -->
+<div class="dlg-wrap v1" id="w1">
+  <div class="dlg">
+    <div class="dlg-header">
+      <div class="dlg-icon">📋</div>
+      <div style="flex:1;min-width:0">
+        <div class="dlg-title">Datensatz löschen?</div>
+        <div class="dlg-subtitle">Diese Aktion kann nicht rükgängig gemacht werden</div>
+      </div>
+      <button class="icon-btn close" title="Schließen">✕</button>
+    </div>
+    <div class="dlg-body">
+      <p class="body-text">Du bist dabei, den Messwert <strong>temperature_sensor_01</strong> aus dem Bucket <strong>home_assistant</strong> dauerhaft zu löschen.<br><br>Alle historischen Daten dieses Sensors werden unwiderruflich entfernt.</p>
+      <div style="display:flex;gap:8px;align-items:center;padding:10px 12px;border-radius:var(--rs);background:var(--s2);border:1px solid var(--border)">
+        <span style="font-size:18px">⚠️</span>
+        <span style="font-size:12px;color:var(--muted)">Betroffen: <strong style="color:var(--text)">1 Measurement &middot; 4.2 MB &middot; 18.340 Einträge</strong></span>
+      </div>
+    </div>
+    <div class="dlg-footer">
+      <button class="btn ghost">Abbrechen</button>
+      <button class="btn danger">Löschen</button>
+    </div>
+  </div>
+  <div class="dlg-resize"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><line x1="2" y1="10" x2="10" y2="2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="6" y1="10" x2="10" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9.5" y1="10" x2="10" y2="9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+</div>
+
+<!-- ── Variante 2: Log / Info Viewer ── -->
+<div class="dlg-wrap v2" id="w2">
+  <div class="dlg">
+    <div class="dlg-header">
+      <div class="dlg-title">Log-Ausgabe</div>
+      <div style="display:flex;gap:4px">
+        <button class="icon-btn" title="Vollbild">⛶</button>
+        <button class="icon-btn close" title="Schließen">✕</button>
+      </div>
+    </div>
+    <div class="dlg-desc">Echtzeit-Ausgabe der letzten 5 Minuten &middot; automatisch aktualisiert</div>
+    <div class="dlg-body">
+      <div class="ctrl-row">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer"><input type="checkbox" checked/> Umbruch</label>
+        <input type="text" placeholder="Filtern…"/>
+        <button class="btn" style="padding:5px 12px;font-size:12px">↑</button>
+        <button class="btn" style="padding:5px 12px;font-size:12px">↓</button>
+        <button class="btn" title="Kopieren" style="padding:5px 10px;font-size:14px">⧉</button>
+      </div>
+      <div class="action-row">
+        <button class="btn">Bugreport</button>
+        <button class="btn">Smart Assist</button>
+        <button class="btn">Logs (5 min)</button>
+      </div>
+      <div class="log-box">2026-05-13 12:04:01 [INFO]  InfluxBro started on port 8099
+2026-05-13 12:04:01 [INFO]  Connected to InfluxDB v2.7.1
+2026-05-13 12:04:02 [INFO]  Loaded 3 profiles
+2026-05-13 12:04:15 [WARN]  Slow query detected: 1842ms (threshold: 1000ms)
+2026-05-13 12:05:00 [INFO]  Dashboard refresh cycle complete
+2026-05-13 12:05:33 [INFO]  Export requested: CSV, 14 days, sensor_data</div>
+    </div>
+    <div class="dlg-footer" style="justify-content:space-between">
+      <span style="font-size:11px;color:var(--muted);font-family:monospace">6 Zeilen &middot; zuletzt aktualisiert 12:05:33</span>
+      <button class="btn ghost" style="font-size:12px">Schließen</button>
+    </div>
+  </div>
+  <div class="dlg-resize"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><line x1="2" y1="10" x2="10" y2="2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="6" y1="10" x2="10" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9.5" y1="10" x2="10" y2="9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+</div>
+
+<!-- ── Variante 3: Form Dialog ── -->
+<div class="dlg-wrap v3" id="w3">
+  <div class="dlg">
+    <div class="dlg-header">
+      <div style="flex:1">
+        <div class="dlg-title">Neues Profil erstellen</div>
+        <div class="dlg-subtitle">Konfiguration für einen Sensor oder eine Gruppe</div>
+      </div>
+      <button class="icon-btn close" title="Schließen">✕</button>
+    </div>
+    <div class="dlg-body">
+      <div class="field">
+        <label>Profilname *</label>
+        <input type="text" placeholder="z. B. Wohnzimmer Temperatur" value=""/>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Bucket</label>
+          <select><option>home_assistant</option><option>sensors</option><option>custom</option></select>
+        </div>
+        <div class="field">
+          <label>Retention</label>
+          <select><option>30 Tage</option><option>90 Tage</option><option>1 Jahr</option><option>Unbegrenzt</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Beschreibung</label>
+        <textarea placeholder="Optional: Beschreibung des Profils…"></textarea>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:12px;color:var(--muted)">Tags:</span>
+        <span class="tag">🌡 Temperatur</span>
+        <span class="tag">🏠 Indoor</span>
+        <button class="btn ghost" style="font-size:11px;padding:2px 8px">+ Tag</button>
+      </div>
+    </div>
+    <div class="dlg-footer">
+      <button class="btn ghost">Abbrechen</button>
+      <button class="btn">Entwurf speichern</button>
+      <button class="btn primary">Erstellen</button>
+    </div>
+  </div>
+  <div class="dlg-resize"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><line x1="2" y1="10" x2="10" y2="2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="6" y1="10" x2="10" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9.5" y1="10" x2="10" y2="9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+</div>
+
+<!-- ── Variante 4: Compact Alert / Status ── -->
+<div class="dlg-wrap v4 warn-mode" id="w4">
+  <div class="dlg">
+    <div class="alert-stripe"></div>
+    <div class="dlg-header">
+      <span style="font-size:18px;flex-shrink:0">⚠️</span>
+      <div style="flex:1;min-width:0">
+        <div class="dlg-title" style="font-size:14px">Langsame Abfrage erkannt</div>
+      </div>
+      <div style="display:flex;gap:3px">
+        <button class="icon-btn" title="Details" style="font-size:12px">ⓘ</button>
+        <button class="icon-btn close" title="Schließen">✕</button>
+      </div>
+    </div>
+    <div class="dlg-body" style="gap:8px">
+      <p class="body-text">Die Abfrage <code style="font-family:monospace;font-size:12px;background:var(--s2);padding:1px 5px;border-radius:4px;border:1px solid var(--border)">range(start:-30d)</code> überschritt das Zeitlimit um <strong>842 ms</strong>.</p>
+      <div class="meta-row">
+        <span class="chip warn">1842 ms</span>
+        <span class="chip">Dashboard &middot; Sektor 3</span>
+        <span class="chip">12:05:15</span>
+      </div>
+      <div class="sep"></div>
+      <div style="display:flex;gap:6px">
+        <span class="chip ok">InfluxDB ✓</span>
+        <span class="chip ok">API ✓</span>
+        <span class="chip err">Query ✗</span>
+      </div>
+    </div>
+    <div class="dlg-footer" style="gap:6px">
+      <button class="btn ghost" style="font-size:12px">Ignorieren</button>
+      <button class="btn" style="font-size:12px">Bugreport</button>
+      <button class="btn primary" style="font-size:12px">Analysieren</button>
+    </div>
+  </div>
+  <div class="dlg-resize"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><line x1="2" y1="10" x2="10" y2="2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="6" y1="10" x2="10" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9.5" y1="10" x2="10" y2="9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+</div>
+
+<script>
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  document.querySelectorAll('.theme-bar button').forEach(b=>b.classList.remove('on'));
+  document.getElementById('btn-'+t).classList.add('on');
+}
+
+function makeDraggable(wrapId, initLeft, initTop, initW){
+  const wrap   = document.getElementById(wrapId);
+  const header = wrap.querySelector('.dlg-header');
+  const dlg    = wrap.querySelector('.dlg');
+  const rsz    = wrap.querySelector('.dlg-resize');
+  let drag=null, resize=null;
+
+  wrap.style.width = Math.min(initW, window.innerWidth-32)+'px';
+  requestAnimationFrame(()=>{
+    wrap.style.left = clampX(wrap,initLeft)+'px';
+    wrap.style.top  = clampY(wrap,initTop )+'px';
+  });
+
+  header.addEventListener('mousedown', e=>{
+    if(e.target.closest('button')) return;
+    drag={ox:e.clientX-wrap.offsetLeft, oy:e.clientY-wrap.offsetTop};
+    dlg.classList.add('dragging');
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+
+  rsz.addEventListener('mousedown', e=>{
+    wrap.style.height=wrap.offsetHeight+'px';
+    resize={px:e.clientX,py:e.clientY,w:wrap.offsetWidth,h:wrap.offsetHeight};
+    document.body.style.userSelect='none';
+    e.preventDefault(); e.stopPropagation();
+  });
+
+  header.addEventListener('touchstart', e=>{
+    if(e.target.closest('button')) return;
+    const t=e.touches[0];
+    drag={ox:t.clientX-wrap.offsetLeft, oy:t.clientY-wrap.offsetTop};
+    dlg.classList.add('dragging');
+  },{passive:true});
+
+  rsz.addEventListener('touchstart', e=>{
+    wrap.style.height=wrap.offsetHeight+'px';
+    const t=e.touches[0];
+    resize={px:t.clientX,py:t.clientY,w:wrap.offsetWidth,h:wrap.offsetHeight};
+    e.stopPropagation();
+  },{passive:true});
+
+  return {
+    move(cx,cy){
+      if(drag){ wrap.style.left=clampX(wrap,cx-drag.ox)+'px'; wrap.style.top=clampY(wrap,cy-drag.oy)+'px'; }
+      if(resize){ wrap.style.width=Math.max(280,resize.w+cx-resize.px)+'px'; wrap.style.height=Math.max(160,resize.h+cy-resize.py)+'px'; }
+    },
+    up(){ drag=null; resize=null; dlg.classList.remove('dragging'); document.body.style.userSelect=''; }
+  };
+}
+
+function clampX(w,x){ return Math.max(-w.offsetWidth+80, Math.min(window.innerWidth-80,x)); }
+function clampY(w,y){ return Math.max(0, Math.min(window.innerHeight-48,y)); }
+
+const vw=window.innerWidth, vh=window.innerHeight;
+const d1=makeDraggable('w1', Math.max(16,(vw-380)/2-200), Math.max(80,(vh-260)/2-80),  380);
+const d2=makeDraggable('w2', Math.max(16,(vw-460)/2+160), Math.max(80,(vh-380)/2-20),  460);
+const d3=makeDraggable('w3', Math.max(16,(vw-400)/2-190), Math.max(80,(vh-420)/2+120), 400);
+const d4=makeDraggable('w4', Math.max(16,(vw-340)/2+180), Math.max(80,(vh-280)/2+160), 340);
+
+const dialogs=[d1,d2,d3,d4];
+document.addEventListener('mousemove', e=>dialogs.forEach(d=>d.move(e.clientX,e.clientY)));
+document.addEventListener('mouseup',   ()=>dialogs.forEach(d=>d.up()));
+document.addEventListener('touchmove', e=>{ const t=e.touches[0]; dialogs.forEach(d=>d.move(t.clientX,t.clientY)); },{passive:true});
+document.addEventListener('touchend',  ()=>dialogs.forEach(d=>d.up()));
+</script>
+
+<!-- Circular FAB — 8 Satelliten -->
+<div id="fab" class="fab-wrap">
+  <!-- Item 1: straight up -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Umbruch" id="fab-umbruch">⏎</button>
+    <span class="fab-label">Umbruch</span>
+  </div>
+  <!-- Item 2 -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Zurück">←</button>
+    <span class="fab-label">Zurück</span>
+  </div>
+  <!-- Item 3 -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Weiter">→</button>
+    <span class="fab-label">Weiter</span>
+  </div>
+  <!-- Item 4 -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Bugreport">🐛</button>
+    <span class="fab-label">Bugreport</span>
+  </div>
+  <!-- Item 5 -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Fehler melden">📢</button>
+    <span class="fab-label">Fehler melden (Smart Assist)</span>
+  </div>
+  <!-- Item 6 -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Logs 5min">⏱</button>
+    <span class="fab-label">Logs (5 min)</span>
+  </div>
+  <!-- Item 7 -->
+  <div class="fab-item">
+    <button class="fab-sub" title="Jump Logs">⏭</button>
+    <span class="fab-label">Jump Logs</span>
+  </div>
+  <!-- Item 8: straight left — text input satellite -->
+  <div class="fab-item" id="fab-search-item">
+    <button class="fab-sub" title="Suche" id="fab-search-btn">🔍</button>
+    <span class="fab-label" id="fab-search-label">
+      <input id="fab-search-input" type="text" placeholder="Suche…"
+        style="width:130px;padding:5px 10px;border:1px solid var(--border);
+               border-radius:6px;background:var(--surface);color:var(--text);
+               font-size:12px;outline:none;display:none"/>
+      <span id="fab-search-text">Suche…</span>
+    </span>
+  </div>
+  <button class="fab-main" id="fab-main" title="Aktionen">＋</button>
+</div>
+<div id="fab-backdrop" class="fab-backdrop"></div>
+
+<!-- FAB JS — must run AFTER FAB HTML is in the DOM -->
+<script>
+(function(){
+  const wrap     = document.getElementById('fab');
+  const main     = document.getElementById('fab-main');
+  const backdrop = document.getElementById('fab-backdrop');
+  const items    = wrap.querySelectorAll('.fab-item');
+
+  /* Multi-orbit quarter-circle arc.
+     Configurable: maxPerOrbit, innerR (px), orbitGap (px).
+     Each orbit spans from straight-up (θ=0) to straight-left (θ=π/2). */
+  const FAB_CFG = { maxPerOrbit: 4, innerR: 100, orbitGap: 72 };
+  const allItems = [...items];
+  let r = FAB_CFG.innerR;
+  let delayMs = 0;
+  while (allItems.length > 0) {
+    const batch = allItems.splice(0, FAB_CFG.maxPerOrbit);
+    const n = batch.length;
+    batch.forEach((item, i) => {
+      const theta = n > 1 ? (i / (n - 1)) * (Math.PI / 2) : Math.PI / 4;
+      item.style.setProperty('--tx', (-Math.sin(theta) * r).toFixed(1) + 'px');
+      item.style.setProperty('--ty', (-Math.cos(theta) * r).toFixed(1) + 'px');
+      item.style.transitionDelay = delayMs + 'ms';
+      delayMs += 20;
+    });
+    r += FAB_CFG.orbitGap;
+  }
+
+  function toggle(){ wrap.classList.toggle('open'); }
+  function close() { wrap.classList.remove('open'); }
+
+  main.addEventListener('click', e => { e.stopPropagation(); toggle(); });
+  backdrop.addEventListener('click', close);
+
+  /* Search satellite: icon click → expand inline input */
+  const searchBtn   = document.getElementById('fab-search-btn');
+  const searchInput = document.getElementById('fab-search-input');
+  const searchText  = document.getElementById('fab-search-text');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = searchInput.style.display !== 'none';
+      searchInput.style.display = open ? 'none' : 'inline-block';
+      searchText.style.display  = open ? 'inline' : 'none';
+      if (!open) searchInput.focus();
+    });
+    searchInput.addEventListener('click', e => e.stopPropagation());
+  }
+
+  /* Umbruch toggle */
+  const umbruchBtn = document.getElementById('fab-umbruch');
+  let umbruchOn = true;
+  if (umbruchBtn) {
+    umbruchBtn.style.background = 'var(--accent)';
+    umbruchBtn.style.color = '#fff';
+    umbruchBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      umbruchOn = !umbruchOn;
+      umbruchBtn.style.background = umbruchOn ? 'var(--accent)' : '';
+      umbruchBtn.style.color      = umbruchOn ? '#fff' : '';
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
