@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.618
+
+### Fix
+
+- Dialoge: Drag- und Resize-Move-Handler bleiben dauerhaft am Fenster und Dokument gebunden und verwenden den aktiven Dialogzustand, damit native Top-Layer-Dialoge bereits waehrend der Mausbewegung sichtbar verschoben und skaliert werden. ([#585](https://github.com/thomas682/HA-Addons/issues/585))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.617
 
 ### Fix

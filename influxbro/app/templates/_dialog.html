@@ -1194,6 +1194,35 @@
           if(handle.dataset.ibDialogResizeBound !== '1'){
             handle.dataset.ibDialogResizeBound = '1';
             let activeResize = null;
+            const move = (mv)=>{
+              try{
+                if(!activeResize) return;
+                mv.preventDefault && mv.preventDefault();
+                mv.stopPropagation && mv.stopPropagation();
+                if(typeof mv.clientX !== 'number' || typeof mv.clientY !== 'number') return;
+                const state = activeResize;
+                const maxW = Math.max(state.minW, window.innerWidth - 24);
+                const maxH = Math.max(state.minH, window.innerHeight - 24);
+                const nextW = Math.max(state.minW, Math.min(maxW, state.w + (mv.clientX - state.x)));
+                const nextH = Math.max(state.minH, Math.min(maxH, state.h + (mv.clientY - state.y)));
+                panel.style.width = Math.round(nextW) + 'px';
+                panel.style.height = Math.round(nextH) + 'px';
+                if(root.getAttribute('data-dialog-positioned') === '1'){
+                  const r = panel.getBoundingClientRect();
+                  _dialogSetPosition(root, panel, r.left, r.top);
+                }
+              }catch(e){}
+            };
+            const up = (ev)=>{
+              if(!activeResize) return;
+              try{ if(ev && typeof ev.clientX === 'number' && typeof ev.clientY === 'number') move(ev); }catch(e){}
+              const done = activeResize;
+              activeResize = null;
+              try{ if(done.pointerId !== undefined && handle.releasePointerCapture) handle.releasePointerCapture(done.pointerId); }catch(e){}
+              try{ document.body.style.cursor = done.prevCursor; document.body.style.userSelect = done.prevSelect; }catch(e){}
+              _dialogSaveProfileSize(root, panel);
+              _dialogSaveProfilePosition(root, panel);
+            };
             const startResize = (ev)=>{
               try{
                 if(root.getAttribute('data-dialog-maximized') === '1') return;
@@ -1207,54 +1236,21 @@
                 const prevCursor = document.body.style.cursor;
                 const prevSelect = document.body.style.userSelect;
                 const pointerId = ev.pointerId;
-                const state = { x: ev.clientX, y: ev.clientY, w: startRect.width, h: startRect.height };
-                activeResize = { pointerId, prevCursor, prevSelect };
+                activeResize = { pointerId, prevCursor, prevSelect, x: ev.clientX, y: ev.clientY, w: startRect.width, h: startRect.height, minW, minH };
                 document.body.style.cursor = 'nwse-resize';
                 document.body.style.userSelect = 'none';
-                const move = (mv)=>{
-                  try{
-                    if(!activeResize) return;
-                    mv.preventDefault && mv.preventDefault();
-                    mv.stopPropagation && mv.stopPropagation();
-                    if(typeof mv.clientX !== 'number' || typeof mv.clientY !== 'number') return;
-                    const maxW = Math.max(minW, window.innerWidth - 24);
-                    const maxH = Math.max(minH, window.innerHeight - 24);
-                    const nextW = Math.max(minW, Math.min(maxW, state.w + (mv.clientX - state.x)));
-                    const nextH = Math.max(minH, Math.min(maxH, state.h + (mv.clientY - state.y)));
-                    panel.style.width = Math.round(nextW) + 'px';
-                    panel.style.height = Math.round(nextH) + 'px';
-                    if(root.getAttribute('data-dialog-positioned') === '1'){
-                      const r = panel.getBoundingClientRect();
-                      _dialogSetPosition(root, panel, r.left, r.top);
-                    }
-                  }catch(e){}
-                };
-                const up = (ev)=>{
-                  if(!activeResize) return;
-                  try{ if(ev && typeof ev.clientX === 'number' && typeof ev.clientY === 'number') move(ev); }catch(e){}
-                  const done = activeResize;
-                  activeResize = null;
-                  try{ document.removeEventListener('pointermove', move, true); document.removeEventListener('pointerup', up, true); document.removeEventListener('pointercancel', up, true); }catch(e){}
-                  try{ window.removeEventListener('pointermove', move, true); window.removeEventListener('pointerup', up, true); window.removeEventListener('pointercancel', up, true); }catch(e){}
-                  try{ document.removeEventListener('mousemove', move, true); document.removeEventListener('mouseup', up, true); }catch(e){}
-                  try{ window.removeEventListener('mousemove', move, true); window.removeEventListener('mouseup', up, true); }catch(e){}
-                  try{ if(done.pointerId !== undefined && handle.releasePointerCapture) handle.releasePointerCapture(done.pointerId); }catch(e){}
-                  try{ document.body.style.cursor = done.prevCursor; document.body.style.userSelect = done.prevSelect; }catch(e){}
-                  _dialogSaveProfileSize(root, panel);
-                  _dialogSaveProfilePosition(root, panel);
-                };
-                document.addEventListener('pointermove', move, true);
-                document.addEventListener('pointerup', up, true);
-                document.addEventListener('pointercancel', up, true);
-                window.addEventListener('pointermove', move, true);
-                window.addEventListener('pointerup', up, true);
-                window.addEventListener('pointercancel', up, true);
-                document.addEventListener('mousemove', move, true);
-                document.addEventListener('mouseup', up, true);
-                window.addEventListener('mousemove', move, true);
-                window.addEventListener('mouseup', up, true);
               }catch(e){}
             };
+            document.addEventListener('pointermove', move, true);
+            document.addEventListener('pointerup', up, true);
+            document.addEventListener('pointercancel', up, true);
+            window.addEventListener('pointermove', move, true);
+            window.addEventListener('pointerup', up, true);
+            window.addEventListener('pointercancel', up, true);
+            document.addEventListener('mousemove', move, true);
+            document.addEventListener('mouseup', up, true);
+            window.addEventListener('mousemove', move, true);
+            window.addEventListener('mouseup', up, true);
             handle.addEventListener('pointerdown', startResize, true);
             handle.addEventListener('mousedown', startResize, true);
             const startResizeFromDocument = (ev)=>{
@@ -1301,6 +1297,24 @@
         header.style.cursor = 'move';
         header.style.userSelect = 'none';
         let activeDrag = null;
+        const move = (mv)=>{
+          try{
+            if(!activeDrag) return;
+            mv.preventDefault && mv.preventDefault();
+            mv.stopPropagation && mv.stopPropagation();
+            if(typeof mv.clientX !== 'number' || typeof mv.clientY !== 'number') return;
+            _dialogSetPosition(root, panel, mv.clientX - activeDrag.dx, mv.clientY - activeDrag.dy);
+          }catch(e){}
+        };
+        const up = (mv)=>{
+          if(!activeDrag) return;
+          try{ if(mv && typeof mv.clientX === 'number' && typeof mv.clientY === 'number') move(mv); }catch(e){}
+          const done = activeDrag;
+          activeDrag = null;
+          try{ if(done.pointerId !== undefined && header.releasePointerCapture) header.releasePointerCapture(done.pointerId); }catch(e){}
+          try{ document.body.style.cursor = done.prevCursor; document.body.style.userSelect = done.prevSelect; }catch(e){}
+          _dialogSaveProfilePosition(root, panel);
+        };
         const startDrag = (ev)=>{
           try{
             if(root.getAttribute('data-dialog-maximized') === '1') return;
@@ -1314,44 +1328,22 @@
             const state = { dx: ev.clientX - rect.left, dy: ev.clientY - rect.top };
             const prevCursor = document.body.style.cursor;
             const prevSelect = document.body.style.userSelect;
-            activeDrag = { pointerId: ev.pointerId, prevCursor, prevSelect };
+            activeDrag = { pointerId: ev.pointerId, prevCursor, prevSelect, dx: state.dx, dy: state.dy };
             document.body.style.cursor = 'move';
             document.body.style.userSelect = 'none';
             _dialogSetPosition(root, panel, rect.left, rect.top);
-            const move = (mv)=>{
-              try{
-                if(!activeDrag) return;
-                mv.preventDefault && mv.preventDefault();
-                mv.stopPropagation && mv.stopPropagation();
-                if(typeof mv.clientX !== 'number' || typeof mv.clientY !== 'number') return;
-                _dialogSetPosition(root, panel, mv.clientX - state.dx, mv.clientY - state.dy);
-              }catch(e){}
-            };
-            const up = (mv)=>{
-              if(!activeDrag) return;
-              try{ if(mv && typeof mv.clientX === 'number' && typeof mv.clientY === 'number') move(mv); }catch(e){}
-              const done = activeDrag;
-              activeDrag = null;
-              try{ document.removeEventListener('pointermove', move, true); document.removeEventListener('pointerup', up, true); document.removeEventListener('pointercancel', up, true); }catch(e){}
-              try{ window.removeEventListener('pointermove', move, true); window.removeEventListener('pointerup', up, true); window.removeEventListener('pointercancel', up, true); }catch(e){}
-              try{ document.removeEventListener('mousemove', move, true); document.removeEventListener('mouseup', up, true); }catch(e){}
-              try{ window.removeEventListener('mousemove', move, true); window.removeEventListener('mouseup', up, true); }catch(e){}
-              try{ if(done.pointerId !== undefined && header.releasePointerCapture) header.releasePointerCapture(done.pointerId); }catch(e){}
-              try{ document.body.style.cursor = done.prevCursor; document.body.style.userSelect = done.prevSelect; }catch(e){}
-              _dialogSaveProfilePosition(root, panel);
-            };
-            document.addEventListener('pointermove', move, true);
-            document.addEventListener('pointerup', up, true);
-            document.addEventListener('pointercancel', up, true);
-            window.addEventListener('pointermove', move, true);
-            window.addEventListener('pointerup', up, true);
-            window.addEventListener('pointercancel', up, true);
-            document.addEventListener('mousemove', move, true);
-            document.addEventListener('mouseup', up, true);
-            window.addEventListener('mousemove', move, true);
-            window.addEventListener('mouseup', up, true);
           }catch(e){}
         };
+        document.addEventListener('pointermove', move, true);
+        document.addEventListener('pointerup', up, true);
+        document.addEventListener('pointercancel', up, true);
+        window.addEventListener('pointermove', move, true);
+        window.addEventListener('pointerup', up, true);
+        window.addEventListener('pointercancel', up, true);
+        document.addEventListener('mousemove', move, true);
+        document.addEventListener('mouseup', up, true);
+        window.addEventListener('mousemove', move, true);
+        window.addEventListener('mouseup', up, true);
         header.addEventListener('pointerdown', startDrag, true);
         header.addEventListener('mousedown', startDrag, true);
         const startDragFromDocument = (ev)=>{
