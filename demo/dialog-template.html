@@ -136,6 +136,61 @@ html[data-theme=dark_blue] .v4 .chip.err{background:#3b0a0a;border-color:#7f1d1d
 
 /* Separator */
 .sep{height:1px;background:var(--border);margin:2px 0}
+
+/* ── Circular FAB ── */
+.fab-wrap{position:fixed;bottom:24px;right:24px;z-index:200}
+
+.fab-main{
+  width:56px;height:56px;border-radius:50%;
+  background:var(--accent);color:#fff;border:none;cursor:pointer;
+  font-size:22px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.28);
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1),background .2s,box-shadow .2s;
+  position:relative;z-index:2;touch-action:manipulation;
+}
+.fab-main:hover{box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.fab-wrap.open .fab-main{transform:rotate(45deg);background:var(--accent2)}
+html[data-theme=hc] .fab-main{background:#ff0;color:#000}
+
+.fab-item{
+  position:absolute;bottom:0;right:0;
+  transform:translate(0,0) scale(.4);
+  opacity:0;pointer-events:none;
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .2s;
+}
+.fab-wrap.open .fab-item{opacity:1;pointer-events:auto;transform:translate(var(--tx),var(--ty)) scale(1)}
+
+/* staggered delays when opening */
+.fab-wrap.open .fab-item:nth-child(1){transition-delay:0ms}
+.fab-wrap.open .fab-item:nth-child(2){transition-delay:50ms}
+.fab-wrap.open .fab-item:nth-child(3){transition-delay:95ms}
+.fab-wrap.open .fab-item:nth-child(4){transition-delay:135ms}
+
+.fab-sub{
+  width:44px;height:44px;border-radius:50%;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+  box-shadow:0 2px 10px rgba(0,0,0,.18);
+  transition:background .15s,transform .15s,box-shadow .15s;touch-action:manipulation;
+  position:relative;
+}
+.fab-sub:hover{background:var(--s2);transform:scale(1.1);box-shadow:0 4px 14px rgba(0,0,0,.24)}
+.fab-sub:active{transform:scale(.95)}
+
+.fab-label{
+  position:absolute;right:52px;top:50%;transform:translateY(-50%);
+  background:var(--surface);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;
+  white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.12);
+  opacity:0;pointer-events:none;
+  transition:opacity .15s;
+}
+.fab-sub:hover ~ .fab-label,
+.fab-item:hover .fab-label{opacity:1}
+
+/* backdrop to close on outside click */
+.fab-backdrop{position:fixed;inset:0;z-index:199;display:none}
+.fab-wrap.open ~ .fab-backdrop{display:block}
 </style>
 </head>
 <body>
@@ -367,6 +422,63 @@ document.addEventListener('mousemove', e=>dialogs.forEach(d=>d.move(e.clientX,e.
 document.addEventListener('mouseup',   ()=>dialogs.forEach(d=>d.up()));
 document.addEventListener('touchmove', e=>{ const t=e.touches[0]; dialogs.forEach(d=>d.move(t.clientX,t.clientY)); },{passive:true});
 document.addEventListener('touchend',  ()=>dialogs.forEach(d=>d.up()));
+/* ── FAB JS ── */
+(function(){
+  const wrap = document.getElementById('fab');
+  const main = document.getElementById('fab-main');
+  const items = wrap.querySelectorAll('.fab-item');
+  const backdrop = document.getElementById('fab-backdrop');
+
+  /* Position sub-buttons on a quarter-circle arc (90° → 180°) */
+  const R = 88, startDeg = 90, endDeg = 180;
+  items.forEach((item, i) => {
+    const deg = startDeg + (i / (items.length - 1)) * (endDeg - startDeg);
+    const rad = deg * Math.PI / 180;
+    item.style.setProperty('--tx', (-Math.cos(rad) * R).toFixed(1) + 'px');
+    item.style.setProperty('--ty', (-Math.sin(rad) * R).toFixed(1) + 'px');
+  });
+
+  function toggle(){ wrap.classList.toggle('open'); }
+  function close(){ wrap.classList.remove('open'); }
+
+  main.addEventListener('click', e => { e.stopPropagation(); toggle(); });
+  backdrop.addEventListener('click', close);
+
+  /* Wire sub-buttons to show/hide their target dialog */
+  wrap.querySelectorAll('.fab-sub[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      close();
+      const target = document.getElementById(btn.dataset.target);
+      if(target) target.style.display = target.style.display === 'none' ? '' : '';
+      /* bring to front */
+      document.querySelectorAll('.dlg-wrap').forEach(w => w.style.zIndex = 100);
+      if(target) target.style.zIndex = 110;
+    });
+  });
+})();
 </script>
+
+<!-- Circular FAB -->
+<div id="fab" class="fab-wrap">
+  <div class="fab-item">
+    <button class="fab-sub" data-target="w1" title="Confirm Dialog">🗑️</button>
+    <span class="fab-label">Löschen-Dialog</span>
+  </div>
+  <div class="fab-item">
+    <button class="fab-sub" data-target="w2" title="Log Viewer">📋</button>
+    <span class="fab-label">Log-Viewer</span>
+  </div>
+  <div class="fab-item">
+    <button class="fab-sub" data-target="w3" title="Formular">⚙️</button>
+    <span class="fab-label">Formular</span>
+  </div>
+  <div class="fab-item">
+    <button class="fab-sub" data-target="w4" title="Alert">⚠️</button>
+    <span class="fab-label">Alert</span>
+  </div>
+  <button class="fab-main" id="fab-main" title="Aktionen">＋</button>
+</div>
+<div id="fab-backdrop" class="fab-backdrop"></div>
+
 </body>
 </html>
