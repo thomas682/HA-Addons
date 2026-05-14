@@ -2261,6 +2261,18 @@
     popupMetaFooter.style.marginTop = '4px';
     card.appendChild(popupMetaFooter);
     root.appendChild(card);
+    const _mountPopupRadialInHeader = ()=>{ try{
+      const stdActions = root.querySelector('[data-dialog-header-actions="1"]') || headActions;
+      const stdClose = stdActions && stdActions.querySelector('[data-dialog-window="close"]');
+      if(stdActions && radialWrap && radialWrap.parentElement !== stdActions){
+        stdActions.insertBefore(radialWrap, stdClose || null);
+      }
+    }catch(e){} };
+    _mountPopupRadialInHeader();
+    setTimeout(_mountPopupRadialInHeader, 0);
+    setTimeout(_mountPopupRadialInHeader, 120);
+    setTimeout(_mountPopupRadialInHeader, 500);
+    setTimeout(_mountPopupRadialInHeader, 1000);
     try{ infoBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.openInfo) window.InfluxBroDialogStandards.openInfo(card); }); }catch(e){}
 
     const confirmRoot = document.createElement('dialog');
@@ -2544,19 +2556,6 @@
         window.InfluxBroDialogStandards.enhance(smart, { name: 'dialog.smart_bug_assistant', template: 'dialog_panel_workbench', trigger: 'errors_main.btn_smart_bugreport', closeSelector: '#influxbro_sba_cancel' });
       }
     }catch(e){}
-    const _mountPopupRadialInHeader = ()=>{ try{
-      const stdActions = root.querySelector('[data-dialog-header-actions="1"]');
-      const stdClose = stdActions && stdActions.querySelector('[data-dialog-window="close"]');
-      if(stdActions && radialWrap && radialWrap.parentElement !== stdActions){
-        stdActions.insertBefore(radialWrap, stdClose || null);
-      }
-    }catch(e){} };
-    _mountPopupRadialInHeader();
-    setTimeout(_mountPopupRadialInHeader, 0);
-    setTimeout(_mountPopupRadialInHeader, 120);
-    setTimeout(_mountPopupRadialInHeader, 500);
-    setTimeout(_mountPopupRadialInHeader, 1000);
-
     function _clampPopupSize(){
       try{
         const maxW = Math.max(320, window.innerWidth - 24);

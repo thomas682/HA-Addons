@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.634
+
+### Fix
+
+- Query-Info-Popup: Der Radialbutton wird unmittelbar nach dem Aufbau der Popup-Card gemountet, bevor spaetere Dialogaufbauten abbrechen koennen. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.633
 
 ### Fix
