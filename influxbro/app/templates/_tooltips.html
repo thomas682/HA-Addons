@@ -3584,7 +3584,17 @@
       try{
         const root = document.getElementById('influxbro_popup_root');
         const actions = root && root.querySelector('[data-dialog-header-actions="1"]');
-        if(!root || !actions || root.querySelector('#influxbro_popup_radial_toggle')) return;
+        if(!root || !actions) return;
+        const buttons = Array.from(root.querySelectorAll('#influxbro_popup_radial_toggle'));
+        const original = root.querySelector('#influxbro_popup_radial_wrap #influxbro_popup_radial_toggle');
+        const keep = original || buttons[0] || null;
+        if(keep){
+          buttons.forEach((it)=>{ try{ if(it !== keep) it.remove(); }catch(e){} });
+          const mount = keep.closest('#influxbro_popup_radial_wrap') || keep;
+          const close = actions.querySelector('[data-dialog-window="close"]');
+          if(mount.parentElement !== actions) actions.insertBefore(mount, close || null);
+          return;
+        }
         const btn = document.createElement('button');
         btn.id = 'influxbro_popup_radial_toggle';
         btn.type = 'button';

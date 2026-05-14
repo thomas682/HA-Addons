@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.638
+
+### Fix
+
+- Query-Info-Popup: Der Radialbutton wird beim Nachmounten dedupliziert und der originale Radial-Wrapper wird bevorzugt in die Titelleiste verschoben. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.637
 
 ### Fix
