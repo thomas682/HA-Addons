@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.631
+
+### Fix
+
+- Query-Info-Popup: Der Radialbutton wird nach dem Standarddialog-Enhance erneut in die Header-Aktionen eingehängt, damit er in der Titelleiste sichtbar bleibt. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.630
 
 ### Fix

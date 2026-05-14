@@ -2544,6 +2544,13 @@
         window.InfluxBroDialogStandards.enhance(smart, { name: 'dialog.smart_bug_assistant', template: 'dialog_panel_workbench', trigger: 'errors_main.btn_smart_bugreport', closeSelector: '#influxbro_sba_cancel' });
       }
     }catch(e){}
+    try{
+      const stdActions = root.querySelector('[data-dialog-header-actions="1"]');
+      const stdClose = stdActions && stdActions.querySelector('[data-dialog-window="close"]');
+      if(stdActions && radialWrap && radialWrap.parentElement !== stdActions){
+        stdActions.insertBefore(radialWrap, stdClose || null);
+      }
+    }catch(e){}
 
     function _clampPopupSize(){
       try{
