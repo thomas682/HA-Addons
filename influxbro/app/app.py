@@ -1894,6 +1894,7 @@ DEFAULT_CFG = {
     "ui_nav_helper_history_limit": 10,
     "ui_nav_helper_highlight_color": "#FF9900",
     "ui_nav_helper_highlight_duration_ms": 1400,
+    "ui_remember_page_position": True,
     "ui_status_font_px": 10,
     "ui_status_show_sysinfo": False,
     "ui_status_bar_height_px": 38,

@@ -1400,6 +1400,8 @@
       const NAV_HISTORY_KEY = 'influxbro.nav.helper.history.v1';
       const NAV_INDEX_KEY = 'influxbro.nav.helper.index.v1';
       const NAV_PENDING_KEY = 'influxbro.nav.helper.pending.v1';
+      const NAV_PAGE_POS_KEY = 'influxbro.nav.page_positions.v1';
+      const NAV_REMEMBER_PAGE_POSITION = {{ 'true' if cfg.get('ui_remember_page_position', true) else 'false' }};
       const NAV_HISTORY_LIMIT_DEFAULT = {{ (cfg.get('ui_nav_helper_history_limit') or 10) | int }};
       const PARAM_LINKS = {
         'page.title.card': { path: './config', selector: '#ui_gui_title_px', label: 'Schriftgroesse: GUI Gruppe 1' },
@@ -1441,6 +1443,43 @@
       function _writeNavHistory(rows){ _writeJson(NAV_HISTORY_KEY, rows || []); }
       function _readNavIndex(){ try{ return Number(localStorage.getItem(NAV_INDEX_KEY) || -1); }catch(e){ return -1; } }
       function _writeNavIndex(idx){ try{ localStorage.setItem(NAV_INDEX_KEY, String(idx)); }catch(e){} }
+      function _captureVisualState(entry){
+        try{
+          const out = Object.assign({}, entry || {});
+          out.path = out.path || _navPath();
+          out.scrollX = Math.max(0, Math.round(window.scrollX || 0));
+          out.scrollY = Math.max(0, Math.round(window.scrollY || 0));
+          out.ts = Date.now();
+          return out;
+        }catch(e){ return entry || {}; }
+      }
+      function _readPagePositions(){ return _readJson(NAV_PAGE_POS_KEY, {}); }
+      function _writePagePositions(rows){ _writeJson(NAV_PAGE_POS_KEY, rows || {}); }
+      function _saveCurrentPagePosition(){
+        try{
+          if(!NAV_REMEMBER_PAGE_POSITION) return;
+          const rows = _readPagePositions();
+          rows[_navPath()] = _captureVisualState({ path: _navPath(), page: currentPageLabel(), label: 'Position' });
+          _writePagePositions(rows);
+        }catch(e){}
+      }
+      function _restoreVisualState(entry){
+        try{
+          if(!NAV_REMEMBER_PAGE_POSITION || !entry) return false;
+          if(typeof entry.scrollY !== 'number' && typeof entry.scrollX !== 'number') return false;
+          setTimeout(()=>{ try{ window.scrollTo({ left: Number(entry.scrollX || 0), top: Number(entry.scrollY || 0), behavior: 'auto' }); }catch(e){} }, 80);
+          return true;
+        }catch(e){ return false; }
+      }
+      function _restorePagePositionOnLoad(){
+        try{
+          if(!NAV_REMEMBER_PAGE_POSITION) return;
+          const pending = _readJson(NAV_PENDING_KEY, null);
+          if(pending) return;
+          const entry = _readPagePositions()[_navPath()];
+          if(entry) _restoreVisualState(entry);
+        }catch(e){}
+      }
       function _entryLabel(entry){ return '<' + String(entry.page || 'Seite') + ': ' + String(entry.ui || entry.label || 'element') + '>'; }
       function _openParentDetails(el){ try{ let cur = el; while(cur){ const d = cur.closest && cur.closest('details'); if(!d) break; d.open = true; cur = d.parentElement; } }catch(e){} }
       function _highlightNavTarget(el){ try{ if(!el) return; _openParentDetails(el); el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('nav_jump_hl'); setTimeout(()=>{ try{ el.classList.remove('nav_jump_hl'); }catch(e){} }, _navHighlightDuration()); }catch(e){} }
@@ -1458,10 +1497,12 @@
           if(!entry) return;
           const targetPath = String(entry.path || './');
           if(targetPath && targetPath !== _navPath()){
+            _saveCurrentPagePosition();
             _writeJson(NAV_PENDING_KEY, entry);
             location.href = targetPath;
             return;
           }
+          _restoreVisualState(entry);
           const el = _resolveTarget(entry);
           if(el) _highlightNavTarget(el);
         }catch(e){}
@@ -1469,6 +1510,7 @@
       function _recordNavTarget(entry){
         try{
           if(!entry || NAV_SUPPRESS_RECORD) return;
+          entry = _captureVisualState(entry);
           let rows = _readNavHistory();
           let idx = _readNavIndex();
           if(idx >= 0 && idx < rows.length - 1) rows = rows.slice(0, idx + 1);
@@ -1984,13 +2026,16 @@
       try{ if($prev) $prev.addEventListener('click', ()=>stepResult(-1)); }catch(e){}
       try{ if($next) $next.addEventListener('click', ()=>stepResult(1)); }catch(e){}
       try{ if($settings) $settings.addEventListener('click', ()=>renderSearchSettings()); }catch(e){}
-      try{ if($navBack) $navBack.addEventListener('click', ()=>{ const rows = _readNavHistory(); let idx = _readNavIndex(); if(idx <= 0) return; const curPath = _navPath(); let nextIdx = idx - 1; while(nextIdx > 0 && rows[nextIdx] && String(rows[nextIdx].path || '') === curPath) nextIdx -= 1; idx = nextIdx; _writeNavIndex(idx); _navigateToEntry(rows[idx]); _updateNavButtons(); }); }catch(e){}
+      try{ if($navBack) $navBack.addEventListener('click', ()=>{ _saveCurrentPagePosition(); const rows = _readNavHistory(); let idx = _readNavIndex(); if(idx <= 0) return; idx -= 1; _writeNavIndex(idx); _navigateToEntry(rows[idx]); _updateNavButtons(); }); }catch(e){}
       try{ if($navForward) $navForward.addEventListener('click', ()=>{ const rows = _readNavHistory(); let idx = _readNavIndex(); if(idx >= 0 && idx < rows.length - 1){ idx += 1; _writeNavIndex(idx); _navigateToEntry(rows[idx]); _updateNavButtons(); } }); }catch(e){}
       try{ if($tooltipToggle) $tooltipToggle.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _setTooltipsEnabled(!$tooltipToggle.classList.contains('active')); }); }catch(e){}
       try{ document.addEventListener('click', (ev)=>{ if(NAV_SUPPRESS_RECORD) return; const t = ev.target && ev.target.closest ? ev.target.closest('[data-ui]') : null; if(!t) return; const ui = String(t.getAttribute('data-ui') || '').trim(); if(!ui || ui.startsWith('nav.history.')) return; _recordNavTarget({ path: _navPath(), ui, selector: '', page: currentPageLabel(), label: ui }); }, true); }catch(e){}
+      try{ window.addEventListener('pagehide', _saveCurrentPagePosition); window.addEventListener('beforeunload', _saveCurrentPagePosition); }catch(e){}
+      try{ let navPosT = null; window.addEventListener('scroll', ()=>{ if(!NAV_REMEMBER_PAGE_POSITION) return; clearTimeout(navPosT); navPosT = setTimeout(_saveCurrentPagePosition, 250); }, { passive:true }); }catch(e){}
+      try{ document.addEventListener('influxbro:dialog-opened', ()=>{ _recordNavTarget({ path: _navPath(), ui: 'dialog.opened', selector: '', page: currentPageLabel(), label: 'Dialog geoeffnet' }); }, true); }catch(e){}
       try{ document.addEventListener('click', (ev)=>{ if(!$results || !$results.style || $results.style.display === 'none') return; if(ev.target === $search || $results.contains(ev.target)) return; $results.style.display='none'; }, true); }catch(e){}
       try{ applySearchCfgUi(); }catch(e){}
-      try{ _consumePendingNav(); _updateNavButtons(); }catch(e){}
+      try{ _consumePendingNav(); _restorePagePositionOnLoad(); _updateNavButtons(); }catch(e){}
     }
 
     if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPageCard, { once: true });
@@ -2653,6 +2698,7 @@
     function _targetMetaFor(el){
       try{
         if(!el || !el.tagName) return null;
+        if(_isPickerStructuralFallback(el)) return null;
         const pk = String(el.getAttribute && el.getAttribute('data-ib-pickkey') || '').trim();
         if(pk) return { el, name: pk, kind: 'pickkey' };
         const ui = String(el.getAttribute && el.getAttribute('data-ui') || '').trim();
@@ -2688,6 +2734,18 @@
       }catch(e){ return false; }
     }
 
+    function _isPickerInteractive(el){
+      try{ return !!(el && el.matches && el.matches('button,input,select,textarea,a[href],[role="button"],[role="checkbox"],[role="switch"]')); }catch(e){ return false; }
+    }
+
+    function _isPickerStructuralFallback(el){
+      try{
+        if(!el || !el.matches) return false;
+        if(_isPickerInteractive(el)) return false;
+        return el.matches('[data-dialog-header="1"],[data-dialog-header-actions="1"],[data-dialog-title-wrap="1"],[data-dialog-content="1"],[data-dialog-footer="1"],.dialog-header,.dialog-footer');
+      }catch(e){ return false; }
+    }
+
       function _normalizePickerScopeRoot(root){
         try{
           if(!root) return null;
@@ -2719,7 +2777,12 @@
         if(el && el.nodeType === Node.TEXT_NODE) el = el.parentElement;
         const stack = _targetsFromEvent(ev)
           .filter((cand)=>!_isOwnPickerUi(cand) && _withinPickerScope(cand))
-          .sort((a, b)=>_pickerTargetDepth(b) - _pickerTargetDepth(a));
+          .sort((a, b)=>{
+            const ia = _isPickerInteractive(a) ? 1 : 0;
+            const ib = _isPickerInteractive(b) ? 1 : 0;
+            if(ia !== ib) return ib - ia;
+            return _pickerTargetDepth(b) - _pickerTargetDepth(a);
+          });
         const seen = new Set();
         const out = [];
         const pushTarget = (cand)=>{
@@ -2813,7 +2876,8 @@
       overlay.style.height = Math.max(0, r.height + 4) + 'px';
       const name = String(target.name || '').trim();
       const disabledTag = target.disabled ? ' [disabled]' : '';
-      const display = target.kind === 'pickkey' ? ('<PICK:' + (name || 'unknown') + '>') : (target.kind === 'fallback' ? ('fallback:' + (name || 'element')) : ('<' + (name || '(kein data-ui)') + '>'));
+      const ik = (target.kind === 'pickkey' && el && el.getAttribute) ? String(el.getAttribute('data-ib-instancekey') || name || '').trim() : '';
+      const display = target.kind === 'pickkey' ? _fmtPickV1(currentPageLabel(), name || 'unknown', ik || name || 'unknown') : (target.kind === 'fallback' ? ('fallback:' + (name || 'element')) : ('<' + (name || '(kein data-ui)') + '>'));
       const pos = currentTargets.length > 1 ? (' (' + (currentTargetIndex + 1) + '/' + currentTargets.length + ')') : '';
       const hint = currentTargets.length > 1 ? ' | Mausrad: Treffer wechseln' : '';
       badge.textContent = display;

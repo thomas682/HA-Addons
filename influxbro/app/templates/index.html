@@ -81,6 +81,28 @@
       min-width: min(var(--ib-sel-manual-w), 100%);
       max-width: 60%;
     }
+    .ib_sel_stack .ib_clear_row {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: min(var(--ib-sel-manual-w), 60%);
+      max-width: 60%;
+    }
+    .ib_sel_stack .ib_clear_row > input,
+    .ib_sel_stack .ib_clear_row > select {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+      width: auto;
+    }
+    .ib_sel_stack .ib_clear_row > select {
+      padding-right: 28px;
+      background-position: right 8px center;
+    }
+    .ib_sel_stack .ib_clear_row > .ib_clear_btn {
+      flex: 0 0 auto;
+      margin-left: 0;
+    }
     .ib_sel_desc {
       display:flex;
       gap: 8px;

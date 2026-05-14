@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.629
+
+### Fix
+
+- UI/Navigation: Tooltips und Tooltip-Aktionen nutzen Theme-Tokens, der Query-Info-Radialbutton sitzt in der Titelleiste, Super-Picker bevorzugt konkrete Pickkeys vor Dialog-Struktur-Fallbacks, Navigation speichert Seitenpositionen, Messwertauswahl-Controls sind wieder kompakter ausgerichtet und die Akzentfarbeinstellung wurde entfernt. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.628
 
 ### Fix

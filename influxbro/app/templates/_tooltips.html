@@ -359,6 +359,8 @@
     'settings.ui_page_search_highlight_color': 'Farbe fuer Treffer, zu denen `page.search`, Popup- oder Logs-Volltextsuchen springen.',
     'settings.ui_page_search_highlight_width_px': 'Rahmenbreite fuer Treffer, zu denen `page.search` springt.',
     'settings.ui_page_search_highlight_duration_ms': 'Dauer, wie lange der Trefferrahmen nach dem Sprung sichtbar bleibt.',
+    'settings.ui_remember_page_position': 'Speichert die Scroll-/Ansichtsposition je Seite und stellt sie beim Zurueckkehren wieder her.',
+    'config_nav.chk_remember_page_position': 'Speichert die Scroll-/Ansichtsposition je Seite und stellt sie beim Zurueckkehren wieder her.',
     'settings.ui_raw_center_max_points': 'Maximaler Wert fuer den Dashboard-Regler Bereich +- in Minuten.',
     'settings.ui_raw_center_range_default': 'Vorbelegung fuer den Dashboard-Regler Bereich +- in Minuten.',
     'settings.ui_raw_center_min_points': 'Mindestanzahl Raw-Datenpunkte vor und nach dem selektierten Messpunkt. Das Fenster wird waehrend der Analyse ermittelt und im Cache gespeichert.',
@@ -832,12 +834,12 @@
       tip.style.wordBreak = 'break-word';
       tip.style.padding = '0';
       tip.style.borderRadius = '12px';
-      tip.style.background = '#1f2937';
-      tip.style.color = '#f3f4f6';
+      tip.style.background = 'var(--ib-surface, #fff)';
+      tip.style.color = 'var(--ib-text, #1f2933)';
       tip.style.fontSize = '13px';
       tip.style.lineHeight = '1.5';
-      tip.style.border = '1px solid #374151';
-      tip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.14), 0 12px 24px rgba(0,0,0,0.18), 0 24px 40px rgba(0,0,0,0.22)';
+      tip.style.border = '1px solid var(--ib-border, rgba(0,0,0,0.14))';
+      tip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.10), 0 12px 24px rgba(0,0,0,0.14), 0 24px 40px rgba(0,0,0,0.16)';
       tip.style.pointerEvents = 'none';
       tip.style.opacity = '0';
       tip.style.visibility = 'hidden';
@@ -852,8 +854,8 @@
       freezeLabel.style.display = 'none';
       freezeLabel.style.padding = '3px 8px';
       freezeLabel.style.borderRadius = '999px';
-      freezeLabel.style.background = '#1d4ed8';
-      freezeLabel.style.color = '#fff';
+      freezeLabel.style.background = 'var(--ib-primary, #1d4ed8)';
+      freezeLabel.style.color = 'var(--ib-primary-text, #fff)';
       freezeLabel.style.fontSize = '11px';
       freezeLabel.style.fontWeight = '700';
       freezeLabel.style.boxShadow = '0 6px 18px rgba(29,78,216,0.28)';
@@ -1073,7 +1075,7 @@
       try{ if(hideT) clearTimeout(hideT); }catch(e){}
       showT = null;
       hideT = null;
-      try{ if(tip){ tip.style.opacity = '0'; tip.style.visibility = 'hidden'; tip.style.pointerEvents = 'none'; tip.style.borderColor = '#374151'; tip.style.transform = 'translateY(4px)'; } }catch(e){}
+      try{ if(tip){ tip.style.opacity = '0'; tip.style.visibility = 'hidden'; tip.style.pointerEvents = 'none'; tip.style.borderColor = 'var(--ib-border, rgba(0,0,0,0.14))'; tip.style.transform = 'translateY(4px)'; } }catch(e){}
       try{ if(freezeLabel) freezeLabel.style.display = 'none'; }catch(e){}
       lastEl = null;
       lastTitle = '';
@@ -1110,16 +1112,16 @@
       const m = lastMeta || {};
       const sevColor = _severityColor(m.severity);
       const docKey = _esc(String(m.doc || m.key || keyRaw || ''));
-      const docBtn = docKey ? '<button type="button" data-ib-doc-key="' + docKey + '" style="display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:#93c5fd;border-radius:5px;padding:4px 8px;margin-left:-8px;font-size:12px;font-weight:600;cursor:pointer;">' + DOC_SVG + '<span>Dokumentation öffnen</span></button>' : '';
-      const pinHint = '<span style="margin-left:auto;color:#9ca3af;font-size:10.5px;line-height:1.25;">Shift druecken zum Fixieren</span>';
+      const docBtn = docKey ? '<button type="button" data-ib-doc-key="' + docKey + '" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ib-button-border, var(--ib-border, rgba(0,0,0,0.14)));background:var(--ib-button-bg, var(--ib-surface-2, #f8fafc));color:var(--ib-button-text, var(--ib-primary, #2563eb));border-radius:999px;padding:4px 9px;margin-left:-8px;font-size:12px;font-weight:600;cursor:pointer;">' + DOC_SVG + '<span>Dokumentation öffnen</span></button>' : '';
+      const pinHint = '<span style="margin-left:auto;color:var(--ib-text-muted, #6b7280);font-size:10.5px;line-height:1.25;">Shift druecken zum Fixieren</span>';
       const keyHtml = _esc(keyRaw ? '<' + keyRaw + '>' : (m.key || ''));
       const statusText = _norm(m.status) || (m.count ? ('Aktiv · ' + String(m.count) + ' Treffer') : 'Verfügbar');
-      const head = '<div style="padding:14px 16px 12px;border-bottom:1px solid #374151;display:flex;align-items:flex-start;gap:10px;"><div style="flex-shrink:0;width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:' + sevColor + '26;border:1px solid ' + sevColor + '66;"><span style="width:16px;height:16px;border-radius:50%;background:' + sevColor + ';display:block;"></span></div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;letter-spacing:-0.01em;color:#f9fafb;margin-bottom:2px;overflow-wrap:anywhere;word-break:break-word;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:#9ca3af;font-weight:400;overflow-wrap:anywhere;word-break:break-word;">' + keyHtml + '</div></div></div>';
-      const descHtml = '<div style="font-size:12.5px;line-height:1.55;color:#d1d5db;margin:0 0 14px 0;">' + _esc(String(m.desc || desc || 'Zeigt Details und Dokumentation zu diesem Element.')) + '</div>';
-      const exampleHtml = m.example ? '<div style="background:rgba(0,0,0,0.25);border:1px solid #374151;border-radius:6px;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:#fbbf24;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="color:#9ca3af;font-size:10px;">▸</span><code style="font:inherit;color:inherit;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
+      const head = '<div style="padding:14px 16px 12px;border-bottom:1px solid var(--ib-border, rgba(0,0,0,0.14));display:flex;align-items:flex-start;gap:10px;"><div style="flex-shrink:0;width:30px;height:30px;border-radius:7px;display:grid;place-items:center;background:' + sevColor + '26;border:1px solid ' + sevColor + '66;"><span style="width:16px;height:16px;border-radius:50%;background:' + sevColor + ';display:block;"></span></div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;letter-spacing:-0.01em;color:var(--ib-text, #1f2933);margin-bottom:2px;overflow-wrap:anywhere;word-break:break-word;">' + _esc(String(m.title || desc || 'Info')) + '</div><div style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:var(--ib-text-muted, #6b7280);font-weight:400;overflow-wrap:anywhere;word-break:break-word;">' + keyHtml + '</div></div></div>';
+      const descHtml = '<div style="font-size:12.5px;line-height:1.55;color:var(--ib-text-muted, #4b5563);margin:0 0 14px 0;">' + _esc(String(m.desc || desc || 'Zeigt Details und Dokumentation zu diesem Element.')) + '</div>';
+      const exampleHtml = m.example ? '<div style="background:var(--ib-surface-2, #f8fafc);border:1px solid var(--ib-border, rgba(0,0,0,0.14));border-radius:6px;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;color:var(--ib-primary, #2563eb);margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="color:var(--ib-text-muted, #6b7280);font-size:10px;">▸</span><code style="font:inherit;color:inherit;white-space:pre-wrap;overflow-wrap:anywhere;">' + _esc(String(m.example || '')) + '</code></div>' : '';
       const body = '<div style="padding:12px 16px 14px;">' + descHtml + exampleHtml + '</div>';
-      const foot = '<div style="border-top:1px solid #374151;padding:9px 16px;display:flex;align-items:center;justify-content:flex-start;gap:8px;">' + docBtn + pinHint + '</div>';
-      const arrow = '<div aria-hidden="true" style="position:absolute;top:-6px;left:28px;width:12px;height:12px;background:#1f2937;transform:rotate(45deg);border-radius:2px;border-left:1px solid #374151;border-top:1px solid #374151;"></div>';
+      const foot = '<div style="border-top:1px solid var(--ib-border, rgba(0,0,0,0.14));padding:9px 16px;display:flex;align-items:center;justify-content:flex-start;gap:8px;">' + docBtn + pinHint + '</div>';
+      const arrow = '<div aria-hidden="true" style="position:absolute;top:-6px;left:28px;width:12px;height:12px;background:var(--ib-surface, #fff);transform:rotate(45deg);border-radius:2px;border-left:1px solid var(--ib-border, rgba(0,0,0,0.14));border-top:1px solid var(--ib-border, rgba(0,0,0,0.14));"></div>';
       return arrow + head + body + foot;
     }
 
@@ -2129,7 +2131,7 @@
     radialMenu.appendChild(searchPrev);
     radialMenu.appendChild(searchNext);
     radialMenu.appendChild(copyBtn);
-    left.appendChild(radialWrap);
+    try{ headActions.insertBefore(radialWrap, btn); }catch(e){ headActions.appendChild(radialWrap); }
     left.appendChild(searchInput);
     left.appendChild(copyHint);
     controls.appendChild(left);

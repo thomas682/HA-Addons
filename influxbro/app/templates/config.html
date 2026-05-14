@@ -881,18 +881,9 @@
                   </select>
                 </div>
               </div>
-              <div class="param_row" data-ui="config_ui_theme.row_accent" data-ib-pickkey="config_ui_theme.row_accent" title="settings.ui.theme.accent">
-                <div class="param_label">Akzentfarbe<span class="param_hint">Beeinflusst Primary/Highlights (Buttons, Markierungen).</span></div>
-                <div class="param_control">
-                  <select id="ui_theme_accent" data-ui="config_ui_theme.select_accent" data-ib-pickkey="config_ui_theme.select_accent" title="settings.ui.theme.accent" style="width:100%; max-width: 320px;">
-                    <option value="blue">Blau</option>
-                    <option value="green">Gruen</option>
-                    <option value="orange">Orange</option>
-                    <option value="violet">Violett</option>
-                    <option value="red">Rot</option>
-                    <option value="cyan">Cyan</option>
-                  </select>
-                </div>
+              <div class="param_row" data-ui="config_nav.chk_remember_page_position" data-ib-pickkey="config_nav.chk_remember_page_position" title="settings.ui.remember_page_position">
+                <div class="param_label">Merke Position auf den Seiten<span class="param_hint">Speichert beim Verlassen einer Seite die aktuelle Scroll-/Ansichtsposition und stellt sie beim Zurueckkehren wieder her. Default: aktiv.</span></div>
+                <div class="param_control"><label><input id="ui_remember_page_position" type="checkbox" /> aktiv</label></div>
               </div>
               <div class="param_row">
                 <div class="param_label">GUI Gruppe 1: Titelzeile / Haupttitel (px)<span class="param_hint">Seitentitel in der festen Titelkarte, Brand-Titel (InfluxBro), grosse Kopfzeilen. Default: 16.</span></div>
@@ -1786,7 +1777,7 @@ const ids = [
   "ui_query_max_points","ui_raw_max_points","ui_raw_center_max_points","ui_raw_center_range_default","ui_raw_center_min_points","ui_raw_target_chunk_ms","ui_analysis_max_age_years",
   "ui_query_manual_max_points","ui_graph_jump_padding_intervals",
   "ui_gui_title_px","ui_gui_heading_px","ui_gui_body_px","ui_gui_meta_px","ui_tbl_title_px","ui_tbl_head_px","ui_tbl_cell_px",
-  "ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_manual_dialog_font_px","ui_analysis_cache_hidden_color","ui_checkbox_scale","ui_theme_mode","ui_theme_accent",
+  "ui_page_search_highlight_color","ui_page_search_highlight_width_px","ui_page_search_highlight_duration_ms","ui_nav_helper_history_limit","ui_nav_helper_highlight_color","ui_nav_helper_highlight_duration_ms","ui_remember_page_position","ui_manual_dialog_font_px","ui_analysis_cache_hidden_color","ui_checkbox_scale","ui_theme_mode",
   "ui_analysis_cache_missing_color",
   "ui_picker_outline_auto","ui_picker_outline_light_bg","ui_picker_outline_dark_bg","ui_superpicker_shortcut","perf_corr_causal_gap_ms","perf_corr_timer_gap_ms","perf_corr_dep_zoom_pct",
   "outlier_gap_seconds_default",
@@ -3136,8 +3127,8 @@ function setForm(cfg){
   _setVal(el.ui_decimals, cfg.ui_decimals ?? 3);
 
   _safeSet(el.ui_theme_mode, 'value', String(cfg.ui_theme_mode ?? 'system'));
-  _safeSet(el.ui_theme_accent, 'value', String(cfg.ui_theme_accent ?? 'blue'));
-  try{ if(window.InfluxBroTheme && window.InfluxBroTheme.apply) window.InfluxBroTheme.apply(el.ui_theme_mode.value, el.ui_theme_accent.value); }catch(e){}
+  _setChecked(el.ui_remember_page_position, cfg.ui_remember_page_position !== false);
+  try{ if(window.InfluxBroTheme && window.InfluxBroTheme.apply) window.InfluxBroTheme.apply(el.ui_theme_mode.value, 'blue'); }catch(e){}
 
   _setVal(el.ui_gui_title_px, cfg.ui_gui_title_px ?? 16);
   _setVal(el.ui_gui_heading_px, cfg.ui_gui_heading_px ?? 14);
@@ -3340,7 +3331,6 @@ function getForm(){
     ui_decimals: parseInt(el.ui_decimals.value, 10),
 
     ui_theme_mode: String(el.ui_theme_mode ? el.ui_theme_mode.value : 'system'),
-    ui_theme_accent: String(el.ui_theme_accent ? el.ui_theme_accent.value : 'blue'),
 
     ui_gui_title_px: parseInt(el.ui_gui_title_px.value, 10),
     ui_gui_heading_px: parseInt(el.ui_gui_heading_px.value, 10),
@@ -3356,6 +3346,7 @@ function getForm(){
     ui_nav_helper_history_limit: parseInt(el.ui_nav_helper_history_limit.value, 10),
     ui_nav_helper_highlight_color: String(el.ui_nav_helper_highlight_color.value || '').trim(),
     ui_nav_helper_highlight_duration_ms: parseInt(el.ui_nav_helper_highlight_duration_ms.value, 10),
+    ui_remember_page_position: _isChecked(el.ui_remember_page_position),
     ui_manual_dialog_font_px: parseInt(el.ui_manual_dialog_font_px.value, 10),
     ui_analysis_cache_hidden_color: String(el.ui_analysis_cache_hidden_color.value || '').trim(),
     ui_analysis_cache_missing_color: String(el.ui_analysis_cache_missing_color.value || '').trim(),
@@ -3975,8 +3966,7 @@ try{
 
 // Live-apply theme changes (instant feedback)
 try{
-  if(el.ui_theme_mode) el.ui_theme_mode.addEventListener('change', ()=>{ try{ window.InfluxBroTheme && window.InfluxBroTheme.apply && window.InfluxBroTheme.apply(el.ui_theme_mode.value, el.ui_theme_accent ? el.ui_theme_accent.value : 'blue'); }catch(e){} });
-  if(el.ui_theme_accent) el.ui_theme_accent.addEventListener('change', ()=>{ try{ window.InfluxBroTheme && window.InfluxBroTheme.apply && window.InfluxBroTheme.apply(el.ui_theme_mode ? el.ui_theme_mode.value : 'system', el.ui_theme_accent.value); }catch(e){} });
+  if(el.ui_theme_mode) el.ui_theme_mode.addEventListener('change', ()=>{ try{ window.InfluxBroTheme && window.InfluxBroTheme.apply && window.InfluxBroTheme.apply(el.ui_theme_mode.value, 'blue'); }catch(e){} });
 }catch(e){}
 
 

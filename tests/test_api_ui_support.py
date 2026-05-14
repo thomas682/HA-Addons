@@ -328,6 +328,24 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert '[data-ib-theme="surface"]' in topbar
     assert 'body button[aria-pressed="true"]' in topbar
     assert '.ib_bottombar .chip { background: var(--ib-surface-2)' in topbar
+    assert "const NAV_PAGE_POS_KEY = 'influxbro.nav.page_positions.v1';" in topbar
+    assert 'const NAV_REMEMBER_PAGE_POSITION =' in topbar
+    assert 'function _captureVisualState(entry){' in topbar
+    assert 'function _restorePagePositionOnLoad(){' in topbar
+    assert "window.addEventListener('pagehide', _saveCurrentPagePosition);" in topbar
+    assert 'idx -= 1; _writeNavIndex(idx); _navigateToEntry(rows[idx]);' in topbar
+    assert 'function _isPickerStructuralFallback(el){' in topbar
+    assert "[data-dialog-header=\"1\"]" in topbar
+    assert '_fmtPickV1(currentPageLabel(), name || \'unknown\'' in topbar
+    assert 'id="ui_remember_page_position"' in config_body
+    assert 'config_nav.chk_remember_page_position' in config_body
+    assert 'ui_remember_page_position: _isChecked(el.ui_remember_page_position)' in config_body
+    assert 'id="ui_theme_accent"' not in config_body
+    assert 'config_ui_theme.select_accent' not in config_body
+    assert 'ui_theme_accent:' not in config_body
+    assert '.ib_sel_stack .ib_clear_row > select {' in index_body
+    assert 'background-position: right 8px center;' in index_body
+    assert '.ib_sel_stack .ib_clear_row > .ib_clear_btn' in index_body
     assert "window.addEventListener('unhandledrejection'" in topbar
     assert "ui_superpicker_shortcut: 'ctrl+s'" in topbar
     assert 'function _shortcutMatches(ev){' in topbar
@@ -346,6 +364,9 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "radialMenu.style.background = 'color-mix(in srgb, var(--ib-surface, #fff) 96%, transparent)';" in tooltips_body
     assert "pre.style.background = 'var(--ib-surface-2, #fafafa)';" in tooltips_body
     assert "historyBox.style.background = 'var(--ib-surface, #fff)';" in tooltips_body
+    assert "tip.style.background = 'var(--ib-surface, #fff)';" in tooltips_body
+    assert "data-ib-doc-key=\"' + docKey + '\" style=\"display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ib-button-border" in tooltips_body
+    assert "headActions.insertBefore(radialWrap, btn)" in tooltips_body
     assert 'stroke="#1C274C"' not in tooltips_body
     assert "m.includes('signal is aborted without reason')" in tooltips_body
     assert 'id="ui_superpicker_shortcut"' in config_body
