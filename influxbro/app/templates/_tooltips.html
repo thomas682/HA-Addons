@@ -3580,6 +3580,39 @@
       }
     }
 
+    function _ensureQueryInfoHeaderRadialFallback(){
+      try{
+        const root = document.getElementById('influxbro_popup_root');
+        const actions = root && root.querySelector('[data-dialog-header-actions="1"]');
+        if(!root || !actions || root.querySelector('#influxbro_popup_radial_toggle')) return;
+        const btn = document.createElement('button');
+        btn.id = 'influxbro_popup_radial_toggle';
+        btn.type = 'button';
+        btn.innerHTML = POPUP_RADIAL_SVG;
+        btn.setAttribute('aria-label', 'Popup-Aktionen');
+        btn.setAttribute('title', 'Popup-Aktionen');
+        btn.setAttribute('data-ui', 'dialog_query_info.btn_radial_menu');
+        btn.setAttribute('data-ib-pickkey', 'dialog_query_info.btn_radial_menu');
+        btn.style.width = '34px';
+        btn.style.height = '34px';
+        btn.style.borderRadius = '999px';
+        btn.style.border = '1px solid var(--ib-border, rgba(30,41,59,0.22))';
+        btn.style.background = 'var(--ib-button-bg, #fff)';
+        btn.style.color = 'var(--ib-button-text, #1f2933)';
+        btn.style.cursor = 'pointer';
+        btn.style.display = 'inline-flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+        btn.addEventListener('click', (ev)=>{
+          try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
+          const controls = document.getElementById('influxbro_popup_controls');
+          if(controls) controls.style.display = controls.style.display === 'none' ? 'flex' : 'none';
+        }, true);
+        const close = actions.querySelector('[data-dialog-window="close"]');
+        actions.insertBefore(btn, close || null);
+      }catch(e){}
+    }
+
     function _show(title, msg, opts){
       const root = _ensureUi();
       const refs = POPUP_REFS || {};
@@ -3752,6 +3785,11 @@
       }catch(e){
         try{ root.style.display = 'block'; }catch(x){}
       }
+      try{
+        _ensureQueryInfoHeaderRadialFallback();
+        setTimeout(_ensureQueryInfoHeaderRadialFallback, 0);
+        setTimeout(_ensureQueryInfoHeaderRadialFallback, 120);
+      }catch(e){}
     }
 
     function _logsExcerptHtml(text){

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.636
+
+### Fix
+
+- Query-Info-Popup: Ein DOM-basierter Fallback erstellt den Radialbutton in der Dialog-Titelleiste neu, falls der Standarddialog-Aufbau ihn entfernt. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.635
 
 ### Fix
