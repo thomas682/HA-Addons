@@ -3612,6 +3612,18 @@
         actions.insertBefore(btn, close || null);
       }catch(e){}
     }
+    try{
+      window.__ibEnsureQueryInfoHeaderRadialFallback = _ensureQueryInfoHeaderRadialFallback;
+      const radialMo = new MutationObserver(()=>{
+        try{ _ensureQueryInfoHeaderRadialFallback(); }catch(e){}
+      });
+      radialMo.observe(document.documentElement || document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['open', 'style', 'class']
+      });
+    }catch(e){}
 
     function _show(title, msg, opts){
       const root = _ensureUi();

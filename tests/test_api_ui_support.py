@@ -377,6 +377,9 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "root.__ibMountPopupRadialInHeader();" in tooltips_body
     assert "function _ensureQueryInfoHeaderRadialFallback(){" in tooltips_body
     assert "btn.setAttribute('data-ib-pickkey', 'dialog_query_info.btn_radial_menu');" in tooltips_body
+    assert "window.__ibEnsureQueryInfoHeaderRadialFallback = _ensureQueryInfoHeaderRadialFallback;" in tooltips_body
+    assert "const radialMo = new MutationObserver" in tooltips_body
+    assert "radialMo.observe(document.documentElement || document.body" in tooltips_body
     assert "setTimeout(_ensureQueryInfoHeaderRadialFallback, 120);" in tooltips_body
     assert 'stroke="#1C274C"' not in tooltips_body
     assert "m.includes('signal is aborted without reason')" in tooltips_body

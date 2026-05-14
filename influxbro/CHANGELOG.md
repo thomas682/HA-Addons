@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.637
+
+### Fix
+
+- Query-Info-Popup: Ein MutationObserver haengt den Radialbutton nach Standarddialog-DOM-Aenderungen erneut in die Titelleiste ein, damit der Button im Live-DOM stabil sichtbar bleibt. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.636
 
 ### Fix
