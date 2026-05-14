@@ -1865,6 +1865,11 @@
 
   function _ensureUi(){
     let root = document.getElementById('influxbro_popup_root');
+    if(root && !root.querySelector('#influxbro_popup_radial_toggle')){
+      try{ root.remove(); }catch(e){}
+      root = null;
+      POPUP_REFS = null;
+    }
       if(root){
         if(!POPUP_REFS){
           POPUP_REFS = {

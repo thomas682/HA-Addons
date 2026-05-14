@@ -366,6 +366,7 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "historyBox.style.background = 'var(--ib-surface, #fff)';" in tooltips_body
     assert "tip.style.background = 'var(--ib-surface, #fff)';" in tooltips_body
     assert "data-ib-doc-key=\"' + docKey + '\" style=\"display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ib-button-border" in tooltips_body
+    assert "if(root && !root.querySelector('#influxbro_popup_radial_toggle'))" in tooltips_body
     assert "headActions.insertBefore(radialWrap, btn)" in tooltips_body
     assert 'stroke="#1C274C"' not in tooltips_body
     assert "m.includes('signal is aborted without reason')" in tooltips_body

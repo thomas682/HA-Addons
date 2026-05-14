@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.630
+
+### Fix
+
+- Query-Info-Popup: Bereits vorhandene Popup-Roots ohne neuen Radialbutton werden sicher neu aufgebaut, damit der Radialbutton nach Updates sichtbar in der Titelleiste erscheint. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.629
 
 ### Fix
