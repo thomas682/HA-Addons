@@ -371,6 +371,7 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "const _mountPopupRadialInHeader = ()=>{ try{" in tooltips_body
     assert "stdActions.insertBefore(radialWrap, stdClose || null);" in tooltips_body
     assert "setTimeout(_mountPopupRadialInHeader, 120);" in tooltips_body
+    assert "setTimeout(_mountPopupRadialInHeader, 1000);" in tooltips_body
     assert 'stroke="#1C274C"' not in tooltips_body
     assert "m.includes('signal is aborted without reason')" in tooltips_body
     assert 'id="ui_superpicker_shortcut"' in config_body

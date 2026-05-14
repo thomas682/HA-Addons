@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.633
+
+### Fix
+
+- Query-Info-Popup: Der Radialbutton wird nach verzögerten Standarddialog-Header-Aktualisierungen erneut gemountet, damit er auch im Live-DOM stabil sichtbar bleibt. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.632
 
 ### Fix
