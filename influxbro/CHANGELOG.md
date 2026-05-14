@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.639
+
+### Fix
+
+- Handbuch: Bilddateien werden im Add-on-Image mit ausgeliefert und Handbuch-Asset-Requests erzeugen keine Client-Trace-Spans mehr, damit eingebettete Handbuchseiten keine `manual_asset`-404- oder `client_span`-403-Console-Fehler ausloesen. ([#593](https://github.com/thomas682/HA-Addons/issues/593))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.638
 
 ### Fix

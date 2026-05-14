@@ -1072,6 +1072,7 @@ def test_dialog_help_buttons_live_in_header_before_window_actions():
 def test_handbook_rules_and_resolver_are_centralized():
     root = Path(__file__).resolve().parents[1]
     agents = (root / "AGENTS.md").read_text()
+    dockerfile = (root / "influxbro" / "Dockerfile").read_text()
     handbuch_rules = (root / "influxbro" / "template-handbuch-rules.md").read_text()
     topbar = _topbar_runtime_text()
     tooltips = (root / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
@@ -1093,6 +1094,8 @@ def test_handbook_rules_and_resolver_are_centralized():
     assert "const MANUAL_DOC_TARGETS = {" in manual
     assert "scrollToManualAnchor(anchor)" in manual
     assert "./api/manual_asset?path=" in manual
+    assert "COPY images/ /images/" in dockerfile
+    assert "if(u.includes('/api/manual_asset')) return false;" in tooltips
     assert "## Handbuch und Dokumentationsspruenge" in manual_md
     assert "### Messwertinfo-Laufzeitdetails" in manual_md
 

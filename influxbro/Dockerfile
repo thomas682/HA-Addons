@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY config.yaml /app/addon_config.yaml
 COPY CHANGELOG.md /app/CHANGELOG.md
 COPY MANUAL.md /app/MANUAL.md
+COPY images/ /images/
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 COPY app/ /app/

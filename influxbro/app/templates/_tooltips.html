@@ -4886,6 +4886,7 @@ try{ if(window.location && window.location.pathname && !window.location.pathname
       if(!u) return false;
       if(!(u.startsWith('./api/') || u.startsWith('/api/') || u.includes('/api/'))) return false;
       if(u.includes('/api/trace/client_span')) return false;
+      if(u.includes('/api/manual_asset')) return false;
       if(u.includes('/api/sysinfo')) return false;
       if(u.includes('/api/perf_event')) return false;
       if(u.includes('/api/perf_stats')) return false;
