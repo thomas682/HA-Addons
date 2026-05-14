@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.635
+
+### Fix
+
+- Query-Info-Popup: Der Radialbutton wird nach dem erneuten Enhance beim Anzeigen des Dialogs nochmals in die Header-Actions eingesetzt. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.634
 
 ### Fix

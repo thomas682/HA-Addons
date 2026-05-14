@@ -2273,6 +2273,7 @@
     setTimeout(_mountPopupRadialInHeader, 120);
     setTimeout(_mountPopupRadialInHeader, 500);
     setTimeout(_mountPopupRadialInHeader, 1000);
+    try{ root.__ibMountPopupRadialInHeader = _mountPopupRadialInHeader; }catch(e){}
     try{ infoBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; if(window.InfluxBroDialogStandards && window.InfluxBroDialogStandards.openInfo) window.InfluxBroDialogStandards.openInfo(card); }); }catch(e){}
 
     const confirmRoot = document.createElement('dialog');
@@ -3724,6 +3725,13 @@
               trigger: String(opts && opts.trigger ? opts.trigger : 'InfluxBroPopup.show'),
               closeSelector: '#influxbro_popup_close',
             });
+            try{
+              if(root.__ibMountPopupRadialInHeader){
+                root.__ibMountPopupRadialInHeader();
+                setTimeout(root.__ibMountPopupRadialInHeader, 0);
+                setTimeout(root.__ibMountPopupRadialInHeader, 120);
+              }
+            }catch(e){}
           }
         }
       }catch(e){}
