@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.632
+
+### Fix
+
+- Query-Info-Popup: Der Radialbutton wird auch nach nachgelagerten Standarddialog-Header-Aktualisierungen wieder in die Titelleiste gemountet. ([#592](https://github.com/thomas682/HA-Addons/issues/592))
+- Maintenance: Tested with Home Assistant Core: 2026.5.1
+
 ## 1.12.631
 
 ### Fix
