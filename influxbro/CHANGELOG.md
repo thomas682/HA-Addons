@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.640
+
+### Fix
+
+- Dialoge/Controls: Das Query-Info-Menue nutzt ein HA-aehnliches Drei-Punkte-Dropdown in der Titelleiste, Dialoge zeigen den Schliessen-Button links neben dem Titel und Clear-X-Schaltflaechen liegen nun auch bei Auswahl- und Textfeldern im Feld. ([#594](https://github.com/thomas682/HA-Addons/issues/594))
+- Maintenance: Tested with Home Assistant Core: 2026.5.2
+
 ## 1.12.639
 
 ### Fix

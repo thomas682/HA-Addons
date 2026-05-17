@@ -1679,7 +1679,7 @@
       if(document.getElementById('ib_clear_style')) return;
       const st = document.createElement('style');
       st.id = 'ib_clear_style';
-      st.textContent = '.ib_clear_row{display:flex;align-items:center;gap:8px;width:100%}.ib_clear_row>input,.ib_clear_row>select,.ib_clear_row>textarea{flex:1 1 auto;min-width:0}.ib_clear_row.ib_clear_inline{position:relative;gap:0}.ib_clear_row.ib_clear_inline>input{padding-right:38px!important}.ib_clear_row.ib_clear_inline>.ib_clear_btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:3;width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:#64748b}.ib_clear_row.ib_clear_inline>.ib_clear_btn:hover{background:#e2e8f0;color:#0f172a}.ib_clear_btn{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd5e2;border-radius:10px;background:#fff;cursor:pointer;flex:0 0 auto;font-size:14px;font-weight:700;line-height:1}.ib_clear_btn:hover{background:#f6f7fb}.ib_clear_btn svg{width:16px;height:16px;pointer-events:none}';
+      st.textContent = '.ib_clear_row{display:flex;align-items:center;gap:8px;width:100%}.ib_clear_row>input,.ib_clear_row>select,.ib_clear_row>textarea{flex:1 1 auto;min-width:0}.ib_clear_row.ib_clear_inline{position:relative;gap:0}.ib_clear_row.ib_clear_inline>input,.ib_clear_row.ib_clear_inline>select,.ib_clear_row.ib_clear_inline>textarea{padding-right:38px!important}.ib_clear_row.ib_clear_inline.ib_clear_select>select{padding-right:64px!important}.ib_clear_row.ib_clear_inline>.ib_clear_btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:3;width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:#64748b}.ib_clear_row.ib_clear_inline.ib_clear_select>.ib_clear_btn{right:30px}.ib_clear_row.ib_clear_inline>.ib_clear_btn:hover{background:#e2e8f0;color:#0f172a}.ib_clear_btn{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd5e2;border-radius:10px;background:#fff;cursor:pointer;flex:0 0 auto;font-size:14px;font-weight:700;line-height:1}.ib_clear_btn:hover{background:#f6f7fb}.ib_clear_btn svg{width:16px;height:16px;pointer-events:none}';
       document.head.appendChild(st);
     }catch(e){}
   }
@@ -1694,7 +1694,10 @@
       const row = btn.closest ? btn.closest('.ib_clear_row') : null;
       const type = String(el && el.getAttribute ? (el.getAttribute('type') || 'text') : '').toLowerCase();
       const inlineTypes = ['','text','search','email','url','tel','password','number'];
-      if(row && el && el.tagName === 'INPUT' && inlineTypes.includes(type)) row.classList.add('ib_clear_inline');
+      if(row && el && ((el.tagName === 'INPUT' && inlineTypes.includes(type)) || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')){
+        row.classList.add('ib_clear_inline');
+        if(el.tagName === 'SELECT') row.classList.add('ib_clear_select');
+      }
       btn.addEventListener('click', (ev)=>{
         try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}
         const target = document.getElementById(targetId);
@@ -1790,7 +1793,7 @@
   const POPUP_ARROW_UP_SVG = '<svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M208.49 152.49a12 12 0 0 1-17 0L140 101v99a12 12 0 0 1-24 0v-99l-51.51 51.49a12 12 0 0 1-17-17l72-72a12 12 0 0 1 17 0l72 72a12 12 0 0 1 0 17Z"/></svg>';
   const POPUP_ARROW_DOWN_SVG = '<svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M208.49 120.49l-72 72a12 12 0 0 1-17 0l-72-72a12 12 0 0 1 17-17L116 155V56a12 12 0 0 1 24 0v99l51.51-51.49a12 12 0 0 1 17 17Z"/></svg>';
   const POPUP_SEARCH_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M10.5 18a7.5 7.5 0 1 1 5.3-12.8A7.5 7.5 0 0 1 10.5 18Zm5.3-2.2L21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-  const POPUP_RADIAL_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 5v.01M18.4 8.7v.01M18.4 15.3v.01M12 19v.01M5.6 15.3v.01M5.6 8.7v.01" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
+  const POPUP_RADIAL_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M9 12C9 12.5523 8.55228 13 8 13C7.44772 13 7 12.5523 7 12C7 11.4477 7.44772 11 8 11C8.55228 11 9 11.4477 9 12Z" fill="currentColor"></path><path d="M13 12C13 12.5523 12.5523 13 12 13C11.4477 13 11 12.5523 11 12C11 11.4477 11.4477 11 12 11C12.5523 11 13 11.4477 13 12Z" fill="currentColor"></path><path d="M16 13C16.5523 13 17 12.5523 17 12C17 11.4477 16.5523 11 16 11C15.4477 11 15 11.4477 15 12C15 12.5523 15.4477 13 16 13Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0574 1.25H11.9426C9.63424 1.24999 7.82519 1.24998 6.41371 1.43975C4.96897 1.63399 3.82895 2.03933 2.93414 2.93414C2.03933 3.82895 1.63399 4.96897 1.43975 6.41371C1.24998 7.82519 1.24999 9.63422 1.25 11.9426V12.0574C1.24999 14.3658 1.24998 16.1748 1.43975 17.5863C1.63399 19.031 2.03933 20.1711 2.93414 21.0659C3.82895 21.9607 4.96897 22.366 6.41371 22.5603C7.82519 22.75 9.63423 22.75 11.9426 22.75H12.0574C14.3658 22.75 16.1748 22.75 17.5863 22.5603C19.031 22.366 20.1711 21.9607 21.0659 21.0659C21.9607 20.1711 22.366 19.031 22.5603 17.5863C22.75 16.1748 22.75 14.3658 22.75 12.0574V11.9426C22.75 9.63423 22.75 7.82519 22.5603 6.41371C22.366 4.96897 21.9607 3.82895 21.0659 2.93414C20.1711 2.03933 19.031 1.63399 17.5863 1.43975C16.1748 1.24998 14.3658 1.24999 12.0574 1.25ZM3.9948 3.9948C4.56445 3.42514 5.33517 3.09825 6.61358 2.92637C7.91356 2.75159 9.62177 2.75 12 2.75C14.3782 2.75 16.0864 2.75159 17.3864 2.92637C18.6648 3.09825 19.4355 3.42514 20.0052 3.9948C20.5749 4.56445 20.9018 5.33517 21.0736 6.61358C21.2484 7.91356 21.25 9.62177 21.25 12C21.25 14.3782 21.2484 16.0864 21.0736 17.3864C20.9018 18.6648 20.5749 19.4355 20.0052 20.0052C19.4355 20.5749 18.6648 20.9018 17.3864 21.0736C16.0864 21.2484 14.3782 21.25 12 21.25C9.62177 21.25 7.91356 21.2484 6.61358 21.0736C5.33517 20.9018 4.56445 20.5749 3.9948 20.0052C3.42514 19.4355 3.09825 18.6648 2.92637 17.3864C2.75159 16.0864 2.75 14.3782 2.75 12C2.75 9.62177 2.75159 7.91356 2.92637 6.61358C3.09825 5.33517 3.42514 4.56445 3.9948 3.9948Z" fill="currentColor"></path></svg>';
 
   function _dialogMetaText(pk, tpl){
     const key = String(pk || '').trim() || 'unknown';
@@ -1995,6 +1998,7 @@
 
     const radialWrap = document.createElement('div');
     radialWrap.id = 'influxbro_popup_radial_wrap';
+    radialWrap.setAttribute('data-dialog-query-menu', '1');
     radialWrap.style.position = 'relative';
     radialWrap.style.display = 'inline-flex';
     radialWrap.style.alignItems = 'center';
@@ -2024,15 +2028,15 @@
     radialMenu.setAttribute('data-ui', 'dialog_query_info.panel_radial_menu');
     radialMenu.setAttribute('data-ib-pickkey', 'dialog_query_info.panel_radial_menu');
     radialMenu.style.position = 'absolute';
-    radialMenu.style.left = '42px';
-    radialMenu.style.top = '50%';
-    radialMenu.style.transform = 'translateY(-50%)';
+    radialMenu.style.left = '0';
+    radialMenu.style.top = 'calc(100% + 8px)';
+    radialMenu.style.transform = 'none';
     radialMenu.style.display = 'none';
-    radialMenu.style.gridTemplateColumns = 'repeat(4, 34px)';
-    radialMenu.style.gap = '8px';
+    radialMenu.style.flexDirection = 'column';
+    radialMenu.style.gap = '6px';
     radialMenu.style.padding = '8px';
     radialMenu.style.border = '1px solid var(--ib-border, rgba(30,41,59,0.16))';
-    radialMenu.style.borderRadius = '18px';
+    radialMenu.style.borderRadius = '14px';
     radialMenu.style.background = 'color-mix(in srgb, var(--ib-surface, #fff) 96%, transparent)';
     radialMenu.style.color = 'var(--ib-text, #1f2933)';
     radialMenu.style.boxShadow = '0 12px 34px rgba(15,23,42,0.18)';
@@ -2041,17 +2045,21 @@
     function _radialIconButton(el, label, icon){
       try{
         el.textContent = '';
-        el.innerHTML = icon || String(label || '');
+        el.innerHTML = '<span class="ib_popup_menu_icon">' + (icon || '') + '</span><span class="ib_popup_menu_label">' + String(label || 'Aktion').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>';
         el.setAttribute('aria-label', String(label || 'Aktion'));
         el.setAttribute('title', String(label || 'Aktion'));
-        el.style.width = '34px';
-        el.style.height = '34px';
+        el.style.width = '210px';
+        el.style.minHeight = '42px';
         el.style.padding = '0';
-        el.style.borderRadius = '999px';
+        el.style.borderRadius = '10px';
         el.style.display = 'inline-flex';
         el.style.alignItems = 'center';
-        el.style.justifyContent = 'center';
-        el.style.gap = '0';
+        el.style.justifyContent = 'flex-start';
+        el.style.gap = '12px';
+        el.style.padding = '8px 10px';
+        el.style.border = '1px solid transparent';
+        el.style.background = 'transparent';
+        el.style.color = 'var(--ib-text, #1f2933)';
         el.style.cursor = 'pointer';
         el.style.flex = '0 0 auto';
       }catch(e){}
@@ -2060,7 +2068,7 @@
     function _setRadialOpen(open){
       try{
         const on = !!open;
-        radialMenu.style.display = on ? 'grid' : 'none';
+        radialMenu.style.display = on ? 'flex' : 'none';
         radialToggle.setAttribute('aria-expanded', on ? 'true' : 'false');
       }catch(e){}
     }
@@ -2263,9 +2271,9 @@
     root.appendChild(card);
     const _mountPopupRadialInHeader = ()=>{ try{
       const stdActions = root.querySelector('[data-dialog-header-actions="1"]') || headActions;
-      const stdClose = stdActions && stdActions.querySelector('[data-dialog-window="close"]');
+      const stdNeighbor = stdActions && stdActions.querySelector('[data-dialog-info-btn="1"], [data-dialog-doc-btn="1"], [data-dialog-window="restore"], [data-dialog-window="maximize"], [data-dialog-window="close"]');
       if(stdActions && radialWrap && radialWrap.parentElement !== stdActions){
-        stdActions.insertBefore(radialWrap, stdClose || null);
+        stdActions.insertBefore(radialWrap, stdNeighbor || null);
       }
     }catch(e){} };
     _mountPopupRadialInHeader();
@@ -2366,7 +2374,7 @@
     confirmRoot.appendChild(confirmCard);
     document.body.appendChild(confirmRoot);
     CONFIRM_REFS = { root: confirmRoot, card: confirmCard, title: confirmTitle, body: confirmBody, cancel: confirmCancel, ok: confirmOk, meta: confirmMeta };
-    POPUP_REFS = { root, card, title, pre, meta, metaFooter: popupMetaFooter, copyBtn, logsBtn, settingsBtn, split, historyBox };
+    POPUP_REFS = { root, card, title, pre, meta, metaFooter: popupMetaFooter, copyBtn, logsBtn, settingsBtn, radialMenu, searchToggle, split, historyBox };
 
     const composer = document.createElement('div');
     composer.id = 'influxbro_issue_composer';
@@ -3591,8 +3599,9 @@
         if(keep){
           buttons.forEach((it)=>{ try{ if(it !== keep) it.remove(); }catch(e){} });
           const mount = keep.closest('#influxbro_popup_radial_wrap') || keep;
-          const close = actions.querySelector('[data-dialog-window="close"]');
-          if(mount.parentElement !== actions) actions.insertBefore(mount, close || null);
+          const neighbor = actions.querySelector('[data-dialog-info-btn="1"], [data-dialog-doc-btn="1"], [data-dialog-window="restore"], [data-dialog-window="maximize"], [data-dialog-window="close"]');
+          if(mount.parentElement !== actions) actions.insertBefore(mount, neighbor || null);
+          if(neighbor && mount.nextSibling !== neighbor) actions.insertBefore(mount, neighbor);
           return;
         }
         const btn = document.createElement('button');
@@ -3618,8 +3627,8 @@
           const controls = document.getElementById('influxbro_popup_controls');
           if(controls) controls.style.display = controls.style.display === 'none' ? 'flex' : 'none';
         }, true);
-        const close = actions.querySelector('[data-dialog-window="close"]');
-        actions.insertBefore(btn, close || null);
+        const neighbor = actions.querySelector('[data-dialog-info-btn="1"], [data-dialog-doc-btn="1"], [data-dialog-window="restore"], [data-dialog-window="maximize"], [data-dialog-window="close"]');
+        actions.insertBefore(btn, neighbor || null);
       }catch(e){}
     }
     try{

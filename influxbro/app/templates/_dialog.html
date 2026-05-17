@@ -210,6 +210,7 @@
           .ib-dialog-v2.dialog-confirm-action{ width:fit-content; border-left:3px solid var(--c-warning); }
           [data-dialog-header="1"]{ display:flex; align-items:center; gap:12px; padding:14px 16px 14px 20px; border-bottom:1px solid var(--c-border); background:var(--c-surface); }
           [data-dialog-title-wrap="1"]{ flex:1 1 auto; min-width:0; }
+          [data-dialog-header="1"] > [data-dialog-window="close"]{ flex:0 0 auto; }
           [data-dialog-title="1"]{ color:var(--c-text); font-weight:600; font-size:15px; letter-spacing:-.01em; }
           [data-dialog-header-actions="1"]{ display:flex; align-items:center; gap:2px; flex:0 0 auto; margin-left:auto; }
           [data-dialog-window]{ width:28px; height:28px; display:grid; place-items:center; background:transparent; border:1px solid transparent; border-radius:6px; color:var(--c-text-muted); cursor:pointer; padding:0; }
@@ -943,12 +944,23 @@
         });
         Array.from(headerActions.children || []).forEach((el)=>{
           try{
-            if(el.matches && el.matches('[data-dialog-info-btn="1"],[data-dialog-doc-btn="1"],[data-dialog-open-manual-top="1"],[data-dialog-window]')) return;
+            if(el.matches && el.matches('[data-dialog-info-btn="1"],[data-dialog-doc-btn="1"],[data-dialog-open-manual-top="1"],[data-dialog-query-menu="1"],[data-dialog-window]')) return;
             el.remove();
           }catch(e){}
         });
         const existingClose = _findDialogCloseButton(root, panel, closeSelector);
         if(existingClose){ existingClose.style.display = 'none'; }
+        let closeBtn = header.querySelector('[data-dialog-window="close"]');
+        if(!closeBtn){
+          closeBtn = document.createElement('button');
+          closeBtn.setAttribute('data-dialog-window', 'close');
+          closeBtn.setAttribute('aria-label', 'Dialog schliessen');
+          closeBtn.setAttribute('title', 'Dialog schliessen');
+          closeBtn.innerHTML = DIALOG_CLOSE_SVG;
+          _styleWindowIconButton(closeBtn);
+          closeBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _dialogReport('dialog_close_button', root, { action: 'close_icon' }); _closeDialog(root, closeSelector); });
+        }
+        if(closeBtn.parentElement !== header || closeBtn.nextSibling !== textWrap) header.insertBefore(closeBtn, textWrap);
         let infoBtn = headerActions.querySelector('[data-dialog-info-btn="1"]');
         if(!infoBtn){
           const oldInfo = panel.querySelector('[data-dialog-actionbar="1"] [data-dialog-info-btn="1"]');
@@ -1020,17 +1032,6 @@
             maxBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _toggleDialogMaximize(root, panel, true); });
             headerActions.appendChild(maxBtn);
           }
-        }
-        let closeBtn = headerActions.querySelector('[data-dialog-window="close"]');
-        if(!closeBtn){
-          closeBtn = document.createElement('button');
-          closeBtn.setAttribute('data-dialog-window', 'close');
-          closeBtn.setAttribute('aria-label', 'Dialog schliessen');
-          closeBtn.setAttribute('title', 'Dialog schliessen');
-          closeBtn.innerHTML = DIALOG_CLOSE_SVG;
-          _styleWindowIconButton(closeBtn);
-          closeBtn.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){} _dialogReport('dialog_close_button', root, { action: 'close_icon' }); _closeDialog(root, closeSelector); });
-          headerActions.appendChild(closeBtn);
         }
         _setDialogRestoreState(root, root.getAttribute('data-dialog-maximized') !== '1');
       }catch(e){}

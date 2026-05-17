@@ -367,10 +367,17 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "tip.style.background = 'var(--ib-surface, #fff)';" in tooltips_body
     assert "data-ib-doc-key=\"' + docKey + '\" style=\"display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ib-button-border" in tooltips_body
     assert "if(root && !root.querySelector('#influxbro_popup_radial_toggle'))" in tooltips_body
+    assert "radialWrap.setAttribute('data-dialog-query-menu', '1');" in tooltips_body
     assert "headActions.insertBefore(radialWrap, btn)" in tooltips_body
+    assert "radialMenu.style.flexDirection = 'column';" in tooltips_body
+    assert "radialMenu.style.display = on ? 'flex' : 'none';" in tooltips_body
+    assert 'ib_popup_menu_icon' in tooltips_body
+    assert 'ib_popup_menu_label' in tooltips_body
+    assert 'fill="currentColor"' in tooltips_body
     assert "const _mountPopupRadialInHeader = ()=>{ try{" in tooltips_body
     assert "root.querySelector('[data-dialog-header-actions=\"1\"]') || headActions" in tooltips_body
-    assert "stdActions.insertBefore(radialWrap, stdClose || null);" in tooltips_body
+    assert "const stdNeighbor = stdActions && stdActions.querySelector('[data-dialog-info-btn=\"1\"], [data-dialog-doc-btn=\"1\"], [data-dialog-window=\"restore\"], [data-dialog-window=\"maximize\"], [data-dialog-window=\"close\"]');" in tooltips_body
+    assert "stdActions.insertBefore(radialWrap, stdNeighbor || null);" in tooltips_body
     assert "setTimeout(_mountPopupRadialInHeader, 120);" in tooltips_body
     assert "setTimeout(_mountPopupRadialInHeader, 1000);" in tooltips_body
     assert "root.__ibMountPopupRadialInHeader = _mountPopupRadialInHeader;" in tooltips_body
@@ -383,6 +390,9 @@ def test_logs_perf_controls_and_measurement_profile_runtime_ui_exist():
     assert "const radialMo = new MutationObserver" in tooltips_body
     assert "radialMo.observe(document.documentElement || document.body" in tooltips_body
     assert "setTimeout(_ensureQueryInfoHeaderRadialFallback, 120);" in tooltips_body
+    assert "header.insertBefore(closeBtn, textWrap)" in dialog_body
+    assert '[data-dialog-header="1"] > [data-dialog-window="close"]' in dialog_body
+    assert '[data-dialog-query-menu="1"]' in dialog_body
     assert 'stroke="#1C274C"' not in tooltips_body
     assert "m.includes('signal is aborted without reason')" in tooltips_body
     assert 'id="ui_superpicker_shortcut"' in config_body
