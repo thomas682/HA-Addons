@@ -1021,7 +1021,7 @@ def test_dialog_template_v2_basis_for_global_dialogs():
     assert "1-4 Zeilen Beschreibung" not in topbar
     assert "data-dialog-toolbar=\"1\"" in topbar
     assert "data-dialog-content=\"1\"" in topbar
-    assert "Info + Handbuch im Kopf" in (Path(__file__).resolve().parents[1] / "influxbro" / "template-dialog-rules.md").read_text()
+    assert "Info + Handbuch im Kopf" in (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template-projekt-dialog-rules.md").read_text()
     assert "data-dialog-template') || '') === 'dialog_confirm_action'" in topbar
     assert "kein Minimieren/Maximieren" in topbar
     assert "key === 'F1'" in topbar
@@ -1039,7 +1039,7 @@ def test_dialog_template_v2_basis_for_global_dialogs():
 def test_dialog_descriptions_and_meta_copy_are_specific():
     root = Path(__file__).resolve().parents[1] / "influxbro"
     topbar = _topbar_runtime_text()
-    rules = (root / "template-dialog-rules.md").read_text()
+    rules = (root / "projekt-template-projekt-dialog-rules.md").read_text()
 
     assert "const DIALOG_DESCRIPTION_LINES = {" in topbar
     assert "DIALOG_DESCRIPTION_LINES[name]" in topbar
@@ -1068,7 +1068,7 @@ def test_dialog_descriptions_and_meta_copy_are_specific():
 
 def test_dialog_help_buttons_live_in_header_before_window_actions():
     topbar = _topbar_runtime_text()
-    rules = (Path(__file__).resolve().parents[1] / "influxbro" / "template-dialog-rules.md").read_text()
+    rules = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template-projekt-dialog-rules.md").read_text()
     assert "let infoBtn = headerActions.querySelector('[data-dialog-info-btn=\"1\"]');" in topbar
     assert "let restoreBtn = headerActions.querySelector('[data-dialog-window=\"restore\"]');" in topbar
     assert topbar.index("let infoBtn = headerActions.querySelector") < topbar.index("let restoreBtn = headerActions.querySelector")
@@ -1083,13 +1083,13 @@ def test_handbook_rules_and_resolver_are_centralized():
     root = Path(__file__).resolve().parents[1]
     agents = (root / "AGENTS.md").read_text()
     dockerfile = (root / "influxbro" / "Dockerfile").read_text()
-    handbuch_rules = (root / "influxbro" / "template-handbuch-rules.md").read_text()
+    handbuch_rules = (root / "influxbro" / "projekt-template-handbuch-rules.md").read_text()
     topbar = _topbar_runtime_text()
     tooltips = (root / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
     manual = (root / "influxbro" / "app" / "templates" / "manual.html").read_text()
     manual_md = (root / "influxbro" / "MANUAL.md").read_text()
 
-    assert "influxbro/template-handbuch-rules.md" in agents
+    assert "influxbro/projekt-template-handbuch-rules.md" in agents
     assert "g) für Handbuch / Dokumentationssprünge" in agents
     assert "Alle Handbuchaufrufe muessen ueber einen zentralen Doc-Resolver laufen" in handbuch_rules
     assert "Relative Markdown-Bilder werden intern ueber `./api/manual_asset?path=...` geladen" in handbuch_rules
@@ -1552,7 +1552,7 @@ def test_analysis_log_modal_has_copy_button_error_highlight_and_workbench_metada
 
 
 def test_template_documents_dialog_standards_and_inventory():
-    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template.md").read_text()
     assert '## Dialog Standards' in template_md
     assert '### Standard `dialog_info_popup`' in template_md
     assert '### Standard `dialog_panel_workbench`' in template_md
@@ -2196,7 +2196,7 @@ def test_global_unhandledrejection_suppresses_tabs_outgoing_ready_noise():
 
 def test_dashboard_uses_structured_data_ui_naming_scheme_samples():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template.md").read_text()
     assert 'data-ui="dashboard_caching.btn_cache_pruefen"' in body
     assert 'data-ui="dashboard_analysis.btn_analyse_mit_cache"' in body
     assert 'data-ui="dashboard_outliers.tbl_ausreisser"' in body
@@ -2244,7 +2244,7 @@ def test_dashboard_raw_graph_context_tooltip_uses_full_point_info():
 def test_stats_uses_shared_measurement_selection_template():
     stats_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "stats.html").read_text()
     shared_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_measurement_selection.html").read_text()
-    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template.md").read_text()
     assert "{% include '_measurement_selection.html' %}" in stats_body
     assert "sel_root_ui = 'stats_selection.section_root'" in stats_body
     assert '## Measurement Selection' in template_md
@@ -2254,7 +2254,7 @@ def test_stats_uses_shared_measurement_selection_template():
 
 def test_dashboard_raw_action_bars_follow_two_row_layout_and_refresh_keeps_window():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "index.html").read_text()
-    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template.md").read_text()
     assert 'data-ui="dashboard_raw.row_customer_actions" data-ib-pickkey="dashboard_raw.row_customer_actions"' in body
     assert '>Abbruch</button>' in body
     assert '>Reparatur-Assistent</button>' in body
@@ -2337,7 +2337,7 @@ def test_stats_page_clears_expired_last_job_ids_before_cache_fallback():
 
 def test_tooltip_template_uses_short_description_plus_key_and_mentions_picker_suppression():
     body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
-    tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "template-tooltips-rules.md").read_text()
+    tmpl = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template-tooltips-rules.md").read_text()
     assert "return (t ? (t + '\\n' + suffix) : suffix);" in body
     assert 'base = _short(base, 110);' in body
     assert 'Tooltips must not be shown while `Picker` or `S-Picker` is active' in tmpl
@@ -2381,7 +2381,7 @@ def test_picker_suppresses_titles_and_handles_disabled_elements_via_mousedown():
 def test_pick_result_dialog_is_minimal_and_copies_text():
     root = Path(__file__).resolve().parents[1]
     topbar = (root / "influxbro" / "app" / "templates" / "_topbar.html").read_text()
-    picker_rules = (root / "influxbro" / "template-picker-rules.md").read_text()
+    picker_rules = (root / "influxbro" / "projekt-template-picker-rules.md").read_text()
     assert "function _ensurePickResultDialog()" in topbar
     assert "id = 'ib_pick_result_dialog'" in topbar
     assert "picker_result.btn_minimize" in topbar
@@ -2411,7 +2411,7 @@ def test_multi_pick_result_uses_card_dialog():
 
 def test_tooltip_docs_hotkey_removed_and_freeze_label_below_tooltip():
     tooltips = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_tooltips.html").read_text()
-    rules = (Path(__file__).resolve().parents[1] / "influxbro" / "template-tooltips-rules.md").read_text()
+    rules = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template-tooltips-rules.md").read_text()
     assert "overflowWrap = 'anywhere'" in tooltips
     assert "overflow-wrap:anywhere" in tooltips
     assert "<span>für Doku</span>" not in tooltips
@@ -2438,12 +2438,12 @@ def test_dashboard_outlier_section_has_description_info_and_manual_docs():
 def test_dialog_titles_prefer_readable_trigger_text_and_rules_link_picker():
     root = Path(__file__).resolve().parents[1]
     topbar = _topbar_runtime_text()
-    dialog_rules = (root / "influxbro" / "template-dialog-rules.md").read_text()
+    dialog_rules = (root / "influxbro" / "projekt-template-projekt-dialog-rules.md").read_text()
     assert "function _dialogTriggerTitle(root)" in topbar
     assert "const triggerTitle = _dialogTriggerTitle(root);" in topbar
     assert "if(triggerTitle) return triggerTitle;" in topbar
     assert "Standardisierungscode darf bestehende Kinder NICHT pauschal ausblenden" in dialog_rules
-    assert "template-picker-rules.md" in dialog_rules
+    assert "projekt-template-picker-rules.md" in dialog_rules
     assert "data-ui`, `data-ib-pickkey` oder `data-dialog-trigger` duerfen NICHT als sichtbarer Fenstertitel erscheinen" in dialog_rules
 
 
@@ -2682,7 +2682,7 @@ def test_dashboard_query_and_stats_buttons_report_dialog_errors_instead_of_swall
 
 
 def test_template_requires_standard_checkbox_scale_for_toolbar_checkboxes():
-    body = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    body = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template.md").read_text()
     assert 'Checkbox size must stay consistent across pages and topbars.' in body
     assert 'Preferred pattern: add class `row_sel` to the checkbox' in body
     assert 'must always return to the smallest height that still fully shows all currently visible controls.' in body
@@ -2946,7 +2946,7 @@ def test_client_config_log_queue_helper_and_instrumented_persist_paths_exist():
 
 def test_table_helper_defaults_to_window_fit_and_template_documents_it():
     table_cols_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "_table_cols.html").read_text()
-    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template.md").read_text()
     assert 'const hadSaved = !!_readWidths(tbl);' in table_cols_body
     assert 'if(!hadSaved){' in table_cols_body
     assert "windowFit(tbl, {minW: 80});" in table_cols_body
@@ -2956,7 +2956,7 @@ def test_table_helper_defaults_to_window_fit_and_template_documents_it():
 
 def test_jobs_table_info_specs_cover_toolbar_controls_and_sticky_rule_documented():
     jobs_body = (Path(__file__).resolve().parents[1] / "influxbro" / "app" / "templates" / "jobs.html").read_text()
-    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "Template.md").read_text()
+    template_md = (Path(__file__).resolve().parents[1] / "influxbro" / "projekt-template.md").read_text()
     assert 'Selektiere alle / keine: markieren sichtbare Zeilen gesammelt.' in jobs_body
     assert 'Spaltenbreite automatisch / Fensterbreite: passen die Tabelle an Inhalte bzw. die verfügbare Breite an.' in jobs_body
     assert '.table_title { position: sticky; top: 0;' in jobs_body

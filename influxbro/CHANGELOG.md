@@ -1599,7 +1599,7 @@
 
 ### Docs
 
-- `Template.md` und `AGENTS.md`: Pickkey-Pflicht fuer alle sichtbaren UI-Elementtypen dokumentiert.
+- `projekt-template.md` und `AGENTS.md`: Pickkey-Pflicht fuer alle sichtbaren UI-Elementtypen dokumentiert.
 
 ### Maintenance
 
@@ -2072,7 +2072,7 @@
 ### Enhancement
 
 - Dashboard/Caching: Analysecache-Zeitstrahl modernisiert. Ausreisser-Markierungen sind nun breiter, abgerundet und zeigen beim Hover einen Tooltip mit Zeitstempel, Typ und Wert. Backend liefert zusaetzlich `outlier_details` (Zeit, Typen, Wert) pro Segment; das bestehende `outlier_times`-Feld bleibt fuer Rueckwaertskompatibilitaet erhalten. ([#346](https://github.com/thomas682/HA-Addons/issues/346))
-- Dashboard/Analyse: Button-Leiste der `analysis_section` nutzt jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern aus Template.md, konsistent mit anderen Toolbars. ([#344](https://github.com/thomas682/HA-Addons/issues/344))
+- Dashboard/Analyse: Button-Leiste der `analysis_section` nutzt jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern aus projekt-template.md, konsistent mit anderen Toolbars. ([#344](https://github.com/thomas682/HA-Addons/issues/344))
 - Dashboard/Analyse: Typen-Auswahl (gewaehlt/abgewaehlt) im Chip-Grid-Pattern mit Farbindikator, Hover-Effekten und Active/Inactive States, konsistent mit der Performanceanalyse. ([#345](https://github.com/thomas682/HA-Addons/issues/345))
 - Dashboard: Analyse-Zustand (Cache-Plan-Auswahl, Status-Text, Caching-Summary) wird in `sessionStorage` persistiert und beim erneuten Oeffnen sofort wiederhergestellt. Zusaetzlich validiert das UI asynchron gegen den Server (Hybrid-Modus) und aktualisiert die Anzeige still, falls sich der Serverzustand geaendert hat. ([#347](https://github.com/thomas682/HA-Addons/issues/347))
 - Picker/S-Picker: Erweiterter Multi-Pick-Modus. Shift+Klick auf Picker oder S-Picker startet die Mehrfachauswahl. Unterhalb der Pagecard erscheint eine Statusleiste mit den erfassten Elementen als anklickbare Chips (Klick = Entfernen). Buttons: "Ende" (kopiert alles als `<page,data-ui,id>;<page,data-ui,id>;...`), "Letztes loeschen", "Abbruch". Picked-Elemente erhalten solange sie in der Liste sind einen farbigen Rahmen; ESC bricht ab. ([#348](https://github.com/thomas682/HA-Addons/issues/348))
@@ -3495,7 +3495,7 @@
 ### Enhancement
 
 - Die Dashboard-Seite verwendet jetzt ein strukturiertes `data-ui`-Namensschema im Format `page_section.role_action`, z. B. `dashboard_caching.btn_cache_pruefen`, `dashboard_analysis.btn_analyse_mit_cache` oder `dashboard_raw.tbl_rohdaten`. ([#224](https://github.com/thomas682/HA-Addons/issues/224))
-- `Template.md` dokumentiert das neue `data-ui`-Schema; das Folge-Issue fuer die restlichen Seiten bleibt separat offen. ([#224](https://github.com/thomas682/HA-Addons/issues/224))
+- `projekt-template.md` dokumentiert das neue `data-ui`-Schema; das Folge-Issue fuer die restlichen Seiten bleibt separat offen. ([#224](https://github.com/thomas682/HA-Addons/issues/224))
 
 ### Maintenance
 
@@ -6549,7 +6549,7 @@
 
 ### Fixes
 
-- Tabellen: Struktur gem. `Template.md` vereinheitlicht (Rahmen + Tabellenueberschrift pro Tabelle), so dass Zeilenzaehler und Spalten-Auswahl ueberall konsistent funktionieren.
+- Tabellen: Struktur gem. `projekt-template.md` vereinheitlicht (Rahmen + Tabellenueberschrift pro Tabelle), so dass Zeilenzaehler und Spalten-Auswahl ueberall konsistent funktionieren.
 
 ### Features
 

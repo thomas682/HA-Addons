@@ -45,7 +45,7 @@ Auch ohne Zugriff auf die HTML-Referenz MUSS die Struktur eindeutig umsetzbar se
 
 Standardisierungscode darf bestehende Kinder NICHT pauschal ausblenden, entfernen, umbenennen oder umsortieren. Er darf nur eindeutig standardbezogene Elemente normalisieren: Titel, Fenster-Aktionen, Beschreibung, Aktionsleiste, Toolbar, Content-Container, Footer und Meta-Indicator. Alle funktionsabhaengigen Kindinhalte bleiben erhalten.
 
-Picker-Sonderregel: Der Dialog, der nach einem erfolgreichen Pick angezeigt wird, folgt dem Minimalmodus in [`template-picker-rules.md`](./template-picker-rules.md). Diese Sonderregel gilt nur fuer den Pick-Ergebnisdialog, nicht fuer Picker/S-Picker selbst.
+Picker-Sonderregel: Der Dialog, der nach einem erfolgreichen Pick angezeigt wird, folgt dem Minimalmodus in [`projekt-template-picker-rules.md`](./projekt-template-picker-rules.md). Diese Sonderregel gilt nur fuer den Pick-Ergebnisdialog, nicht fuer Picker/S-Picker selbst.
 
 ---
 

@@ -844,7 +844,7 @@ Raw Daten (DB):
   - Aktive Typen sind normal dargestellt.
   - Abgewaehlte Typen bleiben sichtbar, sind aber grau und durchgestrichen.
   - Nur aktive (nicht durchgestrichene) Typen werden analysiert.
-- Die Button-Leiste der Analyse-Section verwendet jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern (siehe Template.md), damit Abstand/Design konsistent zu anderen Toolbars sind.
+- Die Button-Leiste der Analyse-Section verwendet jetzt das standardisierte `table_wrap` / `tbl_actions` Pattern (siehe projekt-template.md), damit Abstand/Design konsistent zu anderen Toolbars sind.
 - Der Analysecache-Zeitstrahl zeigt Ausreisser-Markierungen jetzt mit Tooltip: beim Hover erscheint ein kompakter Tooltip mit Zeitstempel, Typ(en) und Wert. Die Markierungen sind leicht vergroessert, abgerundet und zeigen einen weichen Uebergang beim Hovern.
 - Die Typ-Leiste direkt ueber dem Cache-Zeitstrahl folgt jetzt den fuer den aktuellen Messwert effektiv aktiven Strategietypen. Nicht aktive Typen bleiben sichtbar, erscheinen aber inaktiv/deaktiviert und werden nicht faelschlich wie gepruefte Counter-/Reset-Typen dargestellt.
 - Dashboard-Zustand beim Seitenwechsel: Beim Verlassen der Dashboard-Seite werden relevante Darstellungen/States im `sessionStorage` zwischengespeichert und beim erneuten Oeffnen sofort wiederhergestellt. Dazu gehoeren u.a. der Caching-Status (`load_status`), Analyse-Status/Checkliste, Ausreisser-Ergebnisliste/Selektion, Raw-Fenster sowie Graph-Detail-Settings. Das UI validiert im Hintergrund gegen den Server (Hybrid-Modus); bei veraenderten Serverdaten wird die Anzeige still aktualisiert.

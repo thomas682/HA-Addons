@@ -11,10 +11,10 @@ Aus `AGENTS.md` transferierte Grundregeln fuer Handbuch-UI:
 - Templates bleiben selbststaendig; es gibt keinen Build-Schritt.
 - Relative, Ingress-kompatible URLs sind Pflicht. Interne API-/Asset-Pfade muessen relativ bleiben, z. B. `./api/...`.
 - JavaScript bleibt einfach, ohne Framework, mit kleinen Funktionen und expliziten DOM-Lookups.
-- Vor Handbuch-/Dokumentations-UI-Aenderungen muessen `influxbro/Template.md` sowie die jeweils betroffenen Spezialregeln gelesen und beachtet werden.
-- Dialogbasierte Handbuch-Viewer muessen `influxbro/template-dialog-rules.md` befolgen.
-- Tooltip-Doku-Aufrufe muessen `influxbro/template-tooltips-rules.md` befolgen.
-- Picker-/Support-Referenzen muessen `influxbro/template-picker-rules.md` befolgen.
+- Vor Handbuch-/Dokumentations-UI-Aenderungen muessen `influxbro/projekt-template.md` sowie die jeweils betroffenen Spezialregeln gelesen und beachtet werden.
+- Dialogbasierte Handbuch-Viewer muessen `influxbro/projekt-template-projekt-dialog-rules.md` befolgen.
+- Tooltip-Doku-Aufrufe muessen `influxbro/projekt-template-tooltips-rules.md` befolgen.
+- Picker-/Support-Referenzen muessen `influxbro/projekt-template-picker-rules.md` befolgen.
 - Jede sichtbare Handbuch-UI-Komponente braucht stabile `data-ui` und `data-ib-pickkey`.
 - Dynamisch erzeugte Handbuch-Buttons, Dialoge, Toolbar-Aktionen und Fallback-Hinweise muessen `data-ui` und `data-ib-pickkey` beim Erzeugen setzen.
 
@@ -87,8 +87,8 @@ Resolver-Fallback in dieser Reihenfolge:
 
 Bei Aenderungen an Handbuchbuttons, Handbuchdialogen oder Manual-Deep-Links sind mindestens zu pruefen:
 
-- `AGENTS.md` verweist auf `influxbro/template-handbuch-rules.md`.
-- `template-handbuch-rules.md` enthaelt die transferierten Grundregeln und die Resolver-Regeln.
+- `AGENTS.md` verweist auf `influxbro/projekt-template-handbuch-rules.md`.
+- `projekt-template-handbuch-rules.md` enthaelt die transferierten Grundregeln und die Resolver-Regeln.
 - Dialog-Handbuchbutton, Tooltip-Doku-Button und `F1` verwenden denselben Resolver.
 - Ein bekannter Key wie `dashboard_selection.btn_measurement_profile_runtime_info` springt zu einem exakten Anchor.
 - Ein unbekannter Key faellt kontrolliert auf Suche zurueck.
