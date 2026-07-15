@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "policy": "A review is valid only for the exact source digest and must replace every substantive generated field.",
+  "reviews": [
+    {
+      "technical_reference": "influxbro/config.yaml:9#arch",
+      "source_sha256": "f0461eac7928829f22bf355870278bdbec606f1ffc233b4a0ccf65899adc2207",
+      "reviewed_by": "OpenCode source audit",
+      "reviewed_at": "2026-07-14",
+      "evidence": "Compared config.yaml arch declaration with the add-on manifest semantics; list is a compatibility whitelist, not a default.",
+      "overrides": {
+        "description": "Declares the CPU architectures for which the Supervisor may install InfluxBro. The manifest supports amd64, aarch64, armv7 and armhf; this list is not a runtime setting or default.",
+        "short_description": "Limits installation to the four declared CPU architectures.",
+        "prerequisites": "Home Assistant Supervisor evaluates the add-on manifest before installation.",
+        "permissions": "Changing the manifest requires repository/release access; installation requires Home Assistant administrator access.",
+        "inputs": [{"name": "arch", "type": "list[string]", "required": true, "default": "N/A - compatibility declaration, not a runtime default", "location": "influxbro/config.yaml", "allowed_values": ["amd64", "aarch64", "armv7", "armhf"], "validation": "Every list member must be one of the architectures supported by the Home Assistant add-on schema; the current manifest declares exactly these four values."}],
+        "outputs": "Supervisor compatibility metadata used to decide whether the add-on can be installed on the host architecture.",
+        "side_effects": "No runtime side effect; changing the declaration changes release/install eligibility.",
+        "states": {"loading": "N/A - static manifest metadata.", "success": "Supervisor accepts the declaration and evaluates host compatibility.", "empty": "An empty list would make the package unusable and is not the current state.", "error": "Supervisor schema/build validation rejects invalid architecture tokens.", "cancel": "N/A - static manifest metadata.", "retry": "Correct the manifest and rebuild/reload the add-on repository."},
+        "security": "Architecture eligibility only; it grants no runtime privilege.",
+        "dependencies": ["Home Assistant Supervisor add-on manifest schema.", "Container images built for each declared architecture."],
+        "called_by": "Home Assistant Supervisor during repository inspection and installation.",
+        "tests": ["tests/test_function_docs_validator.py::test_manifest_arch_is_enum_not_default"]
+      }
+    },
+    {
+      "technical_reference": "influxbro/app/app.py:1790#DEFAULT_CFG.active_database_mode",
+      "source_sha256": "7aa6774a85e5157280317c0dcb27a58d7277de6df5c75edc574ae25facef961e",
+      "reviewed_by": "OpenCode source audit",
+      "reviewed_at": "2026-07-14",
+      "evidence": "Reviewed DEFAULT_CFG and api_set_config normalization at app.py:25175-25177.",
+      "overrides": {
+        "description": "Selects the active InfluxDB backend mode. The default is v2. Configuration saves lowercase and trim the value; anything except v2 or v3 falls back to v2. Migration switch-over explicitly writes v3.",
+        "short_description": "Chooses InfluxDB v2 or v3; invalid values fall back to v2.",
+        "prerequisites": "The selected backend must have its corresponding connection settings configured and reachable.",
+        "permissions": "Administrative access to InfluxBro configuration; switching to v3 is exposed through the migration workflow.",
+        "inputs": [{"name": "active_database_mode", "type": "string", "required": false, "default": "v2", "location": "POST /api/config JSON or migration switch-over", "allowed_values": ["v2", "v3"], "validation": "Converted to string, trimmed and lowercased; values outside v2/v3 are replaced with v2 before persistence."}],
+        "outputs": "Normalized mode string consumed by backend selection and returned in configuration/state responses.",
+        "side_effects": "Persists the selected mode and redirects subsequent database operations to the matching configured backend.",
+        "states": {"loading": "Shown through the configuration or migration action that changes the mode.", "success": "Normalized v2 or v3 is persisted.", "empty": "Empty/null input normalizes to v2.", "error": "Unknown input does not raise an error; it safely normalizes to v2.", "cancel": "No separate cancellation after configuration submission.", "retry": "Submit a valid value after correcting backend configuration."},
+        "security": "Does not contain credentials, but selecting an unintended target can redirect reads/writes; migration switch-over must remain explicit.",
+        "dependencies": ["DEFAULT_CFG", "api_set_config", "migration switch-over", "runtime configuration persistence"],
+        "called_by": "Configuration API, migration switch-over, backend selection and API info output.",
+        "tests": ["tests/test_function_docs_validator.py::test_reviewed_active_mode_has_exact_enum_and_default"]
+      }
+    },
+    {
+      "technical_reference": "influxbro/app/app.py:1015#api_reference_source",
+      "source_sha256": "afe7454731002b118577f11aa758207bdb625a8ebdc0b0ff6202188f3394c119",
+      "reviewed_by": "OpenCode source audit",
+      "reviewed_at": "2026-07-14",
+      "evidence": "Reviewed the complete route body, _resolve_cfg_path call and browser caller in index.html; adversarial extractor fixtures exclude decorator and unrelated mapping.get calls.",
+      "overrides": {
+        "description": "GET /api/reference_source returns the UTF-8 text of an allowed repository/config reference for the source-detail UI. It requires a query path, accepts an optional line number, resolves the path through _resolve_cfg_path and rejects missing or non-file targets.",
+        "short_description": "Loads an allowed source file for the reference-detail view.",
+        "prerequisites": "Authenticated Ingress/API access and a path accepted by _resolve_cfg_path.",
+        "permissions": "Read access of the add-on process, constrained by _resolve_cfg_path.",
+        "inputs": [{"name": "path", "type": "string", "required": true, "default": "N/A - missing path returns HTTP 400", "location": "query", "allowed_values": "Relative path accepted by _resolve_cfg_path.", "validation": "Trimmed, required, then resolved by _resolve_cfg_path; missing/invalid paths return 400 and absent/non-file paths return 404."}, {"name": "line", "type": "integer", "required": false, "default": 1, "location": "query", "allowed_values": "Any integer; response clamps values below 1 to 1.", "validation": "Parsed with int(); non-integer input currently raises before a structured 400 response, while output uses max(1, line)."}],
+        "outputs": "JSON {ok, path, line, text} with HTTP 200; structured JSON errors with HTTP 400 or 404 for handled path failures.",
+        "side_effects": "Reads one text file into memory; does not write application or InfluxDB data.",
+        "states": {"loading": "Reference-detail JavaScript awaits the API call.", "success": "Source text and normalized line are rendered in the detail view.", "empty": "An empty file returns an empty text value with ok=true.", "error": "400 for missing/rejected path, 404 for missing/non-file target; malformed line is an unhandled conversion error.", "cancel": "No explicit server-side cancellation; browser navigation may abandon the request.", "retry": "The detail view may request the endpoint again with a corrected path/line."},
+        "security": "File disclosure boundary: _resolve_cfg_path must confine paths to approved roots. Response can contain operational source/config text and must not be exposed outside authenticated Ingress/API access.",
+        "dependencies": ["Flask request/jsonify", "_resolve_cfg_path", "pathlib.Path.read_text", "index.html reference-detail client"],
+        "called_by": "Reference-detail JavaScript in influxbro/app/templates/index.html.",
+        "tests": ["tests/test_function_docs_validator.py::test_request_extractor_ignores_decorator_and_mapping_get", "tests/test_function_docs_validator.py::test_catalog_reference_source_inputs_are_exact"],
+        "api": {
+          "method": "GET",
+          "path": "/api/reference_source",
+          "summary": "Read an allowed source file for the reference-detail UI.",
+          "description": "Requires query parameter path and accepts optional integer line=1. Resolves through _resolve_cfg_path, reads UTF-8 with replacement for invalid bytes, and returns the complete file text.",
+          "group": "Reference support",
+          "tags": ["reference-source"],
+          "role": "operator",
+          "roleLabel": "Ingress user",
+          "roleColor": "#2563eb",
+          "authRequired": false,
+          "request": {"contentType": "query string", "schema": {"path": "required string", "line": "optional integer, default 1"}, "keys": ["path", "line"], "example": {"path": "influxbro/config.yaml", "line": 1}},
+          "response": {"contentType": "application/json", "schema": {"ok": "boolean", "path": "string on success", "line": "integer >= 1 on success", "text": "string on success", "error": "string on failure"}, "example": {"ok": true, "path": "influxbro/config.yaml", "line": 1, "text": "[source text omitted]"}, "statusCodes": {"200": "File read successfully.", "400": "Path missing or rejected by resolver.", "404": "Resolved target missing or not a file.", "500": "Malformed line conversion or unhandled file read failure."}},
+          "timing": {"typicalMs": "Local file-read latency; not benchmarked.", "p95Ms": "N/A - no repository measurement.", "timeoutMs": "No route-specific timeout.", "bottleneck": "Reads and serializes the complete selected file."},
+          "correlations": {"dependsOn": ["_resolve_cfg_path", "local filesystem"], "triggers": ["reference-detail source display"], "parallelWith": ["N/A - stateless read"], "usedIn": ["index.html reference detail"], "criticalPath": false, "phase": "support detail loading"},
+          "errors": [{"symptom": "Source detail does not load.", "cause": "Missing/rejected path, absent target, malformed line or file read error.", "fix": "Use an allowed existing relative path and an integer line."}],
+          "examples": {"curl": "curl -fsS 'http://127.0.0.1:8099/api/reference_source?path=influxbro%2Fconfig.yaml&line=1'", "javascript": "fetch('./api/reference_source?path=' + encodeURIComponent(path) + '&line=1').then(r => r.json())", "python": "urllib.request.urlopen(base_url + '/api/reference_source?path=influxbro%2Fconfig.yaml&line=1').read()"},
+          "notes": "The Flask app has no route-level authentication check; intended protection is Home Assistant Ingress. Direct port exposure must be treated accordingly. Examples contain no private paths or credentials."
+        }
+      }
+    }
+  ]
+}

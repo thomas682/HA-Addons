@@ -6,6 +6,11 @@ repos:
         entry: python3 tools/check_version_bump.py --mode pre-commit
         language: system
         pass_filenames: false
+      - id: function-docs-audit
+        name: function-docs-audit
+        entry: python3 scripts/validate_function_docs.py
+        language: system
+        pass_filenames: false
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.9
     hooks:
