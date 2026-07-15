@@ -83,6 +83,27 @@
           "notes": "The Flask app has no route-level authentication check; intended protection is Home Assistant Ingress. Direct port exposure must be treated accordingly. Examples contain no private paths or credentials."
         }
       }
+    },
+    {
+      "technical_reference": ".github/workflows/function-docs.yml:12#function-docs",
+      "source_sha256": "c821f4650abe443be1df5c733e6d9683bb9a11fdd031ed8a7e8024fd2677752b",
+      "reviewed_by": "OpenCode CI workflow review",
+      "reviewed_at": "2026-07-15",
+      "evidence": "Compared the complete function-docs job with CI run 29396897262; pytest is installed at an exact version before the fixture-based test module runs, and the job retains read-only repository access.",
+      "overrides": {
+        "description": "Runs the function-documentation audit for pull requests and pushes to main. The job checks out the repository, selects Python 3.12, installs exactly pytest 8.4.2 in the ephemeral runner, executes the validator test module, and then requires the complete source-reviewed inventory to validate.",
+        "short_description": "Installs pinned pytest and validates the function documentation contract.",
+        "prerequisites": "A GitHub-hosted Ubuntu runner with access to GitHub Actions, the repository checkout action, the Python setup action and the Python package index.",
+        "permissions": "Read-only repository checkout; no repository write permission or secret is required by this job.",
+        "inputs": [{"name": "Repository-Stand", "type": "git checkout", "required": true, "default": "Current pull-request or main revision", "location": "GitHub Actions event", "allowed_values": "A revision supplied by pull_request or a push to main.", "validation": "GitHub Actions resolves the event revision and actions/checkout@v4 checks out that exact workflow run revision."}],
+        "outputs": "A successful function-docs job only when pytest tests and the strict catalog validator both exit successfully.",
+        "side_effects": "Downloads pytest 8.4.2 and its dependencies into the ephemeral runner environment; does not modify runtime, repository contents or persisted application data.",
+        "states": {"loading": "The runner checks out source, configures Python and installs the pinned test dependency.", "success": "Both the targeted pytest module and strict inventory validator return exit code zero.", "empty": "N/A - every workflow run has a checked-out repository revision.", "error": "Dependency installation, test or validator failure stops the job and marks the workflow failed.", "cancel": "GitHub Actions can cancel the job; no repository or runtime rollback is needed.", "retry": "Re-run the workflow after correcting the dependency, tests, catalog or review evidence."},
+        "security": "The job uses least-privilege read access and no secrets. Pinning pytest to 8.4.2 prevents an unbounded direct test dependency update; package installation remains confined to the ephemeral runner.",
+        "dependencies": ["actions/checkout@v4", "actions/setup-python@v5", "pytest==8.4.2", "scripts/validate_function_docs.py"],
+        "called_by": "GitHub Actions on pull_request events and pushes to main.",
+        "tests": ["tests/test_function_docs_validator.py"]
+      }
     }
   ]
 }

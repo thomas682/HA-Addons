@@ -1,7 +1,8 @@
 # Funktionshandbuch der Home-Assistant-Add-ons
 
 Audit-Basis: `HEAD 405376f`, Add-on-Version `1.12.640`. Der retrospektive
-Audit umfasst 5.740 aktive Einheiten; alle Einheiten sind mit ihrem exakten
+Produktaudit umfasst 5.740 aktive Einheiten; hinzu kommt der separat gepruefte
+Dokumentations-Workflow. Alle 5.741 Katalogeintraege sind mit ihrem exakten
 Quellabschnitt, SHA-256-Fingerprint, Kategorievertrag und Review-Batch als
 `verified` nachgewiesen.
 
@@ -231,6 +232,15 @@ oder Betriebszustand dauerhaft veraendern und duerfen nur mit kontrolliertem
 Ziel und ausreichenden Rechten ausgefuehrt werden.
 
 ## Dokumentationspruefung
+
+Der GitHub-Actions-Job `function-docs` laeuft bei Pull Requests und Pushes nach
+`main`. Er richtet Python 3.12 ein, installiert ausschliesslich fuer den
+kurzlebigen Runner das exakt gepinnte `pytest==8.4.2`, fuehrt die gezielten
+Validator-Tests aus und prueft danach den vollstaendigen, quellgebundenen
+Funktionskatalog. Der Job benoetigt nur Lesezugriff auf den Checkout, verwendet
+keine Secrets und veraendert weder Add-on-Laufzeit noch Repository-Inhalte.
+Ein Installations-, Test- oder Validierungsfehler stoppt den Job; ein neuer
+Workflow-Lauf nach Behebung wiederholt die Pruefung vollstaendig.
 
 `python3 scripts/validate_function_docs.py` prueft Struktur, deterministische
 Abdeckung, UI-ID-Bijektion, Kategorie-Batches, individuelle Quellfingerprints

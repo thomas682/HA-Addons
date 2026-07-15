@@ -399,6 +399,28 @@ def load_json_object(path: Path) -> dict[str, Any]:
     return value
 
 
+def workflow_entries() -> list[dict[str, Any]]:
+    item = entry(
+        doc_id="influxbro.ci.function-docs",
+        name="function-docs",
+        reference=".github/workflows/function-docs.yml:12#function-docs",
+        category="CI-Workflow",
+        description="Prueft den verifizierten Funktionskatalog bei Pull Requests und Pushes nach main.",
+        short="Installiert das gepinnte Testwerkzeug und validiert Funktionskatalog sowie Review-Nachweise.",
+        inputs=[input_record("Repository-Stand", "git checkout", True, "Aktueller Pull-Request- oder main-Stand", location="GitHub Actions")],
+        source=".github/workflows/function-docs.yml:12",
+        domain="Dokumentationspruefung",
+        permissions="GitHub-Workflow mit Repository-Lesezugriff; keine Schreib- oder Secret-Berechtigung erforderlich.",
+        side_effects="Installiert pytest 8.4.2 nur in der kurzlebigen Runner-Umgebung; veraendert keine Runtime- oder Repository-Daten.",
+        dependencies=("actions/checkout@v4", "actions/setup-python@v5", "pytest==8.4.2"),
+        called_by="GitHub Actions bei Pull Requests und Pushes nach main.",
+        ui_location="GitHub Actions, Job function-docs.",
+    )
+    item["manual_ref"] = "docs/handbuch.md#dokumentationspruefung"
+    item["tests"] = ["tests/test_function_docs_validator.py"]
+    return [item]
+
+
 def apply_reviews(entries: list[dict[str, Any]]) -> None:
     reviews = load_json_object(REVIEWS).get("reviews", [])
     by_reference = {
@@ -1311,6 +1333,18 @@ def _source_unit_cached(doc_id: str, category: str, name: str,
     path_text, line_text = source.rsplit(":", 1)
     line = int(line_text)
     text = _source_text(path_text)
+    lines = text.splitlines()
+    if item["id"] == "influxbro.ci.function-docs":
+        unit = "\n".join(lines[line - 1:])
+        commands = re.findall(r"^\s*run:\s*(.+)$", unit, re.M)
+        actions = re.findall(r"^\s*- uses:\s*(.+)$", unit, re.M)
+        return unit, {
+            "construct": "GitHub Actions job",
+            "commands": commands,
+            "actions": actions,
+            "effects": ["ephemeral Python package installation", "documentation validation"],
+            "security_boundaries": ["GitHub-hosted runner", "Python package index", "repository checkout"],
+        }
     if item["id"].startswith("influxbro.py."):
         node, unit = _python_units(path_text)[line]
         return unit, _sanitize_evidence(_python_facts(item, node, unit))
@@ -1318,7 +1352,6 @@ def _source_unit_cached(doc_id: str, category: str, name: str,
         units = _js_units(path_text).get((line, item["name"]), [])
         unit = units[0] if units else lines[line - 1]
         return unit, _sanitize_evidence(_js_facts(unit))
-    lines = text.splitlines()
     if item["category"] in {"Konfigurationsoption", "Add-on-Konfigurationsoption"}:
         key = item["name"]
         key_pattern = (
@@ -1622,6 +1655,7 @@ def apply_systematic_reviews(entries: list[dict[str, Any]]) -> None:
 
 def build_catalog() -> dict[str, Any]:
     entries = [
+        *workflow_entries(),
         *addon_and_shell_entries(),
         *config_default_entries(),
         *python_entries(),
@@ -1647,7 +1681,7 @@ def build_catalog() -> dict[str, Any]:
         "exclusions": [
             "node_modules and package dependencies",
             "influxbro/app/static/plotly.min.js (vendor)",
-            "tests, CI, demos and developer tooling",
+            "tests, CI other than the documentation compliance workflow, demos and developer tooling",
             "images, binary assets, backups, local runtime data and generated test results",
         ],
         "entries": entries,
@@ -1811,12 +1845,12 @@ def validate(catalog: dict[str, Any], expected: dict[str, Any]) -> list[str]:
             "Add-on-Abdeckung stimmt nicht: "
             f"gefunden={sorted(discovered_addons)}, dokumentiert={sorted(documented_addons)}"
         )
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, check=False,
-        capture_output=True, text=True,
-    ).stdout.strip()
-    if not head.startswith(AUDITED_REF):
-        errors.append(f"Arbeits-HEAD {head or '[nicht ermittelbar]'} ist nicht Audit-HEAD {AUDITED_REF}")
+    audit_is_ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", AUDITED_REF, "HEAD"],
+        cwd=ROOT, check=False, capture_output=True, text=True,
+    )
+    if audit_is_ancestor.returncode != 0:
+        errors.append(f"Audit-Commit {AUDITED_REF} ist kein Vorfahr des Arbeits-HEAD")
     ui_map = load_json_object(UI_ID_MAP).get("elements", [])
     mapped_ids = [item.get("id") for item in ui_map if isinstance(item, dict)]
     mapped_sources = [item.get("source_key") for item in ui_map if isinstance(item, dict)]

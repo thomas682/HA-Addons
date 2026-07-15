@@ -3,9 +3,10 @@
   "audit_ref": "405376f",
   "addon_version": "1.12.640",
   "method": "systematic-source-contract-v2",
-  "scope": "All active product Python, API, JavaScript, GUI, runtime/add-on configuration, shell and service units.",
+  "scope": "All active product Python, API, JavaScript, GUI, runtime/add-on configuration, shell and service units, plus the documentation compliance workflow.",
   "category_batches": [
     {"category": "API", "active_count": 286, "reviewed_by": "OpenCode systematic category audit", "reviewed_at": "2026-07-15", "adversarial_sample": "influxbro.py.app.api_reference_source", "checks": ["source_unit_fingerprint", "inputs_defaults_enums_validation", "outputs_states_effects", "security_dependencies_callers_tests", "adversarial_sample"]},
+    {"category": "CI-Workflow", "active_count": 1, "reviewed_by": "OpenCode CI workflow review", "reviewed_at": "2026-07-15", "adversarial_sample": "influxbro.ci.function-docs", "checks": ["source_unit_fingerprint", "inputs_defaults_enums_validation", "outputs_states_effects", "security_dependencies_callers_tests", "adversarial_sample"]},
     {"category": "Add-on-Konfigurationsoption", "active_count": 19, "reviewed_by": "OpenCode systematic category audit", "reviewed_at": "2026-07-15", "adversarial_sample": "influxbro.addon.option.arch", "checks": ["source_unit_fingerprint", "inputs_defaults_enums_validation", "outputs_states_effects", "security_dependencies_callers_tests", "adversarial_sample"]},
     {"category": "Add-on-Service", "active_count": 1, "reviewed_by": "OpenCode systematic category audit", "reviewed_at": "2026-07-15", "adversarial_sample": "influxbro.service.startup", "checks": ["source_unit_fingerprint", "inputs_defaults_enums_validation", "outputs_states_effects", "security_dependencies_callers_tests", "adversarial_sample"]},
     {"category": "GUI-Aktion", "active_count": 575, "reviewed_by": "OpenCode systematic category audit", "reviewed_at": "2026-07-15", "adversarial_sample": "influxbro.ui._nav.nav_main.btn_sidebar_toggle", "checks": ["source_unit_fingerprint", "inputs_defaults_enums_validation", "outputs_states_effects", "security_dependencies_callers_tests", "adversarial_sample"]},

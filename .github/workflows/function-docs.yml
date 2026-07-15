@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   function-docs:
     runs-on: ubuntu-latest
@@ -13,6 +16,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest==8.4.2
       - run: python -m pytest tests/test_function_docs_validator.py -q
       - name: Require complete source-reviewed inventory
         run: python scripts/validate_function_docs.py
