@@ -234,11 +234,12 @@ Ziel und ausreichenden Rechten ausgefuehrt werden.
 ## Dokumentationspruefung
 
 Der GitHub-Actions-Job `function-docs` laeuft bei Pull Requests und Pushes nach
-`main`. Er richtet Python 3.12 ein, installiert ausschliesslich fuer den
-kurzlebigen Runner das exakt gepinnte `pytest==8.4.2`, fuehrt die gezielten
-Validator-Tests aus und prueft danach den vollstaendigen, quellgebundenen
-Funktionskatalog. Der Job benoetigt nur Lesezugriff auf den Checkout, verwendet
-keine Secrets und veraendert weder Add-on-Laufzeit noch Repository-Inhalte.
+`main`. Er checkt die vollstaendige Git-Historie fuer die Audit-Vorfahrenpruefung
+aus, richtet Python 3.12 ein, installiert ausschliesslich fuer den kurzlebigen
+Runner das exakt gepinnte `pytest==8.4.2`, fuehrt die gezielten Validator-Tests
+aus und prueft danach den vollstaendigen, quellgebundenen Funktionskatalog. Der
+Job benoetigt nur Lesezugriff auf den Checkout, verwendet keine Secrets und
+veraendert weder Add-on-Laufzeit noch Repository-Inhalte.
 Ein Installations-, Test- oder Validierungsfehler stoppt den Job; ein neuer
 Workflow-Lauf nach Behebung wiederholt die Pruefung vollstaendig.
 
