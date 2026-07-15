@@ -412,7 +412,7 @@ def workflow_entries() -> list[dict[str, Any]]:
         domain="Dokumentationspruefung",
         permissions="GitHub-Workflow mit Repository-Lesezugriff; keine Schreib- oder Secret-Berechtigung erforderlich.",
         side_effects="Installiert pytest 8.4.2 nur in der kurzlebigen Runner-Umgebung; veraendert keine Runtime- oder Repository-Daten.",
-        dependencies=("actions/checkout@v4", "actions/setup-python@v5", "pytest==8.4.2"),
+        dependencies=("actions/checkout@v5", "actions/setup-python@v6", "pytest==8.4.2"),
         called_by="GitHub Actions bei Pull Requests und Pushes nach main.",
         ui_location="GitHub Actions, Job function-docs.",
     )
