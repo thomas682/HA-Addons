@@ -3,27 +3,48 @@ tag-template: 'v$RESOLVED_VERSION'
 
 categories:
   - title: '⚠️ Breaking Changes'
-    labels:
-      - 'breaking'
+    when:
+      labels:
+        - 'breaking'
   - title: '🚀 Features'
-    labels:
-      - 'feature'
-      - 'enhancement'
+    when:
+      labels:
+        - 'feature'
+        - 'enhancement'
   - title: '🐛 Bug Fixes'
-    labels:
-      - 'fix'
-      - 'bugfix'
-      - 'bug'
+    when:
+      labels:
+        - 'fix'
+        - 'bugfix'
+        - 'bug'
   - title: '🧰 Maintenance'
-    labels:
-      - 'chore'
-      - 'documentation'
-      - 'miscellaneous'
+    when:
+      labels:
+        - 'chore'
+        - 'documentation'
+        - 'miscellaneous'
+  - type: 'pre-exclude'
+    when:
+      label: 'dependencies'
+  - type: 'version-resolver'
+    semver-increment: 'major'
+    when:
+      labels:
+        - 'major'
+        - 'breaking'
+  - type: 'version-resolver'
+    semver-increment: 'minor'
+    when:
+      label: 'minor'
+  - type: 'version-resolver'
+    semver-increment: 'patch'
+    when:
+      label: 'patch'
+  - type: 'version-resolver'
+    semver-increment: 'patch'
 
 filter-by-commitish: true
-
-exclude-labels:
-  - 'dependencies'
+filter-by-range: '>=542.0.0'
 
 change-template: '- $TITLE #$NUMBER (@$AUTHOR)'
 change-title-escapes: '\<*_&'
@@ -43,22 +64,6 @@ autolabeler:
   - label: 'miscellaneous'
     title:
       - '/^chore[:(]/i'
-
-
-version-resolver:
-  major:
-    labels:
-      - 'major'
-      - 'breaking'
-  minor:
-    labels:
-      - 'minor'
-  patch:
-    labels:
-      - 'patch'
-  default: patch
-
-
 template: |
   $CHANGES
 
