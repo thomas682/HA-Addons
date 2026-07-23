@@ -233,21 +233,16 @@ Ziel und ausreichenden Rechten ausgefuehrt werden.
 
 ## Dokumentationspruefung
 
-Der GitHub-Actions-Job `function-docs` laeuft bei Pull Requests und Pushes nach
-`main`. Er checkt die vollstaendige Git-Historie fuer die Audit-Vorfahrenpruefung
-aus, richtet Python 3.12 ein, installiert ausschliesslich fuer den kurzlebigen
-Runner das exakt gepinnte `pytest==8.4.2`, fuehrt die gezielten Validator-Tests
-aus und prueft danach den vollstaendigen, quellgebundenen Funktionskatalog. Der
-Job benoetigt nur Lesezugriff auf den Checkout, verwendet keine Secrets und
-veraendert weder Add-on-Laufzeit noch Repository-Inhalte.
-Ein Installations-, Test- oder Validierungsfehler stoppt den Job; ein neuer
-Workflow-Lauf nach Behebung wiederholt die Pruefung vollstaendig.
+Die Dokumentationspruefung wird vor Commit und Push manuell mit
+`scripts/run-local-checks.sh` ausgefuehrt. Sie validiert den vollstaendigen,
+quellgebundenen Funktionskatalog und dessen Testvertrag. Der Ablauf verwendet
+keine Secrets und veraendert weder Add-on-Laufzeit noch Repository-Inhalte.
 
 `python3 scripts/validate_function_docs.py` prueft Struktur, deterministische
 Abdeckung, UI-ID-Bijektion, Kategorie-Batches, individuelle Quellfingerprints
 und Review-Nachweise. Der Befehl schlaegt bei einem Entwurf, einer
 Quellaenderung, einer fehlenden Kategorie, ID-Drift oder einem abweichenden
-Vertrag fehl. CI und Pre-Commit verwenden diesen strikten Modus.
+Vertrag fehl. Der lokale Pruefeinstieg verwendet diesen strikten Modus.
 
 `python3 scripts/validate_function_docs.py --write` aktualisiert und prueft
 den deterministischen Katalog. `docs/audit-evidence.json` belegt Umfang,

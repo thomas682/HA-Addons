@@ -136,7 +136,7 @@ def test_adversarial_contract_samples_cover_every_category():
         "API": "influxbro.py.app.api_reference_source",
         "Add-on-Konfigurationsoption": "influxbro.addon.option.arch",
         "Add-on-Service": "influxbro.service.startup",
-        "CI-Workflow": "influxbro.ci.function-docs",
+        "Lokale Pruefung": "influxbro.local-checks.function-docs",
         "GUI-Aktion": "influxbro.ui._nav.nav_main.btn_sidebar_toggle",
         "GUI-Anzeige": "influxbro.ui._nav.nav_main.row_sidebar_tools",
         "GUI-Eingabe": "influxbro.ui._dialog.docs_modal.input_search.dynamic",
@@ -158,8 +158,8 @@ def test_adversarial_contract_samples_cover_every_category():
         "amd64", "aarch64", "armv7", "armhf"
     ]
     assert "mv" in entries[samples["Add-on-Service"]]["contract"]["effects"]
-    workflow = entries[samples["CI-Workflow"]]
-    assert "python -m pip install --disable-pip-version-check pytest==8.4.2" in workflow["contract"]["commands"]
+    local_check = entries[samples["Lokale Pruefung"]]
+    assert local_check["technical_reference"] == "scripts/run-local-checks.sh:1#function-docs"
     button = entries[samples["GUI-Aktion"]]["contract"]
     assert button["tag"] == "button" and "href" not in button["attributes"]
     assert entries[samples["GUI-Anzeige"]]["contract"]["tag"] == "div"

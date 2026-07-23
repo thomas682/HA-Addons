@@ -1,73 +1,85 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-07-15T06:08:48Z",
+  "checked_at": "2026-07-23T20:23:49Z",
   "project_root": "/Users/thomasschatz/git/ha-addons",
   "global_rules_root": "/Users/thomasschatz/git/global",
-  "global_rules_git_revision": "642e2ef",
+  "global_rules_git_revision": "bcd5fb6",
   "global_rules_files": {
     "global-agents.md": {
-      "sha256": "a05d70d6a397fe0ba2d7762388c8770a745a9459a1bbf043032adac66260295a",
-      "size": 11195
+      "sha256": "2fecc74c35dbfbbcc93084e2394bcf92864fa46da0e1aba26bb42c928d0922f6",
+      "size": 14176
     },
     "global-workflow-rules.md": {
-      "sha256": "720d05591c38d1a28dd7060cbd9a9f4c774e4fd54d8bdbccead60d4f66926fa5",
-      "size": 7954
+      "sha256": "5d6dba531289bd51d551e9a1ecc1b01f5e07529e9080160e2bdd8c5853923c98",
+      "size": 18405
     },
     "global-security-rules.md": {
-      "sha256": "88721b19671710fb9e0f782edc392d0e13009880b0c3723be46baa65e68ec13c",
-      "size": 1339
+      "sha256": "e62adb40d3b27969f4381d02de6cb06d238ee925700a7591c1bdcc1c3b6ed842",
+      "size": 3433
     },
     "global-secrets-rules.md": {
-      "sha256": "41513b46745754a14489d307dc8cb45651068853da7ac6b7589e78d39fbb1205",
-      "size": 2879
+      "sha256": "2a69e07cdc17a47a48292e7728e9836e910851a0d26b1d3a8c4760c409a413ac",
+      "size": 2991
     },
     "global-memory-rules.md": {
       "sha256": "68da28ca099148aa538e010ef70a49adccf4ea04f9d0876d4474a59b56365636",
       "size": 2061
     },
     "global-gui-rules.md": {
-      "sha256": "f7c7cccb640fcd91e6f654a8eaefe1cfafd6756293a903faac96040ca71850bb",
-      "size": 8006
+      "sha256": "f84c249253ad034400d98b27bdd414fbd4a37ea9c249829e572643437909e1d2",
+      "size": 12412
     },
     "global-project-rules.md": {
-      "sha256": "d3241e5b4b2e3def5f31085d90f57c4fa1866bb4686d3f167f9340a125ee7f3f",
-      "size": 3150
+      "sha256": "4a855cd74afcc354e0b171951cf283b49ebe2664524e839be794005dc774112c",
+      "size": 3822
+    },
+    "global-documentation-rules.md": {
+      "sha256": "97a18bb36fc597e8df2cc21e8c0827a0b2ec9c36faa5093d4e0568d83ab887a0",
+      "size": 8424
     },
     "global-frontend-guidelines.md": {
       "sha256": "895fff01563a97d35743f6f65ff2f0e941bcad9f7a97bc36015eca53921bcd2a",
       "size": 1511
     },
     "global-homepage-rules.md": {
-      "sha256": "492f6c73249ecd6a71cdbb13c41781add457fd09706860669942d31b61840cf2",
-      "size": 2745
+      "sha256": "f933bef7ca1c39247263f9167947f4a86cab0b32135daa3049e7bd9e80493e45",
+      "size": 2770
     },
     "global-dns-rules.md": {
-      "sha256": "f036dd1e963a8081ba1bca0d520f94c4c700a1a77eb35e7a51a0be326d762a78",
-      "size": 1389
+      "sha256": "1cb5ab4c77c374b0c76aa959632679e5a1ea9d0c571500da4676a10652c864ae",
+      "size": 1495
     },
     "global-udm-rules.md": {
-      "sha256": "39d1c566532ad4477910bcf0568304788150cf3d2517b1f1329a81132d184db1",
-      "size": 1125
+      "sha256": "dcd8233ee185fb670df7d93c803e554a02980ed7d910ac239d3825d8b46ae6aa",
+      "size": 1178
     },
     "global-github-rules.md": {
-      "sha256": "b00786537c7a7ebc95818af232c25d21ef0a175cf53e60464185cd23949ac80f",
-      "size": 4819
+      "sha256": "532baa132eebc828d5355bf342585f80c8ac264f6cb604ce0d5a59a2a2a77d8d",
+      "size": 5875
     },
     "global-registry-workflow.md": {
-      "sha256": "8ee9aa1a991774cf140b7acd64aeedbaadecdd640d2a4ac3602f80bff98a9ee9",
-      "size": 8042
+      "sha256": "60ac5b56c62b113afcadf14d8a7d1308156eaf70f8cb1af84e45d58778c30dec",
+      "size": 10424
+    },
+    "global-installation-rules.md": {
+      "sha256": "79729ddb873b459ccbe9bf137ec36704291565b1665410d52e15d207fb82dbb0",
+      "size": 13789
+    },
+    "global-log-rules.md": {
+      "sha256": "b7ebbc3610ada34a4910348a13f90b520bb7c15fd42c000afc8c2b13b7817168",
+      "size": 8392
     },
     "global-mcp-rules.md": {
-      "sha256": "fc8f6cfe4ae229feaefe04c36b157d5baf3a96d84c7a50084440867aa7644e13",
-      "size": 7898
+      "sha256": "766d014e26d5f7ad3d4789acdd860f94105858f4460a7823c306dbc8620f3b43",
+      "size": 8157
     },
     "global-template-agents.md": {
-      "sha256": "72e4c75c2a23a9e09ef6b0f342187951d050caed019f36eb48ceb9656810d494",
-      "size": 3937
+      "sha256": "8d920422c69c5fe5a0e01b159256673f1a1c9fdee672e1f1fa86a3a095a396c2",
+      "size": 5109
     }
   },
   "missing_global_rule_files": [],
   "status": "checked",
   "audit_required": false,
-  "notes": "Vollstaendiger Funktionsinventar-Audit gegen den globalen Regelstand; historische Add-on-Versionierung bleibt als bekanntes Risiko dokumentiert."
+  "notes": "Baseline written after Global Rule Drift workflow check."
 }

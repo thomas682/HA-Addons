@@ -401,20 +401,20 @@ def load_json_object(path: Path) -> dict[str, Any]:
 
 def workflow_entries() -> list[dict[str, Any]]:
     item = entry(
-        doc_id="influxbro.ci.function-docs",
-        name="function-docs",
-        reference=".github/workflows/function-docs.yml:12#function-docs",
-        category="CI-Workflow",
-        description="Prueft den verifizierten Funktionskatalog bei Pull Requests und Pushes nach main.",
-        short="Installiert das gepinnte Testwerkzeug und validiert Funktionskatalog sowie Review-Nachweise.",
-        inputs=[input_record("Repository-Stand", "git checkout", True, "Aktueller Pull-Request- oder main-Stand", location="GitHub Actions")],
-        source=".github/workflows/function-docs.yml:12",
+        doc_id="influxbro.local-checks.function-docs",
+        name="run-local-checks",
+        reference="scripts/run-local-checks.sh:1#function-docs",
+        category="Lokale Pruefung",
+        description="Prueft den verifizierten Funktionskatalog vor Commit und Push auf dem lokalen Maintainer-System.",
+        short="Validiert Funktionskatalog und Validator-Testvertrag lokal.",
+        inputs=[input_record("Repository-Stand", "lokaler Git-Checkout", True, "Aktueller Arbeitsstand vor Commit oder Push", location="Maintainer-Umgebung")],
+        source="scripts/run-local-checks.sh:1",
         domain="Dokumentationspruefung",
-        permissions="GitHub-Workflow mit Repository-Lesezugriff; keine Schreib- oder Secret-Berechtigung erforderlich.",
-        side_effects="Installiert pytest 8.4.2 nur in der kurzlebigen Runner-Umgebung; veraendert keine Runtime- oder Repository-Daten.",
-        dependencies=("actions/checkout@v5", "actions/setup-python@v6", "pytest==8.4.2"),
-        called_by="GitHub Actions bei Pull Requests und Pushes nach main.",
-        ui_location="GitHub Actions, Job function-docs.",
+        permissions="Lokaler Repository-Lesezugriff; keine Schreib- oder Secret-Berechtigung fuer Add-on-Laufzeitdaten erforderlich.",
+        side_effects="Fuehrt Validator und Testvertrag aus; veraendert keine Add-on-Laufzeitdaten oder GitHub-Objekte.",
+        dependencies=("Python 3", "scripts/validate_function_docs.py", "tests/test_function_docs_validator.py"),
+        called_by="Maintainer manuell vor Commit und Push.",
+        ui_location="Lokale Shell im Repository-Root.",
     )
     item["manual_ref"] = "docs/handbuch.md#dokumentationspruefung"
     item["tests"] = ["tests/test_function_docs_validator.py"]
