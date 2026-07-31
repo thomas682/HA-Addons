@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-07-23T20:23:49Z",
+  "checked_at": "2026-07-31T19:13:33Z",
   "project_root": "/Users/thomasschatz/git/ha-addons",
   "global_rules_root": "/Users/thomasschatz/git/global",
-  "global_rules_git_revision": "bcd5fb6",
+  "global_rules_git_revision": "72e7737",
   "global_rules_files": {
     "global-agents.md": {
-      "sha256": "2fecc74c35dbfbbcc93084e2394bcf92864fa46da0e1aba26bb42c928d0922f6",
-      "size": 14176
+      "sha256": "516277181162bdfe15c77014469a8a1d36182487201488af42e2b4cf230b206f",
+      "size": 15097
     },
     "global-workflow-rules.md": {
-      "sha256": "5d6dba531289bd51d551e9a1ecc1b01f5e07529e9080160e2bdd8c5853923c98",
-      "size": 18405
+      "sha256": "8c7d8ccdcb8fd5788461cbfda56b987e776f3a635fd5a3a87bf18dbaf67cc97a",
+      "size": 19331
     },
     "global-security-rules.md": {
-      "sha256": "e62adb40d3b27969f4381d02de6cb06d238ee925700a7591c1bdcc1c3b6ed842",
-      "size": 3433
+      "sha256": "b7fe9e91e2c85ffec7c94ac052bfcb26e05ce6cb3aa853a870bd5e6485b253d2",
+      "size": 4086
     },
     "global-secrets-rules.md": {
       "sha256": "2a69e07cdc17a47a48292e7728e9836e910851a0d26b1d3a8c4760c409a413ac",
@@ -30,8 +30,8 @@
       "size": 12412
     },
     "global-project-rules.md": {
-      "sha256": "4a855cd74afcc354e0b171951cf283b49ebe2664524e839be794005dc774112c",
-      "size": 3822
+      "sha256": "7990c3f5ee5bcb2e82d77acc87caedb48313a0c3c9c8aca88908fe5952bc762f",
+      "size": 4283
     },
     "global-documentation-rules.md": {
       "sha256": "97a18bb36fc597e8df2cc21e8c0827a0b2ec9c36faa5093d4e0568d83ab887a0",
@@ -74,8 +74,8 @@
       "size": 8157
     },
     "global-template-agents.md": {
-      "sha256": "8d920422c69c5fe5a0e01b159256673f1a1c9fdee672e1f1fa86a3a095a396c2",
-      "size": 5109
+      "sha256": "33637aea00514fa29b23ef5c2ea93fd058352ed7b07c8e7b76be60afa700c2fa",
+      "size": 5446
     }
   },
   "missing_global_rule_files": [],
