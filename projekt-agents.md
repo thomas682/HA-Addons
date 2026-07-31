@@ -47,9 +47,9 @@ Sprache: Deutsch. Repository: `influxbro`. Typ: Home Assistant Add-on.
 
 ## Issue- und Abschlussworkflow
 
-- GitHub-Issues werden nicht automatisch geprueft, geladen oder gestartet; nur auf explizite Nutzeranweisung wie `pruefe Issues` oder `offene Issues abarbeiten`.
+- Jede umsetzbare Chat-Aufgabe wird vor der Umsetzung als GitHub-Issue erfasst; der vollstaendige Aufgabentext steht unter `## Vorgaben Chat`.
 - `rememberme`-Issues sind bei jeder Pruefung, Triage oder Sammelumsetzung strikt zu ueberspringen, sofern der Nutzer nicht genau dieses Issue nennt.
-- Neue GitHub-Issues duerfen nur angelegt, gestartet oder bearbeitet werden, wenn das aktuell aktive Issue vollstaendig abgeschlossen oder explizit vom Nutzer zurueckgestellt wurde.
+- Neue GitHub-Issues duerfen fuer jede neue umsetzbare Chat-Aufgabe angelegt werden; bestehende aktive Issues bleiben bis zum Abschluss oder Blocker im Arbeitskontext.
 - Genau ein Status-Label pro Issue ist aktiv: `status/open`, `status/in_progress`, `status/done` oder `status/cancelled`; vorherige Status-Labels entfernen.
 - Ein aktives Issue gilt erst als erledigt, wenn Umsetzung, relevante QA, Sicherheitspruefung falls erforderlich, Version/Changelog/Manual falls erforderlich, Commit, Push, Live-Update falls erforderlich, Issue-Kommentar, `status/done`, Issue-Schluss und Abschlussbericht erledigt oder explizit blockiert sind.
 - Fuer GitHub-Issue-Kommentare mit Backticks, Dollarzeichen, URLs, Dateipfaden oder Befehlen immer eine Body-Datei oder heredoc-artige Eingabe verwenden, keine fragile Inline-Quote.
@@ -58,7 +58,7 @@ Sprache: Deutsch. Repository: `influxbro`. Typ: Home Assistant Add-on.
 
 - Jede Aenderung an app-relevanter Laufzeit-, UI-, API- oder Verhaltenslogik erzwingt eine neue Version in `influxbro/config.yaml`.
 - App-relevante Dateitypen sind insbesondere `*.py`, `*.html`, `*.js`, `*.css`, Dockerfile, Shell-/Startskripte und Laufzeit-Konfigurationen.
-- Nicht app-relevante Regel-, Plan-, Arbeits- oder reine Doku-Dateien ausserhalb des Add-ons erzwingen keinen Add-on-Versionsbump, sofern sie Laufzeitverhalten, UI, API, Container, Startverhalten, Konfiguration oder Abhaengigkeiten nicht beeinflussen.
+- Jede Aenderung an Quellcode, Skripten, Laufzeitkonfiguration oder produktiver Logik erzwingt eine Erhoehung der kanonischen Root-`VERSION` im selben Arbeitsblock. Reine Regel-, Plan- oder Dokumentationsaenderungen ohne Laufzeitwirkung bleiben davon unberuehrt.
 - Bei Versionsbump `influxbro/CHANGELOG.md` aktualisieren, neueste Version oben.
 - Bei UI- oder Verhaltensaenderungen `influxbro/MANUAL.md` aktualisieren.
 - Pro veroeffentlichter Add-on-Version die getestete Home Assistant Core-Version in `influxbro/CHANGELOG.md` dokumentieren, wenn sie ermittelt werden kann.
@@ -72,7 +72,6 @@ Sprache: Deutsch. Repository: `influxbro`. Typ: Home Assistant Add-on.
 - Bevorzugter Updatepfad ist die Home-Assistant-Core-API: `homeassistant/update_entity` fuer `update.influxbro_update`, danach `update/install` und Polling bis `/api/info` die erwartete Version liefert.
 - Nur wenn der HA-Core-API-Updatepfad technisch nicht nutzbar ist, darf der bestehende Playwright-Fallback `tests/e2e/ha-live-update-influxbro.spec.js` verwendet werden.
 - Die Live-Version muss exakt der erwarteten Version entsprechen; Abweichung ist ein Blocker.
-- Lokale Audio-/Sprachausgaben fuer Abschluss, Version, Blocker oder Entscheidungen duerfen nur lokal auf dem Agent-Rechner erfolgen, z. B. `say` oder `afplay`; Home Assistant, Alexa, `notify.*`, `tts.*` oder `browser_mod.notification` sind dafuer verboten.
 
 ## Pflicht-Sicherheitspruefung
 
